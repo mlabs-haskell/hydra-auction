@@ -1,77 +1,72 @@
 {
   description = "Hydra Auction";
 
-  inputs = {
-    haskellNix.url = "github:input-output-hk/haskell.nix/0.0.64";
-    iohkNix.url = "github:input-output-hk/iohk-nix/d31417fe8c8fbfb697b3ad4c498e17eb046874b9";
-    chap = {
-        url = "github:input-output-hk/cardano-haskell-packages/695c91a740abfeef0860056227c605abf6375edd";
-        flake = false;
-    };
-    nixpkgs.follows = "haskellNix/nixpkgs";
-    flake-utils.url = "github:numtide/flake-utils";
+  nixConfig = {
+    extra-substituters = [
+      "https://cache.iog.io"
+      "https://hydra-node.cachix.org"
+    ];
+    extra-trusted-public-keys = [
+      "hydra.iohk.io:f/Ea+s+dFdN+3Y/G+FDgSq+a5NEWhJGzdjvKNGv0/EQ="
+      "hydra-node.cachix.org-1:vK4mOEQDQKl9FTbq76NjOuNaRD4pZLxi1yri31HHmIw="
+    ];
+    allow-import-from-derivation = true;
   };
 
-  outputs = inputs@{ self, haskellNix, iohkNix, chap, nixpkgs, flake-utils }:
-    flake-utils.lib.eachDefaultSystem (system:
-      let
-        pkgs = import nixpkgs {
-          inherit system overlays;
-          inherit (haskellNix) config;
-        };
+  inputs = {
+    hydra.url = "github:input-output-hk/hydra";
+    haskellNix.follows = "hydra/haskellNix";
+    iohk-nix.follows = "hydra/iohk-nix";
+    CHaP.follows = "hydra/CHaP";
+    nixpkgs.follows = "hydra/nixpkgs";
+    flake-utils.follows = "hydra/flake-utils";
+  };
 
-        cabalProject = inputs.hydra-auction.cabalProject {
-          inputMap = { "https://input-output-hk.github.io/cardano-haskell-packages" = chap; };
-        };
-
-        overlays = [
-          haskellNix.overlay
-
-          # needed for cardano-api which uses a patched libsodium  
-          iohkNix.overlays.crypto
-
-          (final: prev: {
-            hydraAuctionProject = final.haskell-nix.project' {
+  outputs = inputs@{ self, hydra, haskellNix, iohk-nix, CHaP, nixpkgs, flake-utils }:
+      flake-utils.lib.eachSystem [ "x86_64-darwin" ] (system:
+    let
+      overlays = [
+        haskellNix.overlay
+        iohk-nix.overlays.crypto
+        (final: prev: {
+          hydraProject =
+            final.haskell-nix.cabalProject {
+              src = final.haskell-nix.haskellLib.cleanGit { src = ./.; name = "hydra-auction"; };
+              inputMap = { "https://input-output-hk.github.io/cardano-haskell-packages" = CHaP; };
+              # extraHackage = [
+              #   "${plutarch}"
+              #   "${plutarch}/plutarch-extra"
+              #   "${plutarch}/plutarch-test"
+              #   "${ply}/ply-core"
+              #   "${ply}/ply-plutarch"
+              # ];
               compiler-nix-name = "ghc8107";
-
-              src = final.haskell-nix.haskellLib.cleanGit {
-                name = "hydra-auction";
-                src = ./.;
+              shell.tools = {
+                cabal = "3.4.0.0";
+                fourmolu = "0.4.0.0";
+                haskell-language-server = "latest";
               };
-
-              
-              modules = [{
-                # https://github.com/input-output-hk/iohk-nix/pull/488
-                packages.cardano-crypto-class.components.library.pkgconfig = final.lib.mkForce [ [ final.libsodium-vrf final.secp256k1 ] ];
-                packages.cardano-crypto-praos.components.library.pkgconfig = final.lib.mkForce [ [ final.libsodium-vrf ] ];
-              }];
-
-              shell = {
-                nativeBuildInputs = with final; [
-                  nixpkgs-fmt
-                  git
-                ];
-
-                tools = {
-                  cabal = { };
-                  cabal-fmt = { };
-                  fourmolu = "0.4.0.0";
-                };
-              };
+              shell.buildInputs = with pkgs; [
+                nixpkgs-fmt
+              ];
+                modules = [
+                    # Set libsodium-vrf on cardano-crypto-{praos,class}. Otherwise they depend
+                    # on libsodium, which lacks the vrf functionality.
+                    ({ pkgs, lib, ... }:
+                        # Override libsodium with local 'pkgs' to make sure it's using
+                        # overriden 'pkgs', e.g. musl64 packages
+                        {
+                        packages.cardano-crypto-class.components.library.pkgconfig = lib.mkForce [ [ pkgs.libsodium-vrf pkgs.secp256k1 ] ];
+                        packages.cardano-crypto-praos.components.library.pkgconfig = lib.mkForce [ [ pkgs.libsodium-vrf ] ];
+                        }
+                    )
+                    ];
             };
-          })
-        ];
-
-        flake = pkgs.hydraAuctionProject.flake { };
-        exe-component-name = "hydra-auction:exe:hydra-auction";
-
-      in
-      flake // {
-        defaultPackage = flake.packages.${exe-component-name};
-        defaultApp = flake.apps.${exe-component-name};
-        check = pkgs.runCommand "combined-test"
-          {
-            nativeBuildInputs = builtins.attrValues flake.checks;
-          } "touch $out";
-      });
+        })
+      ];
+      pkgs = import nixpkgs { inherit system overlays; inherit (haskellNix) config; };
+      flake = pkgs.hydraProject.flake { };
+    in flake // {
+      packages.default = flake.packages."hydra-auction:exe:hydra-auction";
+    });
 }

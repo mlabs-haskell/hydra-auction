@@ -27,10 +27,12 @@ common common-lang
     , async
     , base                     ^>=4.14
     , mtl
+    , stm
     , record-dot-preprocessor
     , record-hasfield
     , transformers
     , websockets
+
 
   default-extensions:
     NoImplicitPrelude
@@ -72,10 +74,36 @@ executable hydra-auction
   main-is:        Main.hs
   build-depends:
     , aeson
+    , array
+    , base
+    , base16-bytestring
+    , bech32
+    , bech32-th
     , bytestring
-    , cardano-api
+    , cardano-api                     >=1.35.4
+    , cardano-binary                  ==1.5.0
+    , cardano-crypto-class            ==2.0.0
+    , cardano-ledger-alonzo
+    , cardano-ledger-alonzo-test
+    , cardano-ledger-babbage
+    , cardano-ledger-babbage-test
+    , cardano-ledger-byron
+    , cardano-ledger-core
+    , cardano-ledger-shelley
+    , cardano-ledger-shelley-ma
+    , cardano-ledger-shelley-ma-test
+    , cardano-ledger-shelley-test
+    , cardano-prelude
+    , cardano-slotting                ==0.1.0.0
+    , cborg
     , containers
-    , lens
+    , data-default
+    , ouroboros-network               ==0.1.0.1
+    , plutus-ledger-api               ==1.0.0.0
+    , QuickCheck
+    , serialise
+    , strict-containers               ==0.1.0.0
     , text
+    , time
 
   hs-source-dirs: app
