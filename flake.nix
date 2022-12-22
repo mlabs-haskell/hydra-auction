@@ -23,7 +23,7 @@
   };
 
   outputs = inputs@{ self, hydra, haskellNix, iohk-nix, CHaP, nixpkgs, flake-utils }:
-      flake-utils.lib.eachSystem [ "x86_64-darwin" ] (system:
+      flake-utils.lib.eachDefaultSystem (system:
     let
       overlays = [
         haskellNix.overlay
@@ -65,8 +65,9 @@
         })
       ];
       pkgs = import nixpkgs { inherit system overlays; inherit (haskellNix) config; };
-      flake = pkgs.hydraProject.flake { };
-    in flake // {
-      packages.default = flake.packages."hydra-auction:exe:hydra-auction";
+      haskellNixFlake = pkgs.hydraProject.flake { };
+    in {
+      packages.default = haskellNixFlake.packages."hydra-auction:exe:hydra-auction";
+      herculesCI.ciSystems = [ "x86_64-linux" ];
     });
 }
