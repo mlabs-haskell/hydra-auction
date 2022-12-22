@@ -5,8 +5,6 @@ synopsis:
   Auction in hydra head
 
 homepage:           https://github.com/mlabs-haskell/hydra-auction
-license:            Apache-2.0
-license-file:       LICENSE
 author:             MLabs
 maintainer:         giovanni@mlabs.city
 extra-source-files: CHANGELOG.md

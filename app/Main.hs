@@ -1,4 +1,6 @@
-module Main where
+module Main (main) where
 
-main :: IO
+import Prelude
+
+main :: IO ()
 main = putStrLn "Hello hydra!"
