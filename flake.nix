@@ -20,10 +20,10 @@
     CHaP.follows = "hydra/CHaP";
     nixpkgs.follows = "hydra/nixpkgs";
     flake-utils.follows = "hydra/flake-utils";
+    mlabs-tooling.url = "github:mlabs-haskell/mlabs-tooling.nix";
   };
 
-  outputs = inputs@{ self, hydra, haskellNix, iohk-nix, CHaP, nixpkgs, flake-utils }:
-      flake-utils.lib.eachDefaultSystem (system:
+  outputs = inputs@{ self, hydra, haskellNix, iohk-nix, CHaP, nixpkgs, flake-utils, mlabs-tooling }:
     let
       overlays = [
         haskellNix.overlay
@@ -32,7 +32,10 @@
           hydraProject =
             final.haskell-nix.cabalProject {
               src = final.haskell-nix.haskellLib.cleanGit { src = ./.; name = "hydra-auction"; };
-              inputMap = { "https://input-output-hk.github.io/cardano-haskell-packages" = CHaP; };
+              inputMap = {
+                "https://input-output-hk.github.io/cardano-haskell-packages" = CHaP;
+                "https://github.com/intput-output-hk/hyra.git/6b58b1488a4c2e5c3dc67c7467faa59d76e689088" = hydra;
+              };
               # extraHackage = [
               #   "${plutarch}"
               #   "${plutarch}/plutarch-extra"
@@ -46,7 +49,7 @@
                 fourmolu = "0.4.0.0";
                 haskell-language-server = "latest";
               };
-              shell.buildInputs = with pkgs; [
+              shell.buildInputs = with final; [
                 nixpkgs-fmt
               ];
                 modules = [
@@ -64,10 +67,17 @@
             };
         })
       ];
+    in flake-utils.lib.eachDefaultSystem (system : let
       pkgs = import nixpkgs { inherit system overlays; inherit (haskellNix) config; };
       haskellNixFlake = pkgs.hydraProject.flake { };
-    in {
-      packages.default = haskellNixFlake.packages."hydra-auction:exe:hydra-auction";
-      herculesCI.ciSystems = [ "x86_64-linux" ];
-    });
+      in {
+        packages.default = haskellNixFlake.packages."hydra-auction:exe:hydra-auction";
+      }) // {
+      herculesCI = {
+        ciSystems = [ "x86_64-linux" ];
+        outputs = {
+          packages = self.packages.x86_64-linux;
+        };
+      };
+    };
 }

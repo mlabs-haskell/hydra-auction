@@ -103,5 +103,6 @@ executable hydra-auction
     , strict-containers               ==0.1.0.0
     , text
     , time
+    , hydra-cardano-api
 
   hs-source-dirs: app
