@@ -14,16 +14,17 @@
   };
 
   inputs = {
-    hydra.url = "github:input-output-hk/hydra";
-    haskellNix.follows = "hydra/haskellNix";
+    # when you upgrade `hydra` input remember to also upgrade revs under `source-repository-package`s in `cabal.project`
+    hydra.url = "github:input-output-hk/hydra/fafb8e5eca0f5fc615f5957ac1243e09c19f9a9f";
+    # haskellNix.follows = "hydra/haskellNix";
+    haskellNix.url = "github:input-output-hk/haskell.nix";
     iohk-nix.follows = "hydra/iohk-nix";
     CHaP.follows = "hydra/CHaP";
     nixpkgs.follows = "hydra/nixpkgs";
     flake-utils.follows = "hydra/flake-utils";
-    mlabs-tooling.url = "github:mlabs-haskell/mlabs-tooling.nix";
   };
 
-  outputs = inputs@{ self, hydra, haskellNix, iohk-nix, CHaP, nixpkgs, flake-utils, mlabs-tooling }:
+  outputs = inputs@{ self, hydra, haskellNix, iohk-nix, CHaP, nixpkgs, flake-utils }:
     let
       overlays = [
         haskellNix.overlay
@@ -34,7 +35,6 @@
               src = final.haskell-nix.haskellLib.cleanGit { src = ./.; name = "hydra-auction"; };
               inputMap = {
                 "https://input-output-hk.github.io/cardano-haskell-packages" = CHaP;
-                "https://github.com/intput-output-hk/hyra.git/6b58b1488a4c2e5c3dc67c7467faa59d76e689088" = hydra;
               };
               # extraHackage = [
               #   "${plutarch}"
@@ -72,6 +72,7 @@
       haskellNixFlake = pkgs.hydraProject.flake { };
       in {
         packages.default = haskellNixFlake.packages."hydra-auction:exe:hydra-auction";
+        inherit (haskellNixFlake) devShells;
       }) // {
       herculesCI = {
         ciSystems = [ "x86_64-linux" ];
