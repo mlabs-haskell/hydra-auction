@@ -12,12 +12,17 @@ repository cardano-haskell-packages
 
 source-repository-package
     type: git
-    location: https://github.com/input-output-hk/hydra
-    tag: fafb8e5eca0f5fc615f5957ac1243e09c19f9a9f
-    --sha256: Mgn/51wBymSGrkUFsRx3etyQk3exuGf6arJCbaiGtO8=
+    location: https://github.com/mlabs-haskell/hydra-poc
+    tag: 951d9b397be382fd8a50cf6e1ff0423da7ecd30a
+    --sha256: jUmVZf4eH8RkkrNsZMzuUMX3A3TU56RHKG7yC2HCe3M=
     subdir:
       hydra-cardano-api
       hydra-prelude
+      hydra-cluster
+      hydra-test-utils
+      hydra-plutus
+      hydra-node
+      plutus-cbor
 
 -- See CONTRIBUTING.md for information about when and how to update these.
 
