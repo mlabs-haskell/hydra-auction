@@ -19,7 +19,7 @@ common common-lang
     -Wincomplete-uni-patterns -Wredundant-constraints
     -Wmissing-export-lists -Wmissing-deriving-strategies -Werror
     -fobject-code -fno-ignore-interface-pragmas
-    -fno-omit-interface-pragmas -fplugin=RecordDotPreprocessor
+    -fno-omit-interface-pragmas
 
   build-depends:
     , async
