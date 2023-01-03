@@ -1,0 +1,108 @@
+cabal-version:      3.0
+name:               hydra-auction
+version:            0.1.0
+synopsis:
+  Auction in hydra head
+
+homepage:           https://github.com/mlabs-haskell/hydra-auction
+author:             MLabs
+maintainer:         giovanni@mlabs.city
+extra-source-files: CHANGELOG.md
+
+source-repository head
+  type:     git
+  location: https://github.com/mlabs-haskell/hydra-auction
+
+common common-lang
+  ghc-options:
+    -Wall -Wcompat -Wincomplete-record-updates
+    -Wincomplete-uni-patterns -Wredundant-constraints
+    -Wmissing-export-lists -Wmissing-deriving-strategies -Werror
+    -fobject-code -fno-ignore-interface-pragmas
+    -fno-omit-interface-pragmas
+
+  build-depends:
+    , async
+    , base                     ^>=4.14
+    , mtl
+    , stm
+    , record-dot-preprocessor
+    , record-hasfield
+    , transformers
+    , websockets
+
+
+  default-extensions:
+    NoImplicitPrelude
+    BangPatterns
+    BinaryLiterals
+    ConstraintKinds
+    DataKinds
+    DeriveFunctor
+    DeriveGeneric
+    DeriveTraversable
+    DerivingStrategies
+    DerivingVia
+    DuplicateRecordFields
+    EmptyCase
+    FlexibleContexts
+    FlexibleInstances
+    GADTs
+    GeneralizedNewtypeDeriving
+    HexFloatLiterals
+    ImportQualifiedPost
+    InstanceSigs
+    KindSignatures
+    LambdaCase
+    MultiParamTypeClasses
+    NumericUnderscores
+    OverloadedStrings
+    ScopedTypeVariables
+    StandaloneDeriving
+    TupleSections
+    TypeApplications
+    TypeOperators
+    TypeSynonymInstances
+    UndecidableInstances
+
+  default-language:   Haskell2010
+
+executable hydra-auction
+  import:         common-lang
+  main-is:        Main.hs
+  build-depends:
+    , aeson
+    , array
+    , base
+    , base16-bytestring
+    , bech32
+    , bech32-th
+    , bytestring
+    , cardano-api                     >=1.35.4
+    , cardano-binary                  ==1.5.0
+    , cardano-crypto-class            ==2.0.0
+    , cardano-ledger-alonzo
+    , cardano-ledger-alonzo-test
+    , cardano-ledger-babbage
+    , cardano-ledger-babbage-test
+    , cardano-ledger-byron
+    , cardano-ledger-core
+    , cardano-ledger-shelley
+    , cardano-ledger-shelley-ma
+    , cardano-ledger-shelley-ma-test
+    , cardano-ledger-shelley-test
+    , cardano-prelude
+    , cardano-slotting                ==0.1.0.0
+    , cborg
+    , containers
+    , data-default
+    , ouroboros-network               ==0.1.0.1
+    , plutus-ledger-api               ==1.0.0.0
+    , QuickCheck
+    , serialise
+    , strict-containers               ==0.1.0.0
+    , text
+    , time
+    , hydra-cardano-api
+
+  hs-source-dirs: app
