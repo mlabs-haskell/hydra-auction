@@ -20,16 +20,23 @@
       type = "git";
       submodules = true;
     };
-    cardano-node.url = "github:input-output-hk/cardano-node/a42ca8801ea31cb0b23a3f53dcc063ce4a5a0be5";
     # We are using a forked version of haskellNix until this PR is merged: https://github.com/input-output-hk/haskell.nix/pull/1818
     haskellNix.url = "github:input-output-hk/haskell.nix/ff43e6ce6ad2a630da9d02faa8cf97794496bda6";
+    # The "empty-flake" is needed until the following is fixed
+    # https://github.com/input-output-hk/cardano-node/issues/4525 
+    cardano-node = {
+      url = "github:input-output-hk/cardano-node/a42ca8801ea31cb0b23a3f53dcc063ce4a5a0be5";
+      inputs.cardano-node-workbench.follows = "empty";
+      inputs.node-measured.follows = "empty";
+    };
+    empty.url = "github:mlabs-haskell/empty-flake";
     iohk-nix.follows = "hydra/iohk-nix";
     CHaP.follows = "hydra/CHaP";
     nixpkgs.follows = "hydra/nixpkgs";
     flake-utils.follows = "hydra/flake-utils";
   };
 
-  outputs = inputs@{ self, hydra, haskellNix, iohk-nix, CHaP, nixpkgs, flake-utils, cardano-node }:
+  outputs = inputs@{ self, hydra, haskellNix, iohk-nix, CHaP, nixpkgs, flake-utils, cardano-node, ... }:
     let
       overlays = [
         haskellNix.overlay
