@@ -55,6 +55,7 @@ common common-lang
     KindSignatures
     LambdaCase
     MultiParamTypeClasses
+    NamedFieldPuns
     NumericUnderscores
     OverloadedStrings
     ScopedTypeVariables
@@ -139,7 +140,5 @@ test-suite hydra-auction-test
     , text
 
   hs-source-dirs:     test
-  build-tool-depends:
-    hydra-node:hydra-node -any, cardano-node:cardano-node -any
 
   ghc-options:        -threaded -rtsopts
