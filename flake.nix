@@ -80,15 +80,13 @@
       in {
         packages.default = haskellNixFlake.packages."hydra-auction:exe:hydra-auction";
         inherit (haskellNixFlake) devShells;
-        check = pkgs.runCommand "combined-test"
-          {
-            nativeBuildInputs = builtins.attrValues haskellNixFlake.checks ++
-              [
-                cardano-node.packages.${system}.cardano-node
-                cardano-node.packages.${system}.cardano-cli
-                hydra.packages.${system}.hydra-node
-              ];
-          } "touch $out";
+        check = haskellNixFlake.checks."hydra-auction:test:hydra-auction-test".overrideAttrs (old: {
+          nativeBuildInputs = [
+            cardano-node.packages.${system}.cardano-node
+            cardano-node.packages.${system}.cardano-cli
+            hydra.packages.${system}.hydra-node
+          ];
+        });
       }) // {
       herculesCI = {
         ciSystems = [ "x86_64-linux" ];
