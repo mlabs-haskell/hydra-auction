@@ -18,8 +18,7 @@
       type = "git";
       submodules = true;
     };
-    # We are using a forked version of haskellNix until this PR is merged: https://github.com/input-output-hk/haskell.nix/pull/1818
-    haskellNix.url = "github:input-output-hk/haskell.nix/ff43e6ce6ad2a630da9d02faa8cf97794496bda6";
+    haskellNix.url = "github:input-output-hk/haskell.nix";
     # The "empty-flake" is needed until the following is fixed
     # https://github.com/input-output-hk/cardano-node/issues/4525 
     cardano-node = {

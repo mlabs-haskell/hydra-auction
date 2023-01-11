@@ -1741,17 +1741,16 @@
         "tullia": "tullia"
       },
       "locked": {
-        "lastModified": 1671207491,
-        "narHash": "sha256-G/Oo+Me/z+o9hjHKXeB83nm3nDnxMw2Gu3euyqcsUGc=",
+        "lastModified": 1673398325,
+        "narHash": "sha256-N6l8DUDbIfRkkzb/LFYnmyuLdyRK/TefiKvZ4RLOVs0=",
         "owner": "input-output-hk",
         "repo": "haskell.nix",
-        "rev": "ff43e6ce6ad2a630da9d02faa8cf97794496bda6",
+        "rev": "98b4e33725db58b51e74c5138b46210392c81ee1",
         "type": "github"
       },
       "original": {
         "owner": "input-output-hk",
         "repo": "haskell.nix",
-        "rev": "ff43e6ce6ad2a630da9d02faa8cf97794496bda6",
         "type": "github"
       }
     },
