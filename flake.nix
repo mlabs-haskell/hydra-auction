@@ -82,7 +82,12 @@
         inherit (haskellNixFlake) devShells;
         check = pkgs.runCommand "combined-test"
           {
-            nativeBuildInputs = builtins.attrValues haskellNixFlake.checks;
+            nativeBuildInputs = builtins.attrValues haskellNixFlake.checks ++
+              [
+                cardano-node.packages.${system}.cardano-node
+                cardano-node.packages.${system}.cardano-cli
+                hydra.packages.${system}.hydra-node
+              ];
           } "touch $out";
       }) // {
       herculesCI = {
