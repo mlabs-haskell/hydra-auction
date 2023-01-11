@@ -45,7 +45,6 @@
               src = final.haskell-nix.haskellLib.cleanGit { src = ./.; name = "hydra-auction"; };
               inputMap = {
                 "https://input-output-hk.github.io/cardano-haskell-packages" = CHaP;
-                "https://github.com/input-output-hk/hydra" = hydra;
               };
               compiler-nix-name = "ghc8107";
               shell.tools = {
