@@ -4,11 +4,9 @@
   nixConfig = {
     extra-substituters = [
       "https://cache.iog.io"
-      "https://hydra-node.cachix.org"
     ];
     extra-trusted-public-keys = [
       "hydra.iohk.io:f/Ea+s+dFdN+3Y/G+FDgSq+a5NEWhJGzdjvKNGv0/EQ="
-      "hydra-node.cachix.org-1:vK4mOEQDQKl9FTbq76NjOuNaRD4pZLxi1yri31HHmIw="
     ];
     allow-import-from-derivation = true;
   };
@@ -16,7 +14,7 @@
   inputs = {
     # when you upgrade `hydra` input remember to also upgrade revs under `source-repository-package`s in `cabal.project`
     hydra = {
-      url = "ssh://git@github.com/input-output-hk/hydra?ref=5a82f91b2b0e48328b1603d1140487e08f3c038f";
+      url = "ssh://git@github.com/input-output-hk/hydra?ref=5ed00dfcd367d0390a774216035e1ea30dde5166";
       type = "git";
       submodules = true;
     };
@@ -44,7 +42,7 @@
               };
               compiler-nix-name = "ghc8107";
               shell.tools = {
-                cabal = "3.6.2.0";
+                cabal = "3.8.1.0";
                 fourmolu = "0.4.0.0";
                 haskell-language-server = "latest";
               };
@@ -75,6 +73,10 @@
       in {
         packages.default = haskellNixFlake.packages."hydra-auction:exe:hydra-auction";
         inherit (haskellNixFlake) devShells;
+        check = pkgs.runCommand "combined-test"
+          {
+            nativeBuildInputs = builtins.attrValues haskellNixFlake.checks;
+          } "touch $out";
       }) // {
       herculesCI = {
         ciSystems = [ "x86_64-linux" ];
