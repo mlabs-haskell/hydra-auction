@@ -36,12 +36,14 @@
     CHaP.follows = "hydra/CHaP";
     nixpkgs.follows = "hydra/nixpkgs";
     flake-utils.follows = "hydra/flake-utils";
+    pre-commit-hooks.url = "github:cachix/pre-commit-hooks.nix";
   };
 
   outputs =
     inputs@{ self
     , hydra
     , haskellNix
+    , pre-commit-hooks
     , iohk-nix
     , CHaP
     , nixpkgs
@@ -136,6 +138,40 @@
             sh lint.sh check
             touch $out
           '';
+
+        preCommitHook = pre-commit-hooks.lib.${system}.run
+          {
+            src = ./.;
+            settings = { };
+            tools = { };
+
+            hooks = {
+              nixpkgs-fmt.enable = true;
+              fourmolu-format = {
+                enable = true;
+                name = "fourmolu format";
+                entry = "make format-check";
+
+                files = "";
+                types = [ "file" ];
+                excludes = [ ];
+                language = "system";
+                pass_filenames = false;
+              };
+
+              hlint-format = {
+                enable = true;
+                name = "hlint format";
+                entry = "make lint-check";
+
+                files = "";
+                types = [ "file" ];
+                excludes = [ ];
+                language = "system";
+                pass_filenames = false;
+              };
+            };
+          };
       in
       {
         packages = {
@@ -145,7 +181,7 @@
               nativeBuildInputs = builtins.attrValues self.checks.${system};
             } "touch $out";
         };
-        inherit (haskellNixFlake) devShells;
+        # inherit (haskellNixFlake) devShells;
         checks = builtins.mapAttrs
           (_: test: test.overrideAttrs (old: {
             nativeBuildInputs = old.nativeBuildInputs ++ [
@@ -155,6 +191,13 @@
             ];
           }))
           haskellNixFlake.checks // formatChecks // lintChecks;
+
+        devShells = builtins.mapAttrs
+          (_: test: test.overrideAttrs (old: {
+            shellHook = old.shellHook + preCommitHook.shellHook;
+          }))
+          haskellNixFlake.devShells;
+
         formatter.default = pkgs.nixpkgs-fmt;
       }) // {
       herculesCI.ciSystems = [ "x86_64-linux" ];

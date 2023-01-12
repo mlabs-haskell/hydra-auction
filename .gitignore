@@ -12,6 +12,8 @@ result-*
 .stack-work
 dist-newstyle/
 
+.pre-commit-config.yaml
+
 #vscode
 .vscode/
 

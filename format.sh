@@ -38,6 +38,3 @@ find . -type f -name '*.hs' ! -path '*/dist-newstyle/*' -exec \
 
 find . -type f -name '*.cabal' ! -path '*/dist-newstyle/*' -exec \
 	cabal-fmt "$cabalfmt_mode" {} +
-
-find . -type f -name '*.nix' ! -path '*/dist-newstyle/*' \
-	-exec nixpkgs-fmt ${check:+"--check"} {} +
