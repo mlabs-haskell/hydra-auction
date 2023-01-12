@@ -202,8 +202,6 @@
           inherit formatCheck lintCheck;
         };
 
-        formatter.default = pkgs.nixpkgs-fmt;
-
       }) // {
       herculesCI.ciSystems = [ "x86_64-linux" ];
     };
