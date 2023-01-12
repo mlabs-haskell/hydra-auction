@@ -120,6 +120,21 @@
             sh format.sh check
             touch $out
           '';
+
+        lintChecks = pkgs.runCommand "lint-checks"
+          {
+            nativeBuildInputs = with pkgs; [
+              fd
+              haskellPackages.hlint
+            ];
+          }
+          ''
+            mkdir $out && cd $out
+            cp ${self}/lint.sh .
+            cp ${self}/hlint.yaml .
+            sh lint.sh
+            touch $out
+          '';
       in
       {
         packages = {
@@ -138,7 +153,7 @@
               hydra.packages.${system}.hydra-node
             ];
           }))
-          haskellNixFlake.checks // formatChecks;
+          haskellNixFlake.checks // formatChecks // lintChecks;
         formatter.default = pkgs.nixpkgs-fmt;
       }) // {
       herculesCI.ciSystems = [ "x86_64-linux" ];
