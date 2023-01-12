@@ -1,4 +1,6 @@
--- Custom repository for cardano haskell packages, see CONTRIBUTING.md
+-- File was created on base of https://github.com/input-output-hk/hydra/
+
+-- Custom repository for cardano haskell packages
 repository cardano-haskell-packages
   url: https://input-output-hk.github.io/cardano-haskell-packages
   secure: True

@@ -105,6 +105,17 @@ executable hydra-auction
 
   hs-source-dirs: app
 
+library
+  import:          common-lang
+  exposed-modules:
+    HydraAuction.OnChain
+
+  build-depends:
+    , plutus-ledger-api
+    , natural-numbers
+
+  hs-source-dirs:  src
+
 test-suite hydra-auction-test
   import:         common-lang
   type:           exitcode-stdio-1.0
