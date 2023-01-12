@@ -14,12 +14,14 @@
   };
 
   inputs = {
-    # when you upgrade `hydra` input remember to also upgrade revs under `source-repository-package`s in `cabal.project`
+    # when you upgrade `hydra` input remember to also upgrade revs under
+    # `source-repository-package`s in `cabal.project`
     hydra = {
       url = "ssh://git@github.com/input-output-hk/hydra?ref=5ed00dfcd367d0390a774216035e1ea30dde5166";
       type = "git";
       submodules = true;
     };
+
     haskellNix.url = "github:input-output-hk/haskell.nix";
     # The "empty-flake" is needed until the following is fixed
     # https://github.com/input-output-hk/cardano-node/issues/4525 
@@ -28,6 +30,7 @@
       inputs.cardano-node-workbench.follows = "empty";
       inputs.node-measured.follows = "empty";
     };
+
     empty.url = "github:mlabs-haskell/empty-flake";
     iohk-nix.follows = "hydra/iohk-nix";
     CHaP.follows = "hydra/CHaP";
@@ -35,7 +38,17 @@
     flake-utils.follows = "hydra/flake-utils";
   };
 
-  outputs = inputs@{ self, hydra, haskellNix, iohk-nix, CHaP, nixpkgs, flake-utils, cardano-node, ... }:
+  outputs =
+    inputs@{ self
+    , hydra
+    , haskellNix
+    , iohk-nix
+    , CHaP
+    , nixpkgs
+    , flake-utils
+    , cardano-node
+    , ...
+    }:
     let
       overlays = [
         haskellNix.overlay
@@ -43,7 +56,10 @@
         (final: prev: {
           hydraProject =
             final.haskell-nix.cabalProject {
-              src = final.haskell-nix.haskellLib.cleanGit { src = ./.; name = "hydra-auction"; };
+              src = final.haskell-nix.haskellLib.cleanGit {
+                src = ./.;
+                name = "hydra-auction";
+              };
               inputMap = {
                 "https://input-output-hk.github.io/cardano-haskell-packages" = CHaP;
               };
@@ -60,38 +76,51 @@
                 hydra.packages.${prev.system}.hydra-node
               ];
               modules = [
-                # Set libsodium-vrf on cardano-crypto-{praos,class}. Otherwise they depend
-                # on libsodium, which lacks the vrf functionality.
+                # Set libsodium-vrf on cardano-crypto-{praos,class}. Otherwise
+                # they depend on libsodium, which lacks the vrf functionality.
                 ({ pkgs, lib, ... }:
                   # Override libsodium with local 'pkgs' to make sure it's using
                   # overriden 'pkgs', e.g. musl64 packages
                   {
-                  packages.cardano-crypto-class.components.library.pkgconfig = lib.mkForce [ [ pkgs.libsodium-vrf pkgs.secp256k1 ] ];
-                  packages.cardano-crypto-praos.components.library.pkgconfig = lib.mkForce [ [ pkgs.libsodium-vrf ] ];
+                    packages.cardano-crypto-class.components.library.pkgconfig =
+                      lib.mkForce [ [ pkgs.libsodium-vrf pkgs.secp256k1 ] ];
+
+                    packages.cardano-crypto-praos.components.library.pkgconfig =
+                      lib.mkForce [ [ pkgs.libsodium-vrf ] ];
                   }
                 )
-                ];
+              ];
             };
         })
       ];
-    in flake-utils.lib.eachDefaultSystem (system : let
-      pkgs = import nixpkgs { inherit system overlays; inherit (haskellNix) config; };
-      haskellNixFlake = pkgs.hydraProject.flake { };
-      in {
+    in
+    flake-utils.lib.eachDefaultSystem
+      (system:
+      let
+        pkgs = import nixpkgs {
+          inherit system overlays;
+          inherit (haskellNix) config;
+        };
+        haskellNixFlake = pkgs.hydraProject.flake { };
+      in
+      {
         packages = {
           default = haskellNixFlake.packages."hydra-auction:exe:hydra-auction";
-          check = pkgs.runCommand "combined-test" {
-            nativeBuildInputs = builtins.attrValues self.checks.${system};
-          } "touch $out";
+          check = pkgs.runCommand "combined-test"
+            {
+              nativeBuildInputs = builtins.attrValues self.checks.${system};
+            } "touch $out";
         };
         inherit (haskellNixFlake) devShells;
-        checks = builtins.mapAttrs (_: test: test.overrideAttrs (old: {
-          nativeBuildInputs = old.nativeBuildInputs ++ [
-            cardano-node.packages.${system}.cardano-node
-            cardano-node.packages.${system}.cardano-cli
-            hydra.packages.${system}.hydra-node
-          ];
-        })) haskellNixFlake.checks;
+        checks = builtins.mapAttrs
+          (_: test: test.overrideAttrs (old: {
+            nativeBuildInputs = old.nativeBuildInputs ++ [
+              cardano-node.packages.${system}.cardano-node
+              cardano-node.packages.${system}.cardano-cli
+              hydra.packages.${system}.hydra-node
+            ];
+          }))
+          haskellNixFlake.checks;
         formatter.default = pkgs.nixpkgs-fmt;
       }) // {
       herculesCI.ciSystems = [ "x86_64-linux" ];
