@@ -1,4 +1,3 @@
-{-# LANGUAGE TypeApplications #-}
 {-# OPTIONS_GHC -Wno-incomplete-uni-patterns #-}
 
 module EndToEnd.Spec (spec, headTests) where
@@ -70,7 +69,7 @@ spec = around showLogsOnFailure $ do
           withTempDir "end-to-end-cardano-node" $ \tmpDir -> do
             withCardanoNodeDevnet (contramap FromCardanoNode tracer) tmpDir $ \node -> do
               hydraScriptsTxId <- publishHydraScriptsAs node Faucet
-              initAndClose tracer 1 hydraScriptsTxId node
+              initAndClose tracer 0 hydraScriptsTxId node
 
 initAndClose :: Tracer IO EndToEndLog -> Int -> TxId -> RunningNode -> IO ()
 initAndClose tracer clusterIx hydraScriptsTxId node@RunningNode{nodeSocket, networkId} = do
