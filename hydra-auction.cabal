@@ -107,12 +107,11 @@ executable hydra-auction
 
 library
   import:          common-lang
-  exposed-modules:
-    HydraAuction.Types
-
+  exposed-modules: HydraAuction.Types
   build-depends:
-    , plutus-ledger-api
     , natural-numbers
+    , plutus-ledger-api
+    , plutus-tx
 
   hs-source-dirs:  src
 
