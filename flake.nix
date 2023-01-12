@@ -71,6 +71,7 @@
               };
               shell.buildInputs = with final; [
                 nixpkgs-fmt
+                haskellPackages.apply-refact
                 haskellPackages.cabal-fmt
                 haskellPackages.hlint
                 cardano-node.packages.${prev.system}.cardano-node
@@ -132,7 +133,7 @@
             mkdir $out && cd $out
             cp ${self}/lint.sh .
             cp ${self}/hlint.yaml .
-            sh lint.sh
+            sh lint.sh check
             touch $out
           '';
       in
