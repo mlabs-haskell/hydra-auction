@@ -1,9 +1,7 @@
 cabal-version:      3.0
 name:               hydra-auction
 version:            0.1.0
-synopsis:
-  Auction in hydra head
-
+synopsis:           Auction in hydra head
 homepage:           https://github.com/mlabs-haskell/hydra-auction
 author:             MLabs
 maintainer:         giovanni@mlabs.city
@@ -25,12 +23,11 @@ common common-lang
     , async
     , base                     ^>=4.14
     , mtl
-    , stm
     , record-dot-preprocessor
     , record-hasfield
+    , stm
     , transformers
     , websockets
-
 
   default-extensions:
     NoImplicitPrelude
@@ -97,6 +94,7 @@ executable hydra-auction
     , cborg
     , containers
     , data-default
+    , hydra-cardano-api
     , ouroboros-network               ==0.1.0.1
     , plutus-ledger-api               ==1.0.0.0
     , QuickCheck
@@ -104,17 +102,14 @@ executable hydra-auction
     , strict-containers               ==0.1.0.0
     , text
     , time
-    , hydra-cardano-api
 
   hs-source-dirs: app
 
 test-suite hydra-auction-test
-  import:             common-lang
-  type:               exitcode-stdio-1.0
-  main-is:            Spec.hs
-  other-modules:
-    EndToEnd.Spec
-
+  import:         common-lang
+  type:           exitcode-stdio-1.0
+  main-is:        Spec.hs
+  other-modules:  EndToEnd.Spec
   build-depends:
     , aeson
     , bytestring
@@ -139,6 +134,5 @@ test-suite hydra-auction-test
     , tasty-hunit
     , text
 
-  hs-source-dirs:     test
-
-  ghc-options:        -threaded -rtsopts
+  hs-source-dirs: test
+  ghc-options:    -threaded -rtsopts

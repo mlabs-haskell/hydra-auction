@@ -7,16 +7,7 @@ import Test.Hydra.Prelude
 
 import Cardano.Api.UTxO qualified as UTxO
 import CardanoClient (waitForUTxO)
-import Hydra.Cluster.Faucet (
-  Marked (Fuel, Normal),
-  publishHydraScriptsAs,
-  seedFromFaucet,
-  seedFromFaucet_
-  )
-import Hydra.Cluster.Fixture (
-  Actor (Faucet)
- )
-import CardanoNode (RunningNode (RunningNode, nodeSocket, networkId), withCardanoNodeDevnet)
+import CardanoNode (RunningNode (RunningNode, networkId, nodeSocket), withCardanoNodeDevnet)
 import Control.Lens ((^?))
 import Data.Aeson (Result (..), Value (Null, Object, String), fromJSON, object, (.=))
 import Data.Aeson.Lens (key, _JSON)
@@ -34,8 +25,17 @@ import Hydra.Cardano.Api (
   mkVkAddress,
   serialiseAddress,
  )
-import Hydra.Crypto (generateSigningKey)
+import Hydra.Cluster.Faucet (
+  Marked (Fuel, Normal),
+  publishHydraScriptsAs,
+  seedFromFaucet,
+  seedFromFaucet_,
+ )
+import Hydra.Cluster.Fixture (
+  Actor (Faucet),
+ )
 import Hydra.ContestationPeriod (ContestationPeriod (UnsafeContestationPeriod))
+import Hydra.Crypto (generateSigningKey)
 import Hydra.Ledger (txId)
 import Hydra.Ledger.Cardano (genKeyPair, mkSimpleTx)
 import Hydra.Logging (Tracer, showLogsOnFailure)
@@ -72,7 +72,7 @@ spec = around showLogsOnFailure $ do
               initAndClose tracer 0 hydraScriptsTxId node
 
 initAndClose :: Tracer IO EndToEndLog -> Int -> TxId -> RunningNode -> IO ()
-initAndClose tracer clusterIx hydraScriptsTxId node@RunningNode{nodeSocket, networkId} = do
+initAndClose tracer clusterIx hydraScriptsTxId node@RunningNode {nodeSocket, networkId} = do
   withTempDir "end-to-end-init-and-close" $ \tmpDir -> do
     aliceKeys@(aliceCardanoVk, aliceCardanoSk) <- generate genKeyPair
     bobKeys@(bobCardanoVk, _) <- generate genKeyPair
@@ -201,5 +201,5 @@ int = id
 inHeadAddress :: VerificationKey PaymentKey -> AddressInEra
 inHeadAddress =
   mkVkAddress network
- where
-  network = Testnet (NetworkMagic 14)
+  where
+    network = Testnet (NetworkMagic 14)
