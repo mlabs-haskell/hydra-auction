@@ -1,7 +1,7 @@
 -- Temporary, until they will be used in scripts
 {-# OPTIONS_GHC -Wno-unused-top-binds #-}
 
-module HydraAuction.OnChain (AuctionTerms) where
+module HydraAuction.Types (AuctionTerms) where
 
 import Prelude
 

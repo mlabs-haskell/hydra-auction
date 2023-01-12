@@ -108,7 +108,7 @@ executable hydra-auction
 library
   import:          common-lang
   exposed-modules:
-    HydraAuction.OnChain
+    HydraAuction.Types
 
   build-depends:
     , plutus-ledger-api
