@@ -55,6 +55,7 @@ common common-lang
     KindSignatures
     LambdaCase
     MultiParamTypeClasses
+    NamedFieldPuns
     NumericUnderscores
     OverloadedStrings
     ScopedTypeVariables
@@ -106,3 +107,38 @@ executable hydra-auction
     , hydra-cardano-api
 
   hs-source-dirs: app
+
+test-suite hydra-auction-test
+  import:             common-lang
+  type:               exitcode-stdio-1.0
+  main-is:            Spec.hs
+  other-modules:
+    EndToEnd.Spec
+
+  build-depends:
+    , aeson
+    , bytestring
+    , cardano-api
+    , containers
+    , extra
+    , filepath
+    , hydra-cardano-api
+    , hydra-cluster
+    , hydra-node
+    , hydra-prelude
+    , hydra-test-utils
+    , lens
+    , lens-aeson
+    , plutus-cbor
+    , plutus-ledger-api
+    , plutus-tx
+    , plutus-tx-plugin
+    , QuickCheck
+    , tasty
+    , tasty-hspec
+    , tasty-hunit
+    , text
+
+  hs-source-dirs:     test
+
+  ghc-options:        -threaded -rtsopts
