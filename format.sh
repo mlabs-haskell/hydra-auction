@@ -1,5 +1,7 @@
 #!/usr/bin/env sh
-# See https://github.com/mlabs-haskell/mlabs-tooling.nix/blob/main/format.sh
+
+# Modified version of the format.sh script available at
+# https://github.com/mlabs-haskell/mlabs-tooling.nix/blob/main/format.sh
 
 set -xe
 export LC_CTYPE=C.UTF-8
@@ -17,19 +19,18 @@ else
 	cabalfmt_mode="-i"
 fi
 
-find . -type f -name '*.hs' ! -path '*/dist-newstyle/*' ! -path '*/tmp/*' -exec \
+find . -type f -name '*.hs' ! -path '*/dist-newstyle/*' -exec \
 	fourmolu \
 		-o-XTypeApplications \
 		-o-XQualifiedDo \
-		-o-XOverloadedRecordDot \
 		-o-XNondecreasingIndentation \
 		-o-XPatternSynonyms \
+		-o-XImportQualifiedPost \
 		-m "$fourmolu_mode" \
 		--indentation 2 \
 		--comma-style leading \
 		--record-brace-space true  \
 		--indent-wheres true \
-		--import-export-style diff-friendly  \
 		--respectful true  \
 		--haddock-style multi-line  \
 		--newlines-between-decls 1 \
