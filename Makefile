@@ -1,4 +1,26 @@
-.PHONY: format-check format lint-check lint clean
+.PHONY:
+	hoogle
+	build
+	test
+	repl
+	format-check
+	format
+	lint-check
+	lint
+	clean
+	requires_nix_shell
+
+hoogle: requires_nix_shell
+	@hoogle server --local --port=8070 > /dev/null &
+
+build: requires_nix_shell
+	@cabal v2-build
+
+test: requires_nix_shell
+	@cabal v2-test --test-show-details=direct
+
+repl: requires_nix_shell
+	@nix develop -c cabal new-repl
 
 format-check: requires_nix_shell
 	@sh format.sh check
