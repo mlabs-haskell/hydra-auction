@@ -71,6 +71,7 @@
               };
               shell.buildInputs = with final; [
                 nixpkgs-fmt
+                haskellPackages.cabal-fmt
                 cardano-node.packages.${prev.system}.cardano-node
                 cardano-node.packages.${prev.system}.cardano-cli
                 hydra.packages.${prev.system}.hydra-node
