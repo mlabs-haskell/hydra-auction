@@ -108,7 +108,7 @@
         };
         haskellNixFlake = pkgs.hydraProject.flake { };
 
-        formatChecks = pkgs.runCommand "format-checks"
+        formatCheck = pkgs.runCommand "format-checks"
           {
             nativeBuildInputs = with pkgs; [
               fd
@@ -124,7 +124,7 @@
             touch $out
           '';
 
-        lintChecks = pkgs.runCommand "lint-checks"
+        lintCheck = pkgs.runCommand "lint-checks"
           {
             nativeBuildInputs = with pkgs; [
               fd
@@ -188,7 +188,7 @@
           default = haskellNixFlake.packages."hydra-auction:exe:hydra-auction";
           check = pkgs.runCommand "combined-test"
             {
-              nativeBuildInputs = builtins.attrValues hydraChecks;
+              nativeBuildInputs = builtins.attrValues self.checks.${system};
             } "touch $out";
         };
 
@@ -198,7 +198,10 @@
           }))
           haskellNixFlake.devShells;
 
-        checks = hydraChecks // formatChecks // lintChecks;
+        checks = hydraChecks // {
+          inherit formatCheck lintCheck;
+        };
+
         formatter.default = pkgs.nixpkgs-fmt;
 
       }) // {
