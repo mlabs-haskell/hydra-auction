@@ -172,17 +172,8 @@
               };
             };
           };
-      in
-      {
-        packages = {
-          default = haskellNixFlake.packages."hydra-auction:exe:hydra-auction";
-          check = pkgs.runCommand "combined-test"
-            {
-              nativeBuildInputs = builtins.attrValues self.checks.${system};
-            } "touch $out";
-        };
-        # inherit (haskellNixFlake) devShells;
-        checks = builtins.mapAttrs
+
+        hydraChecks = builtins.mapAttrs
           (_: test: test.overrideAttrs (old: {
             nativeBuildInputs = old.nativeBuildInputs ++ [
               cardano-node.packages.${system}.cardano-node
@@ -190,7 +181,16 @@
               hydra.packages.${system}.hydra-node
             ];
           }))
-          haskellNixFlake.checks // formatChecks // lintChecks;
+          haskellNixFlake.checks;
+      in
+      {
+        packages = {
+          default = haskellNixFlake.packages."hydra-auction:exe:hydra-auction";
+          check = pkgs.runCommand "combined-test"
+            {
+              nativeBuildInputs = builtins.attrValues hydraChecks;
+            } "touch $out";
+        };
 
         devShells = builtins.mapAttrs
           (_: test: test.overrideAttrs (old: {
@@ -198,7 +198,9 @@
           }))
           haskellNixFlake.devShells;
 
+        checks = hydraChecks // formatChecks // lintChecks;
         formatter.default = pkgs.nixpkgs-fmt;
+
       }) // {
       herculesCI.ciSystems = [ "x86_64-linux" ];
     };
