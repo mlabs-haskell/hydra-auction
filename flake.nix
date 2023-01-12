@@ -72,6 +72,7 @@
               shell.buildInputs = with final; [
                 nixpkgs-fmt
                 haskellPackages.cabal-fmt
+                haskellPackages.hlint
                 cardano-node.packages.${prev.system}.cardano-node
                 cardano-node.packages.${prev.system}.cardano-cli
                 hydra.packages.${prev.system}.hydra-node
@@ -103,6 +104,22 @@
           inherit (haskellNix) config;
         };
         haskellNixFlake = pkgs.hydraProject.flake { };
+
+        formatChecks = pkgs.runCommand "format-checks"
+          {
+            nativeBuildInputs = with pkgs; [
+              fd
+              nixpkgs-fmt
+              haskellPackages.cabal-fmt
+              haskellPackages.hlint
+            ];
+          }
+          ''
+            mkdir $out && cd $out
+            cp ${self}/format.sh .
+            sh format.sh check
+            touch $out
+          '';
       in
       {
         packages = {
@@ -121,7 +138,7 @@
               hydra.packages.${system}.hydra-node
             ];
           }))
-          haskellNixFlake.checks;
+          haskellNixFlake.checks // formatChecks;
         formatter.default = pkgs.nixpkgs-fmt;
       }) // {
       herculesCI.ciSystems = [ "x86_64-linux" ];
