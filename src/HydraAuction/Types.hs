@@ -5,6 +5,7 @@ module HydraAuction.Types (
   BidderMembershipDatum,
   BiddingMembershipTokenCS (..),
   VoucherTokenCS (..),
+  StandingBidDatum (..),
 ) where
 
 import Prelude (fromInteger, toInteger)
