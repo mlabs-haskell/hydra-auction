@@ -3,6 +3,8 @@ module HydraAuction.Types (
   AuctionTerms (..),
   AuctionFeeEscrowDatum,
   BidderMembershipDatum,
+  BiddingMembershipTokenCS (..),
+  VoucherTokenCS (..),
 ) where
 
 import Prelude (fromInteger, toInteger)
@@ -11,6 +13,7 @@ import Prelude qualified
 import Data.Maybe (fromJust)
 import Data.Natural (Natural)
 import GHC.Generics (Generic)
+import Plutus.V1.Ledger.Api (CurrencySymbol)
 import Plutus.V1.Ledger.Contexts (TxOutRef)
 import Plutus.V1.Ledger.Crypto (PubKeyHash)
 import Plutus.V1.Ledger.Time (POSIXTime)
@@ -209,3 +212,11 @@ type AuctionFeeEscrowDatum = ()
 
 type BidderMembershipDatum = ApprovedBidders
 -- ^ The datum is just the list of approved bidders.
+
+-- * State tokens
+
+newtype VoucherTokenCS = MkVoucherTokenCS
+  {unVoucherTokenCS :: CurrencySymbol}
+
+newtype BiddingMembershipTokenCS = MkBiddingMembershipTokenCS
+  {unBiddingMembershipTokenCS :: CurrencySymbol}
