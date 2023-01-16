@@ -16,7 +16,6 @@ import Plutus.V1.Ledger.Crypto (PubKeyHash)
 import Plutus.V1.Ledger.Time (POSIXTime)
 import Plutus.V1.Ledger.Value (AssetClass)
 import PlutusTx qualified
-import PlutusTx.Deriving
 import PlutusTx.IsData.Class (
   FromData (fromBuiltinData),
   ToData (toBuiltinData),
