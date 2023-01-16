@@ -57,6 +57,7 @@ common common-lang
     OverloadedStrings
     ScopedTypeVariables
     StandaloneDeriving
+    TemplateHaskell
     TupleSections
     TypeApplications
     TypeOperators
@@ -104,6 +105,16 @@ executable hydra-auction
     , time
 
   hs-source-dirs: app
+
+library
+  import:          common-lang
+  exposed-modules: HydraAuction.Types
+  build-depends:
+    , natural-numbers
+    , plutus-ledger-api
+    , plutus-tx
+
+  hs-source-dirs:  src
 
 test-suite hydra-auction-test
   import:         common-lang
