@@ -1,5 +1,9 @@
 {-# OPTIONS -Wno-orphans #-}
-module HydraAuction.Types (AuctionTerms (..), AuctionFeeEscrowDatum, BidderMembershipDatum) where
+module HydraAuction.Types (
+  AuctionTerms (..),
+  AuctionFeeEscrowDatum,
+  BidderMembershipDatum,
+) where
 
 import Prelude (fromInteger, toInteger)
 import Prelude qualified
@@ -12,7 +16,12 @@ import Plutus.V1.Ledger.Crypto (PubKeyHash)
 import Plutus.V1.Ledger.Time (POSIXTime)
 import Plutus.V1.Ledger.Value (AssetClass)
 import PlutusTx qualified
-import PlutusTx.IsData.Class (FromData (fromBuiltinData), ToData (toBuiltinData), UnsafeFromData (unsafeFromBuiltinData))
+import PlutusTx.Deriving
+import PlutusTx.IsData.Class (
+  FromData (fromBuiltinData),
+  ToData (toBuiltinData),
+  UnsafeFromData (unsafeFromBuiltinData),
+ )
 import PlutusTx.Prelude hiding (fromInteger)
 import PlutusTx.Prelude qualified as Plutus
 
@@ -28,9 +37,7 @@ instance ToData Natural where
 
 instance FromData Natural where
   {-# INLINEABLE fromBuiltinData #-}
-  fromBuiltinData d = do
-    i <- fromBuiltinData d
-    intToNatural i
+  fromBuiltinData d = fromBuiltinData d >>= intToNatural
 
 intToNatural :: Integer -> Maybe Natural
 intToNatural x
@@ -73,6 +80,7 @@ data AuctionTerms = AuctionTerms
 PlutusTx.makeIsDataIndexed ''AuctionTerms [('AuctionTerms, 0)]
 PlutusTx.makeLift ''AuctionTerms
 
+-- FIXME: Use template Haskell to derive Eq instances
 instance Eq AuctionTerms where
   {-# INLINEABLE (==) #-}
   x == y =
@@ -98,7 +106,7 @@ instance Eq ApprovedBidders where
   {-# INLINEABLE (==) #-}
   x == y = bidders x == bidders y
 
-PlutusTx.makeIsDataIndexed ''ApprovedBidders [('ApprovedBidders, 1)]
+PlutusTx.makeIsDataIndexed ''ApprovedBidders [('ApprovedBidders, 0)]
 PlutusTx.makeLift ''ApprovedBidders
 
 data StandingBidState = NoBid | Bid BidTerms
@@ -122,9 +130,9 @@ instance Eq BidTerms where
   {-# INLINEABLE (==) #-}
   x == y = (bidder x == bidder y) && (bidPrice x == bidPrice y)
 
-PlutusTx.makeIsDataIndexed ''StandingBidState [('NoBid, 2), ('Bid, 3)]
+PlutusTx.makeIsDataIndexed ''StandingBidState [('NoBid, 0), ('Bid, 1)]
 PlutusTx.makeLift ''StandingBidState
-PlutusTx.makeIsDataIndexed ''BidTerms [('BidTerms, 4)]
+PlutusTx.makeIsDataIndexed ''BidTerms [('BidTerms, 0)]
 PlutusTx.makeLift ''BidTerms
 
 data AuctionState
@@ -151,9 +159,11 @@ instance Eq ApprovedBiddersHash where
   {-# INLINEABLE (==) #-}
   (ApprovedBiddersHash x) == (ApprovedBiddersHash y) = x == y
 
-PlutusTx.makeIsDataIndexed ''AuctionState [('Announced, 5), ('Complete, 6), ('BiddingStarted, 7)]
+PlutusTx.makeIsDataIndexed
+  ''AuctionState
+  [('Announced, 0), ('Complete, 1), ('BiddingStarted, 2)]
 PlutusTx.makeLift ''AuctionState
-PlutusTx.makeIsDataIndexed ''ApprovedBiddersHash [('ApprovedBiddersHash, 8)]
+PlutusTx.makeIsDataIndexed ''ApprovedBiddersHash [('ApprovedBiddersHash, 0)]
 PlutusTx.makeLift ''ApprovedBiddersHash
 
 -- Datums
@@ -167,7 +177,7 @@ instance Eq AuctionEscrowDatum where
   {-# INLINEABLE (==) #-}
   (AuctionEscrowDatum x) == (AuctionEscrowDatum y) = x == y
 
-PlutusTx.makeIsDataIndexed ''AuctionEscrowDatum [('AuctionEscrowDatum, 9)]
+PlutusTx.makeIsDataIndexed ''AuctionEscrowDatum [('AuctionEscrowDatum, 0)]
 PlutusTx.makeLift ''AuctionEscrowDatum
 
 newtype StandingBidDatum = StandingBidDatum
@@ -179,7 +189,7 @@ instance Eq StandingBidDatum where
   {-# INLINEABLE (==) #-}
   (StandingBidDatum x) == (StandingBidDatum y) = x == y
 
-PlutusTx.makeIsDataIndexed ''StandingBidDatum [('StandingBidDatum, 10)]
+PlutusTx.makeIsDataIndexed ''StandingBidDatum [('StandingBidDatum, 0)]
 PlutusTx.makeLift ''StandingBidDatum
 
 newtype BidDepositDatum = BidDepositDatum
@@ -192,7 +202,7 @@ instance Eq BidDepositDatum where
   {-# INLINEABLE (==) #-}
   (BidDepositDatum x) == (BidDepositDatum y) = x == y
 
-PlutusTx.makeIsDataIndexed ''BidDepositDatum [('BidDepositDatum, 11)]
+PlutusTx.makeIsDataIndexed ''BidDepositDatum [('BidDepositDatum, 0)]
 PlutusTx.makeLift ''BidDepositDatum
 
 type AuctionFeeEscrowDatum = ()
