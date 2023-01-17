@@ -1,26 +1,26 @@
 {-# OPTIONS -Wno-orphans #-}
 module HydraAuction.Types (
+  auctionState,
+  standingBid,
+  isStarted,
+  StandingBidState (..),
+  StandingBidDatum (..),
   AuctionTerms (..),
+  AuctionState (..),
+  AuctionEscrowDatum (..),
   AuctionFeeEscrowDatum,
   BidderMembershipDatum,
-  BiddingMembershipTokenCS (..),
-  VoucherTokenCS (..),
 ) where
 
 import Prelude qualified
 
 import GHC.Generics (Generic)
-import Plutus.V1.Ledger.Api (CurrencySymbol)
 import Plutus.V1.Ledger.Contexts (TxOutRef)
 import Plutus.V1.Ledger.Crypto (PubKeyHash)
 import Plutus.V1.Ledger.Time (POSIXTime)
-import Plutus.V1.Ledger.Value (AssetClass)
+import Plutus.V1.Ledger.Value (AssetClass, CurrencySymbol)
 import PlutusTx qualified
-import PlutusTx.IsData.Class (
-  FromData (fromBuiltinData),
-  ToData (toBuiltinData),
-  UnsafeFromData (unsafeFromBuiltinData),
- )
+import PlutusTx.IsData.Class (FromData (fromBuiltinData), ToData (toBuiltinData), UnsafeFromData (unsafeFromBuiltinData))
 import PlutusTx.Prelude hiding (fromInteger)
 import PlutusTx.Prelude qualified as Plutus
 
@@ -37,7 +37,9 @@ instance ToData Natural where
 
 instance FromData Natural where
   {-# INLINEABLE fromBuiltinData #-}
-  fromBuiltinData d = fromBuiltinData d >>= intToNatural
+  fromBuiltinData d = do
+    i <- fromBuiltinData d
+    intToNatural i
 
 {-# INLINEABLE fromJust #-}
 fromJust :: Maybe a -> a
@@ -56,6 +58,7 @@ naturalToInt (Natural i) = i
 
 PlutusTx.makeLift ''Natural
 
+-- FIXME: Use template Haskell to derive Eq instances
 instance Eq Natural where
   {-# INLINEABLE (==) #-}
   x == y = naturalToInt x == naturalToInt y
@@ -75,12 +78,12 @@ data AuctionTerms = AuctionTerms
   , -- | Auction lifecycle times.
     cleanup :: POSIXTime
   , -- | Total auction fee that will be evenly split among delegates.
-    auctionFee :: Natural
+    auctionFee :: Integer
   , -- | The auction lot cannot be sold for less than this bid price.
-    startingBid :: Natural
+    startingBid :: Integer
   , -- | A new bid can only supersede the standing bid if it is larger
     -- by this increment.
-    minimumBidIncrement :: Natural
+    minimumBidIncrement :: Integer
   , -- | The seller consumed this utxo input in the transaction that
     -- announced this auction, to provide the auction lot to the auction.
     utxoRef :: TxOutRef
@@ -90,7 +93,6 @@ data AuctionTerms = AuctionTerms
 PlutusTx.makeIsDataIndexed ''AuctionTerms [('AuctionTerms, 0)]
 PlutusTx.makeLift ''AuctionTerms
 
--- FIXME: Use template Haskell to derive Eq instances
 instance Eq AuctionTerms where
   {-# INLINEABLE (==) #-}
   x == y =
@@ -132,7 +134,7 @@ data BidTerms = BidTerms
   { -- | Who submitted the bid?
     bidder :: PubKeyHash
   , -- | Which price did the bidder set to buy the auction lot?
-    bidPrice :: Natural
+    bidPrice :: Integer
   }
   deriving stock (Generic, Prelude.Show, Prelude.Eq)
 
@@ -150,6 +152,11 @@ data AuctionState
   | BiddingStarted ApprovedBiddersHash
   | Complete
   deriving stock (Generic, Prelude.Show, Prelude.Eq)
+
+{-# INLINEABLE isStarted #-}
+isStarted :: AuctionState -> Bool
+isStarted (BiddingStarted _) = True
+isStarted _ = False
 
 instance Eq AuctionState where
   {-# INLINEABLE (==) #-}
@@ -169,31 +176,33 @@ instance Eq ApprovedBiddersHash where
   {-# INLINEABLE (==) #-}
   (ApprovedBiddersHash x) == (ApprovedBiddersHash y) = x == y
 
-PlutusTx.makeIsDataIndexed
-  ''AuctionState
-  [('Announced, 0), ('Complete, 1), ('BiddingStarted, 2)]
+PlutusTx.makeIsDataIndexed ''AuctionState [('Announced, 0), ('Complete, 1), ('BiddingStarted, 2)]
 PlutusTx.makeLift ''AuctionState
 PlutusTx.makeIsDataIndexed ''ApprovedBiddersHash [('ApprovedBiddersHash, 0)]
 PlutusTx.makeLift ''ApprovedBiddersHash
 
 -- Datums
 
-newtype AuctionEscrowDatum = AuctionEscrowDatum
-  { auctionState :: AuctionState
-  }
+data AuctionEscrowDatum = AuctionEscrowDatum AuctionState CurrencySymbol
   deriving stock (Generic, Prelude.Show, Prelude.Eq)
+
+{-# INLINEABLE auctionState #-}
+auctionState :: AuctionEscrowDatum -> AuctionState
+auctionState (AuctionEscrowDatum x _) = x
 
 instance Eq AuctionEscrowDatum where
   {-# INLINEABLE (==) #-}
-  (AuctionEscrowDatum x) == (AuctionEscrowDatum y) = x == y
+  (AuctionEscrowDatum x x') == (AuctionEscrowDatum y y') = (x == y) && (x' == y')
 
 PlutusTx.makeIsDataIndexed ''AuctionEscrowDatum [('AuctionEscrowDatum, 0)]
 PlutusTx.makeLift ''AuctionEscrowDatum
 
-newtype StandingBidDatum = StandingBidDatum
-  { standingBid :: StandingBidState
-  }
+newtype StandingBidDatum = StandingBidDatum StandingBidState
   deriving stock (Generic, Prelude.Show, Prelude.Eq)
+
+{-# INLINEABLE standingBid #-}
+standingBid :: StandingBidDatum -> StandingBidState
+standingBid (StandingBidDatum x) = x
 
 instance Eq StandingBidDatum where
   {-# INLINEABLE (==) #-}
@@ -220,11 +229,3 @@ type AuctionFeeEscrowDatum = ()
 
 type BidderMembershipDatum = ApprovedBidders
 -- ^ The datum is just the list of approved bidders.
-
--- * State tokens
-
-newtype VoucherTokenCS = MkVoucherTokenCS
-  {unVoucherTokenCS :: CurrencySymbol}
-
-newtype BiddingMembershipTokenCS = MkBiddingMembershipTokenCS
-  {unBiddingMembershipTokenCS :: CurrencySymbol}
