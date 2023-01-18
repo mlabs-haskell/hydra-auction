@@ -97,7 +97,6 @@ executable hydra-auction
     , data-default
     , hydra-cardano-api
     , ouroboros-network               ==0.1.0.1
-    , plutus-ledger                   ==1.0.0.0
     , plutus-ledger-api               ==1.0.0.0
     , QuickCheck
     , serialise
@@ -114,10 +113,11 @@ library
     HydraAuction.Types
 
   build-depends:
+    , hydra-plutus
     , natural-numbers
-    , plutus-ledger
     , plutus-ledger-api
     , plutus-tx
+    , plutus-tx-plugin
 
   hs-source-dirs:  src
 
@@ -141,7 +141,6 @@ test-suite hydra-auction-test
     , lens
     , lens-aeson
     , plutus-cbor
-    , plutus-ledger
     , plutus-ledger-api
     , plutus-tx
     , plutus-tx-plugin
