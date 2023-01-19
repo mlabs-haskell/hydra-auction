@@ -7,11 +7,8 @@ module HydraAuction.Types (
   VoucherTokenCS (..),
 ) where
 
-import Prelude (fromInteger, toInteger)
 import Prelude qualified
 
-import Data.Maybe (fromJust)
-import Data.Natural (Natural)
 import GHC.Generics (Generic)
 import Plutus.V1.Ledger.Api (CurrencySymbol)
 import Plutus.V1.Ledger.Contexts (TxOutRef)
@@ -27,7 +24,8 @@ import PlutusTx.IsData.Class (
 import PlutusTx.Prelude hiding (fromInteger)
 import PlutusTx.Prelude qualified as Plutus
 
--- Some orphan instances
+newtype Natural = Natural Integer
+  deriving stock (Generic, Prelude.Show, Prelude.Eq)
 
 instance UnsafeFromData Natural where
   {-# INLINEABLE unsafeFromBuiltinData #-}
@@ -35,22 +33,32 @@ instance UnsafeFromData Natural where
 
 instance ToData Natural where
   {-# INLINEABLE toBuiltinData #-}
-  toBuiltinData = toBuiltinData . toInteger
+  toBuiltinData = toBuiltinData . naturalToInt
 
 instance FromData Natural where
   {-# INLINEABLE fromBuiltinData #-}
   fromBuiltinData d = fromBuiltinData d >>= intToNatural
 
+{-# INLINEABLE fromJust #-}
+fromJust :: Maybe a -> a
+fromJust (Just a) = a
+fromJust _ = error ()
+
+{-# INLINEABLE intToNatural #-}
 intToNatural :: Integer -> Maybe Natural
 intToNatural x
-  | x > 0 = Just $ fromInteger x
+  | x > 0 = Just $ Natural x
   | otherwise = Nothing
+
+{-# INLINEABLE naturalToInt #-}
+naturalToInt :: Natural -> Integer
+naturalToInt (Natural i) = i
 
 PlutusTx.makeLift ''Natural
 
 instance Eq Natural where
   {-# INLINEABLE (==) #-}
-  x == y = toInteger x == toInteger y
+  x == y = naturalToInt x == naturalToInt y
 
 -- Base datatypes
 
