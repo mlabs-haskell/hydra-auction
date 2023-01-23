@@ -1,4 +1,4 @@
-module Plutus.Extras where
+module Plutus.Extras (wrapValidator, ValidatorType, wrapMintingPolicy, MintingPolicyType, scriptValidatorHash, validatorAddress, scriptCurrencySymbol) where
 
 import Hydra.Prelude hiding (fromMaybe)
 
@@ -8,8 +8,8 @@ import Hydra.Cardano.Api (
   hashScript,
   pattern PlutusScript,
  )
-import Plutus.V1.Ledger.Address (scriptHashAddress)
-import Plutus.V1.Ledger.Api (MintingPolicyHash (..), Script, UnsafeFromData (unsafeFromBuiltinData), ValidatorHash (ValidatorHash))
+import Plutus.V1.Ledger.Address (Address, scriptHashAddress)
+import Plutus.V1.Ledger.Api (Script, UnsafeFromData (unsafeFromBuiltinData), Validator, ValidatorHash (ValidatorHash))
 import Plutus.V1.Ledger.Scripts (MintingPolicy, unMintingPolicyScript, unValidatorScript)
 import Plutus.V1.Ledger.Value (CurrencySymbol (..))
 import PlutusTx (BuiltinData)
@@ -68,6 +68,7 @@ scriptValidatorHash =
     . PlutusScript
     . fromPlutusScript
 
+validatorAddress :: Validator -> Address
 validatorAddress = scriptHashAddress . scriptValidatorHash . unValidatorScript
 
 {-# INLINEABLE scriptCurrencySymbol #-}

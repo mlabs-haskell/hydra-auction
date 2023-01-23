@@ -113,7 +113,7 @@ executable hydra-auction
 library
   import:          common-lang
   exposed-modules:
-    HydraAuction.Address
+    HydraAuction.Addresses
     HydraAuction.OnChain
     HydraAuction.Types
 
