@@ -169,7 +169,7 @@ mkEscrowValidator (EscrowAddress escrowAddressLocal, StandingBidAddress standing
           && case byAddress standingBidAddressLocal outputs of
             [out] ->
               traceIfFalse "Standing bid does not equalh NoBid" $
-                (standingBid <$> decodeOutputDatum info out) == Just NoBid
+                (standingBidState <$> decodeOutputDatum info out) == Just NoBid
             _ -> traceError "Wrong number of standing bid outputs"
     checkBidderBuys escrowInputOutput =
       case byAddress standingBidAddressLocal (txInInfoResolved <$> txInfoInputs info) of

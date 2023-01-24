@@ -1,15 +1,10 @@
 -- FIXME: Use template Haskell to derive Eq instances
 {-# OPTIONS -Wno-orphans #-}
 module HydraAuction.Types (
-  auctionState,
-  standingBid,
   isStarted,
   intToNatural,
   naturalToInt,
-  bidBidder,
-  bidAmount,
-  auctionVoucherCS,
-  standingBidVoucherCS,
+  BidTerms (..),
   StandingBidState (..),
   StandingBidDatum (..),
   AuctionTerms (..),
@@ -135,16 +130,13 @@ instance Eq StandingBidState where
   (Bid x) == (Bid y) = x == y
   _ == _ = False
 
-data BidTerms = BidTerms PubKeyHash Natural
+data BidTerms = BidTerms
+  { -- | Who submitted the bid?
+    bidBidder :: PubKeyHash
+  , -- | Which amount did the bidder set to buy the auction lot?
+    bidAmount :: Natural
+  }
   deriving stock (Generic, Prelude.Show, Prelude.Eq)
-
--- | Who submitted the bid?
-bidBidder :: BidTerms -> PubKeyHash
-bidBidder (BidTerms x _) = x
-
--- | Which amount did the bidder set to buy the auction lot?
-bidAmount :: BidTerms -> Natural
-bidAmount (BidTerms _ x) = x
 
 instance Eq BidTerms where
   {-# INLINEABLE (==) #-}
@@ -191,16 +183,8 @@ PlutusTx.makeLift ''ApprovedBiddersHash
 
 -- Datums
 
-data AuctionEscrowDatum = AuctionEscrowDatum AuctionState CurrencySymbol
+data AuctionEscrowDatum = AuctionEscrowDatum {auctionState :: AuctionState, auctionVoucherCS :: CurrencySymbol}
   deriving stock (Generic, Prelude.Show, Prelude.Eq)
-
-{-# INLINEABLE auctionState #-}
-auctionState :: AuctionEscrowDatum -> AuctionState
-auctionState (AuctionEscrowDatum x _) = x
-
-{-# INLINEABLE auctionVoucherCS #-}
-auctionVoucherCS :: AuctionEscrowDatum -> CurrencySymbol
-auctionVoucherCS (AuctionEscrowDatum _ x) = x
 
 instance Eq AuctionEscrowDatum where
   {-# INLINEABLE (==) #-}
@@ -209,16 +193,11 @@ instance Eq AuctionEscrowDatum where
 PlutusTx.makeIsDataIndexed ''AuctionEscrowDatum [('AuctionEscrowDatum, 0)]
 PlutusTx.makeLift ''AuctionEscrowDatum
 
-data StandingBidDatum = StandingBidDatum StandingBidState CurrencySymbol
+data StandingBidDatum = StandingBidDatum
+  { standingBidState :: StandingBidState
+  , standingBidVoucherCS :: CurrencySymbol
+  }
   deriving stock (Generic, Prelude.Show, Prelude.Eq)
-
-{-# INLINEABLE standingBid #-}
-standingBid :: StandingBidDatum -> StandingBidState
-standingBid (StandingBidDatum x _) = x
-
-{-# INLINEABLE standingBidVoucherCS #-}
-standingBidVoucherCS :: StandingBidDatum -> CurrencySymbol
-standingBidVoucherCS (StandingBidDatum _ x) = x
 
 instance Eq StandingBidDatum where
   {-# INLINEABLE (==) #-}
