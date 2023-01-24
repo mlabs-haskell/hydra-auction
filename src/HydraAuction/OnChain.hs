@@ -47,10 +47,6 @@ decodeOutputDatum info output = do
 byAddress :: Address -> [TxOut] -> [TxOut]
 byAddress address = filter (\o -> txOutAddress o == address)
 
--- FIXME: Use proper types to work with Ada/Lovelace distinction
-adaToLovelace :: Integer -> Integer
-adaToLovelace = (*) 1_000_000
-
 -- XXX: Plutus.V1.Ledger.Ada module requires more dependencies
 lovelaceOfOutput :: TxOut -> Integer
 lovelaceOfOutput output = assetClassValueOf (txOutValue output) ac
@@ -139,8 +135,7 @@ mkEscrowValidator (EscrowAddress escrowAddressLocal, StandingBidAddress standing
               && contains (interval (biddingStart terms) (biddingEnd terms)) (txInfoValidRange info)
               && checkStartBiddingOutputs
           SellerReclaims ->
-            checkAuctionState isStarted escrowInputOutput
-              && contains (from (voucherExpiry terms)) (txInfoValidRange info)
+            contains (from (voucherExpiry terms)) (txInfoValidRange info)
               && checkSellerReclaimsOutputs
           BidderBuys ->
             checkAuctionState isStarted escrowInputOutput
@@ -157,20 +152,35 @@ mkEscrowValidator (EscrowAddress escrowAddressLocal, StandingBidAddress standing
       case auctionState <$> decodeOutputDatum info output of
         Just x -> traceIfFalse "Wrong auction state" $ statePredicate x
         Nothing -> traceError "Incorrect encoding for auction state datum"
+    checkSingleOutput :: Address -> BuiltinString -> (TxOut -> Bool) -> Bool
+    checkSingleOutput address outputName cont =
+      case byAddress address outputs of
+        [output] -> cont output
+        _ -> traceError $ "Wrong number of " <> outputName <> " outputs"
+    checkSingleOutputWithAmount :: Address -> BuiltinString -> Integer -> Bool
+    checkSingleOutputWithAmount address outputName expectedAmount =
+      checkSingleOutput
+        address
+        outputName
+        ( \output ->
+            traceIfFalse (outputName <> " has wrong amount of ADA") $
+              lovelaceOfOutput output == expectedAmount
+        )
     checkStartBiddingOutputs =
-      traceError "Not two outputs" $
-        length outputs == 2
-          && case byAddress escrowAddressLocal outputs of
-            [out] -> traceIfFalse "Auction state is not started" $
-              case isStarted <$> (auctionState <$> decodeOutputDatum info out) of
-                Just True -> True
-                _ -> False
-            _ -> traceError "Wrong number of escrow outputs"
-          && case byAddress standingBidAddressLocal outputs of
-            [out] ->
+      traceError "Not two outputs" (length outputs == 2)
+        && case byAddress escrowAddressLocal outputs of
+          [out] -> traceIfFalse "Auction state is not started" $
+            case isStarted <$> (auctionState <$> decodeOutputDatum info out) of
+              Just True -> True
+              _ -> False
+          _ -> traceError "Wrong number of escrow outputs"
+        && checkSingleOutput
+          standingBidAddressLocal
+          "Standing bid"
+          ( \out ->
               traceIfFalse "Standing bid does not equalh NoBid" $
                 (standingBidState <$> decodeOutputDatum info out) == Just NoBid
-            _ -> traceError "Wrong number of standing bid outputs"
+          )
     checkBidderBuys escrowInputOutput =
       case byAddress standingBidAddressLocal (txInInfoResolved <$> txInfoInputs info) of
         [standingBidInOut] ->
@@ -184,46 +194,43 @@ mkEscrowValidator (EscrowAddress escrowAddressLocal, StandingBidAddress standing
                   )
               Nothing -> traceError "Incorrect encoding for escrow input datum"
           )
-            -- Check bid is present, auction lot sent to bidder and bid/fee is paid
+            -- Check bid is present, bidder signed transaction, auction lot sent to bidder and bid/fee is paid
             && case decodeOutputDatum info standingBidInOut of
               Just NoBid -> traceError "No bid in standing bid datum"
               Just (Bid bidTerms) ->
-                ( case byAddress (pubKeyHashAddress $ bidBidder bidTerms) outputs of
-                    [bidderOutput] ->
-                      traceIfFalse
-                        "Auction lot not provided to bidder"
-                        (assetClassValueOf (txOutValue bidderOutput) (auctionLot terms) == 1)
-                    _ -> traceError "Wrong number of bidder outputs"
-                )
-                  && ( case byAddress (pubKeyHashAddress $ seller terms) outputs of
-                        [sellerOut] ->
-                          traceIfFalse "Seller output has wrong amount of ADA" $
-                            lovelaceOfOutput sellerOut
-                              == (naturalToInt (bidAmount bidTerms) - adaToLovelace (naturalToInt $ auctionFee terms))
-                        _ -> traceError "Wrong number of seller outputs"
-                     )
-                  && ( case byAddress feeEscrowAddressLocal outputs of
-                        [out] ->
-                          traceIfFalse "Fee output has wrong amount of ADA" $
-                            lovelaceOfOutput out == adaToLovelace (naturalToInt $ auctionFee terms)
-                        _ -> traceError "Wrong number of fee escrow outputs"
-                     )
+                txSignedBy info (bidBidder bidTerms)
+                  && traceError "Not three outputs" (length outputs == 3)
+                  && checkSingleOutput
+                    (pubKeyHashAddress $ bidBidder bidTerms)
+                    "Bidder"
+                    ( \bidderOutput ->
+                        traceIfFalse
+                          "Auction lot not provided to bidder"
+                          (assetClassValueOf (txOutValue bidderOutput) (auctionLot terms) == 1)
+                    )
+                  && checkSingleOutputWithAmount
+                    (pubKeyHashAddress $ seller terms)
+                    "Seller"
+                    (naturalToInt (bidAmount bidTerms) - naturalToInt (auctionFee terms))
+                  && checkSingleOutputWithAmount
+                    feeEscrowAddressLocal
+                    "Fee escrow"
+                    (naturalToInt $ auctionFee terms)
               Nothing -> traceError "Incorrect encoding for standing bid datum"
         _ -> traceError "Wrong number of standing bid inputs"
     checkSellerReclaimsOutputs =
-      ( case byAddress sellerAddress outputs of
-          [out] ->
+      checkSingleOutput
+        sellerAddress
+        "Seller"
+        ( \out ->
             traceIfFalse
               "Auction lot not provided to seller"
               (assetClassValueOf (txOutValue out) (auctionLot terms) == 1)
-          _ -> traceError "Wrong number of seller outputs"
-      )
-        && ( case byAddress feeEscrowAddressLocal outputs of
-              [out] ->
-                traceIfFalse "Fee output has wrong amount of ADA" $
-                  lovelaceOfOutput out == adaToLovelace (naturalToInt $ auctionFee terms)
-              _ -> traceError "Wrong number of fee escrow outputs"
-           )
+        )
+        && checkSingleOutputWithAmount
+          feeEscrowAddressLocal
+          "Fee escrow"
+          (naturalToInt $ auctionFee terms)
     info :: TxInfo
     info = scriptContextTxInfo context
     outputs = txInfoOutputs info

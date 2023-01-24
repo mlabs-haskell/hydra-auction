@@ -150,7 +150,6 @@ PlutusTx.makeLift ''BidTerms
 data AuctionState
   = Announced
   | BiddingStarted ApprovedBiddersHash
-  | Complete
   deriving stock (Generic, Prelude.Show, Prelude.Eq)
 
 {-# INLINEABLE isStarted #-}
@@ -161,7 +160,6 @@ isStarted _ = False
 instance Eq AuctionState where
   {-# INLINEABLE (==) #-}
   Announced == Announced = True
-  Complete == Complete = True
   (BiddingStarted x) == (BiddingStarted y) = x == y
   _ == _ = False
 
@@ -176,7 +174,7 @@ instance Eq ApprovedBiddersHash where
   {-# INLINEABLE (==) #-}
   (ApprovedBiddersHash x) == (ApprovedBiddersHash y) = x == y
 
-PlutusTx.makeIsDataIndexed ''AuctionState [('Announced, 0), ('Complete, 1), ('BiddingStarted, 2)]
+PlutusTx.makeIsDataIndexed ''AuctionState [('Announced, 0), ('BiddingStarted, 1)]
 PlutusTx.makeLift ''AuctionState
 PlutusTx.makeIsDataIndexed ''ApprovedBiddersHash [('ApprovedBiddersHash, 0)]
 PlutusTx.makeLift ''ApprovedBiddersHash
