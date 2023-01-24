@@ -132,20 +132,21 @@ mkEscrowValidator :: (EscrowAddress, StandingBidAddress, FeeEscrowAddress, Aucti
 mkEscrowValidator (EscrowAddress escrowAddressLocal, StandingBidAddress standingBidAddressLocal, FeeEscrowAddress feeEscrowAddressLocal, terms) _ redeemer context =
   traceIfFalse "AuctionTerms is invalid" (validAuctionTerms terms)
     && checkHasSingleEscrowInput
-    $ \escrowInputOutput -> case redeemer of
-      StartBidding ->
-        checkAuctionState (== Announced) escrowInputOutput
-          && txSignedBy info (seller terms)
-          && contains (interval (biddingStart terms) (biddingEnd terms)) (txInfoValidRange info)
-          && checkStartBiddingOutputs
-      SellerReclaims ->
-        checkAuctionState isStarted escrowInputOutput
-          && contains (from (voucherExpiry terms)) (txInfoValidRange info)
-          && checkSellerReclaimsOutputs
-      BidderBuys ->
-        checkAuctionState isStarted escrowInputOutput
-          && contains (interval (biddingEnd terms) (voucherExpiry terms)) (txInfoValidRange info)
-          && checkBidderBuys escrowInputOutput
+      ( \escrowInputOutput -> case redeemer of
+          StartBidding ->
+            checkAuctionState (== Announced) escrowInputOutput
+              && txSignedBy info (seller terms)
+              && contains (interval (biddingStart terms) (biddingEnd terms)) (txInfoValidRange info)
+              && checkStartBiddingOutputs
+          SellerReclaims ->
+            checkAuctionState isStarted escrowInputOutput
+              && contains (from (voucherExpiry terms)) (txInfoValidRange info)
+              && checkSellerReclaimsOutputs
+          BidderBuys ->
+            checkAuctionState isStarted escrowInputOutput
+              && contains (interval (biddingEnd terms) (voucherExpiry terms)) (txInfoValidRange info)
+              && checkBidderBuys escrowInputOutput
+      )
   where
     checkHasSingleEscrowInput cont =
       case escrowInputsOuts of
