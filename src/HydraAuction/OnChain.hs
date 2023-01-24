@@ -5,8 +5,8 @@ module HydraAuction.OnChain (mkPolicy, voucherCurrencySymbol, mkEscrowValidator,
 import PlutusTx.Prelude
 
 import HydraAuction.Addresses
+import HydraAuction.PlutusExtras
 import HydraAuction.Types
-import Plutus.Extras
 import Plutus.V1.Ledger.Address (pubKeyHashAddress, scriptHashAddress)
 import Plutus.V1.Ledger.Api
 import Plutus.V1.Ledger.Contexts

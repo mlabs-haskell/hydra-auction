@@ -117,8 +117,9 @@ library
     HydraAuction.OnChain
     HydraAuction.Types
 
-  other-modules:   Plutus.Extras
+  other-modules:   HydraAuction.PlutusExtras
   build-depends:
+    , hydra-plutus
     , natural-numbers
     , plutus-ledger-api
     , plutus-tx
