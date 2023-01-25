@@ -26,6 +26,16 @@ source-repository-package
       hydra-node
       plutus-cbor
 
+-- source-repository-package
+--     type: git
+--     location: https://github.com/mlabs-haskell/plutus-apps
+--     tag: 28bbb7bab90e0932bc52ccccca0748e91facceac
+--     --sha256: iBAqp/XiKBQAK/2HF/3eHgomlSUCntlySa/t4xEhx2Q=
+--     subdir:
+--       plutus-ledger
+--       plutus-script-utils
+--       freer-extras
+
 -- See CONTRIBUTING.md for information about when and how to update these.
 
 -- NOTE: We need to have the hackage index-state twice because of

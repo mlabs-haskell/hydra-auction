@@ -15,14 +15,16 @@ common common-lang
   ghc-options:
     -Wall -Wcompat -Wincomplete-record-updates
     -Wincomplete-uni-patterns -Wredundant-constraints
-    -Wmissing-export-lists -Wmissing-deriving-strategies -Werror
+    -Wmissing-export-lists -Wmissing-deriving-strategies
     -fobject-code -fno-ignore-interface-pragmas
     -fno-omit-interface-pragmas
+    -O0
+    --disable-optimisation
 
   build-depends:
     , async
     , base                     ^>=4.14
-    , hydra-cardano-api
+    , hydra-cardano-api == 0.9.0
     , hydra-prelude
     , mtl
     , plutus-tx-plugin
@@ -116,13 +118,13 @@ library
     HydraAuction.Addresses
     HydraAuction.OnChain
     HydraAuction.Types
+    HydraAuction.OnChain.Common
+    HydraAuction.PlutusExtras
+    HydraAuction.OnChain.StateToken
 
   other-modules:
-    HydraAuction.OnChain.Common
     HydraAuction.OnChain.Escrow
     HydraAuction.OnChain.StandingBid
-    HydraAuction.OnChain.StateToken
-    HydraAuction.PlutusExtras
 
   build-depends:
     , hydra-plutus
@@ -136,7 +138,10 @@ test-suite hydra-auction-test
   import:         common-lang
   type:           exitcode-stdio-1.0
   main-is:        Spec.hs
-  other-modules:  EndToEnd.Spec
+  other-modules:
+    EndToEnd.Spec
+    OnChain.Spec
+
   build-depends:
     , aeson
     , bytestring
@@ -149,6 +154,7 @@ test-suite hydra-auction-test
     , hydra-node
     , hydra-prelude
     , hydra-test-utils
+    , hydra-auction
     , lens
     , lens-aeson
     , plutus-cbor

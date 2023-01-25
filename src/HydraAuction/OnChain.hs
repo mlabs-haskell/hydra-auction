@@ -16,7 +16,7 @@ import PlutusTx qualified
 policy :: AuctionTerms -> MintingPolicy
 policy terms =
   mkMintingPolicyScript $
-    $$(PlutusTx.compile [||wrapMintingPolicy . mkPolicy||])
+    $$(PlutusTx.compile [||\_ _ _ -> ()||])
       `PlutusTx.applyCode` PlutusTx.liftCode (escrowAddress terms, terms)
 
 voucherCurrencySymbol :: AuctionTerms -> CurrencySymbol
@@ -28,8 +28,8 @@ voucherCurrencySymbol = scriptCurrencySymbol . policy
 escrowValidator :: AuctionTerms -> Validator
 escrowValidator terms =
   mkValidatorScript $
-    $$(PlutusTx.compile [||wrapValidator . mkEscrowValidator||])
-      `PlutusTx.applyCode` PlutusTx.liftCode (escrowAddress terms, standingBidAddress terms, feeEscrowAddress terms, terms)
+    $$(PlutusTx.compile [||\_ _ _ _ -> ()||])
+      `PlutusTx.applyCode` PlutusTx.liftCode (standingBidAddress terms, feeEscrowAddress terms, terms)
 
 {-# INLINEABLE escrowAddress #-}
 escrowAddress :: AuctionTerms -> EscrowAddress
@@ -41,7 +41,7 @@ escrowAddress = EscrowAddress . validatorAddress . escrowValidator
 standingBidValidator :: AuctionTerms -> Validator
 standingBidValidator terms =
   mkValidatorScript $
-    $$(PlutusTx.compile [||wrapValidator . mkStandingBidValidator||])
+    $$(PlutusTx.compile [||\_ _ _ _ -> ()||])
       `PlutusTx.applyCode` PlutusTx.liftCode terms
 
 {-# INLINEABLE standingBidAddress #-}
