@@ -101,7 +101,7 @@ mkPolicy (EscrowAddress escrowAddressLocal, terms) () ctx =
             (assetClassValueOf (txOutValue $ txInInfoResolved out) (auctionLot terms) == 1)
       _ -> traceError "Inputs are not exactly single input"
     expectedOutput :: AuctionEscrowDatum
-    expectedOutput = AuctionEscrowDatum Announced (ownCurrencySymbol ctx)
+    expectedOutput = AuctionEscrowDatum Announced (VoucherCS $ ownCurrencySymbol ctx)
     exactlyOneOutputToEscrow :: Bool
     exactlyOneOutputToEscrow = case txInfoOutputs info of
       [output] ->
@@ -185,7 +185,7 @@ mkEscrowValidator (EscrowAddress escrowAddressLocal, StandingBidAddress standing
       case byAddress standingBidAddressLocal (txInInfoResolved <$> txInfoInputs info) of
         [standingBidInOut] ->
           -- Check standing bid is authentic (contains state token)
-          ( case auctionVoucherCS <$> decodeOutputDatum info escrowInputOutput of
+          ( case unVoucherCS <$> (auctionVoucherCS <$> decodeOutputDatum info escrowInputOutput) of
               Just cs ->
                 traceIfFalse
                   "Standing bid not contain voucher token"
@@ -273,7 +273,8 @@ mkStandingBidValidator terms datum redeemer context =
             && interval 0 (biddingEnd terms) == txInfoValidRange info
         Cleanup ->
           traceIfFalse "Not exactly one voucher was burt during transaction" $
-            let voucherAC = assetClass (standingBidVoucherCS datum) (stateTokenKindToTokenName Voucher)
+            let cs = unVoucherCS $ standingBidVoucherCS datum
+                voucherAC = assetClass cs (stateTokenKindToTokenName Voucher)
              in assetClassValueOf (txInfoMint info) voucherAC == -1
       -- TODO: min ADA to seller
       _ : _ -> traceError "More than one input"
