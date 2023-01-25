@@ -18,7 +18,7 @@ import PlutusTx.AssocMap qualified as Map
 -- Common
 
 minAuctionFee :: Integer
-minAuctionFee = 2
+minAuctionFee = 2_000_000
 
 validAuctionTerms' :: AuctionTerms -> POSIXTime -> Bool
 validAuctionTerms' AuctionTerms {..} announcementTxValidityUpperBound =
@@ -71,8 +71,11 @@ mkPolicy (EscrowAddress escrowAddressLocal, terms) () ctx =
             case (x == 1, x == -1) of
               (True, False) -> exactlyUtxoRefConsumed && exactlyOneOutputToEscrow
               (False, True) ->
-                traceIfFalse "Valid range not after voucher expiry" $
-                  contains (from (voucherExpiry terms)) (txInfoValidRange info)
+                traceIfFalse "Not exactly one input" (length (txInfoInputs info) == 1)
+                  && traceIfFalse "No exaclty none outputs" (null (txInfoInputs info))
+                  && traceIfFalse
+                    "Valid range not after voucher expiry"
+                    (contains (from (voucherExpiry terms)) (txInfoValidRange info))
               (_, _) -> traceError "Wrong voucher amount forged"
           Nothing -> traceError "Wrong token kind forged"
        )
@@ -131,14 +134,20 @@ mkEscrowValidator (EscrowAddress escrowAddressLocal, StandingBidAddress standing
       ( \escrowInputOutput -> case redeemer of
           StartBidding ->
             checkAuctionState (== Announced) escrowInputOutput
+              && traceIfFalse "Not exactly one input" (length (txInfoInputs info) == 1)
+              && traceIfFalse "Not exaclty two outputs" (length (txInfoInputs info) == 2)
               && txSignedBy info (seller terms)
               && contains (interval (biddingStart terms) (biddingEnd terms)) (txInfoValidRange info)
               && checkStartBiddingOutputs
           SellerReclaims ->
             contains (from (voucherExpiry terms)) (txInfoValidRange info)
+              && traceIfFalse "Not exactly one input" (length (txInfoInputs info) == 1)
+              && traceIfFalse "Not exaclty two outputs" (length (txInfoInputs info) == 2)
               && checkSellerReclaimsOutputs
           BidderBuys ->
             checkAuctionState isStarted escrowInputOutput
+              && traceIfFalse "Not exactly two inputs" (length (txInfoInputs info) == 2)
+              && traceIfFalse "Not exaclty three outputs" (length (txInfoInputs info) == 3)
               && contains (interval (biddingEnd terms) (voucherExpiry terms)) (txInfoValidRange info)
               && checkBidderBuys escrowInputOutput
       )
@@ -272,11 +281,22 @@ mkStandingBidValidator terms datum redeemer context =
           )
             && interval 0 (biddingEnd terms) == txInfoValidRange info
         Cleanup ->
+          -- XXX: interval is checked on burning
           traceIfFalse "Not exactly one voucher was burt during transaction" $
             let cs = unVoucherCS $ standingBidVoucherCS datum
                 voucherAC = assetClass cs (stateTokenKindToTokenName Voucher)
              in assetClassValueOf (txInfoMint info) voucherAC == -1
-      -- TODO: min ADA to seller
+                  && ( case txInfoOutputs info of
+                        [out] ->
+                          traceIfFalse
+                            "Output is not to seller"
+                            (txOutAddress out == pubKeyHashAddress (seller terms))
+                            && traceIfFalse
+                              "Output value not min ADA"
+                              ( lovelaceOfOutput out == minAuctionFee
+                              )
+                        _ -> traceError "Not exactly one ouput"
+                     )
       _ : _ -> traceError "More than one input"
       [] -> traceError "Impossible happened: no inputs for staning bid validator"
   where

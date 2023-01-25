@@ -164,7 +164,7 @@ instance Eq AuctionState where
   (BiddingStarted x) == (BiddingStarted y) = x == y
   _ == _ = False
 
--- | TODO: Bytetring will be changed to actuall hash
+-- | FIXME: Bytetring will be changed to actuall hash
 newtype ApprovedBiddersHash = ApprovedBiddersHash Plutus.BuiltinByteString
   deriving stock (Generic, Prelude.Show, Prelude.Eq)
 {- ^ This hash is calculated from the `ApprovedBidders` value that the seller
