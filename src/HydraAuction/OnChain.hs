@@ -1,6 +1,6 @@
 {-# LANGUAGE RecordWildCards #-}
 
-module HydraAuction.OnChain (mkPolicy, voucherCurrencySymbol, mkEscrowValidator, escrowAddress, standingBidAddress) where
+module HydraAuction.OnChain (mkPolicy, voucherCurrencySymbol, mkEscrowValidator, escrowAddress, escrowValidator, standingBidAddress) where
 
 import PlutusTx.Prelude
 

@@ -115,10 +115,16 @@ library
   exposed-modules:
     HydraAuction.Addresses
     HydraAuction.OnChain
+    HydraAuction.Tx
     HydraAuction.Types
 
   other-modules:   HydraAuction.PlutusExtras
   build-depends:
+    , aeson
+    , cardano-api
+    , containers
+    , hydra-cluster
+    , hydra-node
     , hydra-plutus
     , natural-numbers
     , plutus-ledger-api
