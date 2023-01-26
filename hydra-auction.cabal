@@ -22,7 +22,10 @@ common common-lang
   build-depends:
     , async
     , base                     ^>=4.14
+    , hydra-cardano-api
+    , hydra-prelude
     , mtl
+    , plutus-tx-plugin
     , record-dot-preprocessor
     , record-hasfield
     , stm
@@ -55,6 +58,7 @@ common common-lang
     NamedFieldPuns
     NumericUnderscores
     OverloadedStrings
+    PatternSynonyms
     ScopedTypeVariables
     StandaloneDeriving
     TemplateHaskell
@@ -108,8 +112,20 @@ executable hydra-auction
 
 library
   import:          common-lang
-  exposed-modules: HydraAuction.Types
+  exposed-modules:
+    HydraAuction.Addresses
+    HydraAuction.OnChain
+    HydraAuction.Types
+
+  other-modules:
+    HydraAuction.OnChain.Common
+    HydraAuction.OnChain.Escrow
+    HydraAuction.OnChain.StandingBid
+    HydraAuction.OnChain.StateToken
+    HydraAuction.PlutusExtras
+
   build-depends:
+    , hydra-plutus
     , natural-numbers
     , plutus-ledger-api
     , plutus-tx

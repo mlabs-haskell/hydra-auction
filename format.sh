@@ -26,6 +26,7 @@ find . -type f -name '*.hs' ! -path '*/dist-newstyle/*' -exec \
 		-o-XNondecreasingIndentation \
 		-o-XPatternSynonyms \
 		-o-XImportQualifiedPost \
+		-o-XTemplateHaskell \
 		-m "$fourmolu_mode" \
 		--indentation 2 \
 		--comma-style leading \
