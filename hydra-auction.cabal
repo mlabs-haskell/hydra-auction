@@ -117,7 +117,13 @@ library
     HydraAuction.OnChain
     HydraAuction.Types
 
-  other-modules:   HydraAuction.PlutusExtras
+  other-modules:
+    HydraAuction.OnChain.Common
+    HydraAuction.OnChain.Escrow
+    HydraAuction.OnChain.StandingBid
+    HydraAuction.OnChain.StateToken
+    HydraAuction.PlutusExtras
+
   build-depends:
     , hydra-plutus
     , natural-numbers
