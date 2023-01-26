@@ -1,5 +1,7 @@
 module HydraAuction.OnChain.StandingBid (mkStandingBidValidator) where
 
+import PlutusTx.Prelude
+
 import HydraAuction.Addresses
 import HydraAuction.OnChain.Common
 import HydraAuction.OnChain.StateToken (StateTokenKind (..), stateTokenKindToTokenName)
@@ -9,7 +11,6 @@ import Plutus.V1.Ledger.Api (TxInfo, scriptContextTxInfo, txInInfoResolved, txIn
 import Plutus.V1.Ledger.Contexts (ScriptContext, ownHash)
 import Plutus.V1.Ledger.Interval (interval)
 import Plutus.V1.Ledger.Value (assetClass, assetClassValueOf)
-import PlutusTx.Prelude
 
 {-# INLINEABLE mkStandingBidValidator #-}
 mkStandingBidValidator :: AuctionTerms -> StandingBidDatum -> StandingBidRedeemer -> ScriptContext -> Bool
@@ -19,7 +20,9 @@ mkStandingBidValidator terms datum redeemer context =
       [inputOut] -> case redeemer of
         MoveToHydra ->
           -- FIXME: new requirements may appear in tech spec
-          txInfoOutputs info == [inputOut] -- Check that nothing changed in output
+          -- XXX: using strange check, cuz == for lists failed compilation of Plutus Tx
+          length (txInfoOutputs info) == 1 -- Check that nothing changed in output
+            && head (txInfoOutputs info) == inputOut
         NewBid ->
           ( case txInfoOutputs info of
               [out] ->

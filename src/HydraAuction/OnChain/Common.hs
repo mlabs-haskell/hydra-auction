@@ -24,7 +24,7 @@ validAuctionTerms' AuctionTerms {..} announcementTxValidityUpperBound =
     && naturalToInt minimumBidIncrement > 0
     && startingBid > auctionFee
     && naturalToInt auctionFee > length delegates * minAuctionFee
-    && not (null delegates)
+    && length delegates > 0
     && modulo (naturalToInt auctionFee) (length delegates) == 0
 
 -- FIXME: check interval from TxInfo
