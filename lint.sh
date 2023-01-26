@@ -17,6 +17,7 @@ then
       mode="+"
 fi
 
+# Using null breaks Plutus Tx
 find . -type f -name '*.hs' ! -path '*/dist-newstyle/*' -exec \
 	hlint \
       -XTypeApplications \
@@ -25,4 +26,5 @@ find . -type f -name '*.hs' ! -path '*/dist-newstyle/*' -exec \
       -XQualifiedDo \
       ${refactor:+"--refactor"} \
       ${refactor:+"--refactor-options=-i"} \
+      -i "Use null" \
       --hint=hlint.yaml {} $mode

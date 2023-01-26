@@ -1,14 +1,15 @@
 module HydraAuction.OnChain.StateToken (StateTokenKind (..), stateTokenKindToTokenName, mkPolicy) where
 
+import PlutusTx.Prelude
+
 import HydraAuction.Addresses
 import HydraAuction.OnChain.Common
 import HydraAuction.Types
-import Plutus.V1.Ledger.Api -- (TokenName)
-import Plutus.V1.Ledger.Contexts -- (TxInfo, ScriptContext)
-import Plutus.V1.Ledger.Interval (contains)
+import Plutus.V1.Ledger.Api (TokenName (..))
+import Plutus.V1.Ledger.Contexts (ScriptContext, TxInfo, ownCurrencySymbol, scriptContextTxInfo, txInInfoOutRef, txInInfoResolved, txInfoInputs, txInfoMint, txInfoOutputs, txInfoValidRange, txOutAddress, txOutValue)
+import Plutus.V1.Ledger.Interval (contains, from)
 import Plutus.V1.Ledger.Value (assetClassValueOf, flattenValue)
 import PlutusTx.AssocMap qualified as Map
-import PlutusTx.Prelude
 
 data StateTokenKind = Voucher
 
@@ -27,7 +28,7 @@ mkPolicy (EscrowAddress escrowAddressLocal, terms) () ctx =
               (True, False) -> exactlyUtxoRefConsumed && exactlyOneOutputToEscrow
               (False, True) ->
                 traceIfFalse "Not exactly one input" (length (txInfoInputs info) == 1)
-                  && traceIfFalse "No exaclty none outputs" (null (txInfoInputs info))
+                  && traceIfFalse "Not exactly none outputs" (length (txInfoInputs info) == 0)
                   && traceIfFalse
                     "Valid range not after voucher expiry"
                     (contains (from (voucherExpiry terms)) (txInfoValidRange info))
