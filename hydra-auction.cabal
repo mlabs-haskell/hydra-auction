@@ -136,7 +136,10 @@ test-suite hydra-auction-test
   import:         common-lang
   type:           exitcode-stdio-1.0
   main-is:        Spec.hs
-  other-modules:  EndToEnd.Spec
+  other-modules:
+    EndToEnd.Spec
+    EndToEnd.StandingBid.NewBid
+
   build-depends:
     , aeson
     , bytestring
