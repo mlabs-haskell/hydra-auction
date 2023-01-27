@@ -1,14 +1,14 @@
 module HydraAuction.OnChain.StateToken (StateTokenKind (..), stateTokenKindToTokenName, mkPolicy) where
 
-import PlutusTx.Prelude
+import PlutusTx.Prelude hiding (elem)
 
 import HydraAuction.Addresses
 import HydraAuction.OnChain.Common
 import HydraAuction.Types
-import Plutus.V1.Ledger.Api (TokenName (..))
-import Plutus.V1.Ledger.Contexts (ScriptContext, TxInfo, ownCurrencySymbol, scriptContextTxInfo, txInInfoOutRef, txInInfoResolved, txInfoInputs, txInfoMint, txInfoOutputs, txInfoValidRange, txOutAddress, txOutValue)
 import Plutus.V1.Ledger.Interval (contains, from)
-import Plutus.V1.Ledger.Value (assetClassValueOf, flattenValue)
+import Plutus.V1.Ledger.Value (flattenValue)
+import Plutus.V2.Ledger.Api (TokenName (..))
+import Plutus.V2.Ledger.Contexts (ScriptContext, TxInfo, ownCurrencySymbol, scriptContextTxInfo, txInInfoOutRef, txInfoInputs, txInfoMint, txInfoOutputs, txInfoValidRange, txOutAddress)
 import PlutusTx.AssocMap qualified as Map
 
 data StateTokenKind = Voucher
@@ -16,6 +16,12 @@ data StateTokenKind = Voucher
 {-# INLINEABLE stateTokenKindToTokenName #-}
 stateTokenKindToTokenName :: StateTokenKind -> TokenName
 stateTokenKindToTokenName Voucher = TokenName "Voucher"
+
+{-# INLINEABLE elem #-}
+elem y (x : xs)
+  | x == y = True
+  | otherwise = elem y xs
+elem _ [] = False
 
 {-# INLINEABLE mkPolicy #-}
 mkPolicy :: (EscrowAddress, AuctionTerms) -> () -> ScriptContext -> Bool
@@ -25,7 +31,8 @@ mkPolicy (EscrowAddress escrowAddressLocal, terms) () ctx =
           Just x ->
             -- XXX: Pattern matching by integer does not seem to work in Plutus
             case (x == 1, x == -1) of
-              (True, False) -> exactlyUtxoRefConsumed && exactlyOneOutputToEscrow
+              (True, False) ->
+                utxoNonceConsumed && exactlyOneOutputToEscrow
               (False, True) ->
                 traceIfFalse "Not exactly one input" (length (txInfoInputs info) == 1)
                   && traceIfFalse "Not exactly none outputs" (length (txInfoInputs info) == 0)
@@ -51,23 +58,21 @@ mkPolicy (EscrowAddress escrowAddressLocal, terms) () ctx =
         _ -> Nothing
       where
         tn = stateTokenKindToTokenName Voucher
-    exactlyUtxoRefConsumed :: Bool
-    exactlyUtxoRefConsumed = case txInfoInputs info of
-      [out] ->
-        traceIfFalse "Input is not equal to utxoRef" (txInInfoOutRef out == utxoRef terms)
-          && traceIfFalse
-            "Input does not contain auction lot"
-            (assetClassValueOf (txOutValue $ txInInfoResolved out) (auctionLot terms) == 1)
-      _ -> traceError "Inputs are not exactly single input"
+    utxoNonceConsumed :: Bool
+    utxoNonceConsumed =
+      traceIfFalse "Utxo nonce was not consumed at auction announcement." $
+        utxoRef terms `elem` (txInInfoOutRef <$> txInfoInputs info)
     expectedOutput :: AuctionEscrowDatum
     expectedOutput = AuctionEscrowDatum Announced (VoucherCS $ ownCurrencySymbol ctx)
     exactlyOneOutputToEscrow :: Bool
-    exactlyOneOutputToEscrow = case txInfoOutputs info of
-      [output] ->
-        traceIfFalse
-          "Wrong data in escrow output"
-          (decodeOutputDatum info output == Just expectedOutput)
-          && traceIfFalse
-            "Output not going to escrow contract"
-            (txOutAddress output == escrowAddressLocal)
-      _ -> traceError "Outputs are not exactly one"
+    exactlyOneOutputToEscrow =
+      case filter (\x -> escrowAddressLocal == txOutAddress x) $ txInfoOutputs info of
+        [output] ->
+          case decodeOutputDatum info output of
+            Just x ->
+              traceIfFalse "Wrong state in escrow output" $
+                (auctionState x == auctionState expectedOutput)
+                  && traceIfFalse "Wrong auctionVoucherCS in escrow output" (auctionVoucherCS x == auctionVoucherCS expectedOutput)
+            Nothing -> traceError "Cannot decode escrow output"
+        _ ->
+          traceIfFalse "More than one output sent to escrow address" False

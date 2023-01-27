@@ -15,20 +15,26 @@ common common-lang
   ghc-options:
     -Wall -Wcompat -Wincomplete-record-updates
     -Wincomplete-uni-patterns -Wredundant-constraints
-    -Wmissing-export-lists -Wmissing-deriving-strategies -Werror
-    -fobject-code -fno-ignore-interface-pragmas
-    -fno-omit-interface-pragmas
+    -Wmissing-export-lists -Wmissing-deriving-strategies -fobject-code
+    -fno-ignore-interface-pragmas -fno-omit-interface-pragmas
 
   build-depends:
     , async
     , base                     ^>=4.14
+    , cardano-ledger-core
+    , containers
+    , extra
+    , filepath
     , hydra-cardano-api
+    , hydra-cluster
+    , hydra-node
     , hydra-prelude
     , mtl
     , plutus-tx-plugin
     , record-dot-preprocessor
     , record-hasfield
     , stm
+    , text
     , transformers
     , websockets
 
@@ -73,6 +79,7 @@ common common-lang
 executable hydra-auction
   import:         common-lang
   main-is:        Main.hs
+  other-modules:  ParsingCliHelpers
   build-depends:
     , aeson
     , array
@@ -99,8 +106,12 @@ executable hydra-auction
     , cborg
     , containers
     , data-default
+    , hydra-auction
     , hydra-cardano-api
+    , hydra-test-utils
+    , optparse-applicative
     , ouroboros-network               ==0.1.0.1
+    , parsec
     , plutus-ledger-api               ==1.0.0.0
     , QuickCheck
     , serialise
@@ -115,6 +126,10 @@ library
   exposed-modules:
     HydraAuction.Addresses
     HydraAuction.OnChain
+    HydraAuction.Tx.Common
+    HydraAuction.Tx.Escrow
+    HydraAuction.Tx.StandingBid
+    HydraAuction.Tx.TestNFT
     HydraAuction.Types
 
   other-modules:
@@ -122,6 +137,7 @@ library
     HydraAuction.OnChain.Escrow
     HydraAuction.OnChain.StandingBid
     HydraAuction.OnChain.StateToken
+    HydraAuction.OnChain.TestNFT
     HydraAuction.PlutusExtras
 
   build-depends:
@@ -136,14 +152,18 @@ test-suite hydra-auction-test
   import:         common-lang
   type:           exitcode-stdio-1.0
   main-is:        Spec.hs
-  other-modules:  EndToEnd.Spec
+  other-modules:
+    EndToEnd.Common
+    EndToEnd.Scenario
+    EndToEnd.Spec
+
   build-depends:
     , aeson
     , bytestring
     , cardano-api
     , containers
-    , extra
-    , filepath
+    , directory
+    , hydra-auction
     , hydra-cardano-api
     , hydra-cluster
     , hydra-node

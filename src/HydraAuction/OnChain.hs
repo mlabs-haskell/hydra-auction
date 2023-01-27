@@ -1,4 +1,4 @@
-module HydraAuction.OnChain (mkPolicy, voucherCurrencySymbol, mkEscrowValidator, escrowAddress, standingBidAddress) where
+module HydraAuction.OnChain (feeEscrowValidator, voucherAssetClass, scriptValidatorForTerms, AuctionScript (..), policy, standingBidValidator, escrowValidator, voucherCurrencySymbol, mkEscrowValidator, escrowAddress, standingBidAddress) where
 
 import PlutusTx.Prelude
 
@@ -8,8 +8,18 @@ import HydraAuction.OnChain.StandingBid
 import HydraAuction.OnChain.StateToken
 import HydraAuction.PlutusExtras
 import HydraAuction.Types
-import Plutus.V1.Ledger.Api (CurrencySymbol, MintingPolicy, ScriptContext, Validator, mkMintingPolicyScript, mkValidatorScript)
+import Plutus.V1.Ledger.Value (AssetClass (..))
+import Plutus.V2.Ledger.Api (CurrencySymbol, MintingPolicy, ScriptContext, Validator, mkMintingPolicyScript, mkValidatorScript)
 import PlutusTx qualified
+
+-- Addresses
+
+data AuctionScript = Escrow | StandingBid | FeeEscrow
+
+scriptValidatorForTerms :: AuctionScript -> AuctionTerms -> Validator
+scriptValidatorForTerms Escrow = escrowValidator
+scriptValidatorForTerms StandingBid = standingBidValidator
+scriptValidatorForTerms FeeEscrow = feeEscrowValidator
 
 -- State Tokens
 
@@ -21,6 +31,9 @@ policy terms =
 
 voucherCurrencySymbol :: AuctionTerms -> CurrencySymbol
 voucherCurrencySymbol = scriptCurrencySymbol . policy
+
+voucherAssetClass :: AuctionTerms -> AssetClass
+voucherAssetClass terms = AssetClass (voucherCurrencySymbol terms, stateTokenKindToTokenName Voucher)
 
 -- Escrow contract
 
@@ -62,4 +75,4 @@ feeEscrowValidator terms =
 
 {-# INLINEABLE feeEscrowAddress #-}
 feeEscrowAddress :: AuctionTerms -> FeeEscrowAddress
-feeEscrowAddress = FeeEscrowAddress . validatorAddress . standingBidValidator
+feeEscrowAddress = FeeEscrowAddress . validatorAddress . feeEscrowValidator
