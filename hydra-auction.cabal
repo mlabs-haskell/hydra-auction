@@ -115,6 +115,7 @@ library
   exposed-modules:
     HydraAuction.Addresses
     HydraAuction.OnChain
+    HydraAuction.PlutusExtras
     HydraAuction.Types
 
   other-modules:
@@ -122,7 +123,6 @@ library
     HydraAuction.OnChain.Escrow
     HydraAuction.OnChain.StandingBid
     HydraAuction.OnChain.StateToken
-    HydraAuction.PlutusExtras
 
   build-depends:
     , hydra-plutus
@@ -147,12 +147,12 @@ test-suite hydra-auction-test
     , containers
     , extra
     , filepath
+    , hydra-auction
     , hydra-cardano-api
     , hydra-cluster
     , hydra-node
     , hydra-prelude
     , hydra-test-utils
-    , hydra-auction
     , lens
     , lens-aeson
     , plutus-cbor
