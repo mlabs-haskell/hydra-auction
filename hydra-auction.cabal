@@ -147,6 +147,7 @@ test-suite hydra-auction-test
     , containers
     , extra
     , filepath
+    , hydra-auction
     , hydra-cardano-api
     , hydra-cluster
     , hydra-node
