@@ -4,7 +4,7 @@ import HydraAuction.Addresses
 import HydraAuction.OnChain.Common
 import HydraAuction.OnChain.StateToken (StateTokenKind (..), stateTokenKindToTokenName)
 import HydraAuction.Types
-import Plutus.V1.Ledger.Address (pubKeyHashAddress)
+import Plutus.V1.Ledger.Address (pubKeyHashAddress, scriptHashAddress)
 import Plutus.V1.Ledger.Interval (contains, from, interval)
 import Plutus.V1.Ledger.Value (assetClass, assetClassValueOf)
 import Plutus.V2.Ledger.Api (Address, TxInfo, TxOut, scriptContextTxInfo, txInInfoResolved, txInfoInputs, txInfoOutputs, txInfoValidRange, txOutValue)
@@ -12,8 +12,8 @@ import Plutus.V2.Ledger.Contexts (ScriptContext, txSignedBy)
 import PlutusTx.Prelude
 
 {-# INLINEABLE mkEscrowValidator #-}
-mkEscrowValidator :: (EscrowAddress, StandingBidAddress, FeeEscrowAddress, AuctionTerms) -> AuctionEscrowDatum -> EscrowRedeemer -> ScriptContext -> Bool
-mkEscrowValidator (EscrowAddress escrowAddressLocal, StandingBidAddress standingBidAddressLocal, FeeEscrowAddress feeEscrowAddressLocal, terms) _ redeemer context =
+mkEscrowValidator :: (StandingBidAddress, FeeEscrowAddress, AuctionTerms) -> AuctionEscrowDatum -> EscrowRedeemer -> ScriptContext -> Bool
+mkEscrowValidator (StandingBidAddress standingBidAddressLocal, FeeEscrowAddress feeEscrowAddressLocal, terms) _ redeemer context =
   traceIfFalse "AuctionTerms is invalid" (validAuctionTerms terms)
     && checkHasSingleEscrowInput
       ( \escrowInputOutput -> case redeemer of
@@ -62,7 +62,7 @@ mkEscrowValidator (EscrowAddress escrowAddressLocal, StandingBidAddress standing
         )
     checkStartBiddingOutputs =
       traceError "Not two outputs" (length outputs == 2)
-        && case byAddress escrowAddressLocal outputs of
+        && case byAddress (scriptHashAddress $ ownHash context) outputs of
           [out] -> traceIfFalse "Auction state is not started" $
             case isStarted <$> (auctionState <$> decodeOutputDatum info out) of
               Just True -> True
@@ -130,4 +130,4 @@ mkEscrowValidator (EscrowAddress escrowAddressLocal, StandingBidAddress standing
     outputs = txInfoOutputs info
     sellerAddress = pubKeyHashAddress $ seller terms
     escrowInputsOuts :: [TxOut]
-    escrowInputsOuts = byAddress escrowAddressLocal $ txInInfoResolved <$> txInfoInputs info
+    escrowInputsOuts = byAddress (scriptHashAddress $ ownHash context) $ txInInfoResolved <$> txInfoInputs info
