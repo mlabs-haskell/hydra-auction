@@ -223,15 +223,14 @@ spec = do
       withFile (workDir </> "test.log") ReadWriteMode $ \hdl ->
         withTracerOutputTo hdl "Test" $ \tracer -> do
           withCardanoNodeDevnet (contramap FromCardanoNode tracer) workDir $ \node@RunningNode{nodeSocket, networkId} -> do
-
-            let
-              nodeSocket = "/tmp/nix-shell.f12uM0/test-cluster247694/pool-1/node.socket"
-              networkId =  Testnet $ NetworkMagic 764824073
+            -- let
+            --   nodeSocket = "/tmp/nix-shell.f12uM0/test-cluster247694/pool-1/node.socket"
+            --   networkId =  Testnet $ NetworkMagic 764824073
 
             -- Mint initial ADA
 
-            -- (aliceCardanoVk, aliceCardanoSk) <- keysFor Alice
-            (aliceCardanoVk, aliceCardanoSk) <- myKeysFor "../plutip/wallets/signing-key-6c6b2aee64fe4b6d88a6e62e8133fe48a44b406789bd8635cde915ba.skey"
+            (aliceCardanoVk, aliceCardanoSk) <- keysFor Alice
+            -- (aliceCardanoVk, aliceCardanoSk) <- myKeysFor "../plutip/wallets/signing-key-6c6b2aee64fe4b6d88a6e62e8133fe48a44b406789bd8635cde915ba.skey"
             let initialAmount = 100_000_000
 
             slot <- queryTipSlotNo networkId nodeSocket
