@@ -29,7 +29,7 @@ escrowValidator :: AuctionTerms -> Validator
 escrowValidator terms =
   mkValidatorScript $
     $$(PlutusTx.compile [||wrapValidator . mkEscrowValidator||])
-      `PlutusTx.applyCode` PlutusTx.liftCode (escrowAddress terms, standingBidAddress terms, feeEscrowAddress terms, terms)
+      `PlutusTx.applyCode` PlutusTx.liftCode (standingBidAddress terms, feeEscrowAddress terms, terms)
 
 {-# INLINEABLE escrowAddress #-}
 escrowAddress :: AuctionTerms -> EscrowAddress
