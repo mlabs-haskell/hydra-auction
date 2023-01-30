@@ -15,11 +15,9 @@ common common-lang
   ghc-options:
     -Wall -Wcompat -Wincomplete-record-updates
     -Wincomplete-uni-patterns -Wredundant-constraints
-    -Wmissing-export-lists -Wmissing-deriving-strategies
-    -fobject-code -fno-ignore-interface-pragmas
-    -fno-omit-interface-pragmas
-    -fno-strictness
-    -O2
+    -Wmissing-export-lists -Wmissing-deriving-strategies -fobject-code
+    -fno-ignore-interface-pragmas -fno-omit-interface-pragmas
+    -fno-strictness -O2
 
   build-depends:
     , async
@@ -117,10 +115,10 @@ library
   exposed-modules:
     HydraAuction.Addresses
     HydraAuction.OnChain
-    HydraAuction.Types
     HydraAuction.OnChain.Common
-    HydraAuction.PlutusExtras
     HydraAuction.OnChain.StateToken
+    HydraAuction.PlutusExtras
+    HydraAuction.Types
 
   other-modules:
     HydraAuction.OnChain.Escrow
@@ -141,14 +139,15 @@ test-suite hydra-auction-test
   other-modules:
     EndToEnd.Spec
     OnChain.Spec
+
   build-depends:
-    , hydra-auction
     , aeson
     , bytestring
     , cardano-api
     , containers
     , extra
     , filepath
+    , hydra-auction
     , hydra-cardano-api
     , hydra-cluster
     , hydra-node

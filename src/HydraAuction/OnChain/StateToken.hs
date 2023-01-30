@@ -20,6 +20,7 @@ stateTokenKindToTokenName Voucher = TokenName "Voucher"
 {-# INLINEABLE mkPolicy #-}
 mkPolicy :: () -> ScriptContext -> Bool
 mkPolicy () _ = True
+
 --   traceIfFalse "AuctionTerms is invalid" (validAuctionTerms terms)
 --     && ( case onlyVoucherForgedCount of
 --           Just x ->

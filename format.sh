@@ -21,6 +21,7 @@ fi
 
 find . -type f -name '*.hs' ! -path '*/dist-newstyle/*' -exec \
 	fourmolu \
+    -o-XBangPatterns \
 		-o-XTypeApplications \
 		-o-XQualifiedDo \
 		-o-XNondecreasingIndentation \

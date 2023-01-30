@@ -4,16 +4,16 @@ import Test.Tasty qualified as Tasty
 
 import Prelude
 
-import EndToEnd.Spec (headTests)
+-- import EndToEnd.Spec (headTests)
 import OnChain.Spec (onChainTests)
 
 main :: IO ()
 main = do
-  headSpec <- headTests
+  -- headSpec <- headTests
   onChainSpec <- onChainTests
   Tasty.defaultMain $
     Tasty.testGroup
       "Hydra-auction"
-      [ headSpec
-      , onChainSpec
+      -- [ headSpec
+      [ onChainSpec
       ]

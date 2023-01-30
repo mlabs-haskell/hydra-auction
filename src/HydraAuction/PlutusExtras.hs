@@ -4,15 +4,15 @@ module HydraAuction.PlutusExtras (module X, validatorAddress, scriptCurrencySymb
 import Hydra.Prelude hiding (fromMaybe)
 
 import Hydra.Cardano.Api (
+  PlutusScriptV2,
   SerialiseAsRawBytes (serialiseToRawBytes),
   fromPlutusScript,
   hashScript,
   pattern PlutusScript,
-  PlutusScriptV2
  )
 import Plutus.Extras as X
 import Plutus.V1.Ledger.Address (Address, scriptHashAddress)
-import Plutus.V1.Ledger.Api (Validator )
+import Plutus.V1.Ledger.Api (Validator)
 import Plutus.V1.Ledger.Scripts (MintingPolicy, unMintingPolicyScript, unValidatorScript)
 import Plutus.V1.Ledger.Value (CurrencySymbol (..))
 import PlutusTx.Prelude (toBuiltin)
@@ -29,4 +29,3 @@ scriptCurrencySymbol =
     . PlutusScript
     . fromPlutusScript
     . unMintingPolicyScript
-
