@@ -8,10 +8,11 @@ import Hydra.Cardano.Api (
   fromPlutusScript,
   hashScript,
   pattern PlutusScript,
+  PlutusScriptV2
  )
 import Plutus.Extras as X
 import Plutus.V1.Ledger.Address (Address, scriptHashAddress)
-import Plutus.V1.Ledger.Api (Validator)
+import Plutus.V1.Ledger.Api (Validator )
 import Plutus.V1.Ledger.Scripts (MintingPolicy, unMintingPolicyScript, unValidatorScript)
 import Plutus.V1.Ledger.Value (CurrencySymbol (..))
 import PlutusTx.Prelude (toBuiltin)

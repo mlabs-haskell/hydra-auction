@@ -1,6 +1,6 @@
 module OnChain.Spec (onChainTests) where
 
-import PlutusTx.Prelude (traceError, check)
+-- import PlutusTx.Prelude (traceError, check)
 import Hydra.Prelude
 import Test.Hydra.Prelude
 
@@ -11,7 +11,7 @@ import HydraAuction.Addresses
 import HydraAuction.OnChain.Common
 import HydraAuction.OnChain
 import Plutus.V1.Ledger.Time (POSIXTime(..))
-import Cardano.Api (collateralSupportedInEra)
+-- import Cardano.Api (collateralSupportedInEra)
 import Hydra.Cardano.Api -- TODO
 import Hydra.Cardano.Api (
   txOutAddress,
@@ -63,6 +63,7 @@ import Hydra.Ledger.Cardano.Builder (
   setValidityUpperBound,
   unsafeBuildTransaction,
  )
+import qualified Data.Map.Internal as Map
 import System.FilePath ((</>))
 import HydraNode (
   EndToEndLog (FromCardanoNode, FromFaucet),
@@ -116,7 +117,7 @@ import PlutusTx.Prelude (emptyByteString)
 import qualified Data.ByteString as BS
 import qualified Data.Aeson as Aeson
 import Plutus.V1.Ledger.Value (AssetClass, assetClass)
-import Plutus.V2.Ledger.Api (
+import Plutus.V1.Ledger.Api (
   Data,
   MintingPolicy (getMintingPolicy),
   POSIXTime (..),
@@ -134,6 +135,7 @@ import Hydra.Cardano.Api (
   fromPlutusScript,
   hashScript,
   pattern PlutusScript,
+  PlutusScriptV2
  )
 import Plutus.V1.Ledger.Address (Address, scriptHashAddress)
 import Plutus.V1.Ledger.Api (Validator)
@@ -150,6 +152,24 @@ onChainTests = do
 workDir = "./temp-cardano-node"
 
 ---
+
+
+-- | Mint tokens with given plutus minting script and redeemer.TxMintValue
+mintedTokens :: ToScriptData redeemer =>  PlutusScript -> redeemer -> [(AssetName, Quantity)]  -> TxMintValue BuildTx
+mintedTokens script redeemer assets =
+  TxMintValue mintedTokens' mintedWitnesses'
+ where
+  mintedTokens' = valueFromList (fmap (first (AssetId policyId)) assets)
+
+  mintedWitnesses' =
+    BuildTxWith $ Map.singleton policyId mintingWitness
+
+  mintingWitness :: ScriptWitness WitCtxMint
+  mintingWitness =
+    mkScriptWitness script NoScriptDatumForMint (toScriptData redeemer)
+
+  policyId =
+    PolicyId $ hashScript $ PlutusScript script
 
 tokenToAsset :: TokenName -> AssetName
 tokenToAsset (TokenName t) = AssetName $ fromBuiltin t
@@ -204,14 +224,14 @@ spec = do
         withTracerOutputTo hdl "Test" $ \tracer -> do
           withCardanoNodeDevnet (contramap FromCardanoNode tracer) workDir $ \node@RunningNode{nodeSocket, networkId} -> do
 
-            -- let
-            --   nodeSocket = "/tmp/nix-shell.u4wSm2/test-cluster3957/pool-1/node.socket"
-            --   networkId = Mainnet -- Testnet $ NetworkMagic 764824073
+            let
+              nodeSocket = "/tmp/nix-shell.f12uM0/test-cluster247694/pool-1/node.socket"
+              networkId =  Testnet $ NetworkMagic 764824073
 
             -- Mint initial ADA
 
-            (aliceCardanoVk, aliceCardanoSk) <- keysFor Alice
-            -- (aliceCardanoVk, aliceCardanoSk) <- myKeysFor "../plutip/wallets/signing-key-45c20350baa12aa5807479cdb60cf40b89f7cebc709f2fcdc7a70114.skey"
+            -- (aliceCardanoVk, aliceCardanoSk) <- keysFor Alice
+            (aliceCardanoVk, aliceCardanoSk) <- myKeysFor "../plutip/wallets/signing-key-6c6b2aee64fe4b6d88a6e62e8133fe48a44b406789bd8635cde915ba.skey"
             let initialAmount = 100_000_000
 
             slot <- queryTipSlotNo networkId nodeSocket
@@ -248,15 +268,6 @@ spec = do
             let !valueOut = (fromPlutusValue $ assetClassValue allowMintingAssetClass 1) <> lovelaceToValue returnedValue1
             let !txOut1 = TxOut (ShelleyAddressInEra aliceAddress) valueOut TxOutDatumNone ReferenceScriptNone
             let (!txIn, _) = fromJust $ viaNonEmpty head $ UTxO.pairs utxo
-            let builder =
-                      emptyTxBody {
-                        txFee = TxFeeExplicit fee,
-                        txInsCollateral = (TxInsCollateral [txIn]),
-                        txProtocolParams = BuildTxWith $ Just pparams
-                        }
-                        & addVkInputs [txIn]
-                        & addOutputs [txOut1]
-                        & mintTokens (fromPlutusScript $ getMintingPolicy allowMintingPolicy) () [(tokenToAsset $ TokenName emptyByteString,  1)]
 
             -- let unsignedTx = unsafeBuildTransaction builder
             putStrLn "Pre prebody"
@@ -277,7 +288,7 @@ spec = do
                       TxWithdrawalsNone
                       TxCertificatesNone
                       TxUpdateProposalNone
-                      (txMintValue builder)
+                      (mintedTokens (fromPlutusScript @PlutusScriptV2 $ getMintingPolicy allowMintingPolicy) () [(tokenToAsset $ TokenName emptyByteString,  1)])
                       TxScriptValidityNone
 
             body <- either (\x -> (putStrLn $ show x) >> undefined ) (pure) (
@@ -324,10 +335,10 @@ spec = do
                 biddingStart = POSIXTime 0,
                 biddingEnd = POSIXTime 100,
                 voucherExpiry = POSIXTime 1000,
-                cleanup = POSIXTime 0,
+                cleanup = POSIXTime 10001,
                 auctionFee = fromJust $ intToNatural 2_000_000,
-                startingBid = fromJust $ intToNatural 1,
-                minimumBidIncrement = fromJust $ intToNatural 1,
+                startingBid = fromJust $ intToNatural 2_000_000,
+                minimumBidIncrement = fromJust $ intToNatural 2_000_000,
                 utxoRef = toPlutusTxOutRef txIn2
               }
 
@@ -368,13 +379,12 @@ spec = do
             putStrLn "Pre prebody"
             putStrLn $ show txIn2
 
-            let toMint = txMintValue $ emptyTxBody & mintTokens (fromPlutusScript $ getMintingPolicy (policy terms)) () [(tokenToAsset $ stateTokenKindToTokenName Voucher,  1)]
             let voucherAssetClass = AssetClass (voucherCurrencySymbol terms, (stateTokenKindToTokenName Voucher))
 
             let !valueOut = (fromPlutusValue $ assetClassValue allowMintingAssetClass 1) <> (fromPlutusValue $ assetClassValue voucherAssetClass 1) <> lovelaceToValue returnedValue1
             putStrLn "Post value out"
-            -- let !a = mkScriptAddress @PlutusScriptV2 networkId $ fromPlutusScript $ getValidator $ escrowValidator terms
-            let !txOut3 = TxOut (ShelleyAddressInEra aliceAddress) valueOut (TxOutDatumHash atDatumHash) ReferenceScriptNone
+            let !a = mkScriptAddress @PlutusScriptV2 networkId $ fromPlutusScript @PlutusScriptV2 $ getValidator $ escrowValidator terms
+            let !txOut3 = TxOut (a) valueOut (TxOutDatumHash atDatumHash) ReferenceScriptNone
 
             let !preBody =
                     TxBodyContent
@@ -393,7 +403,7 @@ spec = do
                       TxWithdrawalsNone
                       TxCertificatesNone
                       TxUpdateProposalNone
-                      (toMint)
+                      (mintedTokens (fromPlutusScript @PlutusScriptV2 $ getMintingPolicy (policy terms)) () [(tokenToAsset $ stateTokenKindToTokenName Voucher,  1)])
                       TxScriptValidityNone
 
             putStrLn "Post prebbody"

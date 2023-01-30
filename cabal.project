@@ -78,6 +78,9 @@ constraints:
   , ouroboros-consensus-test == 0.1.0.0
   , typed-protocols-examples == 0.1.0.0
   , typed-protocols == 0.1.0.0
+  , plutus-core == 1.0.0.0
+  , plutus-tx == 1.0.0.0
+  , plutus-tx-plugin == 1.0.0.0
 
 allow-newer:
   *:aeson,

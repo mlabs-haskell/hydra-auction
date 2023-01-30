@@ -115,7 +115,7 @@ instance Eq AuctionTerms where
       && (minimumBidIncrement x == minimumBidIncrement y)
       && (utxoRef x == utxoRef y)
 
-newtype ApprovedBidders = ApprovedBidders
+data ApprovedBidders = ApprovedBidders
   { -- | Which bidders are approved to submit bids?
     bidders :: [PubKeyHash]
   }
@@ -171,7 +171,7 @@ instance Eq AuctionState where
   _ == _ = False
 
 -- | FIXME: Bytetring will be changed to actuall hash
-newtype ApprovedBiddersHash = ApprovedBiddersHash Plutus.BuiltinByteString
+data ApprovedBiddersHash = ApprovedBiddersHash Plutus.BuiltinByteString
   deriving stock (Generic, Prelude.Show, Prelude.Eq)
 {- ^ This hash is calculated from the `ApprovedBidders` value that the seller
  fixes for the auction.
@@ -214,7 +214,7 @@ instance Eq StandingBidDatum where
 PlutusTx.makeIsDataIndexed ''StandingBidDatum [('StandingBidDatum, 0)]
 PlutusTx.makeLift ''StandingBidDatum
 
-newtype BidDepositDatum = BidDepositDatum
+data BidDepositDatum = BidDepositDatum
   { -- | Which bidder made this deposit?
     bidder :: PubKeyHash
   }

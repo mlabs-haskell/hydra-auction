@@ -18,6 +18,7 @@ common common-lang
     -Wmissing-export-lists -Wmissing-deriving-strategies
     -fobject-code -fno-ignore-interface-pragmas
     -fno-omit-interface-pragmas
+    -fno-strictness
     -O2
 
   build-depends:
