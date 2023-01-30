@@ -22,12 +22,15 @@ PlutusTx.makeLift ''VoucherCS
 
 newtype EscrowAddress = EscrowAddress {unEscrowAddress :: Address}
 
+PlutusTx.makeIsDataIndexed ''EscrowAddress [('EscrowAddress, 0)]
 PlutusTx.makeLift ''EscrowAddress
 
 newtype StandingBidAddress = StandingBidAddress {unStandingBidAddress :: Address}
 
+PlutusTx.makeIsDataIndexed ''StandingBidAddress [('StandingBidAddress, 0)]
 PlutusTx.makeLift ''StandingBidAddress
 
 newtype FeeEscrowAddress = FeeEscrowAddress {unFeeEscrowAddress :: Address}
 
+PlutusTx.makeIsDataIndexed ''FeeEscrowAddress [('FeeEscrowAddress, 0)]
 PlutusTx.makeLift ''FeeEscrowAddress

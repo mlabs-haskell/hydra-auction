@@ -4,6 +4,7 @@ module HydraAuction.Types (
   isStarted,
   intToNatural,
   naturalToInt,
+  MyPair (..),
   BidTerms (..),
   StandingBidState (..),
   StandingBidDatum (..),
@@ -93,6 +94,11 @@ data AuctionTerms = AuctionTerms
 
 PlutusTx.makeIsDataIndexed ''AuctionTerms [('AuctionTerms, 0)]
 PlutusTx.makeLift ''AuctionTerms
+
+data MyPair a b = MyPair a b
+
+PlutusTx.makeIsDataIndexed ''MyPair [('MyPair, 0)]
+PlutusTx.makeLift ''MyPair
 
 instance Eq AuctionTerms where
   {-# INLINEABLE (==) #-}

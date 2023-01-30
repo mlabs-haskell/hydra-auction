@@ -6,7 +6,7 @@ import HydraAuction.OnChain.StateToken (StateTokenKind (..), stateTokenKindToTok
 import HydraAuction.Types
 import Plutus.V1.Ledger.Address (pubKeyHashAddress, scriptHashAddress)
 import Plutus.V1.Ledger.Api (Address, TxInfo, TxOut, scriptContextTxInfo, txInInfoResolved, txInfoInputs, txInfoOutputs, txInfoValidRange, txOutValue)
-import Plutus.V1.Ledger.Contexts (ownHash, ScriptContext, txSignedBy)
+import Plutus.V1.Ledger.Contexts (ScriptContext, ownHash, txSignedBy)
 import Plutus.V1.Ledger.Interval (contains, from, interval)
 import Plutus.V1.Ledger.Value (assetClass, assetClassValueOf)
 import PlutusTx.Prelude

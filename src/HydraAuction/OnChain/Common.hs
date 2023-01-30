@@ -7,7 +7,7 @@ import PlutusTx.Prelude
 import HydraAuction.Types
 import Plutus.V1.Ledger.Api (Address, CurrencySymbol (..), POSIXTime (..), TokenName (..), fromBuiltinData, getDatum)
 import Plutus.V1.Ledger.Contexts (TxInfo, TxOut, findDatum, txOutAddress, txOutDatumHash, txOutValue)
-import Plutus.V1.Ledger.Value (assetClass, assetClassValueOf, AssetClass)
+import Plutus.V1.Ledger.Value (AssetClass, assetClass, assetClassValueOf)
 import PlutusTx qualified
 
 {-# INLINEABLE minAuctionFee #-}

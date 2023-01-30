@@ -26,15 +26,17 @@ source-repository-package
       hydra-node
       plutus-cbor
 
+
 -- source-repository-package
 --     type: git
---     location: https://github.com/mlabs-haskell/plutus-apps
---     tag: 28bbb7bab90e0932bc52ccccca0748e91facceac
+--     location: https://github.com/input-output-hk/plutus
+--     tag: 867fd234301d28525404de839d9a3c8220cbea63
 --     --sha256: iBAqp/XiKBQAK/2HF/3eHgomlSUCntlySa/t4xEhx2Q=
 --     subdir:
---       plutus-ledger
---       plutus-script-utils
---       freer-extras
+--       plutus-core
+--       plutus-tx
+--       plutus-tx-plugin
+--       word-array
 
 -- See CONTRIBUTING.md for information about when and how to update these.
 
@@ -69,9 +71,6 @@ constraints:
   , cardano-crypto-tests == 2.0.0
   , measures == 0.1.0.0
   , orphans-deriving-via == 0.1.0.0
-  , plutus-core == 1.0.0.0
-  , plutus-tx == 1.0.0.0
-  , plutus-tx-plugin == 1.0.0.0
   , prettyprinter-configurable == 0.1.0.0
   , plutus-ghc-stub == 8.6.5
   , word-array == 0.1.0.0

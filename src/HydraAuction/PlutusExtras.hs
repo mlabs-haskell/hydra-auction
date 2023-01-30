@@ -28,3 +28,4 @@ scriptCurrencySymbol =
     . PlutusScript
     . fromPlutusScript
     . unMintingPolicyScript
+

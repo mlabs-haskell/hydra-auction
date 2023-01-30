@@ -24,6 +24,7 @@ find . -type f -name '*.hs' ! -path '*/dist-newstyle/*' -exec \
       -XNondecreasingIndentation \
       -XPatternSynonyms \
       -XQualifiedDo \
+      -XBangPatterns \
       ${refactor:+"--refactor"} \
       ${refactor:+"--refactor-options=-i"} \
       -i "Use null" \

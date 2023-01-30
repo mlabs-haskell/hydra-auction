@@ -1,12 +1,15 @@
 module OnChain.Spec (onChainTests) where
 
+import PlutusTx.Prelude (traceError, check)
 import Hydra.Prelude
 import Test.Hydra.Prelude
 
 import CardanoNode (RunningNode (..), withCardanoNodeDevnet)
 import Cardano.Api.UTxO as UTxO
 import HydraAuction.Types
+import HydraAuction.Addresses
 import HydraAuction.OnChain.Common
+import HydraAuction.OnChain
 import Plutus.V1.Ledger.Time (POSIXTime(..))
 import Cardano.Api (collateralSupportedInEra)
 import Hydra.Cardano.Api -- TODO
@@ -125,9 +128,18 @@ import Plutus.V2.Ledger.Api (
   toBuiltinData,
   toData,
  )
--- import Test.Plutip.Internal.BotPlutusInterface.Wallet (BpiWallet, addSomeWallet)
--- import Test.Plutip.LocalCluster (waitSeconds)
--- import Test.Plutip.Internal.Types
+import PlutusTx.IsData.Class (UnsafeFromData (unsafeFromBuiltinData))
+import Hydra.Cardano.Api (
+  SerialiseAsRawBytes (serialiseToRawBytes),
+  fromPlutusScript,
+  hashScript,
+  pattern PlutusScript,
+ )
+import Plutus.V1.Ledger.Address (Address, scriptHashAddress)
+import Plutus.V1.Ledger.Api (Validator)
+import Plutus.V1.Ledger.Scripts (MintingPolicy, unMintingPolicyScript, unValidatorScript)
+import Plutus.V1.Ledger.Value (CurrencySymbol (..))
+import PlutusTx.Prelude (toBuiltin)
 
 ---
 
@@ -135,17 +147,20 @@ onChainTests :: IO TestTree
 onChainTests = do
   testSpec "OnChain" spec
 
-workDir = "."
+workDir = "./temp-cardano-node"
 
 ---
 
 tokenToAsset :: TokenName -> AssetName
 tokenToAsset (TokenName t) = AssetName $ fromBuiltin t
 
+-- {-# INLINEABLE wrap #-}
+-- wrap = \f -> \r p -> check (f (unsafeFromBuiltinData r) (unsafeFromBuiltinData p))
+
 allowMintingPolicy :: MintingPolicy
 allowMintingPolicy =
   mkMintingPolicyScript $
-    $$(PlutusTx.compile [||wrapMintingPolicy mkAllowMintingPolicy||])
+    $$(PlutusTx.compile [||\_ _ -> ()||])
 
 allowMintingCurrencySymbol :: CurrencySymbol
 allowMintingCurrencySymbol = scriptCurrencySymbol allowMintingPolicy
@@ -184,152 +199,229 @@ myKeysFor path = do
 spec :: Spec
 spec = do
   specify "Test E2E" $ do
-    withFile (workDir </> "test.log") ReadWriteMode $ \hdl ->
-      withTracerOutputTo hdl "Test" $ \tracer -> do
-        withCardanoNodeDevnet (contramap FromCardanoNode tracer) workDir $ \node@RunningNode{nodeSocket, networkId} -> do
+    withTempDir "hydra-cluster" $ \workDir ->
+      withFile (workDir </> "test.log") ReadWriteMode $ \hdl ->
+        withTracerOutputTo hdl "Test" $ \tracer -> do
+          withCardanoNodeDevnet (contramap FromCardanoNode tracer) workDir $ \node@RunningNode{nodeSocket, networkId} -> do
 
-          -- let
-          --   nodeSocket = "/tmp/nix-shell.u4wSm2/test-cluster3957/pool-1/node.socket"
-          --   networkId = Mainnet -- Testnet $ NetworkMagic 764824073
+            -- let
+            --   nodeSocket = "/tmp/nix-shell.u4wSm2/test-cluster3957/pool-1/node.socket"
+            --   networkId = Mainnet -- Testnet $ NetworkMagic 764824073
 
-          -- Mint initial ADA
+            -- Mint initial ADA
 
-          (aliceCardanoVk, aliceCardanoSk) <- keysFor Alice
-          -- (aliceCardanoVk, aliceCardanoSk) <- myKeysFor "../plutip/wallets/signing-key-45c20350baa12aa5807479cdb60cf40b89f7cebc709f2fcdc7a70114.skey"
-          let initialAmount = 100_000_000
-          -- putStrLn $ "Pre-faucet"
-          -- seedFromFaucet_ node aliceCardanoVk initialAmount Normal (contramap FromFaucet tracer)
-          -- putStrLn $ "Post-faucet"
+            (aliceCardanoVk, aliceCardanoSk) <- keysFor Alice
+            -- (aliceCardanoVk, aliceCardanoSk) <- myKeysFor "../plutip/wallets/signing-key-45c20350baa12aa5807479cdb60cf40b89f7cebc709f2fcdc7a70114.skey"
+            let initialAmount = 100_000_000
 
-          let aliceAddress = buildAddress aliceCardanoVk networkId
-          putStrLn $ show aliceAddress
-          -- putStrLn $ "Address :" <> show $ toLedgerAddr aliceAddress
+            slot <- queryTipSlotNo networkId nodeSocket
+            putStrLn $ show slot
+
+            -- putStrLn $ "Pre-faucet"
+            seedFromFaucet_ node aliceCardanoVk initialAmount Normal (contramap FromFaucet tracer)
+            putStrLn $ "Post-faucet"
+
+            let aliceAddress = buildAddress aliceCardanoVk networkId
+            putStrLn $ show aliceAddress
+            -- putStrLn $ "Address :" <> show $ toLedgerAddr aliceAddress
+
+            utxo <- queryUTxOFor networkId nodeSocket QueryTip aliceCardanoVk
+            -- let utxo = fromJust $ viaNonEmpty head utxos
+            let utxoAddress = fromJust $ viaNonEmpty last $ txOutAddress <$> toList utxo
 
 
-          utxo <- queryUTxOFor networkId nodeSocket QueryTip aliceCardanoVk
-          -- let utxo = fromJust $ viaNonEmpty head utxos
-          let utxoAddress = fromJust $ viaNonEmpty tail $ txOutAddress <$> toList utxo
+            -- Mint 1
 
-          -- Terms
+            putStrLn $ "VK :" <> show aliceCardanoVk
+            putStrLn $ "Utxo :" <> show utxo
 
-          let terms = AuctionTerms {
-              auctionLot = adaAssetClass,
-              seller = toPlutusKeyHash $ verificationKeyHash aliceCardanoVk,
-              delegates = [],
-              biddingStart = POSIXTime 0,
-              biddingEnd = POSIXTime 0,
-              voucherExpiry = POSIXTime 0,
-              cleanup = POSIXTime 0,
-              auctionFee = fromJust $ intToNatural 2_000_000,
-              startingBid = fromJust $ intToNatural 0,
-              minimumBidIncrement = fromJust $ intToNatural 0,
-              utxoRef = toPlutusTxOutRef $ fst $ fromJust $ viaNonEmpty head $ pairs utxo
-            }
+            let fee = Lovelace 172805
+            let !returnedValue1 = 2_000_000 :: Lovelace
+            let !returnedValue2 = initialAmount - returnedValue1 - fee
+            putStrLn $ "Values " <> show returnedValue1 <> " " <> show returnedValue2
 
-          --
+            pparams <- queryProtocolParameters networkId nodeSocket QueryTip
+            systemStart <- querySystemStart networkId nodeSocket QueryTip
+            eraHistory <- queryEraHistory networkId nodeSocket QueryTip
+            stakePools <- queryStakePools networkId nodeSocket QueryTip
 
-          -- Mint 1
+            let !valueOut = (fromPlutusValue $ assetClassValue allowMintingAssetClass 1) <> lovelaceToValue returnedValue1
+            let !txOut1 = TxOut (ShelleyAddressInEra aliceAddress) valueOut TxOutDatumNone ReferenceScriptNone
+            let (!txIn, _) = fromJust $ viaNonEmpty head $ UTxO.pairs utxo
+            let builder =
+                      emptyTxBody {
+                        txFee = TxFeeExplicit fee,
+                        txInsCollateral = (TxInsCollateral [txIn]),
+                        txProtocolParams = BuildTxWith $ Just pparams
+                        }
+                        & addVkInputs [txIn]
+                        & addOutputs [txOut1]
+                        & mintTokens (fromPlutusScript $ getMintingPolicy allowMintingPolicy) () [(tokenToAsset $ TokenName emptyByteString,  1)]
 
-          putStrLn $ "VK :" <> show aliceCardanoVk
-          putStrLn $ "Utxo :" <> show utxo
+            -- let unsignedTx = unsafeBuildTransaction builder
+            putStrLn "Pre prebody"
+            let preBody =
+                    TxBodyContent
+                      (withWitness <$> toList (UTxO.inputSet utxo))
+                      (TxInsCollateral [txIn])
+                      TxInsReferenceNone
+                      [txOut1]
+                      TxTotalCollateralNone
+                      TxReturnCollateralNone
+                      (TxFeeExplicit 0)
+                      (TxValidityNoLowerBound, TxValidityNoUpperBound)
+                      TxMetadataNone
+                      TxAuxScriptsNone
+                      TxExtraKeyWitnessesNone
+                      (BuildTxWith $ Just pparams)
+                      TxWithdrawalsNone
+                      TxCertificatesNone
+                      TxUpdateProposalNone
+                      (txMintValue builder)
+                      TxScriptValidityNone
 
-          let fee = Lovelace 167129
-          let !returnedValue1 = 2_000_000 :: Lovelace
-          let !returnedValue2 = initialAmount - returnedValue1 - fee
-          putStrLn $ "Values " <> show returnedValue1 <> " " <> show returnedValue2
+            body <- either (\x -> (putStrLn $ show x) >> undefined ) (pure) (
+                        second balancedTxBody $ makeTransactionBodyAutoBalance
+                          BabbageEraInCardanoMode -- TODO
+                          systemStart
+                          eraHistory
+                          pparams
+                          stakePools
+                          (UTxO.toApi utxo)
+                          preBody
+                          (ShelleyAddressInEra aliceAddress)
+                          Nothing
+                        )
+            -- let body = getTxBody unsignedTx
+            putStrLn $ "Body: " <> show body
 
-          pparams <- queryProtocolParameters networkId nodeSocket QueryTip
-          systemStart <- querySystemStart networkId nodeSocket QueryTip
-          eraHistory <- queryEraHistory networkId nodeSocket QueryTip
-          stakePools <- queryStakePools networkId nodeSocket QueryTip
+            -- let wit = signWith (getTxId (getTxBody unsignedTx)) aliceCardanoSk
+            let wit = makeShelleyKeyWitness (body) (WitnessPaymentKey aliceCardanoSk)
+            putStrLn "Before"
 
-          let !valueOut = (fromPlutusValue $ assetClassValue allowMintingAssetClass 1) <> lovelaceToValue returnedValue1
-          let !txOut1 = TxOut (ShelleyAddressInEra aliceAddress) valueOut TxOutDatumNone ReferenceScriptNone
-          let !txOut2 = TxOut (ShelleyAddressInEra aliceAddress) (lovelaceToValue $ returnedValue2) TxOutDatumNone ReferenceScriptNone
-          let (!txIn, _) = fromJust $ viaNonEmpty head $ UTxO.pairs utxo
-          let unsignedTx = unsafeBuildTransaction $
-                    emptyTxBody {
-                      txFee = TxFeeExplicit fee
-                      -- txReturnCollateral = TxReturnCollateral
-                      -- txTotalCollateral = TxTotalCollateral collateralSupportedInEra [txIn]
-                      }
-                      & addVkInputs [txIn]
-                      & addOutputs [txOut1, txOut2]
-                      & mintTokens (fromPlutusScript $ getMintingPolicy allowMintingPolicy) () [(tokenToAsset $ TokenName emptyByteString,  1)]
+            -- let scriptWitness = mkScriptWitness (getMintingPolicy allowMintingPolicy) TxOutDatumNone
+            let tx = makeSignedTransaction [wit] (body)
+            putStrLn "Signed"
 
-          -- putStrLn "Pre prebody"
-          -- let !w = withWitness <$> toList (UTxO.inputSet utxo)
-          -- putStrLn "Post w"
-          -- let preBody =
-          --         TxBodyContent
-          --           (w)
-          --           (TxInsCollateral [txIn])
-          --           TxInsReferenceNone
-          --           [txOut1, txOut2]
-          --           TxTotalCollateralNone
-          --           TxReturnCollateralNone
-          --           (TxFeeExplicit 0)
-          --           (TxValidityNoLowerBound, TxValidityNoUpperBound)
-          --           TxMetadataNone
-          --           TxAuxScriptsNone
-          --           TxExtraKeyWitnessesNone
-          --           (BuildTxWith $ Just pparams)
-          --           TxWithdrawalsNone
-          --           TxCertificatesNone
-          --           TxUpdateProposalNone
-          --           TxMintValueNone
-          --           TxScriptValidityNone
+            submitTransaction networkId nodeSocket tx
+            putStrLn "Submited"
 
-          -- body <- either (\x -> (putStrLn $ show x) >> undefined ) (pure) (
-          --             second balancedTxBody $ makeTransactionBodyAutoBalance
-          --               BabbageEraInCardanoMode -- TODO
-          --               systemStart
-          --               eraHistory
-          --               pparams
-          --               stakePools
-          --               (UTxO.toApi utxo)
-          --               preBody
-          --               (ShelleyAddressInEra aliceAddress)
-          --               Nothing
-          --             )
-          let body = getTxBody unsignedTx
-          putStrLn $ "Body: " <> show body
+            slot <- queryTipSlotNo networkId nodeSocket
+            putStrLn $ show slot
+            void $ awaitTransaction networkId nodeSocket tx
+            putStrLn "Awaited"
 
-          -- let wit = signWith (getTxId (getTxBody unsignedTx)) aliceCardanoSk
-          let wit = makeShelleyKeyWitness (body) (WitnessPaymentKey aliceCardanoSk)
-          putStrLn "Before"
-          let tx = makeSignedTransaction [wit] (body)
-          putStrLn "Signed"
+            -- Terms
 
-          submitTransaction networkId nodeSocket tx
-          putStrLn "Submited"
-          void $ awaitTransaction networkId nodeSocket tx
-          putStrLn "Awaited"
+            !utxo <- queryUTxOFor networkId nodeSocket QueryTip aliceCardanoVk
+            putStrLn $ show utxo
+            let (!txIn2, _) = fromJust $ viaNonEmpty last $ UTxO.pairs utxo
 
-          return ()
+            let !terms = AuctionTerms {
+                auctionLot = adaAssetClass,
+                seller = toPlutusKeyHash $ verificationKeyHash aliceCardanoVk,
+                delegates = [],
+                biddingStart = POSIXTime 0,
+                biddingEnd = POSIXTime 100,
+                voucherExpiry = POSIXTime 1000,
+                cleanup = POSIXTime 0,
+                auctionFee = fromJust $ intToNatural 2_000_000,
+                startingBid = fromJust $ intToNatural 1,
+                minimumBidIncrement = fromJust $ intToNatural 1,
+                utxoRef = toPlutusTxOutRef txIn2
+              }
 
-          -- Auction init
+            -- Auction init
 
-          -- let mp = policy terms
+            let mp = policy terms
 
-          -- let atDatum :: Data
-          --     atDatum = toData $ toBuiltinData $ AuctionEscrowDatum Announced (VoucherCS $ scriptCurrencySymbol mp)
+            putStrLn "HERE"
+            let !atDatum' = AuctionEscrowDatum Announced (VoucherCS $ scriptCurrencySymbol mp)
 
-          -- let atDatumHash :: Hash ScriptData
-          --     atDatumHash = hashScriptData $ fromPlutusData atDatum
+            putStrLn "HERE"
 
-          -- -- let x = mkScriptAddress @PlutusScriptV2 networkId $ fromPlutusScript $ getValidator $ escrowValidator terms
+            let atDatum :: Data
+                !atDatum = toData $ toBuiltinData $ atDatum'
 
-          -- let fee = Lovelace 167129
-          -- let returnedValue = initialAmount - fee
-          -- let value = fromPlutusValue $ assetClassValue allowMintingAssetClass 1
-          -- let txOut = TxOut (ShelleyAddressInEra aliceAddress) value TxOutDatumNone ReferenceScriptNone
-          -- let txOut2 = TxOut (ShelleyAddressInEra aliceAddress) (lovelaceToValue $ returnedValue) TxOutDatumNone ReferenceScriptNone
-          -- let (txIn, _) = fromJust $ viaNonEmpty head $ UTxO.pairs utxo
-          -- let tx = unsafeBuildTransaction $
-          --           emptyTxBody { txFee = TxFeeExplicit fee }
-          --             & addVkInputs [txIn]
-          --             & addOutputs [txOut]
-          --             -- & mintTokens PlutusScript () []
-          -- submitTransaction networkId nodeSocket tx
-          -- void $ awaitTransaction networkId nodeSocket tx
+            putStrLn "HERE"
+
+            let !x = fromPlutusData atDatum
+
+            putStrLn "HERE 1"
+
+            putStrLn $ show $ scriptCurrencySymbol mp
+            putStrLn $ show atDatum'
+            putStrLn $ show atDatum
+
+            let atDatumHash :: Hash ScriptData
+                !atDatumHash = hashScriptData x
+
+            putStrLn "HERE 2"
+
+            -- -- let x = mkScriptAddress @PlutusScriptV2 networkId $ fromPlutusScript $ getValidator $ escrowValidator terms
+
+            !pparams <- queryProtocolParameters networkId nodeSocket QueryTip
+            !systemStart <- querySystemStart networkId nodeSocket QueryTip
+            !eraHistory <- queryEraHistory networkId nodeSocket QueryTip
+            !stakePools <- queryStakePools networkId nodeSocket QueryTip
+
+            putStrLn "Pre prebody"
+            putStrLn $ show txIn2
+
+            let toMint = txMintValue $ emptyTxBody & mintTokens (fromPlutusScript $ getMintingPolicy (policy terms)) () [(tokenToAsset $ stateTokenKindToTokenName Voucher,  1)]
+            let voucherAssetClass = AssetClass (voucherCurrencySymbol terms, (stateTokenKindToTokenName Voucher))
+
+            let !valueOut = (fromPlutusValue $ assetClassValue allowMintingAssetClass 1) <> (fromPlutusValue $ assetClassValue voucherAssetClass 1) <> lovelaceToValue returnedValue1
+            putStrLn "Post value out"
+            -- let !a = mkScriptAddress @PlutusScriptV2 networkId $ fromPlutusScript $ getValidator $ escrowValidator terms
+            let !txOut3 = TxOut (ShelleyAddressInEra aliceAddress) valueOut (TxOutDatumHash atDatumHash) ReferenceScriptNone
+
+            let !preBody =
+                    TxBodyContent
+                      (withWitness <$> toList (UTxO.inputSet utxo))
+                      (TxInsCollateral [txIn2])
+                      TxInsReferenceNone
+                      [txOut3]
+                      TxTotalCollateralNone
+                      TxReturnCollateralNone
+                      (TxFeeExplicit 0)
+                      (TxValidityNoLowerBound, TxValidityNoUpperBound)
+                      TxMetadataNone
+                      TxAuxScriptsNone
+                      TxExtraKeyWitnessesNone
+                      (BuildTxWith $ Just pparams)
+                      TxWithdrawalsNone
+                      TxCertificatesNone
+                      TxUpdateProposalNone
+                      (toMint)
+                      TxScriptValidityNone
+
+            putStrLn "Post prebbody"
+
+            body <- either (\x -> (putStrLn $ show x) >> undefined ) (pure) (
+                        second balancedTxBody $ makeTransactionBodyAutoBalance
+                          BabbageEraInCardanoMode -- TODO
+                          systemStart
+                          eraHistory
+                          pparams
+                          stakePools
+                          (UTxO.toApi utxo)
+                          preBody
+                          (ShelleyAddressInEra aliceAddress)
+                          Nothing
+                        )
+            -- let body = getTxBody unsignedTx
+            putStrLn $ "Body: " <> show body
+
+            -- let wit = signWith (getTxId (getTxBody unsignedTx)) aliceCardanoSk
+            let wit = makeShelleyKeyWitness (body) (WitnessPaymentKey aliceCardanoSk)
+            putStrLn "Before"
+            -- let scriptWitness = mkScriptWitness (getMintingPolicy allowMintingPolicy) TxOutDatumNone
+            let tx = makeSignedTransaction [wit] (body)
+            putStrLn "Signed"
+
+            submitTransaction networkId nodeSocket tx
+            putStrLn "Submited 2"
+            void $ awaitTransaction networkId nodeSocket tx
+            putStrLn "Awaited 2"
+            return ()

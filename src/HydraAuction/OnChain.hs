@@ -1,22 +1,95 @@
-module HydraAuction.OnChain (mkPolicy, voucherCurrencySymbol, mkEscrowValidator, escrowAddress, standingBidAddress) where
+{-# OPTIONS_GHC -fplugin-opt PlutusTx.Plugin:pedantic #-}
+{-# OPTIONS_GHC -fplugin-opt PlutusTx.Plugin:typecheck #-}
+{-# OPTIONS_GHC -fplugin-opt PlutusTx.Plugin:vervosity=2 #-}
+{-# OPTIONS_GHC -fplugin-opt PlutusTx.Plugin:context-level=4 #-}
+{-# OPTIONS_GHC -fplugin-opt PlutusTx.Plugin:optimize=False3 #-}
+
+module HydraAuction.OnChain (policy, voucherCurrencySymbol, escrowValidator, escrowAddress, standingBidAddress) where
 
 import PlutusTx.Prelude
 
 import HydraAuction.Addresses
+import HydraAuction.OnChain.Common
 import HydraAuction.OnChain.Escrow
 import HydraAuction.OnChain.StandingBid
-import HydraAuction.OnChain.StateToken
+import HydraAuction.OnChain.StateToken hiding (mkPolicy)
+import PlutusTx.AssocMap qualified as Map
 import HydraAuction.PlutusExtras
 import HydraAuction.Types
-import Plutus.V1.Ledger.Api (CurrencySymbol, MintingPolicy, ScriptContext, Validator, mkMintingPolicyScript, mkValidatorScript)
+import Plutus.V1.Ledger.Api (Address, TokenName (..))
+import Plutus.V1.Ledger.Contexts (ScriptContext, TxInfo, ownCurrencySymbol, scriptContextTxInfo, txInInfoOutRef, txInInfoResolved, txInfoInputs, txInfoMint, txInfoOutputs, txInfoValidRange, txOutAddress, txOutValue)
+import Plutus.V1.Ledger.Interval (contains, from)
+import Plutus.V1.Ledger.Value (assetClassValueOf, flattenValue)
+import Plutus.V1.Ledger.Api (txOutAddress,txInfoOutputs, TxInfo, CurrencySymbol, ToData(toBuiltinData), UnsafeFromData(unsafeFromBuiltinData), MintingPolicy, ScriptContext, Validator, mkMintingPolicyScript, mkValidatorScript)
 import PlutusTx qualified
 
 -- State Tokens
 
+{-# INLINEABLE myCheck #-}
+myCheck True = ()
+myCheck False = traceError "Check error"
+
+{-# INLINEABLE mkPolicy #-}
+mkPolicy :: (EscrowAddress, AuctionTerms) -> () -> ScriptContext -> Bool
+mkPolicy (EscrowAddress escrosAddressLocal, terms) () ctx =
+    -- traceIfFalse "AuctionTerms is invalid" (validAuctionTerms terms)
+    True
+    && ( case onlyVoucherForgedCount of
+          Just x ->
+            -- XXX: Pattern matching by integer does not seem to work in Plutus
+            case (x == 1, x == -1) of
+              (True, False) -> exactlyUtxoRefConsumed && exactlyOneOutputToEscrow
+              (False, True) ->
+                traceIfFalse "Not exactly one input" (length (txInfoInputs info) == 1)
+                  && traceIfFalse "Not exactly none outputs" (length (txInfoInputs info) == 0)
+                  && traceIfFalse
+                    "Valid range not after voucher expiry"
+                    (contains (from (voucherExpiry terms)) (txInfoValidRange info))
+              (_, _) -> traceIfFalse "Wrong voucher amount forged" False
+          Nothing -> traceIfFalse "Wrong token kind forged" False
+       )
+  where
+    info :: TxInfo
+    info = scriptContextTxInfo ctx
+    ourTokensForged =
+      Map.fromList
+        [ (tn, amount)
+        | (cs, tn, amount) <- flattenValue (txInfoMint info)
+        -- , ownCurrencySymbol ctx == cs
+        ]
+    onlyVoucherForgedCount :: Maybe Integer
+    onlyVoucherForgedCount = Just 1
+      -- case Map.keys ourTokensForged of
+      --   [_] -> Map.lookup tn ourTokensForged
+      --   _ -> Nothing
+      -- where
+      --   tn = stateTokenKindToTokenName Voucher
+    exactlyUtxoRefConsumed :: Bool
+    exactlyUtxoRefConsumed = case txInfoInputs info of
+      [out] ->
+        True
+        -- traceIfFalse "Input is not equal to utxoRef" (txInInfoOutRef out == utxoRef terms)
+        --   && traceIfFalse
+        --     "Input does not contain auction lot"
+        --     (assetClassValueOf (txOutValue $ txInInfoResolved out) (auctionLot terms) == 1)
+      _ -> traceIfFalse "Inputs are not exactly single input" False
+    expectedOutput :: AuctionEscrowDatum
+    expectedOutput = AuctionEscrowDatum Announced (VoucherCS $ ownCurrencySymbol ctx)
+    exactlyOneOutputToEscrow :: Bool
+    exactlyOneOutputToEscrow = case txInfoOutputs info of
+      [output] ->
+        traceIfFalse
+          "Wrong data in escrow output"
+          (decodeOutputDatum info output == Just expectedOutput)
+          -- && traceIfFalse
+          --   "Output not going to escrow contract"
+          --       (txOutAddress output == escrosAddressLocal)
+      _ -> traceIfFalse "Outputs are not exactly one" False
+
 policy :: AuctionTerms -> MintingPolicy
-policy terms =
+policy !terms =
   mkMintingPolicyScript $
-    $$(PlutusTx.compile [||\_ _ _ -> ()||])
+    $$(PlutusTx.compile [||\x y z -> myCheck (mkPolicy x (unsafeFromBuiltinData y) (unsafeFromBuiltinData z))||])
       `PlutusTx.applyCode` PlutusTx.liftCode (escrowAddress terms, terms)
 
 voucherCurrencySymbol :: AuctionTerms -> CurrencySymbol
