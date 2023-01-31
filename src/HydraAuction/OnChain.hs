@@ -5,7 +5,7 @@
 {-# OPTIONS_GHC -fplugin-opt PlutusTx.Plugin:typecheck #-}
 {-# OPTIONS_GHC -fplugin-opt PlutusTx.Plugin:vervosity=2 #-}
 
-module HydraAuction.OnChain (mkPolicy, voucherCurrencySymbol, mkEscrowValidator, escrowAddress, standingBidAddress) where
+module HydraAuction.OnChain (mkPolicy, policy, standingBidValidator, voucherCurrencySymbol, mkEscrowValidator, escrowAddress, standingBidAddress) where
 
 import PlutusTx.Prelude
 
