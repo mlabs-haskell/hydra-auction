@@ -1,25 +1,25 @@
 module HydraAuction.Addresses (
-  VoucherCS (..),
-  EscrowAddress (..),
-  StandingBidAddress (..),
-  FeeEscrowAddress (..),
+    VoucherCS (..),
+    EscrowAddress (..),
+    StandingBidAddress (..),
+    FeeEscrowAddress (..),
 ) where
 
 import PlutusTx.Prelude
 import Prelude qualified
 
 import GHC.Generics (Generic)
-import Plutus.V1.Ledger.Api (Address)
 import Plutus.V1.Ledger.Value (CurrencySymbol)
+import Plutus.V2.Ledger.Api (Address)
 import PlutusTx qualified
 
 data VoucherCS = VoucherCS {unVoucherCS :: CurrencySymbol}
-  deriving stock (Generic)
-  deriving stock (Prelude.Eq, Prelude.Show)
+    deriving stock (Generic)
+    deriving stock (Prelude.Eq, Prelude.Show)
 
 instance Eq VoucherCS where
-  {-# INLINEABLE (==) #-}
-  (VoucherCS x') == (VoucherCS y') = (x' == y')
+    {-# INLINEABLE (==) #-}
+    (VoucherCS x') == (VoucherCS y') = (x' == y')
 
 PlutusTx.makeIsDataIndexed ''VoucherCS [('VoucherCS, 0)]
 PlutusTx.makeLift ''VoucherCS

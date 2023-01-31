@@ -125,8 +125,8 @@ import HydraAuction.OnChain
 import HydraAuction.OnChain.StateToken
 import HydraAuction.PlutusExtras
 import Plutus.V1.Ledger.Address (Address, scriptHashAddress)
-import Plutus.V1.Ledger.Api (CurrencySymbol, Data, MintingPolicy (getMintingPolicy), POSIXTime (..), PubKeyHash (..), TokenName (..), Validator, fromBuiltin, getValidator, mkMintingPolicyScript, toBuiltin, toBuiltinData, toData)
-import Plutus.V1.Ledger.Contexts (ScriptContext)
+import Plutus.V2.Ledger.Api (CurrencySymbol, Data, MintingPolicy (getMintingPolicy), POSIXTime (..), PubKeyHash (..), TokenName (..), Validator, fromBuiltin, getValidator, mkMintingPolicyScript, toBuiltin, toBuiltinData, toData)
+import Plutus.V2.Ledger.Contexts (ScriptContext)
 import Plutus.V1.Ledger.Scripts (MintingPolicy, unMintingPolicyScript, unValidatorScript)
 import Plutus.V1.Ledger.Value (AssetClass (..), CurrencySymbol (..), assetClass, assetClassValue)
 import PlutusTx qualified

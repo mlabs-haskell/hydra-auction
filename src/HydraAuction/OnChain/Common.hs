@@ -5,9 +5,9 @@ module HydraAuction.OnChain.Common (adaAssetClass, minAuctionFee, validAuctionTe
 import PlutusTx.Prelude
 
 import HydraAuction.Types
-import Plutus.V1.Ledger.Api (Address, CurrencySymbol (..), POSIXTime (..), TokenName (..), fromBuiltinData, getDatum)
-import Plutus.V1.Ledger.Contexts (TxInfo, TxOut, findDatum, txOutAddress, txOutDatumHash, txOutValue)
 import Plutus.V1.Ledger.Value (AssetClass, assetClass, assetClassValueOf)
+import Plutus.V2.Ledger.Api (Address, CurrencySymbol (..), OutputDatum (..), POSIXTime (..), TokenName (..), fromBuiltinData, getDatum)
+import Plutus.V2.Ledger.Contexts (TxInfo, TxOut, findDatum, txOutAddress, txOutDatum, txOutValue)
 import PlutusTx qualified
 
 {-# INLINEABLE minAuctionFee #-}
@@ -16,16 +16,16 @@ minAuctionFee = 2_000_000
 
 {-# INLINEABLE validAuctionTerms' #-}
 validAuctionTerms' :: AuctionTerms -> POSIXTime -> Bool
-validAuctionTerms' AuctionTerms {..} announcementTxValidityUpperBound =
-  announcementTxValidityUpperBound < biddingStart
-    && biddingStart < biddingEnd
-    && biddingEnd < voucherExpiry
-    && voucherExpiry < cleanup
-    && naturalToInt minimumBidIncrement > 0
-    && startingBid > auctionFee
-    && naturalToInt auctionFee > length delegates * minAuctionFee
-    && length delegates > 0
-    && modulo (naturalToInt auctionFee) (length delegates) == 0
+validAuctionTerms' AuctionTerms{..} announcementTxValidityUpperBound =
+    announcementTxValidityUpperBound < biddingStart
+        && biddingStart < biddingEnd
+        && biddingEnd < voucherExpiry
+        && voucherExpiry < cleanup
+        && naturalToInt minimumBidIncrement > 0
+        && startingBid > auctionFee
+        && naturalToInt auctionFee > length delegates * minAuctionFee
+        && length delegates > 0
+        && modulo (naturalToInt auctionFee) (length delegates) == 0
 
 -- FIXME: check interval from TxInfo
 {-# INLINEABLE validAuctionTerms #-}
@@ -35,9 +35,14 @@ validAuctionTerms terms = validAuctionTerms' terms (POSIXTime 0)
 {-# INLINEABLE decodeOutputDatum #-}
 decodeOutputDatum :: PlutusTx.FromData a => TxInfo -> TxOut -> Maybe a
 decodeOutputDatum info output = do
-  hash <- txOutDatumHash output
-  datum <- findDatum hash info
-  fromBuiltinData $ getDatum datum
+    datum <- case txOutDatum output of
+        NoOutputDatum ->
+            Nothing
+        OutputDatumHash hash ->
+            findDatum hash info
+        OutputDatum d ->
+            Just d
+    fromBuiltinData $ getDatum datum
 
 {-# INLINEABLE byAddress #-}
 byAddress :: Address -> [TxOut] -> [TxOut]

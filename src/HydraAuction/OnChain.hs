@@ -16,8 +16,8 @@ import HydraAuction.OnChain.StandingBid
 import HydraAuction.OnChain.StateToken hiding (mkPolicy)
 import HydraAuction.PlutusExtras
 import HydraAuction.Types
-import Plutus.V1.Ledger.Api (Address, BuiltinData(..), CurrencySymbol, Data(..), MintingPolicy, ScriptContext, ToData (toBuiltinData), TokenName (..), TxInfo, UnsafeFromData (unsafeFromBuiltinData), Validator, mkMintingPolicyScript, mkValidatorScript, txInfoOutputs, txOutAddress)
-import Plutus.V1.Ledger.Contexts (ScriptContext, ScriptPurpose(..), TxInfo, ownCurrencySymbol, scriptContextTxInfo, txInInfoOutRef, txInInfoResolved, txInfoInputs, txInfoMint, txInfoOutputs, txInfoValidRange, txOutAddress, txOutValue, scriptContextPurpose)
+import Plutus.V2.Ledger.Api (Address, BuiltinData(..), CurrencySymbol, Data(..), MintingPolicy, ScriptContext, ToData (toBuiltinData), TokenName (..), TxInfo, UnsafeFromData (unsafeFromBuiltinData), Validator, mkMintingPolicyScript, mkValidatorScript, txInfoOutputs, txOutAddress)
+import Plutus.V2.Ledger.Contexts (ScriptContext, ScriptPurpose(..), TxInfo, ownCurrencySymbol, scriptContextTxInfo, txInInfoOutRef, txInInfoResolved, txInfoInputs, txInfoMint, txInfoOutputs, txInfoValidRange, txOutAddress, txOutValue, scriptContextPurpose)
 import Plutus.V1.Ledger.Interval (contains, from)
 import Plutus.V1.Ledger.Value (assetClassValueOf, flattenValue)
 import PlutusTx qualified

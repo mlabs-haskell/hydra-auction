@@ -7,15 +7,15 @@ import HydraAuction.OnChain.Common
 import HydraAuction.OnChain.StateToken (StateTokenKind (..), stateTokenKindToTokenName)
 import HydraAuction.Types
 import Plutus.V1.Ledger.Address (pubKeyHashAddress, scriptHashAddress)
-import Plutus.V1.Ledger.Api (TxInfo, scriptContextTxInfo, txInInfoResolved, txInfoInputs, txInfoMint, txInfoOutputs, txInfoValidRange, txOutAddress)
-import Plutus.V1.Ledger.Contexts (ScriptContext, ownHash)
 import Plutus.V1.Ledger.Interval (interval)
 import Plutus.V1.Ledger.Value (assetClass, assetClassValueOf)
+import Plutus.V2.Ledger.Api (TxInfo, scriptContextTxInfo, txInInfoResolved, txInfoInputs, txInfoMint, txInfoOutputs, txInfoValidRange, txOutAddress)
+import Plutus.V2.Ledger.Contexts (ScriptContext, ownHash)
 
 {-# INLINEABLE mkStandingBidValidator #-}
 mkStandingBidValidator :: AuctionTerms -> StandingBidDatum -> StandingBidRedeemer -> ScriptContext -> Bool
 mkStandingBidValidator terms datum redeemer context =
-  True
+    True
   where
     -- validAuctionTerms terms
     --   && case txInInfoResolved <$> txInfoInputs info of -- All cases require single input
@@ -61,11 +61,11 @@ mkStandingBidValidator terms datum redeemer context =
     info = scriptContextTxInfo context
     validNewBid :: StandingBidState -> StandingBidState -> Bool
     validNewBid oldBid (Bid newBidTerms) =
-      case oldBid of
-        Bid oldBidTerms ->
-          traceIfFalse "Bid increment is not greater than minimumBidIncrement" $
-            bidAmount oldBidTerms + minimumBidIncrement terms <= bidAmount newBidTerms
-        NoBid ->
-          traceIfFalse "Bid is not greater than startingBid" $
-            startingBid terms <= bidAmount newBidTerms
+        case oldBid of
+            Bid oldBidTerms ->
+                traceIfFalse "Bid increment is not greater than minimumBidIncrement" $
+                    bidAmount oldBidTerms + minimumBidIncrement terms <= bidAmount newBidTerms
+            NoBid ->
+                traceIfFalse "Bid is not greater than startingBid" $
+                    startingBid terms <= bidAmount newBidTerms
     validNewBid _ NoBid = False
