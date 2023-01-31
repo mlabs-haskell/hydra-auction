@@ -86,4 +86,4 @@ mintOneTestNFT node@RunningNode {nodeSocket, networkId} actor = do
   void $ awaitTransaction networkId nodeSocket tx
   putStrLn "Awaited"
 
--- TODO: return utxo
+  putStrLn $ "Created Tx id: " <> show tx

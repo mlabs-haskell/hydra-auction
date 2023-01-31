@@ -26,7 +26,20 @@ import HydraNode (
 import System.FilePath ((</>))
 import System.IO (IOMode (ReadWriteMode), withFile)
 
-data CLIAction = RunCardanoNode | ShowUtxos Actor | Seed Actor | MintTestNFT Actor | AuctionAnounce Actor deriving stock (Show, Eq)
+import Cardano.Api (AsType (AsTxId), TxId (..), TxIn (..), TxIx (..), deserialiseFromRawBytesHex, displayError)
+
+import Data.Bifunctor (first)
+
+import Text.Parsec ((<?>))
+import Text.Parsec qualified as Parsec
+import Text.Parsec.Error qualified as Parsec
+import Text.Parsec.Language qualified as Parsec
+import Text.Parsec.String qualified as Parsec
+import Text.Parsec.Token qualified as Parsec
+
+import Data.ByteString.Char8 qualified as BSC
+
+data CLIAction = RunCardanoNode | ShowUtxos Actor | Seed Actor | MintTestNFT Actor | AuctionAnounce Actor TxIn deriving stock (Show, Eq)
 
 parseActor "alice" = Alice
 parseActor "bob" = Bob
@@ -41,12 +54,13 @@ cliParser =
         <> command "show-utxos" (info (ShowUtxos <$> actor) (progDesc "TODO1"))
         <> command "seed" (info (Seed <$> actor) (progDesc "TODO1"))
         <> command "mint-test-nft" (info (MintTestNFT <$> actor) (progDesc "TODO2"))
-        <> command "announce-auction" (info (AuctionAnounce <$> actor) (progDesc "TODO2"))
+        <> command "announce-auction" (info (AuctionAnounce <$> actor <*> utxo) (progDesc "TODO2"))
     )
   where
     actor :: Parser Actor
     actor = parseActor <$> strOption (short 'a' <> metavar "ACTOR" <> help "Actor to use for tx")
-    utxo = strOption (short 'u' <> metavar "UTXO" <> help "Utxo with test NFT for auction")
+
+    utxo = option (readerFromParsecParser parseTxIn) (short 'u' <> metavar "UTXO" <> help "Utxo with test NFT for auction")
 
 opts :: ParserInfo CLIAction
 opts =
@@ -90,7 +104,38 @@ main = do
     MintTestNFT actor -> do
       node <- gotNode
       mintOneTestNFT node actor
-    AuctionAnounce actor -> do
+    AuctionAnounce actor utxo -> do
       node <- gotNode
-      terms <- constructTerms node actor
-      announceAuction node actor terms
+      terms <- constructTerms node actor utxo
+      announceAuction node actor terms utxo
+
+parseTxIn :: Parsec.Parser TxIn
+parseTxIn = TxIn <$> parseTxId <*> (Parsec.char '#' *> parseTxIx)
+
+parseTxId :: Parsec.Parser TxId
+parseTxId = do
+  str <- some Parsec.hexDigit <?> "transaction id (hexadecimal)"
+  case deserialiseFromRawBytesHex AsTxId (BSC.pack str) of
+    Right addr -> return addr
+    Left e -> fail $ "Incorrect transaction id format: " <> displayError e
+
+parseTxIx :: Parsec.Parser TxIx
+parseTxIx = TxIx . fromIntegral <$> decimal
+
+decimal :: Parsec.Parser Integer
+Parsec.TokenParser {Parsec.decimal = decimal} = Parsec.haskell
+
+readerFromParsecParser :: Parsec.Parser a -> ReadM a
+readerFromParsecParser p =
+  eitherReader (first formatError . Parsec.parse (p <* Parsec.eof) "")
+  where
+    --TODO: the default parsec error formatting is quite good, but we could
+    -- customise it somewhat:
+    formatError err =
+      Parsec.showErrorMessages
+        "or"
+        "unknown parse error"
+        "expecting"
+        "unexpected"
+        "end of input"
+        (Parsec.errorMessages err)

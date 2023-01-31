@@ -22,59 +22,57 @@ import HydraAuction.Types
 import Plutus.V1.Ledger.Value (AssetClass (..), assetClassValue, flattenValue)
 import Plutus.V2.Ledger.Api (POSIXTime (..), TokenName (..), getMintingPolicy, getValidator, toBuiltinData, toData, txOutValue)
 
-constructTerms node@RunningNode {nodeSocket, networkId} actor = do
+getUtxo node actor = do
+  utxo' <- actorTipUtxo node actor
+
+  let pred x = (length <$> flattenValue <$> txOutValue <$> (toPlutusTxOut $ x)) == Just 2
+      utxo = UTxO.filter pred utxo'
+
+  return utxo
+
+constructTerms node@RunningNode {nodeSocket, networkId} actor utxoRef = do
   (actorVk, actorSk) <- keysFor actor
-  utxo <- queryUTxOFor networkId nodeSocket QueryTip actorVk
-  -- TODO: filter
-  let (txIn, _) = fromJust $ viaNonEmpty last $ UTxO.pairs utxo
   let terms =
         AuctionTerms
           { auctionLot = allowMintingAssetClass
           , seller = toPlutusKeyHash $ verificationKeyHash actorVk
-          , delegates = []
-          , biddingStart = POSIXTime 0
+          , delegates = [toPlutusKeyHash $ verificationKeyHash actorVk]
+          , biddingStart = POSIXTime 1
           , biddingEnd = POSIXTime 100
           , voucherExpiry = POSIXTime 1000
           , cleanup = POSIXTime 10001
-          , auctionFee = fromJust $ intToNatural 2_000_000
-          , startingBid = fromJust $ intToNatural 2_000_000
-          , minimumBidIncrement = fromJust $ intToNatural 2_000_000
-          , utxoRef = toPlutusTxOutRef txIn
+          , auctionFee = fromJust $ intToNatural 4_000_000
+          , startingBid = fromJust $ intToNatural 8_000_000
+          , minimumBidIncrement = fromJust $ intToNatural 8_000_000
+          , utxoRef = toPlutusTxOutRef utxoRef
           }
   return terms
 
-announceAuction node@RunningNode {nodeSocket, networkId} actor terms = do
+announceAuction node@RunningNode {nodeSocket, networkId} actor terms utxoRef = do
   (actorVk, actorSk) <- keysFor actor
 
   let actorAddress = buildAddress actorVk networkId
   putStrLn $ "Using actor: " <> show actor <> "with address: " <> show actorAddress
 
-  utxo' <- actorTipUtxo node actor
-
-  let !valueOut = (fromPlutusValue $ assetClassValue allowMintingAssetClass 1) <> lovelaceToValue minLovelance
-  let !txOut1 = TxOut (ShelleyAddressInEra actorAddress) valueOut TxOutDatumNone ReferenceScriptNone
-  -- TODO: filter utxos
-  let pred x = (length <$> flattenValue <$> txOutValue <$> (toPlutusTxOut $ x)) == Just 2
-      utxo = UTxO.filter pred utxo'
-      (txIn, _) = fromJust $ viaNonEmpty last $ UTxO.pairs utxo
-
-  putStrLn $ show utxo
+  utxo <- getUtxo node actor
 
   -- TODO: clean up
 
   let mp = policy terms
-  let !atDatum' = AuctionEscrowDatum Announced (VoucherCS $ scriptCurrencySymbol mp)
-  let atDatum = toData $ toBuiltinData $ atDatum'
-  let !x = fromPlutusData atDatum
-  let atDatumHash = hashScriptData x
+  let atDatum = AuctionEscrowDatum Announced (VoucherCS $ scriptCurrencySymbol mp)
 
   let voucherAssetClass = AssetClass (voucherCurrencySymbol terms, (stateTokenKindToTokenName Voucher))
   let toMint = (mintedTokens (fromPlutusScript $ getMintingPolicy mp) () [(tokenToAsset $ stateTokenKindToTokenName Voucher, 1)])
   let valueOut = (fromPlutusValue $ assetClassValue allowMintingAssetClass 1) <> (fromPlutusValue $ assetClassValue voucherAssetClass 1) <> lovelaceToValue minLovelance
   let !a = mkScriptAddress @PlutusScriptV2 networkId $ fromPlutusScript @PlutusScriptV2 $ getValidator $ escrowValidator terms
-  let !txOut = TxOut (a) valueOut (TxOutDatumHash atDatumHash) ReferenceScriptNone -- TODO: filter utxos
-  tx <- autoCreateTx node actorAddress actorSk [txIn] [txOut1] utxo toMint
+  let txOut = TxOut (a) valueOut (mkTxOutDatum atDatum) ReferenceScriptNone
+
+  putStrLn $ "UTXO REF: " <> show utxoRef
+  putStrLn $ "UTXO: " <> show utxo
+  tx <- autoCreateTx node actorAddress actorSk [utxoRef] [txOut] utxo toMint
   putStrLn "Signed"
+
+  putStrLn $ show tx
 
   submitTransaction networkId nodeSocket tx
   putStrLn "Submited"
