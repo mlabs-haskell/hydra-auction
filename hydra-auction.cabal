@@ -157,6 +157,7 @@ test-suite hydra-auction-test
     , bytestring
     , cardano-api
     , containers
+    , directory
     , hydra-auction
     , hydra-cardano-api
     , hydra-cluster
