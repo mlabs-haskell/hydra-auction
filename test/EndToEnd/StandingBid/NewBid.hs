@@ -52,6 +52,8 @@ import Test.Hydra.Prelude
 import Test.Tasty
 import Test.Tasty.Hspec
 
+import System.Directory (createDirectoryIfMissing, getCurrentDirectory)
+
 testSuite :: IO TestTree
 testSuite = testSpec "StandingBid > NewBid" spec
 
@@ -62,16 +64,22 @@ data Context = MkContext
 
 type Scenario a = ReaderT Context IO a
 
+getStateDirectory :: IO FilePath
+getStateDirectory = do
+  currentDirectory <- getCurrentDirectory
+  let stateDirectory = currentDirectory </> "node-state"
+  createDirectoryIfMissing True stateDirectory
+  pure stateDirectory
+
 runScenario :: Scenario () -> IO ()
-runScenario scenario =
-  withFile (workDir </> "test.log") ReadWriteMode $ \h ->
+runScenario scenario = do
+  stateDirectory <- getStateDirectory
+  withFile (stateDirectory </> "test.log") ReadWriteMode $ \h ->
     withTracerOutputTo h "Tracer" $ \tracer ->
       withCardanoNodeDevnet
         (contramap FromCardanoNode tracer)
-        workDir
+        stateDirectory
         $ \node -> runReaderT scenario (MkContext tracer node)
-  where
-    workDir = "."
 
 initWallet :: Actor -> Lovelace -> Scenario ()
 initWallet actor amount = do

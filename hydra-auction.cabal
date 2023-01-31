@@ -108,6 +108,7 @@ executable hydra-auction
     , hydra-test-utils
     , optparse-applicative
     , ouroboros-network               ==0.1.0.1
+    , parsec
     , plutus-ledger-api               ==1.0.0.0
     , QuickCheck
     , serialise
@@ -123,6 +124,8 @@ library
     HydraAuction.Addresses
     HydraAuction.OnChain
     HydraAuction.PlutusExtras
+    HydraAuction.Tx.Common
+    HydraAuction.Tx.Escrow
     HydraAuction.Tx.TestNFT
     HydraAuction.Types
 
@@ -132,7 +135,6 @@ library
     HydraAuction.OnChain.StandingBid
     HydraAuction.OnChain.StateToken
     HydraAuction.OnChain.TestNFT
-    HydraAuction.Tx.Common
 
   build-depends:
     , hydra-plutus
@@ -155,6 +157,7 @@ test-suite hydra-auction-test
     , bytestring
     , cardano-api
     , containers
+    , directory
     , hydra-auction
     , hydra-cardano-api
     , hydra-cluster

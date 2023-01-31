@@ -17,15 +17,15 @@ minAuctionFee = 2_000_000
 {-# INLINEABLE validAuctionTerms' #-}
 validAuctionTerms' :: AuctionTerms -> POSIXTime -> Bool
 validAuctionTerms' AuctionTerms {..} announcementTxValidityUpperBound =
-  announcementTxValidityUpperBound < biddingStart
-    && biddingStart < biddingEnd
-    && biddingEnd < voucherExpiry
-    && voucherExpiry < cleanup
-    && naturalToInt minimumBidIncrement > 0
-    && startingBid > auctionFee
-    && naturalToInt auctionFee > length delegates * minAuctionFee
-    && length delegates > 0
-    && modulo (naturalToInt auctionFee) (length delegates) == 0
+  (traceIfFalse "VAT1" $ announcementTxValidityUpperBound < biddingStart)
+    && (traceIfFalse "VAT2" $ biddingStart < biddingEnd)
+    && (traceIfFalse "VAT3" $ biddingEnd < voucherExpiry)
+    && (traceIfFalse "VAT4" $ voucherExpiry < cleanup)
+    && (traceIfFalse "VAT5" $ naturalToInt minimumBidIncrement > 0)
+    && (traceIfFalse "VAT6" $ startingBid > auctionFee)
+    && (traceIfFalse "VAT7" $ naturalToInt auctionFee > length delegates * minAuctionFee)
+    && (traceIfFalse "VAT8" $ length delegates > 0)
+    && (traceIfFalse "VAT9" $ modulo (naturalToInt auctionFee) (length delegates) == 0)
 
 -- FIXME: check interval from TxInfo
 {-# INLINEABLE validAuctionTerms #-}
