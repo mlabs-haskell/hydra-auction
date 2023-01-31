@@ -54,7 +54,11 @@ announceAuction node@RunningNode {nodeSocket, networkId} actor terms utxoRef = d
   let actorAddress = buildAddress actorVk networkId
   putStrLn $ "Using actor: " <> show actor <> "with address: " <> show actorAddress
 
-  utxo <- getUtxo node actor
+  utxo <- queryUTxOByTxIn networkId nodeSocket QueryTip [utxoRef]
+  utxoAll <- actorTipUtxo node actor
+
+  let pred x = (length <$> flattenValue <$> txOutValue <$> (toPlutusTxOut $ x)) == Just 1
+      utxoMoney = UTxO.filter pred utxoAll
 
   -- TODO: clean up
 
@@ -67,19 +71,11 @@ announceAuction node@RunningNode {nodeSocket, networkId} actor terms utxoRef = d
   let !a = mkScriptAddress @PlutusScriptV2 networkId $ fromPlutusScript @PlutusScriptV2 $ getValidator $ escrowValidator terms
   let txOut = TxOut (a) valueOut (mkTxOutDatum atDatum) ReferenceScriptNone
 
-  putStrLn $ "UTXO REF: " <> show utxoRef
-  putStrLn $ "UTXO: " <> show utxo
-  tx <- autoCreateTx node actorAddress actorSk [utxoRef] [txOut] utxo toMint
+  tx <- autoCreateTx node actorAddress actorSk [utxoRef] [txOut] (utxo <> utxoMoney) toMint
   putStrLn "Signed"
-
-  putStrLn $ show tx
 
   submitTransaction networkId nodeSocket tx
   putStrLn "Submited"
 
-  slot <- queryTipSlotNo networkId nodeSocket
-  putStrLn $ show slot
   void $ awaitTransaction networkId nodeSocket tx
   putStrLn "Awaited"
-
--- TODO: return utxo
