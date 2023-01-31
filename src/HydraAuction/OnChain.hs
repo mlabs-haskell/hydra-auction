@@ -1,3 +1,10 @@
+{-# OPTIONS_GHC -fplugin-opt PlutusTx.Plugin:context-level=2 #-}
+{-# OPTIONS_GHC -fplugin-opt PlutusTx.Plugin:defer-errors #-}
+{-# OPTIONS_GHC -fplugin-opt PlutusTx.Plugin:optimize=False #-}
+{-# OPTIONS_GHC -fplugin-opt PlutusTx.Plugin:pedantic #-}
+{-# OPTIONS_GHC -fplugin-opt PlutusTx.Plugin:typecheck #-}
+{-# OPTIONS_GHC -fplugin-opt PlutusTx.Plugin:vervosity=2 #-}
+
 module HydraAuction.OnChain (mkPolicy, voucherCurrencySymbol, mkEscrowValidator, escrowAddress, standingBidAddress) where
 
 import PlutusTx.Prelude
@@ -8,7 +15,7 @@ import HydraAuction.OnChain.StandingBid
 import HydraAuction.OnChain.StateToken
 import HydraAuction.PlutusExtras
 import HydraAuction.Types
-import Plutus.V1.Ledger.Api (CurrencySymbol, MintingPolicy, ScriptContext, Validator, mkMintingPolicyScript, mkValidatorScript)
+import Plutus.V2.Ledger.Api (CurrencySymbol, MintingPolicy, ScriptContext, Validator, mkMintingPolicyScript, mkValidatorScript)
 import PlutusTx qualified
 
 -- State Tokens

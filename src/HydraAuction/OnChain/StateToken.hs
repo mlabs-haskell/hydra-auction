@@ -5,10 +5,10 @@ import PlutusTx.Prelude
 import HydraAuction.Addresses
 import HydraAuction.OnChain.Common
 import HydraAuction.Types
-import Plutus.V1.Ledger.Api (TokenName (..))
-import Plutus.V1.Ledger.Contexts (ScriptContext, TxInfo, ownCurrencySymbol, scriptContextTxInfo, txInInfoOutRef, txInInfoResolved, txInfoInputs, txInfoMint, txInfoOutputs, txInfoValidRange, txOutAddress, txOutValue)
 import Plutus.V1.Ledger.Interval (contains, from)
 import Plutus.V1.Ledger.Value (assetClassValueOf, flattenValue)
+import Plutus.V2.Ledger.Api (TokenName (..))
+import Plutus.V2.Ledger.Contexts (ScriptContext, TxInfo, ownCurrencySymbol, scriptContextTxInfo, txInInfoOutRef, txInInfoResolved, txInfoInputs, txInfoMint, txInfoOutputs, txInfoValidRange, txOutAddress, txOutValue)
 import PlutusTx.AssocMap qualified as Map
 
 data StateTokenKind = Voucher
