@@ -414,15 +414,15 @@ tx_AuctionInit _tracer node@RunningNode {nodeSocket, networkId} (aliceCardanoVk,
 
   putStrLn "Post prebbody"
 
-  putStrLn $ "atDatumHash: " <> show atDatumHash
+  -- putStrLn $ "atDatumHash: " <> show atDatumHash
   -- putStrLn $ "pparams: " <> show pparams
-  putStrLn $ "systemStart: " <> show systemStart
+  -- putStrLn $ "systemStart: " <> show systemStart
   -- putStrLn $ "eraHistory: " <> show eraHistory
-  putStrLn $ "stakePools: " <> show stakePools
+  -- putStrLn $ "stakePools: " <> show stakePools
 
-  putStrLn $ "utxo set: " <> show utxoSet
+  -- putStrLn $ "utxo set:" <> show (UTxO.toApi utxoSet)
 
-  putStrLn $ "pre body: " <> show (UTxO.toApi utxoSet)
+  -- putStrLn $ "pre body: " <> show preBody
 
   let !eitherBody = makeTransactionBodyAutoBalance
             BabbageEraInCardanoMode -- TODO
@@ -438,14 +438,14 @@ tx_AuctionInit _tracer node@RunningNode {nodeSocket, networkId} (aliceCardanoVk,
 
   putStrLn $ "Body: " <> show body
 
-  -- -- let wit = signWith (getTxId (getTxBody unsignedTx)) aliceCardanoSk
-  -- let wit = makeShelleyKeyWitness body (WitnessPaymentKey aliceCardanoSk)
-  -- putStrLn "Before"
-  -- -- let scriptWitness = mkScriptWitness (getMintingPolicy allowMintingPolicy) TxOutDatumNone
-  -- let tx = makeSignedTransaction [wit] body
-  -- putStrLn "Signed"
+  -- let wit = signWith (getTxId (getTxBody unsignedTx)) aliceCardanoSk
+  let wit = makeShelleyKeyWitness body (WitnessPaymentKey aliceCardanoSk)
+  putStrLn "Before"
+  -- let scriptWitness = mkScriptWitness (getMintingPolicy allowMintingPolicy) TxOutDatumNone
+  let tx = makeSignedTransaction [wit] body
+  putStrLn "Signed"
 
-  -- submitTransaction networkId nodeSocket tx
-  -- putStrLn "Submited 2"
-  -- void $ awaitTransaction networkId nodeSocket tx
-  -- putStrLn "Awaited 2"
+  submitTransaction networkId nodeSocket tx
+  putStrLn "Submited 2"
+  void $ awaitTransaction networkId nodeSocket tx
+  putStrLn "Awaited 2"
