@@ -1,11 +1,4 @@
-{-# OPTIONS_GHC -fplugin-opt PlutusTx.Plugin:context-level=2 #-}
-{-# OPTIONS_GHC -fplugin-opt PlutusTx.Plugin:defer-errors #-}
-{-# OPTIONS_GHC -fplugin-opt PlutusTx.Plugin:optimize=False #-}
-{-# OPTIONS_GHC -fplugin-opt PlutusTx.Plugin:pedantic #-}
-{-# OPTIONS_GHC -fplugin-opt PlutusTx.Plugin:typecheck #-}
-{-# OPTIONS_GHC -fplugin-opt PlutusTx.Plugin:vervosity=2 #-}
-
-module HydraAuction.OnChain (mkPolicy, voucherCurrencySymbol, mkEscrowValidator, escrowAddress, standingBidAddress) where
+module HydraAuction.OnChain (policy, escrowValidator, voucherCurrencySymbol, mkEscrowValidator, escrowAddress, standingBidAddress) where
 
 import PlutusTx.Prelude
 

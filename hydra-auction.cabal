@@ -122,6 +122,8 @@ library
   exposed-modules:
     HydraAuction.Addresses
     HydraAuction.OnChain
+    HydraAuction.Tx.Common
+    HydraAuction.Tx.Escrow
     HydraAuction.Tx.TestNFT
     HydraAuction.Types
 
@@ -132,7 +134,6 @@ library
     HydraAuction.OnChain.StateToken
     HydraAuction.OnChain.TestNFT
     HydraAuction.PlutusExtras
-    HydraAuction.Tx.Common
 
   build-depends:
     , hydra-plutus
