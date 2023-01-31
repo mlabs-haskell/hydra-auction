@@ -35,8 +35,10 @@ lint: requires_nix_shell
 	@sh lint.sh
 
 BUILD_PATH = "dist-newstyle"
+NODE_STATE_PATH = "node-state"
 clean:
 	@[ ! -e $(BUILD_PATH) ] || rm -rf $(BUILD_PATH)
+	@[ ! -e $(NODE_STATE_PATH) ] || rm -rf $(NODE_STATE_PATH)
 
 # # Target to use as dependency to fail if not inside nix-shell.
 requires_nix_shell:
