@@ -28,7 +28,7 @@ cliParser =
   subparser
     ( command "run-cardano-node" (info (pure RunCardanoNode) (progDesc "TODO1"))
         <> command "mint-test-nft" (info (pure MintTestNFT) (progDesc "TODO2"))
-        <> command "announce-auction" (info (auctionAnounce) (progDesc "TODO2"))
+        <> command "announce-auction" (info auctionAnounce (progDesc "TODO2"))
     )
   where
     auctionAnounce = AuctionAnounce <$> utxo
@@ -54,13 +54,13 @@ main = do
             withCardanoNodeDevnet (contramap FromCardanoNode tracer) "." $ \node@RunningNode {nodeSocket, networkId} -> do
               putStrLn "TEST"
               -- TOOD: put node to disk
-              return ()
+              pure ()
     -- let infiniteLoop = do
     --         threadDelay 1_000_000
     --         infiniteLoop
     -- in infiniteLoop
     MintTestNFT -> do
-      return ()
+      pure ()
 
 -- read node from disk
 -- mintOneTestNFT node Alice
