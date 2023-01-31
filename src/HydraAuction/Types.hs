@@ -4,6 +4,7 @@ module HydraAuction.Types (
   isStarted,
   intToNatural,
   naturalToInt,
+  ApprovedBiddersHash (..),
   BidTerms (..),
   StandingBidState (..),
   StandingBidDatum (..),

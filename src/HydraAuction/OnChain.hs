@@ -1,4 +1,4 @@
-module HydraAuction.OnChain (policy, escrowValidator, voucherCurrencySymbol, mkEscrowValidator, escrowAddress, standingBidAddress) where
+module HydraAuction.OnChain (policy, standingBidValidator, escrowValidator, voucherCurrencySymbol, mkEscrowValidator, escrowAddress, standingBidAddress) where
 
 import PlutusTx.Prelude
 

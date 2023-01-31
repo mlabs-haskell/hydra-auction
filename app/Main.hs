@@ -39,7 +39,8 @@ import Text.Parsec.Token qualified as Parsec
 
 import Data.ByteString.Char8 qualified as BSC
 
-data CLIAction = RunCardanoNode | ShowUtxos Actor | Seed Actor | MintTestNFT Actor | AuctionAnounce Actor TxIn deriving stock (Show, Eq)
+data CLIAction = RunCardanoNode | ShowUtxos Actor | Seed Actor | MintTestNFT Actor | AuctionAnounce Actor TxIn | StartBidding Actor TxIn
+  deriving stock (Show, Eq)
 
 parseActor "alice" = Alice
 parseActor "bob" = Bob
@@ -55,6 +56,7 @@ cliParser =
         <> command "seed" (info (Seed <$> actor) (progDesc "TODO1"))
         <> command "mint-test-nft" (info (MintTestNFT <$> actor) (progDesc "TODO2"))
         <> command "announce-auction" (info (AuctionAnounce <$> actor <*> utxo) (progDesc "TODO2"))
+        <> command "start-bidding" (info (StartBidding <$> actor <*> utxo) (progDesc "TODO2"))
     )
   where
     actor :: Parser Actor
@@ -108,6 +110,10 @@ main = do
       node <- gotNode
       terms <- constructTerms node actor utxo
       announceAuction node actor terms utxo
+    StartBidding actor utxo -> do
+      node <- gotNode
+      terms <- constructTerms node actor utxo
+      startBidding node actor terms utxo
 
 parseTxIn :: Parsec.Parser TxIn
 parseTxIn = TxIn <$> parseTxId <*> (Parsec.char '#' *> parseTxIx)

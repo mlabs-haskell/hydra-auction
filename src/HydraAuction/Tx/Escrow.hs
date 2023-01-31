@@ -19,7 +19,7 @@ import HydraAuction.PlutusExtras
 import HydraAuction.Tx.Common hiding (actorAddress)
 import HydraAuction.Tx.TestNFT
 import HydraAuction.Types
-import Plutus.V1.Ledger.Value (AssetClass (..), assetClassValue, flattenValue)
+import Plutus.V1.Ledger.Value (AssetClass (..), CurrencySymbol (..), assetClassValue, flattenValue, symbols)
 import Plutus.V2.Ledger.Api (POSIXTime (..), TokenName (..), getMintingPolicy, getValidator, toBuiltinData, toData, txOutValue)
 
 getUtxo node actor = do
@@ -55,9 +55,10 @@ announceAuction node@RunningNode {nodeSocket, networkId} actor terms utxoRef = d
   putStrLn $ "Using actor: " <> show actor <> "with address: " <> show actorAddress
 
   utxo <- queryUTxOByTxIn networkId nodeSocket QueryTip [utxoRef]
-  utxoAll <- actorTipUtxo node actor
+  when ((length utxo) == 0) $ error "Utxo was consumed"
 
-  let pred x = (length <$> flattenValue <$> txOutValue <$> (toPlutusTxOut $ x)) == Just 1
+  utxoAll <- actorTipUtxo node actor
+  let pred x = (symbols <$> txOutValue <$> (toPlutusTxOut $ x)) == Just [CurrencySymbol emptyByteString]
       utxoMoney = UTxO.filter pred utxoAll
 
   -- TODO: clean up
@@ -71,8 +72,54 @@ announceAuction node@RunningNode {nodeSocket, networkId} actor terms utxoRef = d
   let !a = mkScriptAddress @PlutusScriptV2 networkId $ fromPlutusScript @PlutusScriptV2 $ getValidator $ escrowValidator terms
   let txOut = TxOut (a) valueOut (mkTxOutDatum atDatum) ReferenceScriptNone
 
-  tx <- autoCreateTx node actorAddress actorSk [utxoRef] [txOut] (utxo <> utxoMoney) toMint
+  tx <- autoCreateTx node actorAddress actorSk [txOut] (utxo <> utxoMoney) toMint
   putStrLn "Signed"
+
+  submitTransaction networkId nodeSocket tx
+  putStrLn "Submited"
+
+  void $ awaitTransaction networkId nodeSocket tx
+  putStrLn "Awaited"
+
+  putStrLn $ "Created Tx id: " <> (show $ getTxId $ txBody tx)
+
+startBidding node@RunningNode {nodeSocket, networkId} actor terms utxoRef = do
+  (actorVk, actorSk) <- keysFor actor
+
+  let actorAddress = buildAddress actorVk networkId
+  putStrLn $ "Using actor: " <> show actor <> "with address: " <> show actorAddress
+
+  utxo <- queryUTxOByTxIn networkId nodeSocket QueryTip [utxoRef]
+
+  putStrLn $ show utxo
+  putStrLn $ show allowMintingAssetClass
+
+  utxoAll <- actorTipUtxo node actor
+  let pred x = (length <$> flattenValue <$> txOutValue <$> (toPlutusTxOut $ x)) == Just 1
+      utxoMoney = UTxO.filter pred utxoAll
+
+  -- TODO: clean up
+
+  let mp = policy terms
+  -- FIXUP: bidders hash
+  let atDatum = AuctionEscrowDatum (BiddingStarted (ApprovedBiddersHash emptyByteString)) (VoucherCS $ scriptCurrencySymbol mp)
+
+  let voucherAssetClass = AssetClass (voucherCurrencySymbol terms, (stateTokenKindToTokenName Voucher))
+
+  let valueOutEscrow = (fromPlutusValue $ assetClassValue allowMintingAssetClass 1) <> lovelaceToValue minLovelance
+  let !escrow = mkScriptAddress @PlutusScriptV2 networkId $ fromPlutusScript @PlutusScriptV2 $ getValidator $ escrowValidator terms
+  let txOutEscrow = TxOut (escrow) valueOutEscrow (mkTxOutDatum atDatum) ReferenceScriptNone
+
+  let valueOutStanding = (fromPlutusValue $ assetClassValue voucherAssetClass 1) <> lovelaceToValue minLovelance
+  let !standing = mkScriptAddress @PlutusScriptV2 networkId $ fromPlutusScript @PlutusScriptV2 $ getValidator $ standingBidValidator terms
+  let txOutStanding = TxOut (standing) valueOutStanding (mkTxOutDatum ()) ReferenceScriptNone
+
+  let toMint = (mintedTokens (fromPlutusScript $ getMintingPolicy mp) () [])
+
+  tx <- autoCreateTx node actorAddress actorSk [txOutStanding, txOutEscrow] (utxo <> utxoMoney) toMint
+  putStrLn "Signed"
+
+  putStrLn $ show tx
 
   submitTransaction networkId nodeSocket tx
   putStrLn "Submited"
