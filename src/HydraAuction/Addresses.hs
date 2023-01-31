@@ -9,8 +9,8 @@ import PlutusTx.Prelude
 import Prelude qualified
 
 import GHC.Generics (Generic)
-import Plutus.V1.Ledger.Api (Address)
 import Plutus.V1.Ledger.Value (CurrencySymbol)
+import Plutus.V2.Ledger.Api (Address)
 import PlutusTx qualified
 
 newtype VoucherCS = VoucherCS {unVoucherCS :: CurrencySymbol}

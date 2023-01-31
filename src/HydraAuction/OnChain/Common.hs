@@ -5,9 +5,9 @@ module HydraAuction.OnChain.Common (minAuctionFee, validAuctionTerms, decodeOutp
 import PlutusTx.Prelude
 
 import HydraAuction.Types
-import Plutus.V1.Ledger.Api (Address, CurrencySymbol (..), POSIXTime (..), TokenName (..), fromBuiltinData, getDatum)
-import Plutus.V1.Ledger.Contexts (TxInfo, TxOut, findDatum, txOutAddress, txOutDatumHash, txOutValue)
 import Plutus.V1.Ledger.Value (assetClass, assetClassValueOf)
+import Plutus.V2.Ledger.Api (Address, CurrencySymbol (..), OutputDatum (..), POSIXTime (..), TokenName (..), fromBuiltinData, getDatum)
+import Plutus.V2.Ledger.Contexts (TxInfo, TxOut, findDatum, txOutAddress, txOutDatum, txOutValue)
 import PlutusTx qualified
 
 {-# INLINEABLE minAuctionFee #-}
@@ -35,8 +35,13 @@ validAuctionTerms terms = validAuctionTerms' terms (POSIXTime 0)
 {-# INLINEABLE decodeOutputDatum #-}
 decodeOutputDatum :: PlutusTx.FromData a => TxInfo -> TxOut -> Maybe a
 decodeOutputDatum info output = do
-  hash <- txOutDatumHash output
-  datum <- findDatum hash info
+  datum <- case txOutDatum output of
+    NoOutputDatum ->
+      Nothing
+    OutputDatumHash hash ->
+      findDatum hash info
+    OutputDatum d ->
+      Just d
   fromBuiltinData $ getDatum datum
 
 {-# INLINEABLE byAddress #-}

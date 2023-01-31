@@ -11,9 +11,9 @@ import Hydra.Cardano.Api (
  )
 import Plutus.Extras as X
 import Plutus.V1.Ledger.Address (Address, scriptHashAddress)
-import Plutus.V1.Ledger.Api (Validator)
 import Plutus.V1.Ledger.Scripts (MintingPolicy, unMintingPolicyScript, unValidatorScript)
 import Plutus.V1.Ledger.Value (CurrencySymbol (..))
+import Plutus.V2.Ledger.Api (Validator)
 import PlutusTx.Prelude (toBuiltin)
 
 validatorAddress :: Validator -> Address

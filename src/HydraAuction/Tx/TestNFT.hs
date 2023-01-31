@@ -12,8 +12,8 @@ import Hydra.Chain.CardanoClient
 import Hydra.Cluster.Util (keysFor)
 import HydraAuction.OnChain.TestNFT
 import HydraAuction.Tx.Common hiding (actorAddress)
-import Plutus.V1.Ledger.Api (TokenName (..), getMintingPolicy)
 import Plutus.V1.Ledger.Value (AssetClass (..), assetClassValue)
+import Plutus.V2.Ledger.Api (TokenName (..), getMintingPolicy)
 
 autoCreateTx :: RunningNode -> Address ShelleyAddr -> SigningKey PaymentKey -> [TxIn] -> [TxOut CtxTx] -> UTxO -> TxMintValue BuildTx -> IO (Tx)
 autoCreateTx node@RunningNode {nodeSocket, networkId} changeAddress authorSk insCollateral outs utxoToSpend toMint = do

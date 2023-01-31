@@ -24,7 +24,8 @@ import Plutus.V2.Ledger.Api (
   toBuiltin,
  )
 
-minLovelance = 2_000_000 :: Lovelace
+minLovelance :: Lovelace
+minLovelance = 2_000_000
 
 tokenToAsset :: TokenName -> AssetName
 tokenToAsset (TokenName t) = AssetName $ fromBuiltin t

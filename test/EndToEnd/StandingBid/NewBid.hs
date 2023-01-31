@@ -17,7 +17,7 @@ import Plutus.V2.Ledger.Api (
   toBuiltin,
  )
 
-import Plutus.V1.Ledger.Contexts (TxOutRef (TxOutRef))
+import Plutus.V2.Ledger.Contexts (TxOutRef (TxOutRef))
 import System.FilePath ((</>))
 
 import CardanoNode (

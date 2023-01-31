@@ -20,10 +20,10 @@ import Prelude qualified
 
 import GHC.Generics (Generic)
 import HydraAuction.Addresses (VoucherCS)
-import Plutus.V1.Ledger.Contexts (TxOutRef)
 import Plutus.V1.Ledger.Crypto (PubKeyHash)
 import Plutus.V1.Ledger.Time (POSIXTime)
 import Plutus.V1.Ledger.Value (AssetClass)
+import Plutus.V2.Ledger.Contexts (TxOutRef)
 import PlutusTx qualified
 import PlutusTx.IsData.Class (FromData (fromBuiltinData), ToData (toBuiltinData), UnsafeFromData (unsafeFromBuiltinData))
 import PlutusTx.Prelude hiding (fromInteger)
