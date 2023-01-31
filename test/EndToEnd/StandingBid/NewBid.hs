@@ -120,10 +120,9 @@ actorAddress actor = do
 standingBidValidatorAddress :: AuctionTerms -> Scenario (Address ShelleyAddr)
 standingBidValidatorAddress terms = do
   MkContext {..} <- ask
-  let script = getValidator $ standingBidValidator terms
   pure $
     buildScriptAddress
-      (PlutusScript $ fromPlutusScript @PlutusScriptV2 script)
+      (PlutusScript $ standingBidValidatorScript terms)
       (networkId node)
 
 actorTipUtxo :: Actor -> Scenario UTxO.UTxO
@@ -174,7 +173,12 @@ initStandingBidState actor terms = do
   let (txIn, _) = fromJust $ viaNonEmpty head $ UTxO.pairs utxo
 
   (_, sk) <- liftIO $ keysFor actor
-  let unbalancedTx = mkUnbalancedTx node txIn
+
+  initTxBody <- mkInitTxBody
+  let unbalancedTx =
+        initTxBody
+          & addVkInputs [txIn]
+          & addOutputs [mkAuctionStateOut node]
 
   liftIO $ writeLog "Unbalanced tx body:" unbalancedTx
   balancingResult <- balanceTx actor utxo unbalancedTx
@@ -201,19 +205,13 @@ initStandingBidState actor terms = do
       TxOut
         ( mkScriptAddress @PlutusScriptV2
             (networkId node)
-            $ fromPlutusScript $
-              getValidator $
-                standingBidValidator terms
+            (standingBidValidatorScript terms)
         )
-        (lovelaceToValue 98_000_000)
+        (lovelaceToValue 2_000_000)
         (TxOutDatumHash $ hashDatum stateDatum)
         ReferenceScriptNone
 
-    mkUnbalancedTx node txIn =
-      emptyTxBody
-        & addVkInputs [txIn]
-        & addOutputs [mkAuctionStateOut node]
-
+-- FIXME: Merge with Scenario context
 data NodeInfo = MkNodeInfo
   { protocolParams :: ProtocolParameters
   , systemStart :: SystemStart
@@ -233,6 +231,17 @@ queryNodeInfo = do
       <*> querySystemStart networkId' nodeSocket' QueryTip
       <*> queryEraHistory networkId' nodeSocket' QueryTip
       <*> queryStakePools networkId' nodeSocket' QueryTip
+
+mkInitTxBody :: Scenario (TxBodyContent BuildTx)
+mkInitTxBody = do
+  MkContext {..} <- ask
+  liftIO $ do
+    protocolParams <-
+      queryProtocolParameters
+        (networkId node)
+        (nodeSocket node)
+        QueryTip
+    pure $ emptyTxBody {txProtocolParams = BuildTxWith $ Just protocolParams}
 
 balanceTx ::
   Actor ->
@@ -258,23 +267,19 @@ balanceTx actor utxoSet unbalancedTxBodyContent = do
       (ShelleyAddressInEra actorAddr)
       Nothing
 
-addExplicitFee :: Lovelace -> TxBodyContent build -> TxBodyContent build
-addExplicitFee p txbc = txbc {txFee = TxFeeExplicit p}
-
 addStandingBidScript ::
   AuctionTerms ->
   TxBodyContent build ->
   TxBodyContent build
-addStandingBidScript terms txbc =
-  txbc
-    { txAuxScripts =
-        TxAuxScripts
-          [ fromJust $
-              toScriptInEra BabbageEra $
-                toScriptInAnyLang $
-                  PlutusScript $ standingBidValidatorScript terms
-          ]
-    }
+addStandingBidScript terms txBuilder =
+  txBuilder {txAuxScripts = TxAuxScripts [fromJust script]}
+  where
+    script =
+      scriptWitnessScript $
+        mkScriptWitness
+          (standingBidValidatorScript terms)
+          InlineScriptDatum
+          (toScriptData ())
 
 standingBidValidatorScript :: AuctionTerms -> PlutusScript
 standingBidValidatorScript =
@@ -285,20 +290,37 @@ newBid actor terms amount = do
   MkContext {..} <- ask
   actorUtxo <- actorTipUtxo actor
   auctionUtxo <- standingBidValidatorTipUtxo terms
-  let (actorTxIn, _) = fromJust $ viaNonEmpty head $ UTxO.pairs actorUtxo
-  let (auctionTxIn, _) = fromJust $ viaNonEmpty head $ UTxO.pairs auctionUtxo
-  liftIO $ do
-    (_, sk) <- keysFor actor
-    actorPkh <- actorPubKeyHash actor
-    let unsignedTx = mkUnbalancedTx node actorPkh actorTxIn auctionTxIn
-        unsignedTxBody = getTxBody unsignedTx
-        wit = signWith (getTxId unsignedTxBody) sk
-        tx = makeSignedTransaction [wit] unsignedTxBody
 
-    writeLog "Tx body:" unsignedTxBody
-    submitTransaction (networkId node) (nodeSocket node) tx
-    txUtxo <- awaitTransaction (networkId node) (nodeSocket node) tx
-    writeLog "Finished making a new bid" txUtxo
+  (_, sk) <- liftIO $ keysFor actor
+  actorPkh <- liftIO $ actorPubKeyHash actor
+
+  let (actorTxIn, _) = fromJust $ viaNonEmpty head $ UTxO.pairs actorUtxo
+      (collateralTxIn, _) = fromJust $ viaNonEmpty last $ UTxO.pairs actorUtxo
+      (auctionTxIn, _) = fromJust $ viaNonEmpty head $ UTxO.pairs auctionUtxo
+
+  initTxBody <- mkInitTxBody
+  let unbalancedTx =
+        initTxBody
+          & addVkInputs [actorTxIn]
+          & addInputs [withWitness auctionTxIn]
+          & addOutputs [mkAuctionStateOut node actorPkh]
+          & addStandingBidScript terms
+          & addCollateral collateralTxIn
+
+  liftIO $ writeLog "Unbalanced tx body:" unbalancedTx
+  balancingResult <- balanceTx actor (actorUtxo <> auctionUtxo) unbalancedTx
+  liftIO $ case balancingResult of
+    Left err -> fail $ show err
+    Right balancedTx -> do
+      let bTxBody = balancedTxBody balancedTx
+      writeLog "Balanced tx body:" bTxBody
+
+      let wit = makeShelleyKeyWitness bTxBody (WitnessPaymentKey sk)
+          tx = makeSignedTransaction [wit] bTxBody
+
+      submitTransaction (networkId node) (nodeSocket node) tx
+      txUtxo <- awaitTransaction (networkId node) (nodeSocket node) tx
+      writeLog "Finished making a new bid" txUtxo
   where
     newStateDatum :: PubKeyHash -> Data
     newStateDatum pkh =
@@ -314,24 +336,19 @@ newBid actor terms amount = do
             (networkId node)
             (standingBidValidatorScript terms)
         )
-        (lovelaceToValue 196_000_000)
+        (lovelaceToValue 2_000_000)
         (TxOutDatumHash $ hashDatum $ newStateDatum pkh)
         ReferenceScriptNone
 
-    -- FIXME(mbendkowski): add collateral
-    mkUnbalancedTx node pkh actorTxIn auctionTxIn =
-      unsafeBuildTransaction $
-        emptyTxBody
-          & addVkInputs [actorTxIn]
-          & addInputs
-            [
-              ( auctionTxIn
-              , BuildTxWith $ KeyWitness KeyWitnessForSpending
-              )
-            ]
-          & addOutputs [mkAuctionStateOut node pkh]
-          & addExplicitFee 2_000_000
-          & addStandingBidScript terms
+addCollateral :: TxIn -> TxBodyContent build -> TxBodyContent build
+addCollateral collateralTxIn txBuilder =
+  txBuilder
+    { txInsCollateral =
+        TxInsCollateral $
+          collateralTxIn :
+          txInsCollateral'
+            (txInsCollateral txBuilder)
+    }
 
 spec :: Spec
 spec = specify "Test E2E" $ do
@@ -340,6 +357,4 @@ spec = specify "Test E2E" $ do
     terms <- auctionTerms Alice
 
     initStandingBidState Alice terms
-
-    initWallet Alice 100_000_000
     newBid Alice terms 100
