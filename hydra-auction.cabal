@@ -15,14 +15,18 @@ common common-lang
   ghc-options:
     -Wall -Wcompat -Wincomplete-record-updates
     -Wincomplete-uni-patterns -Wredundant-constraints
-    -Wmissing-export-lists -Wmissing-deriving-strategies -Werror
-    -fobject-code -fno-ignore-interface-pragmas
-    -fno-omit-interface-pragmas
+    -Wmissing-export-lists -Wmissing-deriving-strategies -fobject-code
+    -fno-ignore-interface-pragmas -fno-omit-interface-pragmas
 
   build-depends:
     , async
     , base                     ^>=4.14
+    , containers
+    , extra
+    , filepath
     , hydra-cardano-api
+    , hydra-cluster
+    , hydra-node
     , hydra-prelude
     , mtl
     , plutus-tx-plugin
@@ -99,7 +103,10 @@ executable hydra-auction
     , cborg
     , containers
     , data-default
+    , hydra-auction
     , hydra-cardano-api
+    , hydra-test-utils
+    , optparse-applicative
     , ouroboros-network               ==0.1.0.1
     , plutus-ledger-api               ==1.0.0.0
     , QuickCheck
@@ -115,6 +122,7 @@ library
   exposed-modules:
     HydraAuction.Addresses
     HydraAuction.OnChain
+    HydraAuction.Tx.TestNFT
     HydraAuction.Types
 
   other-modules:
@@ -122,7 +130,9 @@ library
     HydraAuction.OnChain.Escrow
     HydraAuction.OnChain.StandingBid
     HydraAuction.OnChain.StateToken
+    HydraAuction.OnChain.TestNFT
     HydraAuction.PlutusExtras
+    HydraAuction.Tx.Common
 
   build-depends:
     , hydra-plutus
@@ -142,8 +152,6 @@ test-suite hydra-auction-test
     , bytestring
     , cardano-api
     , containers
-    , extra
-    , filepath
     , hydra-auction
     , hydra-cardano-api
     , hydra-cluster

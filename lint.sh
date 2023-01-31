@@ -20,6 +20,7 @@ fi
 # Using null breaks Plutus Tx
 find . -type f -name '*.hs' ! -path '*/dist-newstyle/*' -exec \
 	hlint \
+      -XBangPatterns \
       -XTypeApplications \
       -XNondecreasingIndentation \
       -XPatternSynonyms \
