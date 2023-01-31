@@ -22,10 +22,15 @@ autoCreateTx node@RunningNode {nodeSocket, networkId} changeAddress authorSk ins
   eraHistory <- queryEraHistory networkId nodeSocket QueryTip
   stakePools <- queryStakePools networkId nodeSocket QueryTip
 
+  -- TODO: filter ADA outs
+  let pred x = (length <$> flattenValue <$> txOutValue <$> (toPlutusTxOut $ x)) == Just 1
+      utxoMoney = UTxO.filter pred utxoToSpend
+      (txIn, _) = fromJust $ viaNonEmpty head $ UTxO.pairs utxoMoney
+
   let preBody =
         TxBodyContent
           (withWitness <$> toList (UTxO.inputSet utxoToSpend))
-          (TxInsCollateral insCollateral)
+          (TxInsCollateral [txIn])
           TxInsReferenceNone
           outs
           TxTotalCollateralNone
@@ -86,4 +91,4 @@ mintOneTestNFT node@RunningNode {nodeSocket, networkId} actor = do
   void $ awaitTransaction networkId nodeSocket tx
   putStrLn "Awaited"
 
-  putStrLn $ "Created Tx id: " <> show tx
+  putStrLn $ "Created Tx id: " <> (show $ getTxId $ txBody tx)

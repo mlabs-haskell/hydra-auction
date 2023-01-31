@@ -79,3 +79,5 @@ announceAuction node@RunningNode {nodeSocket, networkId} actor terms utxoRef = d
 
   void $ awaitTransaction networkId nodeSocket tx
   putStrLn "Awaited"
+
+  putStrLn $ "Created Tx id: " <> (show $ getTxId $ txBody tx)
