@@ -216,8 +216,12 @@ spec = do
 
             (auctionTerms, utxoNonce, utxoSet) <- mkAuctionTerms tracer node aliceCardanoVk
 
-            tx_AuctionInit tracer node (aliceCardanoVk, aliceCardanoSk, aliceAddress) returnedValue1 (auctionTerms, utxoNonce, utxoSet)
-            return ()
+            (atDatumHash, pparams, systemStart, eraHistory, stakePools) <- 
+               prep_AuctionInit tracer node (aliceCardanoVk, aliceCardanoSk, aliceAddress) returnedValue1 (auctionTerms, utxoNonce, utxoSet)
+
+            tx_AuctionInit tracer node (aliceCardanoVk, aliceCardanoSk, aliceAddress) returnedValue1 (auctionTerms, utxoNonce, utxoSet) (atDatumHash, pparams, systemStart, eraHistory, stakePools)
+
+            pure ()
 
 tx_mintInit tracer node@RunningNode {nodeSocket, networkId} = do
   -- Mint initial ADA
@@ -347,7 +351,7 @@ mkAuctionTerms _tracer node@RunningNode {nodeSocket, networkId} aliceCardanoVk =
 
   pure (terms, utxoNonce, utxoSet)
 
-tx_AuctionInit _tracer node@RunningNode {nodeSocket, networkId} (aliceCardanoVk, aliceCardanoSk, aliceAddress) returnedValue1 (auctionTerms, utxoNonce, utxoSet) = do
+prep_AuctionInit _tracer node@RunningNode {nodeSocket, networkId} (aliceCardanoVk, aliceCardanoSk, aliceAddress) returnedValue1 (auctionTerms, utxoNonce, utxoSet) = do
   -- Auction init
 
   let mp = policy auctionTerms
@@ -373,6 +377,11 @@ tx_AuctionInit _tracer node@RunningNode {nodeSocket, networkId} (aliceCardanoVk,
   !eraHistory <- queryEraHistory networkId nodeSocket QueryTip
   !stakePools <- queryStakePools networkId nodeSocket QueryTip
 
+  pure (atDatumHash, pparams, systemStart, eraHistory, stakePools)
+
+
+
+tx_AuctionInit _tracer node@RunningNode {nodeSocket, networkId} (aliceCardanoVk, aliceCardanoSk, aliceAddress) returnedValue1 (auctionTerms, utxoNonce, utxoSet) (atDatumHash, pparams, systemStart, eraHistory, stakePools) = do
   putStrLn "Pre prebody"
   putStrLn $ show utxoNonce
 
@@ -405,12 +414,17 @@ tx_AuctionInit _tracer node@RunningNode {nodeSocket, networkId} (aliceCardanoVk,
 
   putStrLn "Post prebbody"
 
-  body <-
-    either
-      (\x -> (putStrLn $ show x) >> undefined)
-      pure
-      ( second balancedTxBody $
-          makeTransactionBodyAutoBalance
+  putStrLn $ "atDatumHash: " <> show atDatumHash
+  -- putStrLn $ "pparams: " <> show pparams
+  putStrLn $ "systemStart: " <> show systemStart
+  -- putStrLn $ "eraHistory: " <> show eraHistory
+  putStrLn $ "stakePools: " <> show stakePools
+
+  putStrLn $ "utxo set: " <> show utxoSet
+
+  putStrLn $ "pre body: " <> show (UTxO.toApi utxoSet)
+
+  let !eitherBody = makeTransactionBodyAutoBalance
             BabbageEraInCardanoMode -- TODO
             systemStart
             eraHistory
@@ -420,18 +434,18 @@ tx_AuctionInit _tracer node@RunningNode {nodeSocket, networkId} (aliceCardanoVk,
             preBody
             (ShelleyAddressInEra aliceAddress)
             Nothing
-      )
-  -- let body = getTxBody unsignedTx
+      !body = either (error . show) balancedTxBody eitherBody
+
   putStrLn $ "Body: " <> show body
 
-  -- let wit = signWith (getTxId (getTxBody unsignedTx)) aliceCardanoSk
-  let wit = makeShelleyKeyWitness body (WitnessPaymentKey aliceCardanoSk)
-  putStrLn "Before"
-  -- let scriptWitness = mkScriptWitness (getMintingPolicy allowMintingPolicy) TxOutDatumNone
-  let tx = makeSignedTransaction [wit] body
-  putStrLn "Signed"
+  -- -- let wit = signWith (getTxId (getTxBody unsignedTx)) aliceCardanoSk
+  -- let wit = makeShelleyKeyWitness body (WitnessPaymentKey aliceCardanoSk)
+  -- putStrLn "Before"
+  -- -- let scriptWitness = mkScriptWitness (getMintingPolicy allowMintingPolicy) TxOutDatumNone
+  -- let tx = makeSignedTransaction [wit] body
+  -- putStrLn "Signed"
 
-  submitTransaction networkId nodeSocket tx
-  putStrLn "Submited 2"
-  void $ awaitTransaction networkId nodeSocket tx
-  putStrLn "Awaited 2"
+  -- submitTransaction networkId nodeSocket tx
+  -- putStrLn "Submited 2"
+  -- void $ awaitTransaction networkId nodeSocket tx
+  -- putStrLn "Awaited 2"

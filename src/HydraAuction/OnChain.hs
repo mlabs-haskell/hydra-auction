@@ -16,8 +16,8 @@ import HydraAuction.OnChain.StandingBid
 import HydraAuction.OnChain.StateToken hiding (mkPolicy)
 import HydraAuction.PlutusExtras
 import HydraAuction.Types
-import Plutus.V1.Ledger.Api (Address, CurrencySymbol, MintingPolicy, ScriptContext, ToData (toBuiltinData), TokenName (..), TxInfo, UnsafeFromData (unsafeFromBuiltinData), Validator, mkMintingPolicyScript, mkValidatorScript, txInfoOutputs, txOutAddress)
-import Plutus.V1.Ledger.Contexts (ScriptContext, TxInfo, ownCurrencySymbol, scriptContextTxInfo, txInInfoOutRef, txInInfoResolved, txInfoInputs, txInfoMint, txInfoOutputs, txInfoValidRange, txOutAddress, txOutValue)
+import Plutus.V1.Ledger.Api (Address, BuiltinData(..), CurrencySymbol, Data(..), MintingPolicy, ScriptContext, ToData (toBuiltinData), TokenName (..), TxInfo, UnsafeFromData (unsafeFromBuiltinData), Validator, mkMintingPolicyScript, mkValidatorScript, txInfoOutputs, txOutAddress)
+import Plutus.V1.Ledger.Contexts (ScriptContext, ScriptPurpose(..), TxInfo, ownCurrencySymbol, scriptContextTxInfo, txInInfoOutRef, txInInfoResolved, txInfoInputs, txInfoMint, txInfoOutputs, txInfoValidRange, txOutAddress, txOutValue, scriptContextPurpose)
 import Plutus.V1.Ledger.Interval (contains, from)
 import Plutus.V1.Ledger.Value (assetClassValueOf, flattenValue)
 import PlutusTx qualified
@@ -30,24 +30,33 @@ myCheck True = ()
 myCheck False = traceError "Check error"
 
 {-# INLINEABLE mkPolicy #-}
-mkPolicy :: (EscrowAddress, AuctionTerms) -> () -> ScriptContext -> Bool
-mkPolicy (EscrowAddress escrosAddressLocal, terms) () ctx =
-  -- traceIfFalse "AuctionTerms is invalid" (validAuctionTerms terms)
-  True
-    && ( case onlyVoucherForgedCount of
-          Just x ->
-            -- XXX: Pattern matching by integer does not seem to work in Plutus
-            case (x == 1, x == -1) of
-              (True, False) -> exactlyUtxoRefConsumed && exactlyOneOutputToEscrow
-              (False, True) ->
-                traceIfFalse "Not exactly one input" (length (txInfoInputs info) == 1)
-                  && traceIfFalse "Not exactly none outputs" (length (txInfoInputs info) == 0)
-                  && traceIfFalse
-                    "Valid range not after voucher expiry"
-                    (contains (from (voucherExpiry terms)) (txInfoValidRange info))
-              (_, _) -> traceIfFalse "Wrong voucher amount forged" False
-          Nothing -> traceIfFalse "Wrong token kind forged" False
-       )
+mkPolicy :: BuiltinData -> BuiltinData -> ScriptContext -> Bool
+mkPolicy _ _ ctx =
+  case scriptContextPurpose ctx of
+    Minting _cSymbol ->
+      traceIfTrue "Here" True
+    _ ->
+      traceIfTrue "There" True
+  -- traceIfTrue "Start mkPolicy" True &&
+  -- -- traceIfFalse "AuctionTerms is invalid" (validAuctionTerms terms)
+  -- True
+  --   && ( case onlyVoucherForgedCount of
+  --         Just x ->
+  --           -- XXX: Pattern matching by integer does not seem to work in Plutus
+  --           case (x == 1, x == -1) of
+  --             (True, False) ->
+  --               traceIfTrue "True, False" True &&
+  --               exactlyUtxoRefConsumed && exactlyOneOutputToEscrow
+  --             (False, True) ->
+  --               traceIfTrue "False, True" True &&
+  --               traceIfFalse "Not exactly one input" (length (txInfoInputs info) == 1)
+  --                 && traceIfFalse "Not exactly none outputs" (length (txInfoInputs info) == 0)
+  --                 && traceIfFalse
+  --                   "Valid range not after voucher expiry"
+  --                   (contains (from (voucherExpiry terms)) (txInfoValidRange info))
+  --             (_, _) -> traceIfFalse "Wrong voucher amount forged" False
+  --         Nothing -> traceIfFalse "Wrong token kind forged" False
+  --      )
   where
     info :: TxInfo
     info = scriptContextTxInfo ctx
@@ -91,8 +100,7 @@ mkPolicy (EscrowAddress escrosAddressLocal, terms) () ctx =
 policy :: AuctionTerms -> MintingPolicy
 policy !terms =
   mkMintingPolicyScript $
-    $$(PlutusTx.compile [||\x y z -> myCheck (mkPolicy x (unsafeFromBuiltinData y) (unsafeFromBuiltinData z))||])
-      `PlutusTx.applyCode` PlutusTx.liftCode (escrowAddress terms, terms)
+    $$(PlutusTx.compile [||\y z -> myCheck (mkPolicy (BuiltinData (I 0)) (BuiltinData (I 0)) (unsafeFromBuiltinData z))||])
 
 voucherCurrencySymbol :: AuctionTerms -> CurrencySymbol
 voucherCurrencySymbol = scriptCurrencySymbol . policy
