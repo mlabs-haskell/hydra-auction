@@ -15,7 +15,7 @@ import HydraAuction.Tx.Common hiding (actorAddress)
 import Plutus.V1.Ledger.Value (AssetClass (..), assetClassValue)
 import Plutus.V2.Ledger.Api (TokenName (..), getMintingPolicy)
 
-autoCreateTx :: RunningNode -> Address ShelleyAddr -> SigningKey PaymentKey -> [TxIn] -> [TxOut CtxTx] -> UTxO -> TxMintValue BuildTx -> IO (Tx)
+autoCreateTx :: RunningNode -> Address ShelleyAddr -> SigningKey PaymentKey -> [TxIn] -> [TxOut CtxTx] -> UTxO -> TxMintValue BuildTx -> IO Tx
 autoCreateTx node@RunningNode {nodeSocket, networkId} changeAddress authorSk insCollateral outs utxoToSpend toMint = do
   pparams <- queryProtocolParameters networkId nodeSocket QueryTip
   systemStart <- querySystemStart networkId nodeSocket QueryTip
@@ -44,24 +44,20 @@ autoCreateTx node@RunningNode {nodeSocket, networkId} changeAddress authorSk ins
 
   -- FIXME: proper error handling
   body <-
-    either
-      (\x -> (putStrLn $ show x) >> undefined)
-      (pure)
-      ( second balancedTxBody $
-          makeTransactionBodyAutoBalance
-            BabbageEraInCardanoMode
-            systemStart
-            eraHistory
-            pparams
-            stakePools
-            (UTxO.toApi utxoToSpend)
-            preBody
-            (ShelleyAddressInEra changeAddress)
-            Nothing
-      )
+    either (error . show) (pure . balancedTxBody) $
+      makeTransactionBodyAutoBalance
+        BabbageEraInCardanoMode
+        systemStart
+        eraHistory
+        pparams
+        stakePools
+        (UTxO.toApi utxoToSpend)
+        preBody
+        (ShelleyAddressInEra changeAddress)
+        Nothing
 
-  let witness = makeShelleyKeyWitness (body) (WitnessPaymentKey authorSk)
-  return $ makeSignedTransaction [witness] (body)
+  let witness = makeShelleyKeyWitness body (WitnessPaymentKey authorSk)
+  pure $ makeSignedTransaction [witness] body
 
 mintOneTestNFT node@RunningNode {nodeSocket, networkId} actor = do
   (actorVk, actorSk) <- keysFor actor
@@ -71,10 +67,10 @@ mintOneTestNFT node@RunningNode {nodeSocket, networkId} actor = do
 
   utxo <- actorTipUtxo node actor
 
-  let !valueOut = (fromPlutusValue $ assetClassValue allowMintingAssetClass 1) <> lovelaceToValue minLovelance
+  let !valueOut = fromPlutusValue (assetClassValue allowMintingAssetClass 1) <> lovelaceToValue minLovelance
   let !txOut1 = TxOut (ShelleyAddressInEra actorAddress) valueOut TxOutDatumNone ReferenceScriptNone
   let (!txIn, _) = fromJust $ viaNonEmpty head $ UTxO.pairs utxo
-  let toMint = (mintedTokens (fromPlutusScript $ getMintingPolicy allowMintingPolicy) () [(tokenToAsset $ TokenName emptyByteString, 1)])
+  let toMint = mintedTokens (fromPlutusScript $ getMintingPolicy allowMintingPolicy) () [(tokenToAsset $ TokenName emptyByteString, 1)]
 
   tx <- autoCreateTx node actorAddress actorSk [txIn] [txOut1] utxo toMint
   putStrLn "Signed"

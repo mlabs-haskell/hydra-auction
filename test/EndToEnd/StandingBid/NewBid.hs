@@ -25,6 +25,7 @@ import CardanoNode (
   withCardanoNodeDevnet,
  )
 
+import Hydra.Cardano.Api (toPlutusTxOutRef)
 import Hydra.Cluster.Faucet
 import Hydra.Cluster.Fixture
 import Hydra.Cluster.Util
@@ -96,8 +97,8 @@ actorTipUtxo actor = do
 
 auctionTerms :: Actor -> Scenario AuctionTerms
 auctionTerms actor = do
-  -- utxo <- actorTipUtxo actor
-  -- let (TxIn _ _, _) = fromJust $ viaNonEmpty head $ UTxO.pairs utxo
+  utxoSet <- actorTipUtxo actor
+  let (utxoNonce, _) = fromJust $ viaNonEmpty head $ UTxO.pairs utxoSet
   actorPkh <- liftIO $ actorPubKeyHash actor
   pure $
     AuctionTerms
@@ -111,7 +112,7 @@ auctionTerms actor = do
       , auctionFee = fromJust $ intToNatural 1
       , startingBid = fromJust $ intToNatural 100
       , minimumBidIncrement = fromJust $ intToNatural 10
-      , utxoRef = undefined -- TODO -- TxOutRef (toShellyTxId txId) (fromIntegral txIx)
+      , utxoRef = toPlutusTxOutRef utxoNonce -- TODO -- TxOutRef (toShellyTxId txId) (fromIntegral txIx)
       }
 
 spec :: Spec

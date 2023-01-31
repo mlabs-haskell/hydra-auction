@@ -17,4 +17,4 @@ allowMintingCurrencySymbol :: CurrencySymbol
 allowMintingCurrencySymbol = scriptCurrencySymbol allowMintingPolicy
 
 allowMintingAssetClass :: AssetClass
-allowMintingAssetClass = AssetClass (allowMintingCurrencySymbol, (TokenName emptyByteString))
+allowMintingAssetClass = AssetClass (allowMintingCurrencySymbol, TokenName emptyByteString)

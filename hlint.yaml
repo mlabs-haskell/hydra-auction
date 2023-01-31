@@ -2,3 +2,4 @@
 - group: {name: generalise, enabled: true}
 - functions:
   - {name: undefined, within: []}
+- ignore: {name: Use print}
