@@ -33,7 +33,14 @@ import CardanoNode (
  )
 
 import Hydra.Cardano.Api
-import Hydra.Chain.CardanoClient (awaitTransaction, submitTransaction)
+import Hydra.Chain.CardanoClient (
+  awaitTransaction,
+  queryEraHistory,
+  queryProtocolParameters,
+  queryStakePools,
+  querySystemStart,
+  submitTransaction,
+ )
 import Hydra.Cluster.Faucet
 import Hydra.Cluster.Fixture
 import Hydra.Cluster.Util
@@ -165,17 +172,24 @@ initStandingBidState actor terms = do
   MkContext {..} <- ask
   utxo <- actorTipUtxo actor
   let (txIn, _) = fromJust $ viaNonEmpty head $ UTxO.pairs utxo
-  liftIO $ do
-    (_, sk) <- keysFor actor
-    let unsignedTx = mkUnsignedTx node txIn
-        unsignedTxBody = getTxBody unsignedTx
-        wit = signWith (getTxId unsignedTxBody) sk
-        tx = makeSignedTransaction [wit] unsignedTxBody
 
-    writeLog "Tx body:" unsignedTxBody
-    submitTransaction (networkId node) (nodeSocket node) tx
-    txUtxo <- awaitTransaction (networkId node) (nodeSocket node) tx
-    writeLog "Finished initiating standing bid state" txUtxo
+  (_, sk) <- liftIO $ keysFor actor
+  let unbalancedTx = mkUnbalancedTx node txIn
+
+  liftIO $ writeLog "Unbalanced tx body:" unbalancedTx
+  balancingResult <- balanceTx actor utxo unbalancedTx
+  liftIO $ case balancingResult of
+    Left err -> fail $ show err
+    Right balancedTx -> do
+      let bTxBody = balancedTxBody balancedTx
+      writeLog "Balanced tx body:" bTxBody
+
+      let wit = makeShelleyKeyWitness bTxBody (WitnessPaymentKey sk)
+          tx = makeSignedTransaction [wit] bTxBody
+
+      submitTransaction (networkId node) (nodeSocket node) tx
+      txUtxo <- awaitTransaction (networkId node) (nodeSocket node) tx
+      writeLog "Finished initiating standing bid state" txUtxo
   where
     stateDatum :: Data
     stateDatum =
@@ -195,12 +209,54 @@ initStandingBidState actor terms = do
         (TxOutDatumHash $ hashDatum stateDatum)
         ReferenceScriptNone
 
-    mkUnsignedTx node txIn =
-      unsafeBuildTransaction $
-        emptyTxBody
-          & addVkInputs [txIn]
-          & addOutputs [mkAuctionStateOut node]
-          & addExplicitFee 2_000_000
+    mkUnbalancedTx node txIn =
+      emptyTxBody
+        & addVkInputs [txIn]
+        & addOutputs [mkAuctionStateOut node]
+
+data NodeInfo = MkNodeInfo
+  { protocolParams :: ProtocolParameters
+  , systemStart :: SystemStart
+  , eraHistory :: EraHistory CardanoMode
+  , stakePools :: Set PoolId
+  }
+
+queryNodeInfo :: Scenario NodeInfo
+queryNodeInfo = do
+  MkContext {..} <- ask
+  liftIO $ do
+    let networkId' = networkId node
+        nodeSocket' = nodeSocket node
+
+    MkNodeInfo
+      <$> queryProtocolParameters networkId' nodeSocket' QueryTip
+      <*> querySystemStart networkId' nodeSocket' QueryTip
+      <*> queryEraHistory networkId' nodeSocket' QueryTip
+      <*> queryStakePools networkId' nodeSocket' QueryTip
+
+balanceTx ::
+  Actor ->
+  UTxO ->
+  TxBodyContent BuildTx ->
+  Scenario
+    ( Either
+        TxBodyErrorAutoBalance
+        BalancedTxBody
+    )
+balanceTx actor utxoSet unbalancedTxBodyContent = do
+  MkNodeInfo {..} <- queryNodeInfo
+  actorAddr <- actorAddress actor
+  pure $
+    makeTransactionBodyAutoBalance
+      BabbageEraInCardanoMode
+      systemStart
+      eraHistory
+      protocolParams
+      stakePools
+      (UTxO.toApi utxoSet)
+      unbalancedTxBodyContent
+      (ShelleyAddressInEra actorAddr)
+      Nothing
 
 addExplicitFee :: Lovelace -> TxBodyContent build -> TxBodyContent build
 addExplicitFee p txbc = txbc {txFee = TxFeeExplicit p}
@@ -234,7 +290,7 @@ newBid actor terms amount = do
   liftIO $ do
     (_, sk) <- keysFor actor
     actorPkh <- actorPubKeyHash actor
-    let unsignedTx = mkUnsignedTx node actorPkh actorTxIn auctionTxIn
+    let unsignedTx = mkUnbalancedTx node actorPkh actorTxIn auctionTxIn
         unsignedTxBody = getTxBody unsignedTx
         wit = signWith (getTxId unsignedTxBody) sk
         tx = makeSignedTransaction [wit] unsignedTxBody
@@ -263,7 +319,7 @@ newBid actor terms amount = do
         ReferenceScriptNone
 
     -- FIXME(mbendkowski): add collateral
-    mkUnsignedTx node pkh actorTxIn auctionTxIn =
+    mkUnbalancedTx node pkh actorTxIn auctionTxIn =
       unsafeBuildTransaction $
         emptyTxBody
           & addVkInputs [actorTxIn]
