@@ -15,7 +15,10 @@ import Hydra.Cardano.Api
 import Hydra.Cluster.Faucet
 import Hydra.Cluster.Fixture
 import Hydra.Cluster.Util
+import HydraAuction.OnChain
+import HydraAuction.Types
 import HydraNode
+import Plutus.V1.Ledger.Scripts (unValidatorScript)
 import Plutus.V1.Ledger.Value
 import Plutus.V2.Ledger.Api (
   POSIXTime (POSIXTime),
@@ -47,3 +50,8 @@ actorTipUtxo :: RunningNode -> Actor -> IO UTxO.UTxO
 actorTipUtxo node actor = do
   (vk, _) <- keysFor actor
   liftIO $ queryUTxOFor (networkId node) (nodeSocket node) QueryTip vk
+
+scriptUtxos :: RunningNode -> AuctionScript -> AuctionTerms -> IO UTxO.UTxO
+scriptUtxos node@RunningNode {networkId, nodeSocket} script terms = do
+  let scriptAddress = buildScriptAddress (PlutusScript $ fromPlutusScript $ unValidatorScript $ scriptValidatorForTerms script terms) networkId
+  queryUTxO networkId nodeSocket QueryTip [scriptAddress]
