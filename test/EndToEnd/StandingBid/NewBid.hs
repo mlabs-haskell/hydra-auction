@@ -111,7 +111,7 @@ auctionTerms actor = do
       , auctionFee = fromJust $ intToNatural 1
       , startingBid = fromJust $ intToNatural 100
       , minimumBidIncrement = fromJust $ intToNatural 10
-      , utxoRef = wip -- TxOutRef (toShellyTxId txId) (fromIntegral txIx)
+      , utxoRef = undefined -- TODO -- TxOutRef (toShellyTxId txId) (fromIntegral txIx)
       }
 
 spec :: Spec
