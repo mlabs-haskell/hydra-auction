@@ -108,6 +108,7 @@ executable hydra-auction
     , hydra-test-utils
     , optparse-applicative
     , ouroboros-network               ==0.1.0.1
+    , parsec
     , plutus-ledger-api               ==1.0.0.0
     , QuickCheck
     , serialise
