@@ -3,17 +3,17 @@ module HydraAuction.Tx.TestNFT where
 import Hydra.Prelude
 import PlutusTx.Prelude (emptyByteString)
 
-import Cardano.Api.UTxO as UTxO
+import Cardano.Api.UTxO qualified as UTxO
 import CardanoClient
 import CardanoNode (RunningNode (..))
 import Data.Maybe (fromJust)
-import Hydra.Cardano.Api
+import Hydra.Cardano.Api hiding (txOutValue)
 import Hydra.Chain.CardanoClient
 import Hydra.Cluster.Util (keysFor)
 import HydraAuction.OnChain.TestNFT
 import HydraAuction.Tx.Common hiding (actorAddress)
-import Plutus.V1.Ledger.Value (AssetClass (..), assetClassValue)
-import Plutus.V2.Ledger.Api (TokenName (..), getMintingPolicy)
+import Plutus.V1.Ledger.Value (AssetClass (..), assetClassValue, flattenValue)
+import Plutus.V2.Ledger.Api (TokenName (..), getMintingPolicy, txOutValue)
 
 autoCreateTx :: RunningNode -> Address ShelleyAddr -> SigningKey PaymentKey -> [TxIn] -> [TxOut CtxTx] -> UTxO -> TxMintValue BuildTx -> IO Tx
 autoCreateTx node@RunningNode {nodeSocket, networkId} changeAddress authorSk insCollateral outs utxoToSpend toMint = do
@@ -24,7 +24,7 @@ autoCreateTx node@RunningNode {nodeSocket, networkId} changeAddress authorSk ins
 
   let preBody =
         TxBodyContent
-          (withWitness <$> []) -- Map.toList (UTxO.inputSet utxoToSpend))
+          (withWitness <$> toList (UTxO.inputSet utxoToSpend))
           (TxInsCollateral insCollateral)
           TxInsReferenceNone
           outs
@@ -63,16 +63,19 @@ mintOneTestNFT node@RunningNode {nodeSocket, networkId} actor = do
   (actorVk, actorSk) <- keysFor actor
 
   let actorAddress = buildAddress actorVk networkId
-  putStrLn $ "Using address: " <> show actorAddress
+  putStrLn $ "Using actor: " <> show actor <> "with address: " <> show actorAddress
 
-  utxo <- actorTipUtxo node actor
+  utxo' <- actorTipUtxo node actor
 
-  let !valueOut = fromPlutusValue (assetClassValue allowMintingAssetClass 1) <> lovelaceToValue minLovelance
-  let !txOut1 = TxOut (ShelleyAddressInEra actorAddress) valueOut TxOutDatumNone ReferenceScriptNone
-  let (!txIn, _) = fromJust $ viaNonEmpty head $ UTxO.pairs utxo
-  let toMint = mintedTokens (fromPlutusScript $ getMintingPolicy allowMintingPolicy) () [(tokenToAsset $ TokenName emptyByteString, 1)]
+  let pred x = (length <$> flattenValue <$> txOutValue <$> (toPlutusTxOut $ x)) == Just 1
+      utxo = UTxO.filter pred utxo'
+      (txIn, _) = fromJust $ viaNonEmpty last $ UTxO.pairs utxo
 
-  tx <- autoCreateTx node actorAddress actorSk [txIn] [txOut1] utxo toMint
+  let !valueOut = (fromPlutusValue $ assetClassValue allowMintingAssetClass 1) <> lovelaceToValue minLovelance
+  let txOut = TxOut (ShelleyAddressInEra actorAddress) valueOut TxOutDatumNone ReferenceScriptNone
+  let toMint = (mintedTokens (fromPlutusScript $ getMintingPolicy allowMintingPolicy) () [(tokenToAsset $ TokenName emptyByteString, 1)])
+
+  tx <- autoCreateTx node actorAddress actorSk [txIn] [txOut] utxo toMint
   putStrLn "Signed"
 
   submitTransaction networkId nodeSocket tx
@@ -83,4 +86,4 @@ mintOneTestNFT node@RunningNode {nodeSocket, networkId} actor = do
   void $ awaitTransaction networkId nodeSocket tx
   putStrLn "Awaited"
 
--- TODO: print utxo
+-- TODO: return utxo
