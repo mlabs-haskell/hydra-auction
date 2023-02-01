@@ -19,6 +19,7 @@ common common-lang
     -fno-ignore-interface-pragmas -fno-omit-interface-pragmas
 
   build-depends:
+    text
     , async
     , base                     ^>=4.14
     , containers

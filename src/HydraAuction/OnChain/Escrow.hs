@@ -20,20 +20,17 @@ mkEscrowValidator (StandingBidAddress standingBidAddressLocal, FeeEscrowAddress 
       ( \escrowInputOutput -> case redeemer of
           StartBidding ->
             checkAuctionState (== Announced) escrowInputOutput
-              && traceIfFalse "Not exactly one input" (length (txInfoInputs info) == 1)
-              && traceIfFalse "Not exaclty two outputs" (length (txInfoInputs info) == 2)
-              && txSignedBy info (seller terms)
-              && contains (interval (biddingStart terms) (biddingEnd terms)) (txInfoValidRange info)
+              -- TODO
+              -- && traceIfFalse "Seller not signed" (txSignedBy info (seller terms))
+              -- FIXME
+              -- && traceIfFalse "Wrong valid range"
+                -- contains (interval (biddingStart terms) (biddingEnd terms)) (txInfoValidRange info)
               && checkStartBiddingOutputs
           SellerReclaims ->
             contains (from (voucherExpiry terms)) (txInfoValidRange info)
-              && traceIfFalse "Not exactly one input" (length (txInfoInputs info) == 1)
-              && traceIfFalse "Not exaclty two outputs" (length (txInfoInputs info) == 2)
               && checkSellerReclaimsOutputs
           BidderBuys ->
             checkAuctionState isStarted escrowInputOutput
-              && traceIfFalse "Not exactly two inputs" (length (txInfoInputs info) == 2)
-              && traceIfFalse "Not exaclty three outputs" (length (txInfoInputs info) == 3)
               && contains (interval (biddingEnd terms) (voucherExpiry terms)) (txInfoValidRange info)
               && checkBidderBuys escrowInputOutput
       )

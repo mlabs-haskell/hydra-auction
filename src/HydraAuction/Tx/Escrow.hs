@@ -68,20 +68,21 @@ announceAuction node@RunningNode {nodeSocket, networkId} actor terms utxoRef = d
 
   let voucherAssetClass = AssetClass (voucherCurrencySymbol terms, (stateTokenKindToTokenName Voucher))
   let toMint = (mintedTokens (fromPlutusScript $ getMintingPolicy mp) () [(tokenToAsset $ stateTokenKindToTokenName Voucher, 1)])
+
   let valueOut = (fromPlutusValue $ assetClassValue allowMintingAssetClass 1) <> (fromPlutusValue $ assetClassValue voucherAssetClass 1) <> lovelaceToValue minLovelance
   let !a = mkScriptAddress @PlutusScriptV2 networkId $ fromPlutusScript @PlutusScriptV2 $ getValidator $ escrowValidator terms
   let txOut = TxOut (a) valueOut (TxOutDatumInline $ fromPlutusData $ toData $ toBuiltinData $ atDatum) ReferenceScriptNone
 
-  tx <- autoCreateTx node actorAddress actorSk [txOut] (utxo <> utxoMoney) [] toMint
-  putStrLn "Signed"
-
-  submitTransaction networkId nodeSocket tx
-  putStrLn "Submited"
-
-  void $ awaitTransaction networkId nodeSocket tx
-  putStrLn "Awaited"
-
-  putStrLn $ "Created Tx id: " <> (show $ getTxId $ txBody tx)
+  void $ autoSubmitAndAwaitTx node $
+    AutoCreateParams {
+      authoredUtxos = [(actorSk, utxo<>utxoMoney)],
+      otherUtxo = mempty,
+      witnessedTxIns = [],
+      collateral = Nothing,
+      outs = [txOut],
+      toMint = toMint,
+      changeAddress = actorAddress
+    }
 
 startBidding node@RunningNode {nodeSocket, networkId} actor terms _ = do
   (actorVk, actorSk) <- keysFor actor
@@ -115,22 +116,17 @@ startBidding node@RunningNode {nodeSocket, networkId} actor terms _ = do
 
   let toMint = (mintedTokens (fromPlutusScript $ getMintingPolicy mp) () [])
 
-  let witness = BuildTxWith $ ScriptWitness scriptWitnessCtx $ mkScriptWitness script InlineScriptDatum (toScriptData StartBidding)
+  let
+    witness = BuildTxWith $ ScriptWitness scriptWitnessCtx $ mkScriptWitness script InlineScriptDatum (toScriptData StartBidding)
+    (!txInWithNFTs, _) = fromJust $ viaNonEmpty head $ UTxO.pairs utxoWithNFTs
 
-  let (txInWithNFTs, _) = fromJust $ viaNonEmpty head $ UTxO.pairs utxoWithNFTs
-
-  putStrLn $ show utxoWithNFTs
-  putStrLn $ show script
-  putStrLn $ show escrow
-  putStrLn $ show $ getPaymentScriptHash escrow
-
-  tx <- autoCreateTx node actorAddress actorSk [txOutStanding, txOutEscrow] (utxoMoney<>utxoWithNFTs) [(txInWithNFTs, witness)] toMint
-  putStrLn "Signed"
-
-  submitTransaction networkId nodeSocket tx
-  putStrLn "Submited"
-
-  void $ awaitTransaction networkId nodeSocket tx
-  putStrLn "Awaited"
-
-  putStrLn $ "Created Tx id: " <> (show $ getTxId $ txBody tx)
+  void $ autoSubmitAndAwaitTx node $
+    AutoCreateParams {
+      authoredUtxos = [(actorSk, utxoMoney)],
+      otherUtxo = utxoWithNFTs,
+      witnessedTxIns = [(txInWithNFTs, witness)],
+      collateral = Nothing,
+      outs = [txOutStanding, txOutEscrow],
+      toMint = toMint,
+      changeAddress = actorAddress
+    }
