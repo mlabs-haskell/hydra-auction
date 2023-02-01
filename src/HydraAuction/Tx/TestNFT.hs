@@ -15,8 +15,10 @@ import HydraAuction.Tx.Common hiding (actorAddress)
 import Plutus.V1.Ledger.Value (AssetClass (..), assetClassValue, flattenValue)
 import Plutus.V2.Ledger.Api (TokenName (..), getMintingPolicy, txOutValue)
 
-autoCreateTx :: RunningNode -> Address ShelleyAddr -> SigningKey PaymentKey -> [TxOut CtxTx] -> UTxO -> TxMintValue BuildTx -> IO Tx
-autoCreateTx node@RunningNode {nodeSocket, networkId} changeAddress authorSk outs utxoToSpend toMint = do
+import Hydra.Ledger.Cardano.Builder
+
+-- autoCreateTx :: RunningNode -> Address ShelleyAddr -> SigningKey PaymentKey -> [TxOut CtxTx] -> UTxO -> [_] ->  TxMintValue BuildTx -> IO Tx
+autoCreateTx node@RunningNode {nodeSocket, networkId} changeAddress authorSk outs utxoToSpend otherWitnesses toMint = do
   pparams <- queryProtocolParameters networkId nodeSocket QueryTip
   systemStart <- querySystemStart networkId nodeSocket QueryTip
   eraHistory <- queryEraHistory networkId nodeSocket QueryTip
@@ -27,9 +29,15 @@ autoCreateTx node@RunningNode {nodeSocket, networkId} changeAddress authorSk out
       utxoMoney = UTxO.filter pred utxoToSpend
       (txIn, _) = fromJust $ viaNonEmpty head $ UTxO.pairs utxoMoney
 
+  -- TODO
+  -- let preBody =
+  --       emptyTxBody
+  --         & addInputs ((withWitness <$> toList (UTxO.inputSet utxoToSpend)) <> otherWitnesses)
+  --         & addOutputs outs
+
   let preBody =
         TxBodyContent
-          (withWitness <$> toList (UTxO.inputSet utxoToSpend))
+          ((withWitness <$> toList (UTxO.inputSet utxoToSpend)) <> otherWitnesses)
           (TxInsCollateral [txIn])
           TxInsReferenceNone
           outs
@@ -62,7 +70,8 @@ autoCreateTx node@RunningNode {nodeSocket, networkId} changeAddress authorSk out
         Nothing
 
   let witness = makeShelleyKeyWitness body (WitnessPaymentKey authorSk)
-  pure $ makeSignedTransaction [witness] body
+  -- TODO
+  pure $ makeSignedTransaction [] body
 
 mintOneTestNFT node@RunningNode {nodeSocket, networkId} actor = do
   (actorVk, actorSk) <- keysFor actor
@@ -80,8 +89,7 @@ mintOneTestNFT node@RunningNode {nodeSocket, networkId} actor = do
   let txOut = TxOut (ShelleyAddressInEra actorAddress) valueOut TxOutDatumNone ReferenceScriptNone
   let toMint = (mintedTokens (fromPlutusScript $ getMintingPolicy allowMintingPolicy) () [(tokenToAsset $ TokenName emptyByteString, 1)])
 
-  tx <- autoCreateTx node actorAddress actorSk [txOut] utxo toMint
-  putStrLn $ show tx
+  tx <- autoCreateTx node actorAddress actorSk [txOut] utxo [] toMint
   putStrLn "Signed"
 
   submitTransaction networkId nodeSocket tx

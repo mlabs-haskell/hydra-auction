@@ -70,9 +70,9 @@ announceAuction node@RunningNode {nodeSocket, networkId} actor terms utxoRef = d
   let toMint = (mintedTokens (fromPlutusScript $ getMintingPolicy mp) () [(tokenToAsset $ stateTokenKindToTokenName Voucher, 1)])
   let valueOut = (fromPlutusValue $ assetClassValue allowMintingAssetClass 1) <> (fromPlutusValue $ assetClassValue voucherAssetClass 1) <> lovelaceToValue minLovelance
   let !a = mkScriptAddress @PlutusScriptV2 networkId $ fromPlutusScript @PlutusScriptV2 $ getValidator $ escrowValidator terms
-  let txOut = TxOut (a) valueOut (mkTxOutDatum atDatum) ReferenceScriptNone
+  let txOut = TxOut (a) valueOut (TxOutDatumInline $ fromPlutusData $ toData $ toBuiltinData $ atDatum) ReferenceScriptNone
 
-  tx <- autoCreateTx node actorAddress actorSk [txOut] (utxo <> utxoMoney) toMint
+  tx <- autoCreateTx node actorAddress actorSk [txOut] (utxo <> utxoMoney) [] toMint
   putStrLn "Signed"
 
   submitTransaction networkId nodeSocket tx
@@ -83,43 +83,49 @@ announceAuction node@RunningNode {nodeSocket, networkId} actor terms utxoRef = d
 
   putStrLn $ "Created Tx id: " <> (show $ getTxId $ txBody tx)
 
-startBidding node@RunningNode {nodeSocket, networkId} actor terms utxoRef = do
+startBidding node@RunningNode {nodeSocket, networkId} actor terms _ = do
   (actorVk, actorSk) <- keysFor actor
 
   let actorAddress = buildAddress actorVk networkId
   putStrLn $ "Using actor: " <> show actor <> "with address: " <> show actorAddress
 
-  utxo <- queryUTxOByTxIn networkId nodeSocket QueryTip [utxoRef]
+  utxoActorAll <- actorTipUtxo node actor
+  escrowUtxo <- scriptUtxos node Escrow terms
 
-  putStrLn $ show utxo
-  putStrLn $ show allowMintingAssetClass
-
-  utxoAll <- actorTipUtxo node actor
-  let pred x = (length <$> flattenValue <$> txOutValue <$> (toPlutusTxOut $ x)) == Just 1
-      utxoMoney = UTxO.filter pred utxoAll
+  let pred i x = (length <$> flattenValue <$> txOutValue <$> (toPlutusTxOut $ x)) == Just i
+      utxoMoney = UTxO.filter (pred 1) utxoActorAll
+      utxoWithNFTs = UTxO.filter (pred 3) escrowUtxo
 
   -- TODO: clean up
 
   let mp = policy terms
-  -- FIXUP: bidders hash
+  -- let atDatumIn = AuctionEscrowDatum (Announced) (VoucherCS $ scriptCurrencySymbol mp)
   let atDatum = AuctionEscrowDatum (BiddingStarted (ApprovedBiddersHash emptyByteString)) (VoucherCS $ scriptCurrencySymbol mp)
 
   let voucherAssetClass = AssetClass (voucherCurrencySymbol terms, (stateTokenKindToTokenName Voucher))
 
   let valueOutEscrow = (fromPlutusValue $ assetClassValue allowMintingAssetClass 1) <> lovelaceToValue minLovelance
-  let !escrow = mkScriptAddress @PlutusScriptV2 networkId $ fromPlutusScript @PlutusScriptV2 $ getValidator $ escrowValidator terms
-  let txOutEscrow = TxOut (escrow) valueOutEscrow (mkTxOutDatum atDatum) ReferenceScriptNone
+  let script = fromPlutusScript $ getValidator $ escrowValidator terms
+  let !escrow = mkScriptAddress @PlutusScriptV2 networkId script
+  let txOutEscrow = TxOut (escrow) valueOutEscrow (TxOutDatumInline $ fromPlutusData $ toData $ toBuiltinData $ atDatum) ReferenceScriptNone
 
   let valueOutStanding = (fromPlutusValue $ assetClassValue voucherAssetClass 1) <> lovelaceToValue minLovelance
   let !standing = mkScriptAddress @PlutusScriptV2 networkId $ fromPlutusScript @PlutusScriptV2 $ getValidator $ standingBidValidator terms
-  let txOutStanding = TxOut (standing) valueOutStanding (mkTxOutDatum ()) ReferenceScriptNone
+  let txOutStanding = TxOut (standing) valueOutStanding (TxOutDatumInline $ fromPlutusData $ toData $ toBuiltinData $ ()) ReferenceScriptNone
 
   let toMint = (mintedTokens (fromPlutusScript $ getMintingPolicy mp) () [])
 
-  tx <- autoCreateTx node actorAddress actorSk [txOutStanding, txOutEscrow] (utxo <> utxoMoney) toMint
-  putStrLn "Signed"
+  let witness = BuildTxWith $ ScriptWitness scriptWitnessCtx $ mkScriptWitness script InlineScriptDatum (toScriptData StartBidding)
 
-  putStrLn $ show tx
+  let (txInWithNFTs, _) = fromJust $ viaNonEmpty head $ UTxO.pairs utxoWithNFTs
+
+  putStrLn $ show utxoWithNFTs
+  putStrLn $ show script
+  putStrLn $ show escrow
+  putStrLn $ show $ getPaymentScriptHash escrow
+
+  tx <- autoCreateTx node actorAddress actorSk [txOutStanding, txOutEscrow] (utxoMoney<>utxoWithNFTs) [(txInWithNFTs, witness)] toMint
+  putStrLn "Signed"
 
   submitTransaction networkId nodeSocket tx
   putStrLn "Submited"
