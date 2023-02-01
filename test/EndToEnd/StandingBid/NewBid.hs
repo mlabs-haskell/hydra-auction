@@ -12,12 +12,15 @@ import CardanoClient (
   queryUTxO,
  )
 
+import Data.Fixed
 import Data.Maybe
+import Data.Time (secondsToNominalDiffTime)
+import Data.Time.Clock.POSIX (posixSecondsToUTCTime)
 
 import Plutus.V1.Ledger.Value
 import Plutus.V2.Ledger.Api (
   Data,
-  POSIXTime (POSIXTime),
+  POSIXTime (POSIXTime, getPOSIXTime),
   PubKeyHash (PubKeyHash),
   getValidator,
   toBuiltin,
@@ -41,6 +44,7 @@ import Hydra.Chain.CardanoClient (
   querySystemStart,
   submitTransaction,
  )
+import Hydra.Chain.Direct.TimeHandle
 import Hydra.Cluster.Faucet
 import Hydra.Cluster.Fixture
 import Hydra.Cluster.Util
@@ -137,31 +141,32 @@ standingBidValidatorTipUtxo terms = do
   scriptAddr <- standingBidValidatorAddress terms
   liftIO $ queryUTxO (networkId node) (nodeSocket node) QueryTip [scriptAddr]
 
-auctionTerms :: Actor -> Scenario AuctionTerms
-auctionTerms actor = do
-  utxo <- actorTipUtxo actor
+auctionTerms :: Scenario AuctionTerms
+auctionTerms = do
+  utxo <- actorTipUtxo Alice
   let (txIn, _) = fromJust $ viaNonEmpty head $ UTxO.pairs utxo
-  actorPkh <- liftIO $ actorPubKeyHash actor
+
+  alicePkh <- liftIO $ actorPubKeyHash Alice
+  bobPkh <- liftIO $ actorPubKeyHash Bob
+  carolPkh <- liftIO $ actorPubKeyHash Carol
+
   pure $
     AuctionTerms
       { auctionLot = assetClass "aa" "aa"
-      , seller = actorPkh
-      , delegates = []
-      , biddingStart = POSIXTime 0
-      , biddingEnd = POSIXTime 0
-      , voucherExpiry = POSIXTime 0
-      , cleanup = POSIXTime 0
-      , auctionFee = fromJust $ intToNatural 1
-      , startingBid = fromJust $ intToNatural 100
-      , minimumBidIncrement = fromJust $ intToNatural 10
+      , seller = alicePkh
+      , delegates = [bobPkh, carolPkh]
+      , biddingStart = POSIXTime 1_000_000_000
+      , biddingEnd = POSIXTime 2_000_000_000
+      , voucherExpiry = POSIXTime 3_000_000_000
+      , cleanup = POSIXTime 4_000_000_000
+      , auctionFee = fromJust $ intToNatural 8_000_000
+      , startingBid = fromJust $ intToNatural 10_000_000
+      , minimumBidIncrement = fromJust $ intToNatural 2_000_000
       , utxoRef = toPlutusTxOutRef txIn
       }
 
 voucherCS :: AuctionTerms -> VoucherCS
 voucherCS = VoucherCS . scriptCurrencySymbol . policy
-
-hashDatum :: Data -> Hash ScriptData
-hashDatum = hashScriptData . fromPlutusData
 
 writeLog :: Show a => String -> a -> IO ()
 writeLog msg x = putStrLn msg >> print x
@@ -217,7 +222,18 @@ data NodeInfo = MkNodeInfo
   , systemStart :: SystemStart
   , eraHistory :: EraHistory CardanoMode
   , stakePools :: Set PoolId
+  , timeHandle :: TimeHandle
   }
+
+toSlotNo :: POSIXTime -> Scenario SlotNo
+toSlotNo ptime = do
+  MkNodeInfo {..} <- queryNodeInfo
+  let ndtime =
+        secondsToNominalDiffTime
+          (MkFixed $ getPOSIXTime ptime `div` 1000)
+  case slotFromUTCTime timeHandle (posixSecondsToUTCTime ndtime) of
+    Left err -> liftIO $ fail (show err)
+    Right slotNo -> pure slotNo
 
 queryNodeInfo :: Scenario NodeInfo
 queryNodeInfo = do
@@ -231,6 +247,7 @@ queryNodeInfo = do
       <*> querySystemStart networkId' nodeSocket' QueryTip
       <*> queryEraHistory networkId' nodeSocket' QueryTip
       <*> queryStakePools networkId' nodeSocket' QueryTip
+      <*> queryTimeHandle networkId' nodeSocket'
 
 mkInitTxBody :: Scenario (TxBodyContent BuildTx)
 mkInitTxBody = do
@@ -298,6 +315,11 @@ newBid actor terms amount = do
   let addr = standingBidAddress terms
   liftIO $ writeLog "Standing bid address" (unStandingBidAddress addr)
 
+  lowerBound <- toSlotNo 0
+  upperBound <- toSlotNo 2_000_000_000
+
+  liftIO $ writeLog "Validity slots" (lowerBound, upperBound)
+
   initTxBody <- mkInitTxBody
   let unbalancedTx =
         initTxBody
@@ -306,6 +328,8 @@ newBid actor terms amount = do
             [(auctionTxIn, standingBidValidatorWitness terms)]
           & addOutputs [mkAuctionStateOut node actorPkh]
           & addCollateral collateralTxIn
+          & setValidityLowerBound lowerBound
+          & setValidityUpperBound upperBound
 
   liftIO $ writeLog "Auction UTXO" auctionUtxo
 
@@ -339,7 +363,7 @@ newBid actor terms amount = do
             (standingBidValidatorScript terms)
         )
         (lovelaceToValue 2_000_000)
-        (TxOutDatumHash $ hashDatum $ newStateDatum pkh)
+        (TxOutDatumInline $ fromPlutusData $ newStateDatum pkh)
         ReferenceScriptNone
 
 addCollateral :: TxIn -> TxBodyContent build -> TxBodyContent build
@@ -356,7 +380,7 @@ spec :: Spec
 spec = specify "Test E2E" $ do
   runScenario $ do
     initWallet Alice 100_000_000
-    terms <- auctionTerms Alice
+    terms <- auctionTerms
 
     initStandingBidState Alice terms
-    newBid Alice terms 100
+    newBid Alice terms 20_000_000
