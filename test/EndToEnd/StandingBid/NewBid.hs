@@ -208,7 +208,7 @@ initStandingBidState actor terms = do
             (standingBidValidatorScript terms)
         )
         (lovelaceToValue 2_000_000)
-        (TxOutDatumHash $ hashDatum stateDatum)
+        (TxOutDatumInline $ fromPlutusData stateDatum)
         ReferenceScriptNone
 
 -- FIXME: Merge with Scenario context
@@ -267,19 +267,16 @@ balanceTx actor utxoSet unbalancedTxBodyContent = do
       (ShelleyAddressInEra actorAddr)
       Nothing
 
-addStandingBidScript ::
-  AuctionTerms ->
-  TxBodyContent build ->
-  TxBodyContent build
-addStandingBidScript terms txBuilder =
-  txBuilder {txAuxScripts = TxAuxScripts [fromJust script]}
+standingBidValidatorWitness ::
+  AuctionTerms -> BuildTxWith BuildTx (Witness WitCtxTxIn)
+standingBidValidatorWitness terms =
+  BuildTxWith $ ScriptWitness scriptWitnessCtx script
   where
     script =
-      scriptWitnessScript $
-        mkScriptWitness
-          (standingBidValidatorScript terms)
-          InlineScriptDatum
-          (toScriptData ())
+      mkScriptWitness
+        (standingBidValidatorScript terms)
+        InlineScriptDatum
+        (toScriptData NewBid)
 
 standingBidValidatorScript :: AuctionTerms -> PlutusScript
 standingBidValidatorScript =
@@ -298,14 +295,19 @@ newBid actor terms amount = do
       (collateralTxIn, _) = fromJust $ viaNonEmpty last $ UTxO.pairs actorUtxo
       (auctionTxIn, _) = fromJust $ viaNonEmpty head $ UTxO.pairs auctionUtxo
 
+  let addr = standingBidAddress terms
+  liftIO $ writeLog "Standing bid address" (unStandingBidAddress addr)
+
   initTxBody <- mkInitTxBody
   let unbalancedTx =
         initTxBody
           & addVkInputs [actorTxIn]
-          & addInputs [withWitness auctionTxIn]
+          & addInputs
+            [(auctionTxIn, standingBidValidatorWitness terms)]
           & addOutputs [mkAuctionStateOut node actorPkh]
-          & addStandingBidScript terms
           & addCollateral collateralTxIn
+
+  liftIO $ writeLog "Auction UTXO" auctionUtxo
 
   liftIO $ writeLog "Unbalanced tx body:" unbalancedTx
   balancingResult <- balanceTx actor (actorUtxo <> auctionUtxo) unbalancedTx
