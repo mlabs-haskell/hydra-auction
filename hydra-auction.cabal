@@ -79,6 +79,7 @@ common common-lang
 executable hydra-auction
   import:         common-lang
   main-is:        Main.hs
+  other-modules:  ParsingCliHelpers
   build-depends:
     , aeson
     , array

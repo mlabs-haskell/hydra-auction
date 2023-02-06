@@ -17,31 +17,27 @@ import HydraAuction.Tx.TestNFT
 import Options.Applicative
 import Test.Hydra.Prelude (withTempDir)
 
-import Control.Concurrent (threadDelay)
-import Hydra.Logging (Tracer, showLogsOnFailure, withTracerOutputTo)
+import Hydra.Logging (showLogsOnFailure)
 import HydraAuction.OnChain
-import HydraAuction.Tx.Common
 import HydraNode (
   EndToEndLog (FromCardanoNode, FromFaucet),
  )
 import System.FilePath ((</>))
 import System.IO (IOMode (ReadWriteMode), withFile)
 
-import Cardano.Api (AsType (AsTxId), TxId (..), TxIn (..), TxIx (..), deserialiseFromRawBytesHex, displayError)
+import Cardano.Api (TxIn)
 
 import ParsingCliHelpers
-
-import Data.Bifunctor (first)
 
 data CLIAction
   = RunCardanoNode
   | ShowEscrow
-  | ShowScriptUtxos AuctionScript Actor TxIn
-  | ShowUtxos Actor
-  | Seed Actor
-  | MintTestNFT Actor
-  | AuctionAnounce Actor TxIn
-  | StartBidding Actor TxIn
+  | ShowScriptUtxos !AuctionScript !Actor !TxIn
+  | ShowUtxos !Actor
+  | Seed !Actor
+  | MintTestNFT !Actor
+  | AuctionAnounce !Actor !TxIn
+  | StartBidding !Actor !TxIn
 
 cliParser :: Parser CLIAction
 cliParser =
@@ -56,11 +52,29 @@ cliParser =
     )
   where
     actor :: Parser Actor
-    actor = parseActor <$> strOption (short 'a' <> metavar "ACTOR" <> help "Actor to use for tx and AuctionTerms construction")
+    actor =
+      parseActor
+        <$> strOption
+          ( short 'a'
+              <> metavar "ACTOR"
+              <> help "Actor to use for tx and AuctionTerms construction"
+          )
     script :: Parser AuctionScript
-    script = parseScript <$> strOption (short 's' <> metavar "SCRIPT" <> help "Script to check")
+    script =
+      parseScript
+        <$> strOption
+          ( short 's'
+              <> metavar "SCRIPT"
+              <> help "Script to check"
+          )
     utxo :: Parser TxIn
-    utxo = option (readerFromParsecParser parseTxIn) (short 'u' <> metavar "UTXO" <> help "Utxo with test NFT for AuctionTerms")
+    utxo =
+      option
+        (readerFromParsecParser parseTxIn)
+        ( short 'u'
+            <> metavar "UTXO"
+            <> help "Utxo with test NFT for AuctionTerms"
+        )
 
 opts :: ParserInfo CLIAction
 opts =
@@ -71,6 +85,7 @@ opts =
         <> header "TODO"
     )
 
+prettyPrintUtxo :: (Foldable t, Show a) => t a -> IO ()
 prettyPrintUtxo utxo = do
   putStrLn "Utxos: \n"
   -- FIXME print properly
@@ -79,18 +94,24 @@ prettyPrintUtxo utxo = do
 
 main :: IO ()
 main = do
-  action <- execParser opts
-  let gotNode = pure $ RunningNode {nodeSocket = "./node.socket", networkId = Testnet $ NetworkMagic 42}
-  case action of
+  userAction <- execParser opts
+  let gotNode =
+        pure $
+          RunningNode
+            { nodeSocket = "./node.socket"
+            , networkId = Testnet $ NetworkMagic 42
+            }
+  case userAction of
     RunCardanoNode -> do
       putStrLn "Running cardano-node"
       withTempDir "hydra-auction-1" $ \workDir -> do
-        withFile (workDir </> "test.log") ReadWriteMode $ \hdl ->
+        withFile (workDir </> "test.log") ReadWriteMode $ \_hdl ->
           showLogsOnFailure $ \tracer -> do
-            withCardanoNodeDevnet (contramap FromCardanoNode tracer) "." $ \node@RunningNode {nodeSocket, networkId} -> do
-              -- TODO: proper working dir
-              -- Somehow it hangs without infinite loop "/
-              return ()
+            withCardanoNodeDevnet (contramap FromCardanoNode tracer) "." $
+              error "Not implemented: RunCardanoNode"
+    -- \_node@RunningNode {nodeSocket, networkId} -> do
+    -- TODO: proper working dir
+    -- Somehow it hangs without infinite loop "/
     Seed actor -> do
       showLogsOnFailure $ \tracer -> do
         node <- gotNode
@@ -116,3 +137,5 @@ main = do
       node <- gotNode
       terms <- constructTerms node actor utxo
       startBidding node actor terms
+    ShowEscrow ->
+      error "Not implemented: ShowEscrow"
