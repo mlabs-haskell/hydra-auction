@@ -4,6 +4,7 @@ module HydraAuction.Types (
   isStarted,
   intToNatural,
   naturalToInt,
+  Natural,
   ApprovedBiddersHash (..),
   BidTerms (..),
   StandingBidState (..),
@@ -233,5 +234,5 @@ type BidderMembershipDatum = ApprovedBidders
 data EscrowRedeemer = StartBidding | SellerReclaims | BidderBuys
 PlutusTx.makeIsDataIndexed ''EscrowRedeemer [('StartBidding, 0), ('SellerReclaims, 1), ('BidderBuys, 2)]
 
-data StandingBidRedeemer = MoveToHydra | NewBid | Cleanup
-PlutusTx.makeIsDataIndexed ''StandingBidRedeemer [('MoveToHydra, 0), ('NewBid, 1), ('Cleanup, 2)]
+data StandingBidRedeemer = MoveToHydra | NewBid | UseBid | Cleanup
+PlutusTx.makeIsDataIndexed ''StandingBidRedeemer [('MoveToHydra, 0), ('NewBid, 1), ('UseBid, 2), ('Cleanup, 3)]

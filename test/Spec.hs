@@ -4,12 +4,11 @@ import Test.Tasty qualified as Tasty
 
 import Prelude
 
--- import EndToEnd.Spec (headTests)
-import EndToEnd.StandingBid.NewBid (testSuite)
+import EndToEnd.Spec (tests)
 
 main :: IO ()
 main = do
-  spec <- testSuite
+  spec <- tests
   Tasty.defaultMain $
     Tasty.testGroup
       "Hydra-demo"

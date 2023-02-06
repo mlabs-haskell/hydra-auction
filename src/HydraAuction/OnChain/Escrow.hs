@@ -24,14 +24,16 @@ mkEscrowValidator (StandingBidAddress standingBidAddressLocal, FeeEscrowAddress 
               -- && traceIfFalse "Seller not signed" (txSignedBy info (seller terms))
               -- FIXME
               -- && traceIfFalse "Wrong valid range"
-                -- contains (interval (biddingStart terms) (biddingEnd terms)) (txInfoValidRange info)
+              -- contains (interval (biddingStart terms) (biddingEnd terms)) (txInfoValidRange info)
               && checkStartBiddingOutputs
           SellerReclaims ->
-            contains (from (voucherExpiry terms)) (txInfoValidRange info)
-              && checkSellerReclaimsOutputs
+            -- FIXME
+            -- contains (from (voucherExpiry terms)) (txInfoValidRange info)
+              checkSellerReclaimsOutputs
           BidderBuys ->
             checkAuctionState isStarted escrowInputOutput
-              && contains (interval (biddingEnd terms) (voucherExpiry terms)) (txInfoValidRange info)
+              -- FIXME
+              -- && contains (interval (biddingEnd terms) (voucherExpiry terms)) (txInfoValidRange info)
               && checkBidderBuys escrowInputOutput
       )
   where
@@ -59,13 +61,12 @@ mkEscrowValidator (StandingBidAddress standingBidAddressLocal, FeeEscrowAddress 
               lovelaceOfOutput output == expectedAmount
         )
     checkStartBiddingOutputs =
-      traceError "Not two outputs" (length outputs == 2)
-        && case byAddress (scriptHashAddress $ ownHash context) outputs of
-          [out] -> traceIfFalse "Auction state is not started" $
-            case isStarted <$> (auctionState <$> decodeOutputDatum info out) of
-              Just True -> True
-              _ -> False
-          _ -> traceError "Wrong number of escrow outputs"
+      case byAddress (scriptHashAddress $ ownHash context) outputs of
+        [out] -> traceIfFalse "Auction state is not started" $
+          case isStarted <$> (auctionState <$> decodeOutputDatum info out) of
+            Just True -> True
+            _ -> False
+        _ -> traceError "Wrong number of escrow outputs"
         && checkSingleOutput
           standingBidAddressLocal
           "Standing bid"
@@ -88,26 +89,26 @@ mkEscrowValidator (StandingBidAddress standingBidAddressLocal, FeeEscrowAddress 
           )
             -- Check bid is present, bidder signed transaction, auction lot sent to bidder and bid/fee is paid
             && case decodeOutputDatum info standingBidInOut of
-              Just NoBid -> traceError "No bid in standing bid datum"
-              Just (Bid bidTerms) ->
-                txSignedBy info (bidBidder bidTerms)
-                  && traceError "Not three outputs" (length outputs == 3)
-                  && checkSingleOutput
-                    (pubKeyHashAddress $ bidBidder bidTerms)
-                    "Bidder"
-                    ( \bidderOutput ->
-                        traceIfFalse
-                          "Auction lot not provided to bidder"
-                          (assetClassValueOf (txOutValue bidderOutput) (auctionLot terms) == 1)
-                    )
-                  && checkSingleOutputWithAmount
-                    (pubKeyHashAddress $ seller terms)
-                    "Seller"
-                    (naturalToInt (bidAmount bidTerms) - naturalToInt (auctionFee terms))
-                  && checkSingleOutputWithAmount
-                    feeEscrowAddressLocal
-                    "Fee escrow"
-                    (naturalToInt $ auctionFee terms)
+              Just (StandingBidDatum {standingBidState}) -> case standingBidState of
+                NoBid -> traceError "NoBid in standing bid datum"
+                (Bid bidTerms) ->
+                  -- traceIfFalse "Not signed by bidder" (txSignedBy info (bidBidder bidTerms))
+                    -- checkSingleOutput
+                    --   (pubKeyHashAddress $ bidBidder bidTerms)
+                    --   "Bidder"
+                    --   ( \bidderOutput ->
+                    --       traceIfFalse
+                    --         "Auction lot not provided to bidder"
+                    --         (assetClassValueOf (txOutValue bidderOutput) (auctionLot terms) == 1)
+                    --   )
+                    checkSingleOutputWithAmount
+                      (pubKeyHashAddress $ seller terms)
+                      "Seller"
+                      (naturalToInt (bidAmount bidTerms) - naturalToInt (auctionFee terms))
+                    && checkSingleOutputWithAmount
+                      feeEscrowAddressLocal
+                      "Fee escrow"
+                      (naturalToInt $ auctionFee terms)
               Nothing -> traceError "Incorrect encoding for standing bid datum"
         _ -> traceError "Wrong number of standing bid inputs"
     checkSellerReclaimsOutputs =

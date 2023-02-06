@@ -5,11 +5,10 @@ import Prelude
 
 import Cardano.Api (NetworkId (..))
 import CardanoNode (RunningNode (RunningNode, networkId, nodeSocket), withCardanoNodeDevnet)
-import Control.Monad (forM_)
+import Control.Monad (forM_, void)
 import Data.Functor.Contravariant (contramap)
 import Hydra.Cardano.Api (NetworkMagic (NetworkMagic))
 import Hydra.Cluster.Faucet
-import Hydra.Cluster.Fixture
 import Hydra.Cluster.Fixture (Actor (..))
 import Hydra.Cluster.Util
 import HydraAuction.Tx.Common
@@ -30,16 +29,9 @@ import System.IO (IOMode (ReadWriteMode), withFile)
 
 import Cardano.Api (AsType (AsTxId), TxId (..), TxIn (..), TxIx (..), deserialiseFromRawBytesHex, displayError)
 
+import ParsingCliHelpers
+
 import Data.Bifunctor (first)
-
-import Text.Parsec ((<?>))
-import Text.Parsec qualified as Parsec
-import Text.Parsec.Error qualified as Parsec
-import Text.Parsec.Language qualified as Parsec
-import Text.Parsec.String qualified as Parsec
-import Text.Parsec.Token qualified as Parsec
-
-import Data.ByteString.Char8 qualified as BSC
 
 data CLIAction
   = RunCardanoNode
@@ -50,17 +42,6 @@ data CLIAction
   | MintTestNFT Actor
   | AuctionAnounce Actor TxIn
   | StartBidding Actor TxIn
-
-parseActor "alice" = Alice
-parseActor "bob" = Bob
-parseActor "carol" = Carol
-parseActor "faucet" = error "Not supported actor"
-parseActor _ = error "Actor parsing error"
-
-parseScript "escrow" = Escrow
-parseScript "standing-bid" = StandingBid
-parseScript "fee-escrow" = FeeEscrow
-parseScript _ = error "Escrow parsing error"
 
 cliParser :: Parser CLIAction
 cliParser =
@@ -92,7 +73,7 @@ opts =
 
 prettyPrintUtxo utxo = do
   putStrLn "Utxos: \n"
-  -- TODO print properly
+  -- FIXME print properly
   forM_ (toList utxo) $ \x ->
     putStrLn $ show x
 
@@ -126,43 +107,12 @@ main = do
       prettyPrintUtxo utxos
     MintTestNFT actor -> do
       node <- gotNode
-      mintOneTestNFT node actor
+      void $ mintOneTestNFT node actor
     AuctionAnounce actor utxo -> do
       node <- gotNode
       terms <- constructTerms node actor utxo
-      announceAuction node actor terms utxo
+      announceAuction node actor terms
     StartBidding actor utxo -> do
       node <- gotNode
       terms <- constructTerms node actor utxo
-      startBidding node actor terms utxo
-
-parseTxIn :: Parsec.Parser TxIn
-parseTxIn = TxIn <$> parseTxId <*> (Parsec.char '#' *> parseTxIx)
-
-parseTxId :: Parsec.Parser TxId
-parseTxId = do
-  str <- some Parsec.hexDigit <?> "transaction id (hexadecimal)"
-  case deserialiseFromRawBytesHex AsTxId (BSC.pack str) of
-    Right addr -> return addr
-    Left e -> fail $ "Incorrect transaction id format: " <> displayError e
-
-parseTxIx :: Parsec.Parser TxIx
-parseTxIx = TxIx . fromIntegral <$> decimal
-
-decimal :: Parsec.Parser Integer
-Parsec.TokenParser {Parsec.decimal = decimal} = Parsec.haskell
-
-readerFromParsecParser :: Parsec.Parser a -> ReadM a
-readerFromParsecParser p =
-  eitherReader (first formatError . Parsec.parse (p <* Parsec.eof) "")
-  where
-    --TODO: the default parsec error formatting is quite good, but we could
-    -- customise it somewhat:
-    formatError err =
-      Parsec.showErrorMessages
-        "or"
-        "unknown parse error"
-        "expecting"
-        "unexpected"
-        "end of input"
-        (Parsec.errorMessages err)
+      startBidding node actor terms

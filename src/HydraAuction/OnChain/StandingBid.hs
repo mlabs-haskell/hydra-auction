@@ -16,7 +16,8 @@ import Plutus.V2.Ledger.Contexts (ScriptContext, ownHash)
 mkStandingBidValidator :: AuctionTerms -> StandingBidDatum -> StandingBidRedeemer -> ScriptContext -> Bool
 mkStandingBidValidator terms datum redeemer context =
   validAuctionTerms terms
-    && case txInInfoResolved <$> txInfoInputs info of -- All cases require single input
+    -- All cases require single standing bid input
+    && case byAddress (scriptHashAddress $ ownHash context) $ txInInfoResolved <$> txInfoInputs info of
       [inputOut] -> case redeemer of
         MoveToHydra ->
           -- FIXME: new requirements may appear in tech spec
@@ -24,17 +25,28 @@ mkStandingBidValidator terms datum redeemer context =
           length (txInfoOutputs info) == 1 -- Check that nothing changed in output
             && head (txInfoOutputs info) == inputOut
         NewBid ->
-          ( case txInfoOutputs info of
+          -- TODO: not filter by addres
+          ( case byAddress (scriptHashAddress $ ownHash context) $ txInfoOutputs info of
               [out] ->
                 -- FIXME: Check bidder has right to make a bid
                 traceIfFalse "Output is not into standing bid" $
                   txOutAddress out == scriptHashAddress (ownHash context)
-                    && case validNewBid <$> decodeOutputDatum info inputOut <*> decodeOutputDatum info out of
+                    &&
+                      let
+                        inBid = standingBidState <$> decodeOutputDatum info inputOut
+                        outBid = standingBidState <$> decodeOutputDatum info out
+                      in
+                    case validNewBid <$> inBid <*> outBid of
                       Just x -> traceIfFalse "Incorrect bid" x
                       Nothing -> traceError "Incorrect encoding for input or output datum"
               _ -> traceError "Not exactly one ouput"
           )
-            && interval 0 (biddingEnd terms) == txInfoValidRange info
+            -- FIXUP
+            -- && interval 0 (biddingEnd terms) == txInfoValidRange info
+        UseBid ->
+          -- TODO: check
+          True
+          -- FIXUP: check interval
         Cleanup ->
           -- XXX: interval is checked on burning
           traceIfFalse "Not exactly one voucher was burt during transaction" $
@@ -52,7 +64,7 @@ mkStandingBidValidator terms datum redeemer context =
                               )
                         _ -> traceError "Not exactly one ouput"
                      )
-      _ : _ -> traceError "More than one input"
+      _ : _ -> traceError "More than one standing bid input"
       [] -> traceError "Impossible happened: no inputs for staning bid validator"
   where
     info :: TxInfo

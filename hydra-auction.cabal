@@ -19,7 +19,6 @@ common common-lang
     -fno-ignore-interface-pragmas -fno-omit-interface-pragmas
 
   build-depends:
-    text
     , async
     , base                     ^>=4.14
     , containers
@@ -30,10 +29,12 @@ common common-lang
     , hydra-node
     , hydra-prelude
     , mtl
+    , cardano-ledger-core
     , plutus-tx-plugin
     , record-dot-preprocessor
     , record-hasfield
     , stm
+    , text
     , transformers
     , websockets
 
@@ -127,6 +128,7 @@ library
     HydraAuction.Tx.Common
     HydraAuction.Tx.Escrow
     HydraAuction.Tx.TestNFT
+    HydraAuction.Tx.StandingBid
     HydraAuction.Types
 
   other-modules:
