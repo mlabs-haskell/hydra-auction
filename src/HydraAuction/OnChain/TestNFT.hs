@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -fplugin-opt PlutusTx.Plugin:defer-errors #-}
+
 module HydraAuction.OnChain.TestNFT (
   allowMintingAssetClass,
   allowMintingCurrencySymbol,

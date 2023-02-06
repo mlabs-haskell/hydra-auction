@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -fplugin-opt PlutusTx.Plugin:defer-errors #-}
+
 module HydraAuction.OnChain (voucherAssetClass, scriptValidatorForTerms, AuctionScript (..), policy, standingBidValidator, escrowValidator, voucherCurrencySymbol, mkEscrowValidator, escrowAddress, standingBidAddress) where
 
 import PlutusTx.Prelude
