@@ -21,6 +21,7 @@ common common-lang
   build-depends:
     , async
     , base                     ^>=4.14
+    , cardano-ledger-core
     , containers
     , extra
     , filepath
@@ -29,7 +30,6 @@ common common-lang
     , hydra-node
     , hydra-prelude
     , mtl
-    , cardano-ledger-core
     , plutus-tx-plugin
     , record-dot-preprocessor
     , record-hasfield
@@ -127,8 +127,8 @@ library
     HydraAuction.OnChain
     HydraAuction.Tx.Common
     HydraAuction.Tx.Escrow
-    HydraAuction.Tx.TestNFT
     HydraAuction.Tx.StandingBid
+    HydraAuction.Tx.TestNFT
     HydraAuction.Types
 
   other-modules:
@@ -151,7 +151,11 @@ test-suite hydra-auction-test
   import:         common-lang
   type:           exitcode-stdio-1.0
   main-is:        Spec.hs
-  other-modules:  EndToEnd.Spec
+  other-modules:
+    EndToEnd.Common
+    EndToEnd.Scenario
+    EndToEnd.Spec
+
   build-depends:
     , aeson
     , bytestring
