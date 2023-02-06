@@ -47,7 +47,7 @@ parseTxId :: Parsec.Parser TxId
 parseTxId = do
   strTxId <- some Parsec.hexDigit <?> "transaction id (hexadecimal)"
   case deserialiseFromRawBytesHex AsTxId (BSC.pack strTxId) of
-    Right addr -> return addr
+    Right addr -> pure addr
     Left e -> fail $ "Incorrect transaction id format: " <> displayError e
 
 parseTxIx :: Parsec.Parser TxIx

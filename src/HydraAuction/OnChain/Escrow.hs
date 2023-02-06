@@ -7,10 +7,11 @@ import HydraAuction.OnChain.Common
 import HydraAuction.OnChain.StateToken (StateTokenKind (..), stateTokenKindToTokenName)
 import HydraAuction.Types
 import Plutus.V1.Ledger.Address (pubKeyHashAddress, scriptHashAddress)
-import Plutus.V1.Ledger.Interval (contains, from, interval)
+
+-- import Plutus.V1.Ledger.Interval (contains, from, interval)
 import Plutus.V1.Ledger.Value (assetClass, assetClassValueOf)
-import Plutus.V2.Ledger.Api (Address, TxInfo, TxOut, scriptContextTxInfo, txInInfoResolved, txInfoInputs, txInfoOutputs, txInfoValidRange, txOutValue)
-import Plutus.V2.Ledger.Contexts (ScriptContext, ownHash, txSignedBy)
+import Plutus.V2.Ledger.Api (Address, TxInfo, TxOut, scriptContextTxInfo, txInInfoResolved, txInfoInputs, txInfoOutputs, txOutValue)
+import Plutus.V2.Ledger.Contexts (ScriptContext, ownHash)
 
 {-# INLINEABLE mkEscrowValidator #-}
 mkEscrowValidator :: (StandingBidAddress, FeeEscrowAddress, AuctionTerms) -> AuctionEscrowDatum -> EscrowRedeemer -> ScriptContext -> Bool
@@ -50,7 +51,7 @@ mkEscrowValidator (StandingBidAddress standingBidAddressLocal, FeeEscrowAddress 
     checkSingleOutput address outputName cont =
       case byAddress address outputs of
         [output] -> cont output
-        _ -> traceError $ "Wrong number of " <> outputName <> " outputs"
+        _other -> traceError $ "Wrong number of " <> outputName <> " outputs"
     checkSingleOutputWithAmount :: Address -> BuiltinString -> Integer -> Bool
     checkSingleOutputWithAmount address outputName expectedAmount =
       checkSingleOutput
@@ -110,7 +111,7 @@ mkEscrowValidator (StandingBidAddress standingBidAddressLocal, FeeEscrowAddress 
                       "Fee escrow"
                       (naturalToInt $ auctionFee terms)
               Nothing -> traceError "Incorrect encoding for standing bid datum"
-        _ -> traceError "Wrong number of standing bid inputs"
+        _other -> traceError "Wrong number of standing bid inputs"
     checkSellerReclaimsOutputs =
       checkSingleOutput
         sellerAddress

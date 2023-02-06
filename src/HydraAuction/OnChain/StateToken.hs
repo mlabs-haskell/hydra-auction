@@ -6,9 +6,9 @@ import HydraAuction.Addresses
 import HydraAuction.OnChain.Common
 import HydraAuction.Types
 import Plutus.V1.Ledger.Interval (contains, from)
-import Plutus.V1.Ledger.Value (assetClassValueOf, flattenValue)
+import Plutus.V1.Ledger.Value (flattenValue)
 import Plutus.V2.Ledger.Api (TokenName (..))
-import Plutus.V2.Ledger.Contexts (ScriptContext, TxInfo, ownCurrencySymbol, scriptContextTxInfo, txInInfoOutRef, txInInfoResolved, txInfoInputs, txInfoMint, txInfoOutputs, txInfoValidRange, txOutAddress, txOutValue)
+import Plutus.V2.Ledger.Contexts (ScriptContext, TxInfo, ownCurrencySymbol, scriptContextTxInfo, txInInfoOutRef, txInfoInputs, txInfoMint, txInfoOutputs, txInfoValidRange, txOutAddress)
 import PlutusTx.AssocMap qualified as Map
 
 data StateTokenKind = Voucher
@@ -55,7 +55,7 @@ mkPolicy (EscrowAddress escrowAddressLocal, terms) () ctx =
     onlyVoucherForgedCount =
       case Map.keys ourTokensForged of
         [_] -> Map.lookup tn ourTokensForged
-        _ -> Nothing
+        _other -> Nothing
       where
         tn = stateTokenKindToTokenName Voucher
     utxoNonceConsumed :: Bool
@@ -70,10 +70,8 @@ mkPolicy (EscrowAddress escrowAddressLocal, terms) () ctx =
         [output] ->
           case decodeOutputDatum info output of
             Just x ->
-              ( traceIfFalse "Wrong state in escrow output" $
-                  (auctionState x == auctionState expectedOutput)
-                    && (traceIfFalse "Wrong auctionVoucherCS in escrow output" $ (auctionVoucherCS x == auctionVoucherCS expectedOutput))
-              )
+              traceIfFalse "Wrong state in escrow output" (auctionState x == auctionState expectedOutput)
+                && traceIfFalse "Wrong auctionVoucherCS in escrow output" (auctionVoucherCS x == auctionVoucherCS expectedOutput)
             Nothing -> traceError "Cannot decode escrow output"
-        _ ->
+        _other ->
           traceIfFalse "More than one output sent to escrow address" False

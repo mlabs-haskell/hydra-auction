@@ -3,7 +3,7 @@ module Main (main) where
 import Hydra.Prelude (toList)
 import Prelude
 
-import Cardano.Api (NetworkId (..))
+import Cardano.Api (NetworkId (..), TxIn)
 import CardanoNode (RunningNode (RunningNode, networkId, nodeSocket), withCardanoNodeDevnet)
 import Control.Monad (forM_, void)
 import Data.Functor.Contravariant (contramap)
@@ -24,8 +24,6 @@ import HydraNode (
  )
 import System.FilePath ((</>))
 import System.IO (IOMode (ReadWriteMode), withFile)
-
-import Cardano.Api (TxIn)
 
 import ParsingCliHelpers
 

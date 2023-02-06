@@ -7,9 +7,12 @@ import HydraAuction.OnChain.Common
 import HydraAuction.OnChain.StateToken (StateTokenKind (..), stateTokenKindToTokenName)
 import HydraAuction.Types
 import Plutus.V1.Ledger.Address (pubKeyHashAddress, scriptHashAddress)
-import Plutus.V1.Ledger.Interval (interval)
+
+-- import Plutus.V1.Ledger.Interval (interval)
 import Plutus.V1.Ledger.Value (assetClass, assetClassValueOf)
-import Plutus.V2.Ledger.Api (TxInfo, scriptContextTxInfo, txInInfoResolved, txInfoInputs, txInfoMint, txInfoOutputs, txInfoValidRange, txOutAddress)
+
+-- import Plutus.V2.Ledger.Api (TxInfo, scriptContextTxInfo, txInInfoResolved, txInfoInputs, txInfoMint, txInfoOutputs, txInfoValidRange, txOutAddress)
+import Plutus.V2.Ledger.Api (TxInfo, scriptContextTxInfo, txInInfoResolved, txInfoInputs, txInfoMint, txInfoOutputs, txOutAddress)
 import Plutus.V2.Ledger.Contexts (ScriptContext, ownHash)
 
 {-# INLINEABLE mkStandingBidValidator #-}
@@ -36,7 +39,7 @@ mkStandingBidValidator terms datum redeemer context =
                         in case validNewBid <$> inBid <*> outBid of
                             Just x -> traceIfFalse "Incorrect bid" x
                             Nothing -> traceError "Incorrect encoding for input or output datum"
-              _ -> traceError "Not exactly one ouput"
+              _other -> traceError "Not exactly one ouput"
           )
         -- FIXUP
         -- && interval 0 (biddingEnd terms) == txInfoValidRange info
@@ -59,7 +62,7 @@ mkStandingBidValidator terms datum redeemer context =
                               "Output value not min ADA"
                               ( lovelaceOfOutput out == minAuctionFee
                               )
-                        _ -> traceError "Not exactly one ouput"
+                        _other -> traceError "Not exactly one ouput"
                      )
       _ : _ -> traceError "More than one standing bid input"
       [] -> traceError "Impossible happened: no inputs for staning bid validator"

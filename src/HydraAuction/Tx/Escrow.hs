@@ -43,7 +43,7 @@ constructTerms node@RunningNode {networkId} seller utxoRef = do
           , minimumBidIncrement = fromJust $ intToNatural 8_000_000
           , utxoRef = toPlutusTxOutRef utxoRef
           }
-  return terms
+  pure terms
 
 announceAuction :: RunningNode -> Actor -> AuctionTerms -> IO ()
 announceAuction node@RunningNode {networkId, nodeSocket} seller terms = do
@@ -52,9 +52,9 @@ announceAuction node@RunningNode {networkId, nodeSocket} seller terms = do
   utxoWithLotNFT <- queryUTxOByTxIn networkId nodeSocket QueryTip [fromPlutusTxOutRef $ utxoRef terms]
   sellerMoneyUtxo <- filterAdaOnlyUtxo <$> actorTipUtxo node seller
 
-  case (length utxoWithLotNFT) of
+  case length utxoWithLotNFT of
     0 -> error "Utxo with Lot was consumed or not created"
-    1 -> return ()
+    1 -> pure ()
     _ -> error "Impossible happened: multiple utxoRef Utxos"
 
   void $
@@ -74,11 +74,11 @@ announceAuction node@RunningNode {networkId, nodeSocket} seller terms = do
     announcedEscrowTxOut = TxOut escrowAddress valueWithLotAndStateToken (mkInlineDatum escrowAnnouncedUtxo) ReferenceScriptNone
       where
         valueWithLotAndStateToken =
-          (fromPlutusValue $ assetClassValue (auctionLot terms) 1)
-            <> (fromPlutusValue $ assetClassValue (voucherAssetClass terms) 1)
+          fromPlutusValue (assetClassValue (auctionLot terms) 1)
+            <> fromPlutusValue (assetClassValue (voucherAssetClass terms) 1)
             <> lovelaceToValue minLovelance
         escrowAddress = mkScriptAddress @PlutusScriptV2 networkId $ fromPlutusScript @PlutusScriptV2 $ getValidator $ escrowValidator terms
-    toMintStateToken = (mintedTokens (fromPlutusScript $ getMintingPolicy mp) () [(tokenToAsset $ stateTokenKindToTokenName Voucher, 1)])
+    toMintStateToken = mintedTokens (fromPlutusScript $ getMintingPolicy mp) () [(tokenToAsset $ stateTokenKindToTokenName Voucher, 1)]
 
 startBidding :: RunningNode -> Actor -> AuctionTerms -> IO ()
 startBidding node@RunningNode {networkId} seller terms = do
@@ -88,9 +88,9 @@ startBidding node@RunningNode {networkId} seller terms = do
   let escrowAnnounceSymbols = [allowMintingCurrencySymbol, scriptCurrencySymbol mp, CurrencySymbol emptyByteString]
   escrowAnnounceUtxo <- filterUtxoByCurrencySymbols escrowAnnounceSymbols <$> scriptUtxos node Escrow terms
 
-  case (length escrowAnnounceUtxo) of
+  case length escrowAnnounceUtxo of
     0 -> error "Utxo with announced escrow was consumed or not created"
-    1 -> return ()
+    1 -> pure ()
     _ -> error "Cannot choose between multiple utxos with announced escrow"
 
   void $
@@ -111,14 +111,14 @@ startBidding node@RunningNode {networkId} seller terms = do
     txOutEscrow = TxOut escrowAddress valueOutEscrow (mkInlineDatum biddingStartedDatum) ReferenceScriptNone
       where
         valueOutEscrow =
-          (fromPlutusValue $ assetClassValue (auctionLot terms) 1)
+          fromPlutusValue (assetClassValue (auctionLot terms) 1)
             <> lovelaceToValue minLovelance
         escrowAddress = mkScriptAddress @PlutusScriptV2 networkId escrowScript
     txOutStandingBid = TxOut standingAddress valueOutStanding (mkInlineDatum standingBidDatum) ReferenceScriptNone
       where
         standingBidDatum = StandingBidDatum NoBid voucherCS
         valueOutStanding =
-          (fromPlutusValue $ assetClassValue (voucherAssetClass terms) 1)
+          fromPlutusValue (assetClassValue (voucherAssetClass terms) 1)
             <> lovelaceToValue minLovelance
         standingAddress = mkScriptAddress @PlutusScriptV2 networkId $ fromPlutusScript @PlutusScriptV2 $ getValidator $ standingBidValidator terms
     escrowWitness = mkInlinedDatumScriptWitness escrowScript StartBidding
@@ -162,13 +162,13 @@ bidderBuys node@RunningNode {networkId} bidder terms = do
     txOutBidderGotLot bidderAddress = TxOut (ShelleyAddressInEra bidderAddress) valueBidderLot TxOutDatumNone ReferenceScriptNone
       where
         valueBidderLot =
-          (fromPlutusValue $ assetClassValue (auctionLot terms) 1)
+          fromPlutusValue (assetClassValue (auctionLot terms) 1)
             <> lovelaceToValue minLovelance
     txOutStandingBid = TxOut standingBidAddress valueStandingBid TxOutDatumNone ReferenceScriptNone
       where
         standingBidAddress = mkScriptAddress @PlutusScriptV2 networkId $ fromPlutusScript @PlutusScriptV2 $ getValidator $ standingBidValidator terms
         valueStandingBid =
-          (fromPlutusValue $ assetClassValue (voucherAssetClass terms) 1)
+          fromPlutusValue (assetClassValue (voucherAssetClass terms) 1)
             <> lovelaceToValue minLovelance
     escrowWitness = mkInlinedDatumScriptWitness script BidderBuys
       where

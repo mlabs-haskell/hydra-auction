@@ -33,7 +33,7 @@ voucherCurrencySymbol :: AuctionTerms -> CurrencySymbol
 voucherCurrencySymbol = scriptCurrencySymbol . policy
 
 voucherAssetClass :: AuctionTerms -> AssetClass
-voucherAssetClass terms = AssetClass (voucherCurrencySymbol terms, (stateTokenKindToTokenName Voucher))
+voucherAssetClass terms = AssetClass (voucherCurrencySymbol terms, stateTokenKindToTokenName Voucher)
 
 -- Escrow contract
 

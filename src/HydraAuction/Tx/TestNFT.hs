@@ -22,7 +22,7 @@ mintOneTestNFT node actor = do
 
   actorMoneyUtxo <- filterAdaOnlyUtxo <$> actorTipUtxo node actor
 
-  let valueOut = (fromPlutusValue $ assetClassValue allowMintingAssetClass 1) <> lovelaceToValue minLovelance
+  let valueOut = fromPlutusValue (assetClassValue allowMintingAssetClass 1) <> lovelaceToValue minLovelance
   let txOut = TxOut (ShelleyAddressInEra actorAddress) valueOut TxOutDatumNone ReferenceScriptNone
   let toMint =
         mintedTokens (fromPlutusScript $ getMintingPolicy allowMintingPolicy) () [(tokenToAsset $ TokenName emptyByteString, 1)]

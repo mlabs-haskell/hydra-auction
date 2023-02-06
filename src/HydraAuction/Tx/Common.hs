@@ -56,12 +56,12 @@ addressAndKeysFor networkId actor = do
   (actorVk, actorSk) <- keysFor actor
   let actorAddress = buildAddress actorVk networkId
   putStrLn $ "Using actor: " <> show actor <> " with address: " <> show actorAddress
-  return (actorAddress, actorVk, actorSk)
+  pure (actorAddress, actorVk, actorSk)
 
 filterUtxoByCurrencySymbols :: [CurrencySymbol] -> UTxO -> UTxO
 filterUtxoByCurrencySymbols symbolsToMatch = UTxO.filter hasExactlySymbols
   where
-    hasExactlySymbols x = (sort <$> symbols <$> txOutValue <$> (toPlutusTxOut $ x)) == (Just $ sort symbolsToMatch)
+    hasExactlySymbols x = (sort . symbols . txOutValue <$> toPlutusTxOut x) == Just (sort symbolsToMatch)
 
 filterAdaOnlyUtxo :: UTxO -> UTxO
 filterAdaOnlyUtxo = filterUtxoByCurrencySymbols [CurrencySymbol emptyByteString]
@@ -88,7 +88,7 @@ data AutoCreateParams = AutoCreateParams
   }
 
 autoCreateTx :: RunningNode -> AutoCreateParams -> IO Tx
-autoCreateTx (node@RunningNode {networkId, nodeSocket}) (AutoCreateParams {..}) = do
+autoCreateTx node@RunningNode {networkId, nodeSocket} AutoCreateParams {..} = do
   -- FIXME: proper error handling
   pparams <- queryProtocolParameters networkId nodeSocket QueryTip
   body <-
@@ -98,7 +98,7 @@ autoCreateTx (node@RunningNode {networkId, nodeSocket}) (AutoCreateParams {..}) 
         (allAuthoredUtxos <> allWitnessedUtxos)
         (preBody pparams)
         changeAddress
-  pure $ (makeSignedTransaction (signingWitnesses body) body :: Tx)
+  pure (makeSignedTransaction (signingWitnesses body) body :: Tx)
   where
     allAuthoredUtxos = foldl (<>) mempty $ fmap snd authoredUtxos
     allWitnessedUtxos = foldl (<>) mempty $ fmap snd witnessedUtxos
@@ -135,16 +135,16 @@ autoCreateTx (node@RunningNode {networkId, nodeSocket}) (AutoCreateParams {..}) 
         TxScriptValidityNone
     makeSignWitness body sk = makeShelleyKeyWitness body (WitnessPaymentKey sk)
     signingWitnesses :: TxBody -> [KeyWitness]
-    signingWitnesses body = fmap (makeSignWitness body) (fmap fst authoredUtxos)
+    signingWitnesses body = fmap (makeSignWitness body . fst) authoredUtxos
 
 callBodyAutoBalance :: RunningNode -> UTxO -> TxBodyContent BuildTx -> Address ShelleyAddr -> IO (Either TxBodyErrorAutoBalance TxBody)
-callBodyAutoBalance (node@RunningNode {networkId, nodeSocket}) utxo preBody changeAddress = do
+callBodyAutoBalance node@RunningNode {networkId, nodeSocket} utxo preBody changeAddress = do
   pparams <- queryProtocolParameters networkId nodeSocket QueryTip
   systemStart <- querySystemStart networkId nodeSocket QueryTip
   eraHistory <- queryEraHistory networkId nodeSocket QueryTip
   stakePools <- queryStakePools networkId nodeSocket QueryTip
 
-  return $
+  pure $
     balancedTxBody
       <$> makeTransactionBodyAutoBalance
         BabbageEraInCardanoMode
@@ -167,6 +167,6 @@ autoSubmitAndAwaitTx node@RunningNode {nodeSocket, networkId} params = do
   void $ awaitTransaction networkId nodeSocket tx
   putStrLn "Awaited"
 
-  putStrLn $ "Created Tx id: " <> (show $ getTxId $ txBody tx)
+  putStrLn $ "Created Tx id: " <> show (getTxId $ txBody tx)
 
-  return tx
+  pure tx

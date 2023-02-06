@@ -53,7 +53,7 @@ newBid node bidder terms bidAmount = do
         datum bidderVk = StandingBidDatum (Bid (BidTerms (toPlutusKeyHash $ verificationKeyHash bidderVk) bidAmount)) voucherCS
         standingBidAddress = mkScriptAddress @PlutusScriptV2 (networkId node) $ fromPlutusScript @PlutusScriptV2 $ getValidator $ standingBidValidator terms
         valueStandingBid =
-          (fromPlutusValue $ assetClassValue (voucherAssetClass terms) 1)
+          fromPlutusValue (assetClassValue (voucherAssetClass terms) 1)
             <> lovelaceToValue minLovelance
     standingBidWitness = mkInlinedDatumScriptWitness script NewBid
       where
