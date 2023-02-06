@@ -29,7 +29,7 @@ mkEscrowValidator (StandingBidAddress standingBidAddressLocal, FeeEscrowAddress 
           SellerReclaims ->
             -- FIXME
             -- contains (from (voucherExpiry terms)) (txInfoValidRange info)
-              checkSellerReclaimsOutputs
+            checkSellerReclaimsOutputs
           BidderBuys ->
             checkAuctionState isStarted escrowInputOutput
               -- FIXME
@@ -93,18 +93,18 @@ mkEscrowValidator (StandingBidAddress standingBidAddressLocal, FeeEscrowAddress 
                 NoBid -> traceError "NoBid in standing bid datum"
                 (Bid bidTerms) ->
                   -- traceIfFalse "Not signed by bidder" (txSignedBy info (bidBidder bidTerms))
-                    -- checkSingleOutput
-                    --   (pubKeyHashAddress $ bidBidder bidTerms)
-                    --   "Bidder"
-                    --   ( \bidderOutput ->
-                    --       traceIfFalse
-                    --         "Auction lot not provided to bidder"
-                    --         (assetClassValueOf (txOutValue bidderOutput) (auctionLot terms) == 1)
-                    --   )
-                    checkSingleOutputWithAmount
-                      (pubKeyHashAddress $ seller terms)
-                      "Seller"
-                      (naturalToInt (bidAmount bidTerms) - naturalToInt (auctionFee terms))
+                  -- checkSingleOutput
+                  --   (pubKeyHashAddress $ bidBidder bidTerms)
+                  --   "Bidder"
+                  --   ( \bidderOutput ->
+                  --       traceIfFalse
+                  --         "Auction lot not provided to bidder"
+                  --         (assetClassValueOf (txOutValue bidderOutput) (auctionLot terms) == 1)
+                  --   )
+                  checkSingleOutputWithAmount
+                    (pubKeyHashAddress $ seller terms)
+                    "Seller"
+                    (naturalToInt (bidAmount bidTerms) - naturalToInt (auctionFee terms))
                     && checkSingleOutputWithAmount
                       feeEscrowAddressLocal
                       "Fee escrow"

@@ -31,22 +31,19 @@ mkStandingBidValidator terms datum redeemer context =
                 -- FIXME: Check bidder has right to make a bid
                 traceIfFalse "Output is not into standing bid" $
                   txOutAddress out == scriptHashAddress (ownHash context)
-                    &&
-                      let
-                        inBid = standingBidState <$> decodeOutputDatum info inputOut
-                        outBid = standingBidState <$> decodeOutputDatum info out
-                      in
-                    case validNewBid <$> inBid <*> outBid of
-                      Just x -> traceIfFalse "Incorrect bid" x
-                      Nothing -> traceError "Incorrect encoding for input or output datum"
+                    && let inBid = standingBidState <$> decodeOutputDatum info inputOut
+                           outBid = standingBidState <$> decodeOutputDatum info out
+                        in case validNewBid <$> inBid <*> outBid of
+                            Just x -> traceIfFalse "Incorrect bid" x
+                            Nothing -> traceError "Incorrect encoding for input or output datum"
               _ -> traceError "Not exactly one ouput"
           )
-            -- FIXUP
-            -- && interval 0 (biddingEnd terms) == txInfoValidRange info
+        -- FIXUP
+        -- && interval 0 (biddingEnd terms) == txInfoValidRange info
         UseBid ->
           -- TODO: check
           True
-          -- FIXUP: check interval
+        -- FIXUP: check interval
         Cleanup ->
           -- XXX: interval is checked on burning
           traceIfFalse "Not exactly one voucher was burt during transaction" $

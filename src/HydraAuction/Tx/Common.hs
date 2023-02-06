@@ -13,6 +13,7 @@ import CardanoNode (
  )
 import Control.Monad.IO.Class (liftIO)
 import Data.Functor.Contravariant (contramap)
+import Data.List (sort)
 import Data.Map qualified as Map
 import Data.Maybe (fromJust)
 import Data.Tuple.Extra (first, second)
@@ -23,7 +24,6 @@ import Hydra.Cluster.Util
 import HydraAuction.OnChain
 import HydraAuction.Types
 import HydraNode
-import Data.List (sort)
 import Plutus.V1.Ledger.Value (CurrencySymbol (..), TokenName (..), flattenValue, symbols)
 import Plutus.V2.Ledger.Api (POSIXTime (POSIXTime), PubKeyHash (PubKeyHash), fromBuiltin, getValidator, toBuiltin, toBuiltinData, toData, txOutValue)
 
@@ -100,19 +100,19 @@ autoCreateTx (node@RunningNode {networkId, nodeSocket}) (AutoCreateParams {..}) 
         changeAddress
   pure $ (makeSignedTransaction (signingWitnesses body) body :: Tx)
   where
-    allAuthoredUtxos = foldl (<>) mempty $ map snd authoredUtxos
-    allWitnessedUtxos = foldl (<>) mempty $ map snd witnessedUtxos
+    allAuthoredUtxos = foldl (<>) mempty $ fmap snd authoredUtxos
+    allWitnessedUtxos = foldl (<>) mempty $ fmap snd witnessedUtxos
     txInsToSign = toList (UTxO.inputSet allAuthoredUtxos)
     witnessedTxIns =
       [ (txIn, witness)
       | (witness, utxo) <- witnessedUtxos
-      , txIn <- map fst $ UTxO.pairs utxo
+      , txIn <- fst <$> UTxO.pairs utxo
       ]
     txInCollateral =
       case collateral of
         Just txIn -> txIn
         Nothing -> fst $ case UTxO.pairs $ filterAdaOnlyUtxo allAuthoredUtxos of
-          x:_ -> x
+          x : _ -> x
           [] -> error "Cannot select collateral, cuz no money utxo was provided"
     preBody pparams =
       TxBodyContent
@@ -135,7 +135,7 @@ autoCreateTx (node@RunningNode {networkId, nodeSocket}) (AutoCreateParams {..}) 
         TxScriptValidityNone
     makeSignWitness body sk = makeShelleyKeyWitness body (WitnessPaymentKey sk)
     signingWitnesses :: TxBody -> [KeyWitness]
-    signingWitnesses body = map (makeSignWitness body) (map fst authoredUtxos)
+    signingWitnesses body = fmap (makeSignWitness body) (fmap fst authoredUtxos)
 
 callBodyAutoBalance :: RunningNode -> UTxO -> TxBodyContent BuildTx -> Address ShelleyAddr -> IO (Either TxBodyErrorAutoBalance TxBody)
 callBodyAutoBalance (node@RunningNode {networkId, nodeSocket}) utxo preBody changeAddress = do

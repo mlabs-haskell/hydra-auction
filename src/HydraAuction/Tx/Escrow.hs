@@ -4,15 +4,15 @@ import Hydra.Prelude
 import PlutusTx.Prelude (emptyByteString)
 
 import Cardano.Api.UTxO qualified as UTxO
+import Cardano.Ledger.BaseTypes (Network (Testnet))
 import CardanoClient
 import CardanoNode (RunningNode (..))
 import Data.Maybe (fromJust)
-import Hydra.Cardano.Api hiding (txOutValue, Testnet)
+import Hydra.Cardano.Api hiding (Testnet, txOutValue)
 import Hydra.Chain.CardanoClient
 import Hydra.Cluster.Fixture (Actor (..))
 import Hydra.Cluster.Util (keysFor)
 import HydraAuction.Addresses
-import HydraAuction.Types
 import HydraAuction.OnChain
 import HydraAuction.OnChain.Escrow
 import HydraAuction.OnChain.StateToken
@@ -21,7 +21,6 @@ import HydraAuction.PlutusExtras
 import HydraAuction.Tx.Common hiding (sellerAddress)
 import HydraAuction.Tx.TestNFT
 import HydraAuction.Types
-import Cardano.Ledger.BaseTypes (Network(Testnet))
 import Plutus.V1.Ledger.Address (pubKeyHashAddress)
 import Plutus.V1.Ledger.Value (AssetClass (..), CurrencySymbol (..), assetClassValue, flattenValue, symbols)
 import Plutus.V2.Ledger.Api (POSIXTime (..), TokenName (..), getMintingPolicy, getValidator, toBuiltinData, toData, txOutValue)
@@ -120,7 +119,7 @@ startBidding node@RunningNode {networkId} seller terms = do
         standingBidDatum = StandingBidDatum NoBid voucherCS
         valueOutStanding =
           (fromPlutusValue $ assetClassValue (voucherAssetClass terms) 1)
-          <> lovelaceToValue minLovelance
+            <> lovelaceToValue minLovelance
         standingAddress = mkScriptAddress @PlutusScriptV2 networkId $ fromPlutusScript @PlutusScriptV2 $ getValidator $ standingBidValidator terms
     escrowWitness = mkInlinedDatumScriptWitness escrowScript StartBidding
 
@@ -143,19 +142,18 @@ bidderBuys node@RunningNode {networkId} bidder terms = do
   void $
     autoSubmitAndAwaitTx node $
       AutoCreateParams
-        { authoredUtxos = [
-          (bidderSk, bidderMoneyUtxo)
-          ]
-        , witnessedUtxos = [
-          (escrowWitness, escrowBiddingStartedUtxo),
-          (standingBidWitness, standingBidUtxo)
-          ]
+        { authoredUtxos =
+            [ (bidderSk, bidderMoneyUtxo)
+            ]
+        , witnessedUtxos =
+            [ (escrowWitness, escrowBiddingStartedUtxo)
+            , (standingBidWitness, standingBidUtxo)
+            ]
         , collateral = Nothing
         , outs = [txOutBidderGotLot bidderAddress, txOutStandingBid, txOutSellerGotBid]
         , toMint = TxMintValueNone
         , changeAddress = bidderAddress
         }
-
   where
     mp = policy terms
     -- TODO: decode bid and actually send it
@@ -165,13 +163,13 @@ bidderBuys node@RunningNode {networkId} bidder terms = do
       where
         valueBidderLot =
           (fromPlutusValue $ assetClassValue (auctionLot terms) 1)
-          <> lovelaceToValue minLovelance
+            <> lovelaceToValue minLovelance
     txOutStandingBid = TxOut standingBidAddress valueStandingBid TxOutDatumNone ReferenceScriptNone
       where
         standingBidAddress = mkScriptAddress @PlutusScriptV2 networkId $ fromPlutusScript @PlutusScriptV2 $ getValidator $ standingBidValidator terms
         valueStandingBid =
           (fromPlutusValue $ assetClassValue (voucherAssetClass terms) 1)
-          <> lovelaceToValue minLovelance
+            <> lovelaceToValue minLovelance
     escrowWitness = mkInlinedDatumScriptWitness script BidderBuys
       where
         script = fromPlutusScript @PlutusScriptV2 $ getValidator $ escrowValidator terms
