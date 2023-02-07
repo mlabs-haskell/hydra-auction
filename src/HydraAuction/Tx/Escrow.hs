@@ -183,8 +183,6 @@ sellerReclaims node@RunningNode {networkId} seller terms = do
   let escrowBiddingStartedSymbols = [CurrencySymbol emptyByteString, fst $ unAssetClass $ auctionLot terms]
   escrowBiddingStartedUtxo <- filterUtxoByCurrencySymbols escrowBiddingStartedSymbols <$> scriptUtxos node Escrow terms
 
-  putStrLn $ show escrowBiddingStartedUtxo
-
   void $
     autoSubmitAndAwaitTx node $
       AutoCreateParams

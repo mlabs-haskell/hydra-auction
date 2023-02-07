@@ -36,6 +36,7 @@ data CLIAction
   | AuctionAnounce !Actor !TxIn
   | StartBidding !Actor !TxIn
   | BidderBuys !Actor !TxIn
+  | SellerReclaims !Actor !TxIn
 
 cliParser :: Parser CLIAction
 cliParser =

@@ -101,9 +101,9 @@ data AutoCreateParams = AutoCreateParams
   { authoredUtxos :: [(SigningKey PaymentKey, UTxO)]
   , -- | Utxo which TxIns will be used as reference inputs
     referenceUtxo :: UTxO
-  , collateral :: Maybe TxIn
   , -- | Nothing means collateral will be chosen automatically from given UTxOs
-    witnessedUtxos ::
+    collateral :: Maybe TxIn
+  , witnessedUtxos ::
       [(BuildTxWith BuildTx (Witness WitCtxTxIn), UTxO)]
   , outs :: [TxOut CtxTx]
   , toMint :: TxMintValue BuildTx
