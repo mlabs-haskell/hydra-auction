@@ -47,11 +47,17 @@ import System.FilePath ((</>))
 
 import Test.Hydra.Prelude (withTempDir)
 
+{- | Execution context holding the current tracer,
+ as well as the running node.
+-}
 data ExecutionContext = MkExecutionContext
   { tracer :: !(Tracer IO EndToEndLog)
   , node :: !RunningNode
   }
 
+{- | Hydra computation executor. Note that @Runner@ is
+ de facto `ReaderT ExecutionContext IO`.
+-}
 newtype Runner a = MkRunner
   {run :: ReaderT ExecutionContext IO a}
   deriving
@@ -63,6 +69,7 @@ newtype Runner a = MkRunner
     )
     via ReaderT ExecutionContext IO
 
+-- | Executes a runner using the given @StateDirectory@.
 executeRunner :: StateDirectory -> Runner () -> IO ()
 executeRunner MkStateDirectory {stateDirectory} runner = do
   withFile (stateDirectory </> "test.log") ReadWriteMode $ \h ->
@@ -75,9 +82,13 @@ executeRunner MkStateDirectory {stateDirectory} runner = do
             (run runner)
             (MkExecutionContext tracer node)
 
+-- | @FilePath@ used to store the running node data.
 newtype StateDirectory = MkStateDirectory
   {stateDirectory :: FilePath}
 
+{- | Uses `node-state` in the current directory as the @StateDirectory@.
+ If the folder does not exist, it is first created.
+-}
 defStateDirectory :: IO StateDirectory
 defStateDirectory = do
   currentDirectory <- getCurrentDirectory
@@ -85,11 +96,17 @@ defStateDirectory = do
   createDirectoryIfMissing True stateDirectory
   pure $ MkStateDirectory stateDirectory
 
+-- | Creates a temporary directory as the @StateDirectory@.
 tmpStateDirectory :: String -> Runner () -> IO ()
 tmpStateDirectory dir runner = do
   withTempDir dir $ \tmpDir -> do
     executeRunner (MkStateDirectory tmpDir) runner
 
+-- * Utils
+
+{- | Initiates the actor's wallet using the prescribed amount of faucet
+ @Lovelace@.
+-}
 initWallet :: Actor -> Lovelace -> Runner ()
 initWallet actor amount = do
   MkExecutionContext {..} <- ask
