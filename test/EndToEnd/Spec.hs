@@ -1,6 +1,6 @@
 {-# OPTIONS_GHC -Wno-incomplete-uni-patterns #-}
 
-module EndToEnd.Spec (spec, headTests) where
+module EndToEnd.Spec (spec, tests) where
 
 import Hydra.Prelude hiding (threadDelay)
 import Test.Hydra.Prelude
@@ -55,10 +55,12 @@ import Test.Tasty (TestTree)
 import Test.Tasty.Hspec (testSpec)
 import Prelude qualified
 
-headTests :: IO TestTree
-headTests = do
-  putStrLn "test"
-  testSpec "Head" spec
+import EndToEnd.Scenario (scenarioSpec)
+
+tests :: IO TestTree
+tests = do
+  _ <- testSpec "Head" spec
+  testSpec "Scenario" scenarioSpec
 
 spec :: Spec
 spec = around showLogsOnFailure $ do

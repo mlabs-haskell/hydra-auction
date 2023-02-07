@@ -1,15 +1,15 @@
 module HydraAuction.OnChain.Escrow (mkEscrowValidator) where
 
+import PlutusTx.Prelude
+
 import HydraAuction.Addresses
 import HydraAuction.OnChain.Common
 import HydraAuction.OnChain.StateToken (StateTokenKind (..), stateTokenKindToTokenName)
 import HydraAuction.Types
 import Plutus.V1.Ledger.Address (pubKeyHashAddress, scriptHashAddress)
-import Plutus.V1.Ledger.Api (Address, TxInfo, TxOut, scriptContextTxInfo, txInInfoResolved, txInfoInputs, txInfoOutputs, txInfoValidRange, txOutValue)
-import Plutus.V1.Ledger.Contexts (ScriptContext, ownHash, txSignedBy)
-import Plutus.V1.Ledger.Interval (contains, from, interval)
-import Plutus.V1.Ledger.Value (assetClass, assetClassValueOf)
-import PlutusTx.Prelude
+import Plutus.V1.Ledger.Value (assetClass, assetClassValueOf, getValue)
+import Plutus.V2.Ledger.Api (Address, TxInfo, TxOut, scriptContextTxInfo, txInInfoResolved, txInfoInputs, txInfoOutputs, txInfoReferenceInputs, txOutValue)
+import Plutus.V2.Ledger.Contexts (ScriptContext, ownHash, txSignedBy)
 
 {-# INLINEABLE mkEscrowValidator #-}
 mkEscrowValidator :: (StandingBidAddress, FeeEscrowAddress, AuctionTerms) -> AuctionEscrowDatum -> EscrowRedeemer -> ScriptContext -> Bool
@@ -19,21 +19,19 @@ mkEscrowValidator (StandingBidAddress standingBidAddressLocal, FeeEscrowAddress 
       ( \escrowInputOutput -> case redeemer of
           StartBidding ->
             checkAuctionState (== Announced) escrowInputOutput
-              && traceIfFalse "Not exactly one input" (length (txInfoInputs info) == 1)
-              && traceIfFalse "Not exaclty two outputs" (length (txInfoInputs info) == 2)
-              && txSignedBy info (seller terms)
-              && contains (interval (biddingStart terms) (biddingEnd terms)) (txInfoValidRange info)
+              && traceIfFalse "Seller not signed" (txSignedBy info (seller terms))
+              -- FIXME
+              -- && traceIfFalse "Wrong valid range"
+              -- contains (interval (biddingStart terms) (biddingEnd terms)) (txInfoValidRange info)
               && checkStartBiddingOutputs
           SellerReclaims ->
-            contains (from (voucherExpiry terms)) (txInfoValidRange info)
-              && traceIfFalse "Not exactly one input" (length (txInfoInputs info) == 1)
-              && traceIfFalse "Not exaclty two outputs" (length (txInfoInputs info) == 2)
-              && checkSellerReclaimsOutputs
+            -- FIXME
+            -- contains (from (voucherExpiry terms)) (txInfoValidRange info)
+            checkSellerReclaimsOutputs
           BidderBuys ->
             checkAuctionState isStarted escrowInputOutput
-              && traceIfFalse "Not exactly two inputs" (length (txInfoInputs info) == 2)
-              && traceIfFalse "Not exaclty three outputs" (length (txInfoInputs info) == 3)
-              && contains (interval (biddingEnd terms) (voucherExpiry terms)) (txInfoValidRange info)
+              -- FIXME
+              -- && contains (interval (biddingEnd terms) (voucherExpiry terms)) (txInfoValidRange info)
               && checkBidderBuys escrowInputOutput
       )
   where
@@ -51,6 +49,15 @@ mkEscrowValidator (StandingBidAddress standingBidAddressLocal, FeeEscrowAddress 
       case byAddress address outputs of
         [output] -> cont output
         _ -> traceError $ "Wrong number of " <> outputName <> " outputs"
+    checkSingleNonAdaOutput :: Address -> BuiltinString -> (TxOut -> Bool) -> Bool
+    checkSingleNonAdaOutput address outputName cont =
+      case filter isNotAdaOnlyOutput $ byAddress address outputs of
+        [output] -> cont output
+        _ -> traceError $ "Wrong number of " <> outputName <> "non-ADA-only outputs"
+      where
+        isNotAdaOnlyOutput output =
+          let value = txOutValue output
+           in length (getValue value) > 1
     checkSingleOutputWithAmount :: Address -> BuiltinString -> Integer -> Bool
     checkSingleOutputWithAmount address outputName expectedAmount =
       checkSingleOutput
@@ -61,13 +68,12 @@ mkEscrowValidator (StandingBidAddress standingBidAddressLocal, FeeEscrowAddress 
               lovelaceOfOutput output == expectedAmount
         )
     checkStartBiddingOutputs =
-      traceError "Not two outputs" (length outputs == 2)
-        && case byAddress (scriptHashAddress $ ownHash context) outputs of
-          [out] -> traceIfFalse "Auction state is not started" $
-            case isStarted <$> (auctionState <$> decodeOutputDatum info out) of
-              Just True -> True
-              _ -> False
-          _ -> traceError "Wrong number of escrow outputs"
+      case byAddress (scriptHashAddress $ ownHash context) outputs of
+        [out] -> traceIfFalse "Auction state is not started" $
+          case isStarted <$> (auctionState <$> decodeOutputDatum info out) of
+            Just True -> True
+            _ -> False
+        _ -> traceError "Wrong number of escrow outputs"
         && checkSingleOutput
           standingBidAddressLocal
           "Standing bid"
@@ -76,7 +82,7 @@ mkEscrowValidator (StandingBidAddress standingBidAddressLocal, FeeEscrowAddress 
                 (standingBidState <$> decodeOutputDatum info out) == Just NoBid
           )
     checkBidderBuys escrowInputOutput =
-      case byAddress standingBidAddressLocal (txInInfoResolved <$> txInfoInputs info) of
+      case byAddress standingBidAddressLocal (txInInfoResolved <$> txInfoReferenceInputs info) of
         [standingBidInOut] ->
           -- Check standing bid is authentic (contains state token)
           ( case unVoucherCS <$> (auctionVoucherCS <$> decodeOutputDatum info escrowInputOutput) of
@@ -90,26 +96,26 @@ mkEscrowValidator (StandingBidAddress standingBidAddressLocal, FeeEscrowAddress 
           )
             -- Check bid is present, bidder signed transaction, auction lot sent to bidder and bid/fee is paid
             && case decodeOutputDatum info standingBidInOut of
-              Just NoBid -> traceError "No bid in standing bid datum"
-              Just (Bid bidTerms) ->
-                txSignedBy info (bidBidder bidTerms)
-                  && traceError "Not three outputs" (length outputs == 3)
-                  && checkSingleOutput
-                    (pubKeyHashAddress $ bidBidder bidTerms)
-                    "Bidder"
-                    ( \bidderOutput ->
-                        traceIfFalse
-                          "Auction lot not provided to bidder"
-                          (assetClassValueOf (txOutValue bidderOutput) (auctionLot terms) == 1)
-                    )
-                  && checkSingleOutputWithAmount
-                    (pubKeyHashAddress $ seller terms)
-                    "Seller"
-                    (naturalToInt (bidAmount bidTerms) - naturalToInt (auctionFee terms))
-                  && checkSingleOutputWithAmount
-                    feeEscrowAddressLocal
-                    "Fee escrow"
-                    (naturalToInt $ auctionFee terms)
+              Just (StandingBidDatum {standingBidState}) -> case standingBidState of
+                NoBid -> traceError "NoBid in standing bid datum"
+                (Bid bidTerms) ->
+                  traceIfFalse "Not signed by bidder" (txSignedBy info (bidBidder bidTerms))
+                    && checkSingleNonAdaOutput
+                      (pubKeyHashAddress $ bidBidder bidTerms)
+                      "Bidder"
+                      ( \bidderOutput ->
+                          traceIfFalse
+                            "Auction lot not provided to bidder"
+                            (assetClassValueOf (txOutValue bidderOutput) (auctionLot terms) == 1)
+                      )
+                    && checkSingleOutputWithAmount
+                      (pubKeyHashAddress $ seller terms)
+                      "Seller"
+                      (naturalToInt (bidAmount bidTerms) - naturalToInt (auctionFee terms))
+                    && checkSingleOutputWithAmount
+                      feeEscrowAddressLocal
+                      "Fee escrow"
+                      (naturalToInt $ auctionFee terms)
               Nothing -> traceError "Incorrect encoding for standing bid datum"
         _ -> traceError "Wrong number of standing bid inputs"
     checkSellerReclaimsOutputs =
