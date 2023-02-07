@@ -36,11 +36,9 @@ import Cardano.Api.UTxO qualified as UTxO
 import CardanoClient (waitForUTxO)
 import CardanoNode (
   RunningNode (
-    RunningNode,
     networkId,
     nodeSocket
   ),
-  withCardanoNodeDevnet,
  )
 import Control.Lens ((^?))
 import Data.Aeson (
@@ -74,7 +72,9 @@ import Hydra.Cluster.Faucet (
 import Hydra.Cluster.Fixture (
   Actor (Faucet),
  )
-import Hydra.ContestationPeriod (ContestationPeriod (UnsafeContestationPeriod))
+import Hydra.ContestationPeriod (
+  ContestationPeriod (UnsafeContestationPeriod),
+ )
 import Hydra.Crypto (generateSigningKey)
 import Hydra.Ledger (txId)
 import Hydra.Ledger.Cardano (genKeyPair, mkSimpleTx)

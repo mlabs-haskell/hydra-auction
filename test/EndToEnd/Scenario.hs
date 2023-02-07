@@ -1,64 +1,69 @@
-module EndToEnd.Scenario (scenarioSpec) where
+{-# LANGUAGE RecordWildCards #-}
+
+module EndToEnd.Scenario (testSuite) where
 
 import Prelude
 
-import Control.Monad.IO.Class (liftIO)
-import Control.Monad.Reader (asks)
 import Data.Maybe (fromJust)
 import Hydra.Cardano.Api (mkTxIn)
 import Hydra.Cluster.Fixture (Actor (..))
 
-import Test.Hydra.Prelude
+import Hydra.Prelude
+import Test.Tasty (TestTree, testGroup)
+import Test.Tasty.HUnit (Assertion, testCase)
 
+import EndToEnd.Utils
 import HydraAuction.Runner
 import HydraAuction.Tx.Escrow
 import HydraAuction.Tx.StandingBid
 import HydraAuction.Tx.TestNFT
 import HydraAuction.Types
 
-scenarioSpec :: Spec
-scenarioSpec =
-  describe "End-to-end runner tests" $ do
-    it "Successful bid" $ do
-      stateDir <- defStateDirectory
-      executeRunner stateDir $ do
-        node' <- asks node
+testSuite :: TestTree
+testSuite =
+  testGroup
+    "L1 ledger tests"
+    [ testCase "Successful auction bid" successfulBidTest
+    , testCase "Seller reclaims lot" sellerReclaimsTest
+    ]
 
-        let seller = Alice
-            buyer = Bob
-        initWallet seller 100_000_000
-        initWallet buyer 100_000_000
+successfulBidTest :: Assertion
+successfulBidTest = mkAssertion $ do
+  MkExecutionContext {..} <- ask
 
-        nftTx <- liftIO $ mintOneTestNFT node' seller
-        let utxoRef = mkTxIn nftTx 0
-        terms <- liftIO $ constructTerms node' seller utxoRef
+  let seller = Alice
+      buyer = Bob
 
-        liftIO $ announceAuction node' seller terms
-        liftIO $ startBidding node' seller terms
+  initWallet seller 100_000_000
+  initWallet buyer 100_000_000
 
-        liftIO $
-          newBid
-            node'
-            buyer
-            terms
-            (fromJust $ intToNatural 16_000_000)
-        liftIO $ bidderBuys node' buyer terms
+  liftIO $ do
+    nftTx <- mintOneTestNFT node seller
+    let utxoRef = mkTxIn nftTx 0
 
-    it "Seller reclaims" $ do
-      stateDir <- defStateDirectory
-      executeRunner stateDir $ do
-        node' <- asks node
+    terms <- constructTerms node seller utxoRef
 
-        let seller = Alice
-            buyer = Bob
-        initWallet seller 100_000_000
-        initWallet buyer 100_000_000
+    announceAuction node seller terms
+    startBidding node seller terms
+    newBid node buyer terms (fromJust $ intToNatural 16_000_000)
+    bidderBuys node buyer terms
 
-        nftTx <- liftIO $ mintOneTestNFT node' seller
-        let utxoRef = mkTxIn nftTx 0
-        terms <- liftIO $ constructTerms node' seller utxoRef
+sellerReclaimsTest :: Assertion
+sellerReclaimsTest = mkAssertion $ do
+  MkExecutionContext {..} <- ask
 
-        liftIO $ announceAuction node' seller terms
-        liftIO $ startBidding node' seller terms
+  let seller = Alice
+      buyer = Bob
 
-        liftIO $ sellerReclaims node' seller terms
+  initWallet seller 100_000_000
+  initWallet buyer 100_000_000
+
+  liftIO $ do
+    nftTx <- mintOneTestNFT node seller
+    let utxoRef = mkTxIn nftTx 0
+
+    terms <- constructTerms node seller utxoRef
+
+    announceAuction node seller terms
+    startBidding node seller terms
+    liftIO $ sellerReclaims node seller terms
