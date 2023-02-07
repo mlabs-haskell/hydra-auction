@@ -39,9 +39,9 @@ scenarioSpec =
         let config =
               TermsConfig
                 { biddingStartPosixSeconds = fromJust $ intToNatural currentTimeSeconds
-                , biddingEndDelta = fromJust $ intToNatural 3
-                , voucherExpiryDelta = fromJust $ intToNatural 4
-                , cleanupDelta = fromJust $ intToNatural 5
+                , biddingEndDelta = fromJust $ intToNatural 4
+                , voucherExpiryDelta = fromJust $ intToNatural 8
+                , cleanupDelta = fromJust $ intToNatural 10
                 , auctionFee = fromJust $ intToNatural 4_000_000
                 , startingBid = fromJust $ intToNatural 8_000_000
                 , minimumBidIncrement = fromJust $ intToNatural 8_000_000
@@ -52,6 +52,8 @@ scenarioSpec =
         liftIO $ startBidding node' seller terms
 
         liftIO $ newBid node' buyer terms (fromJust $ intToNatural 16_000_000)
+
+        liftIO $ threadDelay $ 1 * 3_000_000
         liftIO $ bidderBuys node' buyer terms
 
     it "Seller reclaims" $ do
@@ -70,9 +72,9 @@ scenarioSpec =
         let config =
               TermsConfig
                 { biddingStartPosixSeconds = fromJust $ intToNatural currentTimeSeconds
-                , biddingEndDelta = fromJust $ intToNatural 2
-                , voucherExpiryDelta = fromJust $ intToNatural 3
-                , cleanupDelta = fromJust $ intToNatural 4
+                , biddingEndDelta = fromJust $ intToNatural 3
+                , voucherExpiryDelta = fromJust $ intToNatural 4
+                , cleanupDelta = fromJust $ intToNatural 5
                 , auctionFee = fromJust $ intToNatural 4_000_000
                 , startingBid = fromJust $ intToNatural 8_000_000
                 , minimumBidIncrement = fromJust $ intToNatural 8_000_000
@@ -82,6 +84,5 @@ scenarioSpec =
         liftIO $ announceAuction node' seller terms
         liftIO $ startBidding node' seller terms
 
-        liftIO $ threadDelay $ 1 * 1_000_000
-
+        liftIO $ threadDelay $ 2 * 1_000_000
         liftIO $ sellerReclaims node' seller terms
