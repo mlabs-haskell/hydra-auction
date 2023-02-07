@@ -161,7 +161,7 @@ test-suite hydra-auction-test
   main-is:        Spec.hs
   other-modules:
     EndToEnd.Hydra
-    EndToEnd.Scenario
+    EndToEnd.Ledger
     EndToEnd.Utils
 
   build-depends:

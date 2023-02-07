@@ -1,6 +1,6 @@
 {-# LANGUAGE RecordWildCards #-}
 
-module EndToEnd.Scenario (testSuite) where
+module EndToEnd.Ledger (testSuite) where
 
 import Prelude
 
@@ -8,16 +8,25 @@ import Data.Maybe (fromJust)
 import Hydra.Cardano.Api (mkTxIn)
 import Hydra.Cluster.Fixture (Actor (..))
 
-import Hydra.Prelude
+import Hydra.Prelude (MonadIO (liftIO), MonadReader (ask))
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (Assertion, testCase)
 
-import EndToEnd.Utils
-import HydraAuction.Runner
-import HydraAuction.Tx.Escrow
-import HydraAuction.Tx.StandingBid
-import HydraAuction.Tx.TestNFT
-import HydraAuction.Types
+import EndToEnd.Utils (mkAssertion)
+import HydraAuction.Runner (
+  ExecutionContext (MkExecutionContext, node, tracer),
+  initWallet,
+ )
+import HydraAuction.Tx.Escrow (
+  announceAuction,
+  bidderBuys,
+  constructTerms,
+  sellerReclaims,
+  startBidding,
+ )
+import HydraAuction.Tx.StandingBid (newBid)
+import HydraAuction.Tx.TestNFT (mintOneTestNFT)
+import HydraAuction.Types (intToNatural)
 
 testSuite :: TestTree
 testSuite =
