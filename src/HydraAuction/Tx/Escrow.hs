@@ -175,7 +175,7 @@ sellerReclaims node@RunningNode {networkId} seller terms = do
             [ (escrowWitness, escrowBiddingStartedUtxo)
             ]
         , collateral = Nothing
-        , outs = [txOutSellerGotLot sellerAddress, txOutFeeEscrow] -- TODO: fee escrow
+        , outs = [txOutSellerGotLot sellerAddress, txOutFeeEscrow]
         , toMint = TxMintValueNone
         , changeAddress = sellerAddress
         , validityBound = (Just $ voucherExpiry terms, Nothing)
