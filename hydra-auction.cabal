@@ -19,6 +19,7 @@ common common-lang
     -fno-ignore-interface-pragmas -fno-omit-interface-pragmas
 
   build-depends:
+    , aeson
     , async
     , base                     ^>=4.14
     , cardano-ledger-core
@@ -79,7 +80,10 @@ common common-lang
 executable hydra-auction
   import:         common-lang
   main-is:        Main.hs
-  other-modules:  ParsingCliHelpers
+  other-modules:
+    DemoFiles
+    ParsingCliHelpers
+
   build-depends:
     , aeson
     , array
@@ -106,13 +110,17 @@ executable hydra-auction
     , cborg
     , containers
     , data-default
+    , directory
     , hydra-auction
     , hydra-cardano-api
+    , hydra-plutus
     , hydra-test-utils
+    , natural-numbers
     , optparse-applicative
     , ouroboros-network               ==0.1.0.1
     , parsec
     , plutus-ledger-api               ==1.0.0.0
+    , plutus-tx
     , QuickCheck
     , serialise
     , strict-containers               ==0.1.0.0
