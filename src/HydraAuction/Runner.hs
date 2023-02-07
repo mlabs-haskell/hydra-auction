@@ -2,10 +2,11 @@
 
 module HydraAuction.Runner (
   Runner,
-  execute,
+  executeRunner,
   StateDirectory,
   ExecutionContext (..),
   defStateDirectory,
+  tmpStateDirectory,
   initWallet,
 ) where
 
@@ -31,9 +32,9 @@ import Hydra.Prelude (
   MonadIO (..),
   MonadReader (ask),
   ReaderT (..),
+  String,
   withFile,
   ($),
-  (<$>),
  )
 
 import HydraNode (EndToEndLog (FromCardanoNode, FromFaucet))
@@ -43,6 +44,8 @@ import System.Directory (
   getCurrentDirectory,
  )
 import System.FilePath ((</>))
+
+import Test.Hydra.Prelude (withTempDir)
 
 data ExecutionContext = MkExecutionContext
   { tracer :: !(Tracer IO EndToEndLog)
@@ -60,9 +63,8 @@ newtype Runner a = MkRunner
     )
     via ReaderT ExecutionContext IO
 
-execute :: IO StateDirectory -> Runner () -> IO ()
-execute stateDirIO runner = do
-  stateDirectory <- unStateDirectory <$> stateDirIO
+executeRunner :: StateDirectory -> Runner () -> IO ()
+executeRunner MkStateDirectory {stateDirectory} runner = do
   withFile (stateDirectory </> "test.log") ReadWriteMode $ \h ->
     withTracerOutputTo h "Tracer" $ \tracer ->
       withCardanoNodeDevnet
@@ -74,7 +76,7 @@ execute stateDirIO runner = do
             (MkExecutionContext tracer node)
 
 newtype StateDirectory = MkStateDirectory
-  {unStateDirectory :: FilePath}
+  {stateDirectory :: FilePath}
 
 defStateDirectory :: IO StateDirectory
 defStateDirectory = do
@@ -82,6 +84,11 @@ defStateDirectory = do
   let stateDirectory = currentDirectory </> "node-state"
   createDirectoryIfMissing True stateDirectory
   pure $ MkStateDirectory stateDirectory
+
+tmpStateDirectory :: String -> Runner () -> IO ()
+tmpStateDirectory dir runner = do
+  withTempDir dir $ \tmpDir -> do
+    executeRunner (MkStateDirectory tmpDir) runner
 
 initWallet :: Actor -> Lovelace -> Runner ()
 initWallet actor amount = do

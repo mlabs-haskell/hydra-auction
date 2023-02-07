@@ -1,16 +1,12 @@
 module Main (main) where
 
-import Test.Tasty qualified as Tasty
+import GHC.IO.Encoding (setLocaleEncoding, utf8)
+import Test.Tasty (defaultMain)
 
+import EndToEnd.Hydra (testSuite)
 import Prelude
-
-import EndToEnd.Spec (tests)
 
 main :: IO ()
 main = do
-  spec <- tests
-  Tasty.defaultMain $
-    Tasty.testGroup
-      "Hydra-demo"
-      [ spec
-      ]
+  setLocaleEncoding utf8
+  defaultMain testSuite

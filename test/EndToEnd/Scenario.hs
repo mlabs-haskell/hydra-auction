@@ -10,19 +10,18 @@ import Hydra.Cluster.Fixture (Actor (..))
 
 import Test.Hydra.Prelude
 
+import HydraAuction.Runner
 import HydraAuction.Tx.Escrow
 import HydraAuction.Tx.StandingBid
 import HydraAuction.Tx.TestNFT
 import HydraAuction.Types
 
-import EndToEnd.Common
-
 scenarioSpec :: Spec
 scenarioSpec =
-  -- around showLogsOnFailure $ do
-  describe "End-to-end scenario test" $ do
+  describe "End-to-end runner tests" $ do
     it "Successful bid" $ do
-      runScenario $ do
+      stateDir <- defStateDirectory
+      executeRunner stateDir $ do
         node' <- asks node
 
         let seller = Alice
@@ -37,11 +36,17 @@ scenarioSpec =
         liftIO $ announceAuction node' seller terms
         liftIO $ startBidding node' seller terms
 
-        liftIO $ newBid node' buyer terms (fromJust $ intToNatural 16_000_000)
+        liftIO $
+          newBid
+            node'
+            buyer
+            terms
+            (fromJust $ intToNatural 16_000_000)
         liftIO $ bidderBuys node' buyer terms
 
     it "Seller reclaims" $ do
-      runScenario $ do
+      stateDir <- defStateDirectory
+      executeRunner stateDir $ do
         node' <- asks node
 
         let seller = Alice
