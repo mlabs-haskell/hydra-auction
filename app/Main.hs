@@ -36,6 +36,7 @@ data CLIAction
   | AuctionAnounce !Actor !TxIn
   | StartBidding !Actor !TxIn
   | BidderBuys !Actor !TxIn
+  | SellerReclaims !Actor !TxIn
 
 cliParser :: Parser CLIAction
 cliParser =
@@ -93,14 +94,9 @@ prettyPrintUtxo utxo = do
 
 main :: IO ()
 main = do
-  userAction <- execParser opts
-  let gotNode =
-        pure $
-          RunningNode
-            { nodeSocket = "./node.socket"
-            , networkId = Testnet $ NetworkMagic 42
-            }
-  case userAction of
+  action <- execParser opts
+  let node = RunningNode {nodeSocket = "./node.socket", networkId = Testnet $ NetworkMagic 42}
+  case action of
     RunCardanoNode -> do
       putStrLn "Running cardano-node"
       withTempDir "hydra-auction-1" $ \workDir -> do
@@ -112,30 +108,26 @@ main = do
     -- Somehow it hangs without infinite loop "/
     Seed actor -> do
       showLogsOnFailure $ \tracer -> do
-        node <- gotNode
         (key, _) <- keysFor actor
         seedFromFaucet_ node key 100_000_000 Normal (contramap FromFaucet tracer)
     ShowScriptUtxos script actor utxoRef -> do
-      node <- gotNode
       terms <- constructTerms node actor utxoRef
       utxos <- scriptUtxos node script terms
       prettyPrintUtxo utxos
     ShowUtxos actor -> do
-      node <- gotNode
       utxos <- actorTipUtxo node actor
       prettyPrintUtxo utxos
     MintTestNFT actor -> do
-      node <- gotNode
       void $ mintOneTestNFT node actor
     AuctionAnounce actor utxo -> do
-      node <- gotNode
       terms <- constructTerms node actor utxo
       announceAuction node actor terms
     StartBidding actor utxo -> do
-      node <- gotNode
       terms <- constructTerms node actor utxo
       startBidding node actor terms
     BidderBuys actor utxo -> do
-      node <- gotNode
       terms <- constructTerms node actor utxo
       bidderBuys node actor terms
+    SellerReclaims actor utxo -> do
+      terms <- constructTerms node actor utxo
+      sellerReclaims node actor terms

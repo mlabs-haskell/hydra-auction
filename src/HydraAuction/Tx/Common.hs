@@ -102,9 +102,9 @@ data AutoCreateParams = AutoCreateParams
   , -- | Utxo which TxIns will be used as reference inputs
     referenceUtxo :: UTxO
   , -- | Nothing means collateral will be chosen automatically from given UTxOs
-    witnessedUtxos ::
+    collateral :: Maybe TxIn
+  , witnessedUtxos ::
       [(BuildTxWith BuildTx (Witness WitCtxTxIn), UTxO)]
-  , collateral :: Maybe TxIn
   , outs :: [TxOut CtxTx]
   , toMint :: TxMintValue BuildTx
   , changeAddress :: Address ShelleyAddr
@@ -184,6 +184,7 @@ autoSubmitAndAwaitTx :: RunningNode -> AutoCreateParams -> IO Tx
 autoSubmitAndAwaitTx node@RunningNode {nodeSocket, networkId} params = do
   tx <- autoCreateTx node params
   putStrLn "Signed"
+  putStrLn $ show tx
 
   submitTransaction networkId nodeSocket tx
   putStrLn "Submited"

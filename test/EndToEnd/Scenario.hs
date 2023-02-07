@@ -7,6 +7,7 @@ import Control.Monad.Reader (asks)
 import Data.Maybe (fromJust)
 import Hydra.Cardano.Api (mkTxIn)
 import Hydra.Cluster.Fixture (Actor (..))
+
 import Test.Hydra.Prelude
 
 import HydraAuction.Tx.Escrow
@@ -38,3 +39,21 @@ scenarioSpec =
 
         liftIO $ newBid node' buyer terms (fromJust $ intToNatural 16_000_000)
         liftIO $ bidderBuys node' buyer terms
+
+    it "Seller reclaims" $ do
+      runScenario $ do
+        node' <- asks node
+
+        let seller = Alice
+            buyer = Bob
+        initWallet seller 100_000_000
+        initWallet buyer 100_000_000
+
+        nftTx <- liftIO $ mintOneTestNFT node' seller
+        let utxoRef = mkTxIn nftTx 0
+        terms <- liftIO $ constructTerms node' seller utxoRef
+
+        liftIO $ announceAuction node' seller terms
+        liftIO $ startBidding node' seller terms
+
+        liftIO $ sellerReclaims node' seller terms
