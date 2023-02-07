@@ -1,4 +1,4 @@
-module HydraAuction.Tx.Escrow (constructTerms, announceAuction, startBidding, bidderBuys, sellerReclaims) where
+module HydraAuction.Tx.Escrow (announceAuction, startBidding, bidderBuys, sellerReclaims) where
 
 import Hydra.Prelude
 import PlutusTx.Prelude (emptyByteString)
@@ -6,43 +6,21 @@ import PlutusTx.Prelude (emptyByteString)
 import Cardano.Api.UTxO qualified as UTxO
 import CardanoClient
 import CardanoNode (RunningNode (..))
-import Data.Maybe (fromJust)
 import Hydra.Cardano.Api hiding (txOutValue)
 import Hydra.Cluster.Fixture (Actor (..))
-import Hydra.Cluster.Util (keysFor)
 import HydraAuction.Addresses
 import HydraAuction.OnChain
 import HydraAuction.OnChain.StateToken
-import HydraAuction.OnChain.TestNFT
 import HydraAuction.PlutusExtras
 import HydraAuction.Tx.Common
 import HydraAuction.Types
 import Plutus.V1.Ledger.Address (pubKeyHashAddress)
 import Plutus.V1.Ledger.Value (CurrencySymbol (..), assetClassValue, unAssetClass)
-import Plutus.V2.Ledger.Api (POSIXTime (..), fromData, getMintingPolicy, getValidator)
-
-constructTerms :: RunningNode -> Actor -> TxIn -> IO AuctionTerms
-constructTerms _ seller utxoRef = do
-  (sellerVk, _) <- keysFor seller
-  let sellerVkHash = toPlutusKeyHash $ verificationKeyHash sellerVk
-      terms =
-        AuctionTerms
-          { auctionLot = allowMintingAssetClass
-          , seller = sellerVkHash
-          , delegates = [sellerVkHash]
-          , biddingStart = POSIXTime 1
-          , biddingEnd = POSIXTime 100
-          , voucherExpiry = POSIXTime 1000
-          , cleanup = POSIXTime 10001
-          , auctionFee = fromJust $ intToNatural 4_000_000
-          , startingBid = fromJust $ intToNatural 8_000_000
-          , minimumBidIncrement = fromJust $ intToNatural 8_000_000
-          , utxoRef = toPlutusTxOutRef utxoRef
-          }
-  return terms
+import Plutus.V2.Ledger.Api (fromData, getMintingPolicy, getValidator)
 
 announceAuction :: RunningNode -> Actor -> AuctionTerms -> IO ()
 announceAuction node@RunningNode {networkId, nodeSocket} sellerActor terms = do
+  putStrLn "Doing announce auction"
   (sellerAddress, _, sellerSk) <- addressAndKeysFor networkId sellerActor
 
   utxoWithLotNFT <- queryUTxOByTxIn networkId nodeSocket QueryTip [fromPlutusTxOutRef $ utxoRef terms]
@@ -63,6 +41,7 @@ announceAuction node@RunningNode {networkId, nodeSocket} sellerActor terms = do
         , outs = [announcedEscrowTxOut]
         , toMint = toMintStateToken
         , changeAddress = sellerAddress
+        , validityBound = (Just $ biddingStart terms, Just $ biddingEnd terms)
         }
   where
     mp = policy terms
@@ -79,6 +58,8 @@ announceAuction node@RunningNode {networkId, nodeSocket} sellerActor terms = do
 
 startBidding :: RunningNode -> Actor -> AuctionTerms -> IO ()
 startBidding node@RunningNode {networkId} sellerActor terms = do
+  putStrLn "Doing start bidding"
+
   (sellerAddress, _, sellerSk) <- addressAndKeysFor networkId sellerActor
 
   sellerMoneyUtxo <- filterAdaOnlyUtxo <$> actorTipUtxo node sellerActor
@@ -100,6 +81,7 @@ startBidding node@RunningNode {networkId} sellerActor terms = do
         , outs = [txOutStandingBid, txOutEscrow]
         , toMint = TxMintValueNone
         , changeAddress = sellerAddress
+        , validityBound = (Just $ biddingStart terms, Just $ biddingEnd terms)
         }
   where
     escrowScript = fromPlutusScript $ getValidator $ escrowValidator terms
@@ -145,6 +127,7 @@ bidderBuys node@RunningNode {networkId} bidder terms = do
         , outs = [txOutBidderGotLot bidderAddress, txOutSellerGotBid standingBidUtxo, txOutFeeEscrow]
         , toMint = TxMintValueNone
         , changeAddress = bidderAddress
+        , validityBound = (Just $ biddingEnd terms, Just $ voucherExpiry terms)
         }
   where
     txOutSellerGotBid standingBidUtxo = TxOut (fromPlutusAddress (networkIdToNetwork networkId) $ pubKeyHashAddress $ seller terms) value TxOutDatumNone ReferenceScriptNone
@@ -195,10 +178,9 @@ sellerReclaims node@RunningNode {networkId} seller terms = do
         , outs = [txOutSellerGotLot sellerAddress, txOutFeeEscrow] -- TODO: fee escrow
         , toMint = TxMintValueNone
         , changeAddress = sellerAddress
+        , validityBound = (Just $ voucherExpiry terms, Nothing)
         }
   where
-    mp = policy terms
-
     txOutSellerGotLot sellerAddress = TxOut (ShelleyAddressInEra sellerAddress) valueSellerLot TxOutDatumNone ReferenceScriptNone
       where
         valueSellerLot =

@@ -15,7 +15,7 @@ import Plutus.V2.Ledger.Api (getValidator)
 
 newBid :: RunningNode -> Actor -> AuctionTerms -> Natural -> IO ()
 newBid node bidder terms bidAmount = do
-  putStrLn "Doing Bidder Buy"
+  putStrLn "Doing new bid"
   (bidderAddress, bidderVk, bidderSk) <- addressAndKeysFor (networkId node) bidder
 
   bidderMoneyUtxo <- filterAdaOnlyUtxo <$> actorTipUtxo node bidder
@@ -37,6 +37,7 @@ newBid node bidder terms bidAmount = do
         , outs = [txOutStandingBid bidderVk]
         , toMint = TxMintValueNone
         , changeAddress = bidderAddress
+        , validityBound = (Just $ biddingStart terms, Just $ biddingEnd terms)
         }
   where
     txOutStandingBid bidderVk = TxOut standingBidAddress' valueStandingBid (mkInlineDatum datum) ReferenceScriptNone

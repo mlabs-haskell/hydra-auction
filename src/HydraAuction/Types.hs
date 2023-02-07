@@ -20,16 +20,29 @@ module HydraAuction.Types (
 
 import Prelude qualified
 
+import Control.Monad.Fail (fail)
+import Data.Aeson (FromJSON (..))
 import GHC.Generics (Generic)
 import HydraAuction.Addresses (VoucherCS)
 import Plutus.V1.Ledger.Crypto (PubKeyHash)
 import Plutus.V1.Ledger.Time (POSIXTime)
 import Plutus.V1.Ledger.Value (AssetClass)
+import Plutus.V2.Ledger.Api (POSIXTime (..))
 import Plutus.V2.Ledger.Contexts (TxOutRef)
 import PlutusTx qualified
 import PlutusTx.IsData.Class (FromData (fromBuiltinData), ToData (toBuiltinData), UnsafeFromData (unsafeFromBuiltinData))
 import PlutusTx.Prelude hiding (fromInteger)
 import PlutusTx.Prelude qualified as Plutus
+
+-- Instances
+
+instance FromJSON POSIXTime where
+  parseJSON x = do
+    -- FIXME: check not negative
+    int <- parseJSON x
+    return $ POSIXTime int
+
+-- Custom Natural
 
 newtype Natural = Natural Integer
   deriving stock (Generic, Prelude.Show, Prelude.Eq)
@@ -48,6 +61,13 @@ instance FromData Natural where
   fromBuiltinData d = do
     i <- fromBuiltinData d
     intToNatural i
+
+instance FromJSON Natural where
+  parseJSON x = do
+    int <- parseJSON x
+    case intToNatural int of
+      Just nat -> return nat
+      Nothing -> fail "Integer is not natural"
 
 {-# INLINEABLE fromJust #-}
 fromJust :: Maybe a -> a

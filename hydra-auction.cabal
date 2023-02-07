@@ -19,6 +19,7 @@ common common-lang
     -fno-ignore-interface-pragmas -fno-omit-interface-pragmas
 
   build-depends:
+    , aeson
     , async
     , base                     ^>=4.14
     , cardano-ledger-core
@@ -35,6 +36,7 @@ common common-lang
     , record-hasfield
     , stm
     , text
+    , time
     , transformers
     , websockets
 
@@ -126,9 +128,11 @@ library
   exposed-modules:
     HydraAuction.Addresses
     HydraAuction.OnChain
+    HydraAuction.OnChain.TestNFT
     HydraAuction.Tx.Common
     HydraAuction.Tx.Escrow
     HydraAuction.Tx.StandingBid
+    HydraAuction.Tx.TermsConfig
     HydraAuction.Tx.TestNFT
     HydraAuction.Types
 
@@ -137,7 +141,6 @@ library
     HydraAuction.OnChain.Escrow
     HydraAuction.OnChain.StandingBid
     HydraAuction.OnChain.StateToken
-    HydraAuction.OnChain.TestNFT
     HydraAuction.PlutusExtras
 
   build-depends:

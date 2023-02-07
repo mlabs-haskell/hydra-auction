@@ -1,0 +1,9 @@
+{
+    "biddingStartPosixSeconds": 1675777532,
+    "biddingEndDelta": 90,
+    "voucherExpiryDelta": 150,
+    "cleanupDelta": 151,
+    "auctionFee":  4000000,
+    "startingBid": 8000000,
+    "minimumBidIncrement": 8000000
+}

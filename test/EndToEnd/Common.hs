@@ -1,9 +1,9 @@
 {-# LANGUAGE RecordWildCards #-}
 
-module EndToEnd.Common where
+module EndToEnd.Common (Context (..), runScenario, initWallet, getStateDirectory) where
 
 import Control.Monad.Reader
-
+import System.Directory
 import System.FilePath ((</>))
 
 import CardanoNode (
@@ -16,12 +16,7 @@ import Hydra.Cluster.Fixture
 import Hydra.Cluster.Util
 import Hydra.Logging
 import Hydra.Prelude
-
-import HydraAuction.OnChain
-
 import HydraNode
-
-import System.Directory
 
 data Context = MkContext
   { tracer :: Tracer IO EndToEndLog
