@@ -126,6 +126,7 @@ library
   exposed-modules:
     HydraAuction.Addresses
     HydraAuction.OnChain
+    HydraAuction.Runner
     HydraAuction.Tx.Common
     HydraAuction.Tx.Escrow
     HydraAuction.Tx.StandingBid
@@ -141,7 +142,13 @@ library
     HydraAuction.PlutusExtras
 
   build-depends:
+    , directory
+    , hydra-cardano-api
+    , hydra-cluster
+    , hydra-node
     , hydra-plutus
+    , hydra-prelude
+    , hydra-test-utils
     , natural-numbers
     , plutus-ledger-api
     , plutus-tx
@@ -153,9 +160,9 @@ test-suite hydra-auction-test
   type:           exitcode-stdio-1.0
   main-is:        Spec.hs
   other-modules:
-    EndToEnd.Common
-    EndToEnd.Scenario
-    EndToEnd.Spec
+    EndToEnd.Hydra
+    EndToEnd.Ledger
+    EndToEnd.Utils
 
   build-depends:
     , aeson
