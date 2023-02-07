@@ -7,6 +7,7 @@ import Control.Monad.Reader (asks)
 import Data.Maybe (fromJust)
 import Hydra.Cardano.Api (mkTxIn)
 import Hydra.Cluster.Fixture (Actor (..))
+
 import Test.Hydra.Prelude
 
 import HydraAuction.Tx.Escrow
@@ -35,6 +36,8 @@ scenarioSpec =
 
         liftIO $ announceAuction node' seller terms
         liftIO $ startBidding node' seller terms
+
+        -- liftIO $ sellerReclaims node' seller terms
 
         liftIO $ newBid node' buyer terms (fromJust $ intToNatural 16_000_000)
         liftIO $ bidderBuys node' buyer terms

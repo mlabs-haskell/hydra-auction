@@ -78,7 +78,7 @@ mkEscrowValidator (StandingBidAddress standingBidAddressLocal, FeeEscrowAddress 
           standingBidAddressLocal
           "Standing bid"
           ( \out ->
-              traceIfFalse "Standing bid does not equalh NoBid" $
+              traceIfFalse "Standing bid does not equal NoBid" $
                 (standingBidState <$> decodeOutputDatum info out) == Just NoBid
           )
     checkBidderBuys escrowInputOutput =
@@ -119,7 +119,7 @@ mkEscrowValidator (StandingBidAddress standingBidAddressLocal, FeeEscrowAddress 
               Nothing -> traceError "Incorrect encoding for standing bid datum"
         _ -> traceError "Wrong number of standing bid inputs"
     checkSellerReclaimsOutputs =
-      checkSingleOutput
+      checkSingleNonAdaOutput
         sellerAddress
         "Seller"
         ( \out ->

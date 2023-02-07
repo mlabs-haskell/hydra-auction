@@ -1,4 +1,4 @@
-module HydraAuction.Tx.Escrow (constructTerms, announceAuction, startBidding, bidderBuys) where
+module HydraAuction.Tx.Escrow (constructTerms, announceAuction, startBidding, bidderBuys, sellerReclaims) where
 
 import Hydra.Prelude
 import PlutusTx.Prelude (emptyByteString)
@@ -172,3 +172,45 @@ bidderBuys node@RunningNode {networkId} bidder terms = do
     escrowWitness = mkInlinedDatumScriptWitness script BidderBuys
       where
         script = fromPlutusScript @PlutusScriptV2 $ getValidator $ escrowValidator terms
+
+sellerReclaims :: RunningNode -> Actor -> AuctionTerms -> IO ()
+sellerReclaims node@RunningNode {networkId} seller terms = do
+  putStrLn "Doing Seller reclaims"
+  (sellerAddress, _, sellerSk) <- addressAndKeysFor networkId seller
+
+  sellerMoneyUtxo <- filterAdaOnlyUtxo <$> actorTipUtxo node seller
+
+  let escrowBiddingStartedSymbols = [CurrencySymbol emptyByteString, fst $ unAssetClass $ auctionLot terms]
+  escrowBiddingStartedUtxo <- filterUtxoByCurrencySymbols escrowBiddingStartedSymbols <$> scriptUtxos node Escrow terms
+
+  putStrLn $ show escrowBiddingStartedUtxo
+
+  void $
+    autoSubmitAndAwaitTx node $
+      AutoCreateParams
+        { authoredUtxos = [(sellerSk, sellerMoneyUtxo)]
+        , referenceUtxo = mempty
+        , witnessedUtxos =
+            [ (escrowWitness, escrowBiddingStartedUtxo)
+            ]
+        , collateral = Nothing
+        , outs = [txOutSellerGotLot sellerAddress, txOutFeeEscrow] -- TODO: fee escrow
+        , toMint = TxMintValueNone
+        , changeAddress = sellerAddress
+        }
+  where
+    mp = policy terms
+
+    txOutSellerGotLot sellerAddress = TxOut (ShelleyAddressInEra sellerAddress) valueSellerLot TxOutDatumNone ReferenceScriptNone
+      where
+        valueSellerLot =
+          fromPlutusValue (assetClassValue (auctionLot terms) 1)
+            <> lovelaceToValue minLovelace
+    escrowWitness = mkInlinedDatumScriptWitness script SellerReclaims
+      where
+        script = fromPlutusScript @PlutusScriptV2 $ getValidator $ escrowValidator terms
+
+    txOutFeeEscrow = TxOut feeEscrowAddress value TxOutDatumNone ReferenceScriptNone
+      where
+        feeEscrowAddress = mkScriptAddress @PlutusScriptV2 networkId $ fromPlutusScript @PlutusScriptV2 $ getValidator $ feeEscrowValidator terms
+        value = lovelaceToValue $ Lovelace $ naturalToInt $ auctionFee terms
