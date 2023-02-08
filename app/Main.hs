@@ -1,6 +1,5 @@
 module Main (main) where
 
-import Hydra.Prelude (toList)
 import Prelude
 
 import Cardano.Api (NetworkId (..), TxIn)
@@ -18,7 +17,9 @@ import Options.Applicative
 import Test.Hydra.Prelude (withTempDir)
 
 import Hydra.Logging (showLogsOnFailure)
+import Hydra.Prelude (liftIO, toList)
 import HydraAuction.OnChain
+import HydraAuction.Runner
 import HydraNode (
   EndToEndLog (FromCardanoNode, FromFaucet),
  )
@@ -95,39 +96,54 @@ prettyPrintUtxo utxo = do
 main :: IO ()
 main = do
   action <- execParser opts
-  let node = RunningNode {nodeSocket = "./node.socket", networkId = Testnet $ NetworkMagic 42}
+  let node =
+        RunningNode
+          { nodeSocket = "./node.socket"
+          , networkId = Testnet $ NetworkMagic 42
+          }
+      stateDirectory = MkStateDirectory "hydra-auction-1"
   case action of
     RunCardanoNode -> do
       putStrLn "Running cardano-node"
       withTempDir "hydra-auction-1" $ \workDir -> do
-        withFile (workDir </> "test.log") ReadWriteMode $ \_hdl ->
-          showLogsOnFailure $ \tracer -> do
-            withCardanoNodeDevnet (contramap FromCardanoNode tracer) "." $
-              error "Not implemented: RunCardanoNode"
+        let stateDirectory' = MkStateDirectory workDir
+        tracer <- fileTracer stateDirectory'
+        devnet stateDirectory' tracer $
+          error "Not implemented: RunCardanoNode"
     -- TODO: proper working dir
     -- Somehow it hangs without infinite loop "/
     Seed actor -> do
-      showLogsOnFailure $ \tracer -> do
-        (key, _) <- keysFor actor
-        seedFromFaucet_ node key 100_000_000 Normal (contramap FromFaucet tracer)
+      showLogsOnFailure $ \tracer ->
+        executeRunner tracer node $
+          initWallet actor 100_000_000
     ShowScriptUtxos script actor utxoRef -> do
-      terms <- constructTerms node actor utxoRef
+      terms <- constructTerms actor utxoRef
       utxos <- scriptUtxos node script terms
       prettyPrintUtxo utxos
     ShowUtxos actor -> do
       utxos <- actorTipUtxo node actor
       prettyPrintUtxo utxos
     MintTestNFT actor -> do
-      void $ mintOneTestNFT node actor
-    AuctionAnounce actor utxo -> do
-      terms <- constructTerms node actor utxo
-      announceAuction node actor terms
-    StartBidding actor utxo -> do
-      terms <- constructTerms node actor utxo
-      startBidding node actor terms
-    BidderBuys actor utxo -> do
-      terms <- constructTerms node actor utxo
-      bidderBuys node actor terms
-    SellerReclaims actor utxo -> do
-      terms <- constructTerms node actor utxo
-      sellerReclaims node actor terms
+      showLogsOnFailure $ \tracer ->
+        executeRunner tracer node $
+          void $ mintOneTestNFT actor
+    AuctionAnounce actor utxo ->
+      showLogsOnFailure $ \tracer ->
+        executeRunner tracer node $ do
+          terms <- liftIO $ constructTerms actor utxo
+          announceAuction actor terms
+    StartBidding actor utxo ->
+      showLogsOnFailure $ \tracer ->
+        executeRunner tracer node $ do
+          terms <- liftIO $ constructTerms actor utxo
+          startBidding actor terms
+    BidderBuys actor utxo ->
+      showLogsOnFailure $ \tracer ->
+        executeRunner tracer node $ do
+          terms <- liftIO $ constructTerms actor utxo
+          bidderBuys actor terms
+    SellerReclaims actor utxo ->
+      showLogsOnFailure $ \tracer ->
+        executeRunner tracer node $ do
+          terms <- liftIO $ constructTerms actor utxo
+          sellerReclaims actor terms

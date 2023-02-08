@@ -3,11 +3,12 @@
 module HydraAuction.Runner (
   Runner,
   executeRunner,
-  StateDirectory,
+  executeTestRunner,
+  StateDirectory (..),
   ExecutionContext (..),
-  defStateDirectory,
-  tmpStateDirectory,
+  fileTracer,
   initWallet,
+  devnet,
 ) where
 
 import CardanoNode (
@@ -22,7 +23,6 @@ import Hydra.Cluster.Util (keysFor)
 import Hydra.Logging (Tracer, withTracerOutputTo)
 import Hydra.Prelude (
   Applicative (pure),
-  Bool (True),
   Contravariant (contramap),
   FilePath,
   Functor,
@@ -32,17 +32,12 @@ import Hydra.Prelude (
   MonadIO (..),
   MonadReader (ask),
   ReaderT (..),
-  String,
   withFile,
   ($),
  )
 
 import HydraNode (EndToEndLog (FromCardanoNode, FromFaucet))
 
-import System.Directory (
-  createDirectoryIfMissing,
-  getCurrentDirectory,
- )
 import System.FilePath ((</>))
 
 import Test.Hydra.Prelude (withTempDir)
@@ -69,38 +64,37 @@ newtype Runner a = MkRunner
     )
     via ReaderT ExecutionContext IO
 
--- | Executes a runner using the given @StateDirectory@.
-executeRunner :: StateDirectory -> Runner () -> IO ()
-executeRunner MkStateDirectory {stateDirectory} runner = do
+executeRunner :: Tracer IO EndToEndLog -> RunningNode -> Runner a -> IO a
+executeRunner tracer node runner =
+  runReaderT (run runner) (MkExecutionContext tracer node)
+
+fileTracer :: StateDirectory -> IO (Tracer IO EndToEndLog)
+fileTracer MkStateDirectory {..} = do
   withFile (stateDirectory </> "test.log") ReadWriteMode $ \h ->
-    withTracerOutputTo h "Tracer" $ \tracer ->
-      withCardanoNodeDevnet
-        (contramap FromCardanoNode tracer)
-        stateDirectory
-        $ \node ->
-          runReaderT
-            (run runner)
-            (MkExecutionContext tracer node)
+    withTracerOutputTo h "Tracer" $ \tracer -> pure tracer
+
+devnet ::
+  StateDirectory ->
+  Tracer IO EndToEndLog ->
+  (RunningNode -> IO ()) ->
+  IO ()
+devnet MkStateDirectory {..} tracer =
+  withCardanoNodeDevnet
+    (contramap FromCardanoNode tracer)
+    stateDirectory
+
+-- | Executes a test runner using a temporary directory as the @StateDirectory@.
+executeTestRunner :: Runner () -> IO ()
+executeTestRunner runner = do
+  withTempDir "test-hydra-auction" $ \tmpDir -> do
+    let stateDirectory = MkStateDirectory tmpDir
+    tracer <- fileTracer stateDirectory
+    devnet stateDirectory tracer $ \node ->
+      executeRunner tracer node runner
 
 -- | @FilePath@ used to store the running node data.
 newtype StateDirectory = MkStateDirectory
   {stateDirectory :: FilePath}
-
-{- | Uses `node-state` in the current directory as the @StateDirectory@.
- If the folder does not exist, it is first created.
--}
-defStateDirectory :: IO StateDirectory
-defStateDirectory = do
-  currentDirectory <- getCurrentDirectory
-  let stateDirectory = currentDirectory </> "node-state"
-  createDirectoryIfMissing True stateDirectory
-  pure $ MkStateDirectory stateDirectory
-
--- | Creates a temporary directory as the @StateDirectory@.
-tmpStateDirectory :: String -> Runner () -> IO ()
-tmpStateDirectory dir runner = do
-  withTempDir dir $ \tmpDir -> do
-    executeRunner (MkStateDirectory tmpDir) runner
 
 -- * Utils
 

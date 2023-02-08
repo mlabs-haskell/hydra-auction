@@ -1,5 +1,3 @@
-{-# LANGUAGE RecordWildCards #-}
-
 module EndToEnd.Ledger (testSuite) where
 
 import Prelude
@@ -38,41 +36,35 @@ testSuite =
 
 successfulBidTest :: Assertion
 successfulBidTest = mkAssertion $ do
-  MkExecutionContext {..} <- ask
-
   let seller = Alice
       buyer = Bob
 
   initWallet seller 100_000_000
   initWallet buyer 100_000_000
 
-  liftIO $ do
-    nftTx <- mintOneTestNFT node seller
-    let utxoRef = mkTxIn nftTx 0
+  nftTx <- mintOneTestNFT seller
+  let utxoRef = mkTxIn nftTx 0
 
-    terms <- constructTerms node seller utxoRef
+  terms <- liftIO $ constructTerms seller utxoRef
 
-    announceAuction node seller terms
-    startBidding node seller terms
-    newBid node buyer terms (fromJust $ intToNatural 16_000_000)
-    bidderBuys node buyer terms
+  announceAuction seller terms
+  startBidding seller terms
+  newBid buyer terms (fromJust $ intToNatural 16_000_000)
+  bidderBuys buyer terms
 
 sellerReclaimsTest :: Assertion
 sellerReclaimsTest = mkAssertion $ do
-  MkExecutionContext {..} <- ask
-
   let seller = Alice
       buyer = Bob
 
   initWallet seller 100_000_000
   initWallet buyer 100_000_000
 
-  liftIO $ do
-    nftTx <- mintOneTestNFT node seller
-    let utxoRef = mkTxIn nftTx 0
+  nftTx <- mintOneTestNFT seller
+  let utxoRef = mkTxIn nftTx 0
 
-    terms <- constructTerms node seller utxoRef
+  terms <- liftIO $ constructTerms seller utxoRef
 
-    announceAuction node seller terms
-    startBidding node seller terms
-    liftIO $ sellerReclaims node seller terms
+  announceAuction seller terms
+  startBidding seller terms
+  sellerReclaims seller terms
