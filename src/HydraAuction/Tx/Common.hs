@@ -28,16 +28,20 @@ import CardanoNode (
   RunningNode (RunningNode, networkId, nodeSocket),
  )
 import Control.Monad.IO.Class (liftIO)
+import Data.Fixed (Fixed (MkFixed))
 import Data.List (sort)
 import Data.Map qualified as Map
+import Data.Time (secondsToNominalDiffTime)
+import Data.Time.Clock.POSIX (posixSecondsToUTCTime)
 import Data.Tuple.Extra (first)
 import Hydra.Cardano.Api hiding (txOutValue)
+import Hydra.Chain.Direct.TimeHandle (queryTimeHandle, slotFromUTCTime)
 import Hydra.Cluster.Fixture
 import Hydra.Cluster.Util
 import HydraAuction.OnChain
 import HydraAuction.Types
 import Plutus.V1.Ledger.Value (CurrencySymbol (..), TokenName (..), symbols)
-import Plutus.V2.Ledger.Api (ToData, fromBuiltin, getValidator, toBuiltinData, toData, txOutValue)
+import Plutus.V2.Ledger.Api (POSIXTime (..), ToData, fromBuiltin, getValidator, toBuiltinData, toData, txOutValue)
 
 networkIdToNetwork :: NetworkId -> Cardano.Network
 networkIdToNetwork (Testnet _) = Cardano.Testnet
@@ -108,17 +112,39 @@ data AutoCreateParams = AutoCreateParams
   , outs :: [TxOut CtxTx]
   , toMint :: TxMintValue BuildTx
   , changeAddress :: Address ShelleyAddr
+  , validityBound :: (Maybe POSIXTime, Maybe POSIXTime)
   }
+
+toSlotNo :: RunningNode -> POSIXTime -> IO SlotNo
+toSlotNo (RunningNode {networkId, nodeSocket}) ptime = do
+  -- FIXME: more clear implementation
+  timeHandle <- queryTimeHandle networkId nodeSocket
+  let ndtime =
+        secondsToNominalDiffTime
+          -- Converting milliseconds into picoseconds or something like that
+          (MkFixed $ getPOSIXTime ptime * 1_000_000_000)
+  case slotFromUTCTime timeHandle (posixSecondsToUTCTime ndtime) of
+    Left err -> liftIO $ fail (show err)
+    Right slotNo -> pure slotNo
 
 autoCreateTx :: RunningNode -> AutoCreateParams -> IO Tx
 autoCreateTx node@RunningNode {networkId, nodeSocket} (AutoCreateParams {..}) = do
   pparams <- queryProtocolParameters networkId nodeSocket QueryTip
+
+  let (lowerBound', upperBound') = validityBound
+  lowerBound <- case lowerBound' of
+    Nothing -> pure TxValidityNoLowerBound
+    Just x -> TxValidityLowerBound <$> toSlotNo node x
+  upperBound <- case upperBound' of
+    Nothing -> pure TxValidityNoUpperBound
+    Just x -> TxValidityUpperBound <$> toSlotNo node x
+
   body <-
     either (\x -> error $ "Autobalance error: " <> show x) id
       <$> callBodyAutoBalance
         node
         (allAuthoredUtxos <> allWitnessedUtxos <> referenceUtxo)
-        (preBody pparams)
+        (preBody pparams lowerBound upperBound)
         changeAddress
   pure $ makeSignedTransaction (signingWitnesses body) body
   where
@@ -136,7 +162,7 @@ autoCreateTx node@RunningNode {networkId, nodeSocket} (AutoCreateParams {..}) = 
         Nothing -> fst $ case UTxO.pairs $ filterAdaOnlyUtxo allAuthoredUtxos of
           x : _ -> x
           [] -> error "Cannot select collateral, cuz no money utxo was provided"
-    preBody pparams =
+    preBody pparams lowerBound upperBound =
       TxBodyContent
         ((withWitness <$> txInsToSign) <> witnessedTxIns)
         (TxInsCollateral [txInCollateral])
@@ -145,7 +171,7 @@ autoCreateTx node@RunningNode {networkId, nodeSocket} (AutoCreateParams {..}) = 
         TxTotalCollateralNone
         TxReturnCollateralNone
         (TxFeeExplicit 0)
-        (TxValidityNoLowerBound, TxValidityNoUpperBound)
+        (lowerBound, upperBound)
         TxMetadataNone
         TxAuxScriptsNone
         -- Adding all keys here, cuz other way `txSignedBy` does not see those signatures
@@ -184,7 +210,6 @@ autoSubmitAndAwaitTx :: RunningNode -> AutoCreateParams -> IO Tx
 autoSubmitAndAwaitTx node@RunningNode {nodeSocket, networkId} params = do
   tx <- autoCreateTx node params
   putStrLn "Signed"
-  putStrLn $ show tx
 
   submitTransaction networkId nodeSocket tx
   putStrLn "Submited"

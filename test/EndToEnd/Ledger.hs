@@ -4,7 +4,9 @@ module EndToEnd.Ledger (testSuite) where
 
 import Prelude
 
+import Control.Concurrent (threadDelay)
 import Data.Maybe (fromJust)
+import Data.Time.Clock.POSIX qualified as POSIXTime
 import Hydra.Cardano.Api (mkTxIn)
 import Hydra.Cluster.Fixture (Actor (..))
 
@@ -18,6 +20,7 @@ import HydraAuction.Runner (
   initWallet,
  )
 import HydraAuction.Tx.Escrow (
+  TermsConfig (..),
   announceAuction,
   bidderBuys,
   constructTerms,
@@ -42,6 +45,16 @@ successfulBidTest = mkAssertion $ do
 
   let seller = Alice
       buyer = Bob
+      config =
+        TermsConfig
+          { deltaBiddingStart = 0
+          , deltaBiddingEnd = 2
+          , deltaVoucherExpiry = 5
+          , deltaCleanup = 10
+          , configAuctionFee = 4_000_000
+          , configStartingBid = 8_000_000
+          , configMinIncrement = 8_000_000
+          }
 
   initWallet seller 100_000_000
   initWallet buyer 100_000_000
@@ -50,11 +63,13 @@ successfulBidTest = mkAssertion $ do
     nftTx <- mintOneTestNFT node seller
     let utxoRef = mkTxIn nftTx 0
 
-    terms <- constructTerms node seller utxoRef
+    currentTime <- round <$> POSIXTime.getPOSIXTime
+    terms <- constructTerms node currentTime config seller utxoRef
 
     announceAuction node seller terms
     startBidding node seller terms
     newBid node buyer terms (fromJust $ intToNatural 16_000_000)
+    wait 3
     bidderBuys node buyer terms
 
 sellerReclaimsTest :: Assertion
@@ -63,6 +78,16 @@ sellerReclaimsTest = mkAssertion $ do
 
   let seller = Alice
       buyer = Bob
+      config =
+        TermsConfig
+          { deltaBiddingStart = 0
+          , deltaBiddingEnd = 2
+          , deltaVoucherExpiry = 5
+          , deltaCleanup = 10
+          , configAuctionFee = 4_000_000
+          , configStartingBid = 8_000_000
+          , configMinIncrement = 8_000_000
+          }
 
   initWallet seller 100_000_000
   initWallet buyer 100_000_000
@@ -71,8 +96,12 @@ sellerReclaimsTest = mkAssertion $ do
     nftTx <- mintOneTestNFT node seller
     let utxoRef = mkTxIn nftTx 0
 
-    terms <- constructTerms node seller utxoRef
+    currentTime <- round <$> POSIXTime.getPOSIXTime
+    terms <- constructTerms node currentTime config seller utxoRef
 
     announceAuction node seller terms
     startBidding node seller terms
-    liftIO $ sellerReclaims node seller terms
+    wait 6
+    sellerReclaims node seller terms
+
+wait n = threadDelay $ n * 1_000_000

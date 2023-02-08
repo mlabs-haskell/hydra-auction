@@ -4,7 +4,7 @@ module HydraAuction.Types (
   isStarted,
   intToNatural,
   naturalToInt,
-  Natural,
+  Natural (..),
   ApprovedBiddersHash (..),
   BidTerms (..),
   StandingBidState (..),
@@ -31,9 +31,9 @@ import PlutusTx.IsData.Class (FromData (fromBuiltinData), ToData (toBuiltinData)
 import PlutusTx.Prelude hiding (fromInteger)
 import PlutusTx.Prelude qualified as Plutus
 
-newtype Natural = Natural Integer
+newtype Natural = Natural {unNatural :: Integer}
   deriving stock (Generic, Prelude.Show, Prelude.Eq)
-  deriving newtype (Eq, Ord, AdditiveSemigroup)
+  deriving newtype (Eq, Ord, AdditiveSemigroup, Prelude.Num, Prelude.Enum)
 
 instance UnsafeFromData Natural where
   {-# INLINEABLE unsafeFromBuiltinData #-}
