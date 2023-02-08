@@ -47,7 +47,7 @@ data CLIAction
   | StartBidding !Actor !TxIn
   | NewBid !Actor !TxIn !Actor !Natural
   | BidderBuys !Actor !TxIn !Actor
-  | SellerReclaims !Actor !TxIn !Actor
+  | SellerReclaims !Actor !TxIn
 
 cliParser :: Parser CLIAction
 cliParser =
@@ -61,7 +61,7 @@ cliParser =
         <> command "start-bidding" (info (StartBidding <$> actor <*> utxo) (progDesc "FIXME: add help message"))
         <> command "new-bid" (info (NewBid <$> actor <*> utxo <*> bidder <*> bidAmount) (progDesc "FIXME: add help message"))
         <> command "bidder-buys" (info (BidderBuys <$> actor <*> utxo <*> bidder) (progDesc "FIXME: add help message"))
-        <> command "seller-reclaims" (info (SellerReclaims <$> actor <*> utxo <*> bidder) (progDesc "FIXME: add help message"))
+        <> command "seller-reclaims" (info (SellerReclaims <$> actor <*> utxo) (progDesc "FIXME: add help message"))
     )
   where
     actor :: Parser Actor
@@ -178,10 +178,10 @@ main = do
       currentTime <- readAuctionTime
       terms <- constructTerms node currentTime config actor utxo
       bidderBuys node bidder terms
-    SellerReclaims actor utxo bidder -> do
+    SellerReclaims actor utxo -> do
       currentTime <- readAuctionTime
       terms <- constructTerms node currentTime config actor utxo
-      sellerReclaims node bidder terms
+      sellerReclaims node actor terms
 
 auctionFile :: FilePath
 auctionFile = "auction_time.txt"
