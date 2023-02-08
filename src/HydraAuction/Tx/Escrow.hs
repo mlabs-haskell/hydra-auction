@@ -1,6 +1,6 @@
 {-# LANGUAGE RecordWildCards #-}
 
-module HydraAuction.Tx.Escrow (TermsConfig (..), constructTerms, announceAuction, startBidding, bidderBuys, sellerReclaims) where
+module HydraAuction.Tx.Escrow (AuctionTermsConfig (..), constructTerms, announceAuction, startBidding, bidderBuys, sellerReclaims) where
 
 import Hydra.Prelude hiding (Natural)
 import PlutusTx.Prelude (emptyByteString)
@@ -8,7 +8,6 @@ import PlutusTx.Prelude (emptyByteString)
 import Cardano.Api.UTxO qualified as UTxO
 import CardanoClient
 import CardanoNode (RunningNode (..))
-import Data.Maybe (fromJust)
 import Hydra.Cardano.Api hiding (txOutValue)
 import Hydra.Cluster.Fixture (Actor (..))
 import Hydra.Cluster.Util (keysFor)
@@ -23,7 +22,7 @@ import Plutus.V1.Ledger.Address (pubKeyHashAddress)
 import Plutus.V1.Ledger.Value (CurrencySymbol (..), assetClassValue, unAssetClass)
 import Plutus.V2.Ledger.Api (POSIXTime (..), fromData, getMintingPolicy, getValidator)
 
-data TermsConfig = TermsConfig
+data AuctionTermsConfig = AuctionTermsConfig
   { deltaBiddingStart :: Natural
   , deltaBiddingEnd :: Natural
   , deltaVoucherExpiry :: Natural
@@ -38,8 +37,8 @@ data TermsConfig = TermsConfig
 natToPosix :: Natural -> POSIXTime
 natToPosix = fromInteger . unNatural
 
-constructTerms :: RunningNode -> POSIXTime -> TermsConfig -> Actor -> TxIn -> IO AuctionTerms
-constructTerms _ currentTime TermsConfig {..} seller utxoRef = do
+constructTerms :: RunningNode -> POSIXTime -> AuctionTermsConfig -> Actor -> TxIn -> IO AuctionTerms
+constructTerms _ currentTime AuctionTermsConfig {..} seller utxoRef = do
   (sellerVk, _) <- keysFor seller
   let sellerVkHash = toPlutusKeyHash $ verificationKeyHash sellerVk
       terms =

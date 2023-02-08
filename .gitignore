@@ -64,3 +64,6 @@ tags
 
 # Cardano node state
 node-state
+
+# Auction state
+auction_time.txt

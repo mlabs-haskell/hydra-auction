@@ -3,6 +3,7 @@ module ParsingCliHelpers (
   parseScript,
   parseTxId,
   parseTxIn,
+  parseNatural,
   parseTxIx,
   readerFromParsecParser,
 ) where
@@ -18,10 +19,12 @@ import Data.ByteString.Char8 qualified as BSC
 
 import Prelude
 
+import Data.Maybe (fromJust)
 import Hydra.Cluster.Fixture (Actor (..))
 import Options.Applicative
 
 import HydraAuction.OnChain
+import HydraAuction.Types (Natural, intToNatural)
 
 import Cardano.Api (AsType (AsTxId), TxId (..), TxIn (..), TxIx (..), deserialiseFromRawBytesHex, displayError)
 
@@ -39,6 +42,9 @@ parseScript "escrow" = Escrow
 parseScript "standing-bid" = StandingBid
 parseScript "fee-escrow" = FeeEscrow
 parseScript _ = error "Escrow parsing error"
+
+parseNatural :: String -> Natural
+parseNatural = fromJust . intToNatural . read
 
 parseTxIn :: Parsec.Parser TxIn
 parseTxIn = TxIn <$> parseTxId <*> (Parsec.char '#' *> parseTxIx)

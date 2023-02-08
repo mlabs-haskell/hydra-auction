@@ -20,7 +20,7 @@ import HydraAuction.Runner (
   initWallet,
  )
 import HydraAuction.Tx.Escrow (
-  TermsConfig (..),
+  AuctionTermsConfig (..),
   announceAuction,
   bidderBuys,
   constructTerms,
@@ -46,7 +46,7 @@ successfulBidTest = mkAssertion $ do
   let seller = Alice
       buyer = Bob
       config =
-        TermsConfig
+        AuctionTermsConfig
           { deltaBiddingStart = 0
           , deltaBiddingEnd = 2
           , deltaVoucherExpiry = 5
@@ -79,7 +79,7 @@ sellerReclaimsTest = mkAssertion $ do
   let seller = Alice
       buyer = Bob
       config =
-        TermsConfig
+        AuctionTermsConfig
           { deltaBiddingStart = 0
           , deltaBiddingEnd = 2
           , deltaVoucherExpiry = 5
@@ -104,4 +104,5 @@ sellerReclaimsTest = mkAssertion $ do
     wait 6
     sellerReclaims node seller terms
 
+wait :: Int -> IO ()
 wait n = threadDelay $ n * 1_000_000
