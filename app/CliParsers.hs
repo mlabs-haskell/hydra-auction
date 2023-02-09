@@ -12,6 +12,7 @@ import HydraAuction.OnChain
 import Cardano.Api (TxIn)
 
 import CliActions (CliAction (..))
+import DemoFiles (AuctionName (..))
 import ParseTxIn (parseTxIn)
 
 getCliAction :: IO CliAction
@@ -28,14 +29,23 @@ cliAction :: Parser CliAction
 cliAction =
   subparser
     ( command "run-cardano-node" (info (pure RunCardanoNode) (progDesc "FIXME: add help message"))
-        <> command "show-script-utxos" (info (ShowScriptUtxos <$> script <*> actor <*> utxo) (progDesc "FIXME: add help message"))
+        <> command "show-script-utxos" (info (ShowScriptUtxos <$> auctionName <*> script) (progDesc "FIXME: add help message"))
         <> command "show-utxos" (info (ShowUtxos <$> actor) (progDesc "FIXME: add help message"))
         <> command "seed" (info (Seed <$> actor) (progDesc "FIXME: add help message"))
         <> command "mint-test-nft" (info (MintTestNFT <$> actor) (progDesc "FIXME: add help message"))
-        <> command "announce-auction" (info (AuctionAnounce <$> actor <*> utxo) (progDesc "FIXME: add help message"))
-        <> command "start-bidding" (info (StartBidding <$> actor <*> utxo) (progDesc "FIXME: add help message"))
-        <> command "bidder-buys" (info (BidderBuys <$> actor <*> utxo) (progDesc "FIXME: add help message"))
+        <> command "announce-auction" (info (AuctionAnounce <$> auctionName <*> actor <*> utxo) (progDesc "FIXME: add help message"))
+        <> command "start-bidding" (info (StartBidding <$> auctionName <*> actor) (progDesc "FIXME: add help message"))
+        <> command "bidder-buys" (info (BidderBuys <$> auctionName <*> actor) (progDesc "FIXME: add help message"))
     )
+
+auctionName :: Parser AuctionName
+auctionName =
+  AuctionName
+    <$> strOption
+      ( short 'n'
+          <> metavar "AUCTION_NAME"
+          <> help "Name for saving config and dynamic params of auction"
+      )
 
 actor :: Parser Actor
 actor =

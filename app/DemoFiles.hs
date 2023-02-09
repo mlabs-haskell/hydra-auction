@@ -4,6 +4,7 @@ module DemoFiles (
   AuctionName (..),
   AuctionTermsConfig (..),
   AuctionTermsDynamic (..),
+  constructTermsDynamic,
   readAuctionTermsConfig,
   readAuctionTermsDynamic,
   readAuctionTerms,
@@ -17,10 +18,17 @@ import Data.Aeson (FromJSON, ToJSON)
 import Data.Aeson qualified as Aeson
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as LBS
+import Data.Time.Clock.POSIX qualified as POSIXTime
 
+import Hydra.Prelude (liftIO)
 import Prelude
 
+import Cardano.Api (TxIn)
 import GHC.Generics (Generic)
+import Hydra.Cardano.Api (toPlutusKeyHash, toPlutusTxOutRef, verificationKeyHash)
+import Hydra.Cluster.Fixture (Actor)
+import Hydra.Cluster.Util (keysFor)
+import HydraAuction.OnChain.TestNFT
 import HydraAuction.PlutusOrphans ()
 import HydraAuction.Types
 import Plutus.V1.Ledger.Crypto (PubKeyHash)
@@ -58,6 +66,21 @@ data AuctionTermsDynamic = AuctionTermsDynamic
 instance ToJSON AuctionTermsDynamic
 
 instance FromJSON AuctionTermsDynamic
+
+constructTermsDynamic :: Actor -> TxIn -> IO AuctionTermsDynamic
+constructTermsDynamic sellerActor utxoRef = do
+  currentTimeSeconds <- liftIO $ round `fmap` POSIXTime.getPOSIXTime
+  (sellerVk, _) <- keysFor sellerActor
+  let sellerVkHash = toPlutusKeyHash $ verificationKeyHash sellerVk
+  return $
+    AuctionTermsDynamic
+      { configAuctionLot = allowMintingAssetClass
+      , configSeller = sellerVkHash
+      , -- FIXME
+        configDelegates = [sellerVkHash]
+      , configUtxoRef = toPlutusTxOutRef utxoRef
+      , configAnnouncementTime = POSIXTime $ currentTimeSeconds * 1000
+      }
 
 configToAuctionTerms ::
   AuctionTermsConfig ->
