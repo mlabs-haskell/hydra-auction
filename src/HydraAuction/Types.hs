@@ -1,5 +1,4 @@
 -- FIXME: Use template Haskell to derive Eq instances
-{-# OPTIONS -Wno-orphans #-}
 module HydraAuction.Types (
   isStarted,
   intToNatural,
@@ -20,6 +19,8 @@ module HydraAuction.Types (
 
 import Prelude qualified
 
+import Control.Monad.Fail (fail)
+import Data.Aeson (FromJSON (..), ToJSON)
 import GHC.Generics (Generic)
 import HydraAuction.Addresses (VoucherCS)
 import Plutus.V1.Ledger.Crypto (PubKeyHash)
@@ -31,9 +32,11 @@ import PlutusTx.IsData.Class (FromData (fromBuiltinData), ToData (toBuiltinData)
 import PlutusTx.Prelude hiding (fromInteger)
 import PlutusTx.Prelude qualified as Plutus
 
+-- Custom Natural
+
 newtype Natural = Natural Integer
   deriving stock (Generic, Prelude.Show, Prelude.Eq)
-  deriving newtype (Eq, Ord, AdditiveSemigroup)
+  deriving newtype (Eq, Ord, AdditiveSemigroup, ToJSON)
 
 instance UnsafeFromData Natural where
   {-# INLINEABLE unsafeFromBuiltinData #-}
@@ -65,6 +68,13 @@ naturalToInt :: Natural -> Integer
 naturalToInt (Natural i) = i
 
 PlutusTx.makeLift ''Natural
+
+instance FromJSON Natural where
+  parseJSON x = do
+    int <- parseJSON x
+    case intToNatural int of
+      Just nat -> return nat
+      Nothing -> fail "Integer is not natural"
 
 -- Base datatypes
 
