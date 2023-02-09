@@ -22,6 +22,7 @@ common common-lang
     , aeson
     , async
     , base                     ^>=4.14
+    , base16-bytestring
     , cardano-ledger-core
     , containers
     , extra
@@ -90,7 +91,6 @@ executable hydra-auction
     , aeson
     , array
     , base
-    , base16-bytestring
     , bech32
     , bech32-th
     , bytestring
@@ -136,6 +136,7 @@ library
   exposed-modules:
     HydraAuction.Addresses
     HydraAuction.OnChain
+    HydraAuction.PlutusOrphans
     HydraAuction.Runner
     HydraAuction.Tx.Common
     HydraAuction.Tx.Escrow
