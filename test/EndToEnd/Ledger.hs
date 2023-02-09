@@ -20,11 +20,11 @@ import HydraAuction.Runner (
 import HydraAuction.Tx.Escrow (
   announceAuction,
   bidderBuys,
-  constructTerms,
   sellerReclaims,
   startBidding,
  )
 import HydraAuction.Tx.StandingBid (newBid)
+import HydraAuction.Tx.TermsConfig
 import HydraAuction.Tx.TestNFT (mintOneTestNFT)
 import HydraAuction.Types (intToNatural)
 
@@ -46,11 +46,23 @@ successfulBidTest = mkAssertion $ do
   initWallet seller 100_000_000
   initWallet buyer 100_000_000
 
+  let config =
+        AuctionTermsConfig
+          { configDiffBiddingStart = 0
+          , configDiffBiddingEnd = 4
+          , configDiffVoucherExpiry = 8
+          , configDiffCleanup = 10
+          , configAuctionFee = fromJust $ intToNatural 4_000_000
+          , configStartingBid = fromJust $ intToNatural 8_000_000
+          , configMinimumBidIncrement = fromJust $ intToNatural 8_000_000
+          }
+
   liftIO $ do
     nftTx <- mintOneTestNFT node seller
     let utxoRef = mkTxIn nftTx 0
 
-    terms <- constructTerms node seller utxoRef
+    dynamicState <- constructTermsDynamic seller utxoRef
+    terms <- configToAuctionTerms config dynamicState
 
     announceAuction node seller terms
     startBidding node seller terms
@@ -67,11 +79,23 @@ sellerReclaimsTest = mkAssertion $ do
   initWallet seller 100_000_000
   initWallet buyer 100_000_000
 
+  let config =
+        AuctionTermsConfig
+          { configDiffBiddingStart = 0
+          , configDiffBiddingEnd = 4
+          , configDiffVoucherExpiry = 8
+          , configDiffCleanup = 10
+          , configAuctionFee = fromJust $ intToNatural 4_000_000
+          , configStartingBid = fromJust $ intToNatural 8_000_000
+          , configMinimumBidIncrement = fromJust $ intToNatural 8_000_000
+          }
+
   liftIO $ do
     nftTx <- mintOneTestNFT node seller
     let utxoRef = mkTxIn nftTx 0
 
-    terms <- constructTerms node seller utxoRef
+    dynamicState <- constructTermsDynamic seller utxoRef
+    terms <- configToAuctionTerms config dynamicState
 
     announceAuction node seller terms
     startBidding node seller terms
