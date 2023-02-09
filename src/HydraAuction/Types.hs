@@ -83,28 +83,28 @@ instance FromJSON Natural where
 
 data AuctionTerms = AuctionTerms
   { -- | What is being sold at the auction?
-    auctionLot :: AssetClass
+    auctionLot :: !AssetClass
   , -- | Who is selling it?
-    seller :: PubKeyHash
+    seller :: !PubKeyHash
   , -- | Which Hydra Head is authorized to host the bidding for this auction?
-    hydraHeadId :: CurrencySymbol
+    hydraHeadId :: !CurrencySymbol
   , -- | Who is running the Hydra Head where bidding occurs?
-    delegates :: [PubKeyHash]
-  , biddingStart :: POSIXTime
-  , biddingEnd :: POSIXTime
-  , voucherExpiry :: POSIXTime
+    delegates :: ![PubKeyHash]
+  , biddingStart :: !POSIXTime
+  , biddingEnd :: !POSIXTime
+  , voucherExpiry :: !POSIXTime
   , -- | Auction lifecycle times.
-    cleanup :: POSIXTime
+    cleanup :: !POSIXTime
   , -- | Total auction fee that will be evenly split among delegates.
-    auctionFee :: Natural
+    auctionFee :: !Natural
   , -- | The auction lot cannot be sold for less than this bid price.
-    startingBid :: Natural
+    startingBid :: !Natural
   , -- | A new bid can only supersede the standing bid if it is larger
     -- by this increment.
-    minimumBidIncrement :: Natural
+    minimumBidIncrement :: !Natural
   , -- | The seller consumed this utxo input in the transaction that
     -- announced this auction, to provide the auction lot to the auction.
-    utxoNonce :: TxOutRef
+    utxoNonce :: !TxOutRef
   }
   deriving stock (Generic, Prelude.Show, Prelude.Eq)
 
@@ -150,9 +150,9 @@ instance Eq StandingBidState where
 
 data BidTerms = BidTerms
   { -- | Who submitted the bid?
-    bidBidder :: PubKeyHash
+    bidBidder :: !PubKeyHash
   , -- | Which amount did the bidder set to buy the auction lot?
-    bidAmount :: Natural
+    bidAmount :: !Natural
   }
   deriving stock (Generic, Prelude.Show, Prelude.Eq)
 
@@ -167,7 +167,7 @@ PlutusTx.makeLift ''BidTerms
 
 data AuctionState
   = Announced
-  | BiddingStarted ApprovedBiddersHash
+  | BiddingStarted !ApprovedBiddersHash
   deriving stock (Generic, Prelude.Show, Prelude.Eq)
 
 {-# INLINEABLE isStarted #-}
@@ -182,7 +182,7 @@ instance Eq AuctionState where
   _ == _ = False
 
 -- | FIXME: Bytetring will be changed to actuall hash
-newtype ApprovedBiddersHash = ApprovedBiddersHash Plutus.BuiltinByteString
+newtype ApprovedBiddersHash = ApprovedBiddersHash !Plutus.BuiltinByteString
   deriving stock (Generic, Prelude.Show, Prelude.Eq)
 {- ^ This hash is calculated from the `ApprovedBidders` value that the seller
  fixes for the auction.
@@ -200,8 +200,8 @@ PlutusTx.makeLift ''ApprovedBiddersHash
 -- Datums
 
 data AuctionEscrowDatum = AuctionEscrowDatum
-  { auctionState :: AuctionState
-  , auctionVoucherCS :: VoucherCS
+  { auctionState :: !AuctionState
+  , auctionVoucherCS :: !VoucherCS
   }
   deriving stock (Generic, Prelude.Show, Prelude.Eq)
 
@@ -213,8 +213,8 @@ PlutusTx.makeIsDataIndexed ''AuctionEscrowDatum [('AuctionEscrowDatum, 0)]
 PlutusTx.makeLift ''AuctionEscrowDatum
 
 data StandingBidDatum = StandingBidDatum
-  { standingBidState :: StandingBidState
-  , standingBidVoucherCS :: VoucherCS
+  { standingBidState :: !StandingBidState
+  , standingBidVoucherCS :: !VoucherCS
   }
   deriving stock (Generic, Prelude.Show, Prelude.Eq)
 
