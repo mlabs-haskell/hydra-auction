@@ -15,7 +15,8 @@ import Plutus.V2.Ledger.Contexts (ScriptContext, ownHash, txSignedBy)
 {-# INLINEABLE mkEscrowValidator #-}
 mkEscrowValidator :: (StandingBidAddress, FeeEscrowAddress, AuctionTerms) -> AuctionEscrowDatum -> EscrowRedeemer -> ScriptContext -> Bool
 mkEscrowValidator (StandingBidAddress standingBidAddressLocal, FeeEscrowAddress feeEscrowAddressLocal, terms) _ redeemer context =
-  checkHasSingleEscrowInput
+  nothingForged info
+    && checkHasSingleEscrowInput
     ( \escrowInputOutput -> case redeemer of
         StartBidding ->
           checkAuctionState (== Announced) escrowInputOutput

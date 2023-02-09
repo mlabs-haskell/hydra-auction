@@ -1,13 +1,13 @@
 {-# LANGUAGE RecordWildCards #-}
 
-module HydraAuction.OnChain.Common (minAuctionFee, validAuctionTerms, decodeOutputDatum, byAddress, lovelaceOfOutput) where
+module HydraAuction.OnChain.Common (minAuctionFee, validAuctionTerms, decodeOutputDatum, byAddress, lovelaceOfOutput, nothingForged) where
 
 import PlutusTx.Prelude
 
 import HydraAuction.Types
-import Plutus.V1.Ledger.Value (assetClass, assetClassValueOf)
-import Plutus.V2.Ledger.Api (Address, CurrencySymbol (..), OutputDatum (..), TokenName (..), fromBuiltinData, getDatum)
-import Plutus.V2.Ledger.Contexts (TxInfo, TxOut, findDatum, txOutAddress, txOutDatum, txOutValue)
+import Plutus.V1.Ledger.Value (assetClass, assetClassValueOf, isZero)
+import Plutus.V2.Ledger.Api (Address, CurrencySymbol (..), OutputDatum (..), POSIXTime (..), TokenName (..), fromBuiltinData, getDatum)
+import Plutus.V2.Ledger.Contexts (TxInfo, TxOut, findDatum, txInfoMint, txOutAddress, txOutDatum, txOutValue)
 import PlutusTx qualified
 
 {-# INLINEABLE minAuctionFee #-}
@@ -48,3 +48,7 @@ lovelaceOfOutput :: TxOut -> Integer
 lovelaceOfOutput output = assetClassValueOf (txOutValue output) ac
   where
     ac = assetClass (CurrencySymbol emptyByteString) (TokenName emptyByteString)
+
+{-# INLINEABLE nothingForged #-}
+nothingForged :: TxInfo -> Bool
+nothingForged info = traceIfFalse "Something was forged" (isZero $ txInfoMint info)

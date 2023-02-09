@@ -22,6 +22,7 @@ mkStandingBidValidator terms datum redeemer context =
         -- XXX: using strange check, cuz == for lists failed compilation of Plutus Tx
         length (txInfoOutputs info) == 1 -- Check that nothing changed in output
           && head (txInfoOutputs info) == inputOut
+          && nothingForged info
       NewBid ->
         ( case byAddress (scriptHashAddress $ ownHash context) $ txInfoOutputs info of
             [out] ->
@@ -35,6 +36,7 @@ mkStandingBidValidator terms datum redeemer context =
                           Nothing -> traceError "Incorrect encoding for input or output datum"
             _ -> traceError "Not exactly one ouput"
         )
+          && nothingForged info
           && traceIfFalse
             "Wrong interval for NewBid"
             (contains (interval 0 (biddingEnd terms)) (txInfoValidRange info))
