@@ -9,6 +9,7 @@ module HydraAuction.Runner (
   fileTracer,
   initWallet,
   stdoutTracer,
+  logMsg,
 ) where
 
 import CardanoNode (
@@ -28,6 +29,7 @@ import Hydra.Logging (
  )
 import Hydra.Prelude (
   Applicative (pure),
+  Bool (True),
   Contravariant (contramap),
   FilePath,
   Functor,
@@ -37,6 +39,9 @@ import Hydra.Prelude (
   MonadIO (..),
   MonadReader (ask),
   ReaderT (..),
+  String,
+  not,
+  when,
   withFile,
   ($),
  )
@@ -44,6 +49,7 @@ import Hydra.Prelude (
 import HydraNode (EndToEndLog (FromCardanoNode, FromFaucet))
 
 import System.FilePath ((</>))
+import System.IO (hPutStrLn, stderr)
 
 import Test.Hydra.Prelude (withTempDir)
 
@@ -53,6 +59,7 @@ import Test.Hydra.Prelude (withTempDir)
 data ExecutionContext = MkExecutionContext
   { tracer :: !(Tracer IO EndToEndLog)
   , node :: !RunningNode
+  , verbose :: !Bool
   }
 
 {- | Hydra computation executor. Note that @Runner@ is
@@ -69,9 +76,14 @@ newtype Runner a = MkRunner
     )
     via ReaderT ExecutionContext IO
 
-executeRunner :: Tracer IO EndToEndLog -> RunningNode -> Runner a -> IO a
-executeRunner tracer node runner =
-  runReaderT (run runner) (MkExecutionContext tracer node)
+executeRunner ::
+  Tracer IO EndToEndLog ->
+  RunningNode ->
+  Bool ->
+  Runner a ->
+  IO a
+executeRunner tracer node verbose runner =
+  runReaderT (run runner) (MkExecutionContext tracer node verbose)
 
 {- | Filter tracer which logs into a `test.log` file within the given
  @StateDirectory@.
@@ -86,6 +98,12 @@ stdoutTracer :: Verbosity -> IO (Tracer IO EndToEndLog)
 stdoutTracer verbosity =
   withTracer verbosity $ \tracer -> pure tracer
 
+logMsg :: String -> Runner ()
+logMsg s = do
+  MkExecutionContext {..} <- ask
+  when verbose $
+    liftIO $ hPutStrLn stderr s
+
 -- | Executes a test runner using a temporary directory as the @StateDirectory@.
 executeTestRunner :: Runner () -> IO ()
 executeTestRunner runner = do
@@ -95,7 +113,7 @@ executeTestRunner runner = do
     withCardanoNodeDevnet
       (contramap FromCardanoNode tracer)
       tmpDir
-      $ \node -> executeRunner tracer node runner
+      $ \node -> executeRunner tracer node True runner
 
 -- | @FilePath@ used to store the running node data.
 newtype StateDirectory = MkStateDirectory

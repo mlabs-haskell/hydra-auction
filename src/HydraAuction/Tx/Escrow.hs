@@ -246,8 +246,9 @@ bidderBuys bidder terms = do
             fromPlutusScript @PlutusScriptV2 $
               getValidator $ escrowValidator terms
 
+  logMsg "Doing Bidder Buy"
+
   liftIO $ do
-    putStrLn "Doing Bidder Buy"
     (bidderAddress, _, bidderSk) <- addressAndKeysFor networkId' bidder
 
     bidderMoneyUtxo <- filterAdaOnlyUtxo <$> actorTipUtxo node bidder
@@ -317,8 +318,9 @@ sellerReclaims seller terms = do
               fromPlutusScript @PlutusScriptV2 $
                 getValidator $ feeEscrowValidator terms
 
+  logMsg "Doing Seller reclaims"
+
   liftIO $ do
-    putStrLn "Doing Seller reclaims"
     (sellerAddress, _, sellerSk) <- addressAndKeysFor networkId' seller
     sellerMoneyUtxo <- filterAdaOnlyUtxo <$> actorTipUtxo node seller
 

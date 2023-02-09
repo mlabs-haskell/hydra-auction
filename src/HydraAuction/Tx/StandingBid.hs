@@ -52,8 +52,9 @@ newBid bidder terms bidAmount = do
             fromPlutusScript @PlutusScriptV2 $
               getValidator $ standingBidValidator terms
 
+  logMsg "Doing Bidder Buy"
+
   liftIO $ do
-    putStrLn "Doing Bidder Buy"
     (bidderAddress, bidderVk, bidderSk) <-
       addressAndKeysFor networkId' bidder
 

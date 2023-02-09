@@ -49,7 +49,12 @@ minLovelace = 2_000_000
 tokenToAsset :: TokenName -> AssetName
 tokenToAsset (TokenName t) = AssetName $ fromBuiltin t
 
-mintedTokens :: ToScriptData redeemer => PlutusScript -> redeemer -> [(AssetName, Quantity)] -> TxMintValue BuildTx
+mintedTokens ::
+  ToScriptData redeemer =>
+  PlutusScript ->
+  redeemer ->
+  [(AssetName, Quantity)] ->
+  TxMintValue BuildTx
 mintedTokens script redeemer assets =
   TxMintValue mintedTokens' mintedWitnesses'
   where
@@ -70,19 +75,28 @@ mkInlinedDatumScriptWitness ::
   PlutusScript ->
   a ->
   BuildTxWith BuildTx (Witness WitCtxTxIn)
-mkInlinedDatumScriptWitness script redeemer = BuildTxWith $ ScriptWitness scriptWitnessCtx $ mkScriptWitness script InlineScriptDatum (toScriptData redeemer)
+mkInlinedDatumScriptWitness script redeemer =
+  BuildTxWith $
+    ScriptWitness scriptWitnessCtx $
+      mkScriptWitness script InlineScriptDatum (toScriptData redeemer)
 
-addressAndKeysFor :: NetworkId -> Actor -> IO (Address ShelleyAddr, VerificationKey PaymentKey, SigningKey PaymentKey)
+addressAndKeysFor ::
+  NetworkId ->
+  Actor ->
+  IO (Address ShelleyAddr, VerificationKey PaymentKey, SigningKey PaymentKey)
 addressAndKeysFor networkId actor = do
   (actorVk, actorSk) <- keysFor actor
   let actorAddress = buildAddress actorVk networkId
-  putStrLn $ "Using actor: " <> show actor <> " with address: " <> show actorAddress
+  putStrLn $
+    "Using actor: " <> show actor <> " with address: " <> show actorAddress
   return (actorAddress, actorVk, actorSk)
 
 filterUtxoByCurrencySymbols :: [CurrencySymbol] -> UTxO -> UTxO
 filterUtxoByCurrencySymbols symbolsToMatch = UTxO.filter hasExactlySymbols
   where
-    hasExactlySymbols x = (sort . symbols . txOutValue <$> toPlutusTxOut x) == Just (sort symbolsToMatch)
+    hasExactlySymbols x =
+      (sort . symbols . txOutValue <$> toPlutusTxOut x)
+        == Just (sort symbolsToMatch)
 
 filterAdaOnlyUtxo :: UTxO -> UTxO
 filterAdaOnlyUtxo = filterUtxoByCurrencySymbols [CurrencySymbol emptyByteString]
@@ -94,7 +108,13 @@ actorTipUtxo node actor = do
 
 scriptUtxos :: RunningNode -> AuctionScript -> AuctionTerms -> IO UTxO.UTxO
 scriptUtxos RunningNode {networkId, nodeSocket} script terms = do
-  let scriptAddress = buildScriptAddress (PlutusScript $ fromPlutusScript $ getValidator $ scriptValidatorForTerms script terms) networkId
+  let scriptAddress =
+        buildScriptAddress
+          ( PlutusScript $
+              fromPlutusScript $
+                getValidator $ scriptValidatorForTerms script terms
+          )
+          networkId
   queryUTxO networkId nodeSocket QueryTip [scriptAddress]
 
 data AutoCreateParams = AutoCreateParams
@@ -148,8 +168,11 @@ autoCreateTx node@RunningNode {networkId, nodeSocket} (AutoCreateParams {..}) = 
         (TxValidityNoLowerBound, TxValidityNoUpperBound)
         TxMetadataNone
         TxAuxScriptsNone
-        -- Adding all keys here, cuz other way `txSignedBy` does not see those signatures
-        (TxExtraKeyWitnesses $ fmap (verificationKeyHash . getVerificationKey . fst) authoredUtxos)
+        -- Adding all keys here, cuz other way `txSignedBy` does not see those
+        -- signatures
+        ( TxExtraKeyWitnesses $
+            fmap (verificationKeyHash . getVerificationKey . fst) authoredUtxos
+        )
         (BuildTxWith $ Just pparams)
         TxWithdrawalsNone
         TxCertificatesNone
@@ -160,25 +183,34 @@ autoCreateTx node@RunningNode {networkId, nodeSocket} (AutoCreateParams {..}) = 
     signingWitnesses :: TxBody -> [KeyWitness]
     signingWitnesses body = fmap (makeSignWitness body . fst) authoredUtxos
 
-callBodyAutoBalance :: RunningNode -> UTxO -> TxBodyContent BuildTx -> Address ShelleyAddr -> IO (Either TxBodyErrorAutoBalance TxBody)
-callBodyAutoBalance (RunningNode {networkId, nodeSocket}) utxo preBody changeAddress = do
-  pparams <- queryProtocolParameters networkId nodeSocket QueryTip
-  systemStart <- querySystemStart networkId nodeSocket QueryTip
-  eraHistory <- queryEraHistory networkId nodeSocket QueryTip
-  stakePools <- queryStakePools networkId nodeSocket QueryTip
+callBodyAutoBalance ::
+  RunningNode ->
+  UTxO ->
+  TxBodyContent BuildTx ->
+  Address ShelleyAddr ->
+  IO (Either TxBodyErrorAutoBalance TxBody)
+callBodyAutoBalance
+  (RunningNode {networkId, nodeSocket})
+  utxo
+  preBody
+  changeAddress = do
+    pparams <- queryProtocolParameters networkId nodeSocket QueryTip
+    systemStart <- querySystemStart networkId nodeSocket QueryTip
+    eraHistory <- queryEraHistory networkId nodeSocket QueryTip
+    stakePools <- queryStakePools networkId nodeSocket QueryTip
 
-  return $
-    balancedTxBody
-      <$> makeTransactionBodyAutoBalance
-        BabbageEraInCardanoMode
-        systemStart
-        eraHistory
-        pparams
-        stakePools
-        (UTxO.toApi utxo)
-        preBody
-        (ShelleyAddressInEra changeAddress)
-        Nothing
+    return $
+      balancedTxBody
+        <$> makeTransactionBodyAutoBalance
+          BabbageEraInCardanoMode
+          systemStart
+          eraHistory
+          pparams
+          stakePools
+          (UTxO.toApi utxo)
+          preBody
+          (ShelleyAddressInEra changeAddress)
+          Nothing
 
 autoSubmitAndAwaitTx :: RunningNode -> AutoCreateParams -> IO Tx
 autoSubmitAndAwaitTx node@RunningNode {nodeSocket, networkId} params = do

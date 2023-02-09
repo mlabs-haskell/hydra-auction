@@ -21,7 +21,6 @@ import HydraAuction.Tx.Common
 import HydraAuction.Tx.Escrow
 import HydraAuction.Tx.TestNFT
 import Options.Applicative
-import Test.Hydra.Prelude (withTempDir)
 
 import Hydra.Logging (
   Verbosity (Quiet, Verbose),
@@ -156,26 +155,31 @@ main :: IO ()
 main = do
   MkOptions {..} <- execParser opts
   tracer <- stdoutTracer verbosity
-
   let node =
         RunningNode
           { nodeSocket = "./node.socket"
           , networkId = Testnet $ NetworkMagic 42
           }
 
+      verbose = case verbosity of
+        Quiet -> False
+        _ -> True
+
+      executeRunner' =
+        executeRunner tracer node verbose
+
   case cmd of
     RunCardanoNode -> do
       putStrLn "Running cardano-node"
-      withTempDir "hydra-auction-1" $ \workDir -> do
-        withCardanoNodeDevnet
-          (contramap FromCardanoNode tracer)
-          workDir
-          $ \_ ->
-            error "Not implemented: RunCardanoNode"
+      withCardanoNodeDevnet
+        (contramap FromCardanoNode tracer)
+        "."
+        $ \_ ->
+          error "Not implemented: RunCardanoNode"
     -- TODO: proper working dir
     -- Somehow it hangs without infinite loop "/
     Seed actor -> do
-      executeRunner tracer node $
+      executeRunner' $
         initWallet actor 100_000_000
     ShowScriptUtxos script actor utxoRef -> do
       terms <- constructTerms actor utxoRef
@@ -185,21 +189,21 @@ main = do
       utxos <- actorTipUtxo node actor
       prettyPrintUtxo utxos
     MintTestNFT actor -> do
-      executeRunner tracer node $
+      executeRunner' $
         void $ mintOneTestNFT actor
     AuctionAnounce actor utxo ->
-      executeRunner tracer node $ do
+      executeRunner' $ do
         terms <- liftIO $ constructTerms actor utxo
         announceAuction actor terms
     StartBidding actor utxo ->
-      executeRunner tracer node $ do
+      executeRunner' $ do
         terms <- liftIO $ constructTerms actor utxo
         startBidding actor terms
     BidderBuys actor utxo ->
-      executeRunner tracer node $ do
+      executeRunner' $ do
         terms <- liftIO $ constructTerms actor utxo
         bidderBuys actor terms
     SellerReclaims actor utxo ->
-      executeRunner tracer node $ do
+      executeRunner' $ do
         terms <- liftIO $ constructTerms actor utxo
         sellerReclaims actor terms
