@@ -245,3 +245,6 @@ PlutusTx.makeIsDataIndexed ''EscrowRedeemer [('StartBidding, 0), ('SellerReclaim
 
 data StandingBidRedeemer = MoveToHydra | NewBid | Cleanup
 PlutusTx.makeIsDataIndexed ''StandingBidRedeemer [('MoveToHydra, 0), ('NewBid, 1), ('Cleanup, 2)]
+
+data BidDepositRedeemer = LosingBidder | WinningBidder | SellerClaimsDeposit
+PlutusTx.makeIsDataIndexed ''BidDepositRedeemer [('LosingBidder, 0), ('WinningBidder, 1), ('SellerClaimsDeposit, 2)]
