@@ -2,6 +2,7 @@ module EndToEnd.Ledger (testSuite) where
 
 import Prelude
 
+import Control.Concurrent (threadDelay)
 import Data.Maybe (fromJust)
 import Hydra.Cardano.Api (mkTxIn)
 import Hydra.Cluster.Fixture (Actor (..))
@@ -56,7 +57,7 @@ successfulBidTest = mkAssertion $ do
 
   let config =
         AuctionTermsConfig
-          { configDiffBiddingStart = 0
+          { configDiffBiddingStart = 1
           , configDiffBiddingEnd = 4
           , configDiffVoucherExpiry = 8
           , configDiffCleanup = 10
@@ -75,6 +76,8 @@ successfulBidTest = mkAssertion $ do
   announceAuction seller terms
   startBidding seller terms
   newBid buyer terms (fromJust $ intToNatural 16_000_000)
+
+  liftIO $ threadDelay $ 1 * 3_000_000
   bidderBuys buyer terms
 
 sellerReclaimsTest :: Assertion
@@ -88,9 +91,9 @@ sellerReclaimsTest = mkAssertion $ do
   let config =
         AuctionTermsConfig
           { configDiffBiddingStart = 0
-          , configDiffBiddingEnd = 4
-          , configDiffVoucherExpiry = 8
-          , configDiffCleanup = 10
+          , configDiffBiddingEnd = 3
+          , configDiffVoucherExpiry = 4
+          , configDiffCleanup = 5
           , configAuctionFee = fromJust $ intToNatural 4_000_000
           , configStartingBid = fromJust $ intToNatural 8_000_000
           , configMinimumBidIncrement = fromJust $ intToNatural 8_000_000
@@ -103,6 +106,8 @@ sellerReclaimsTest = mkAssertion $ do
     dynamicState <- constructTermsDynamic seller utxoRef
     configToAuctionTerms config dynamicState
 
-  announceAuction seller terms
-  startBidding seller terms
-  sellerReclaims seller terms
+  announceAuction node seller terms
+  startBidding node seller terms
+
+  liftIO $ threadDelay $ 2 * 1_000_000
+  sellerReclaims node seller terms
