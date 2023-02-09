@@ -42,7 +42,7 @@ instance ToJSON AuctionTermsConfig
 instance FromJSON AuctionTermsConfig
 
 data AuctionTermsDynamic = AuctionTermsDynamic
-  { configAuctionLot :: AssetClass
+  { configAuctionLot :: !AssetClass
   , -- Storing Actor, not only PubKeyHash, is required to simplify CLI actions on seller behalf
     configSellerActor :: !Actor
   , configDelegates :: ![PubKeyHash]
