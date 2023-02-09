@@ -2,6 +2,7 @@
 
 module DemoFiles where
 
+import Control.Monad.Trans.Maybe (MaybeT (..), runMaybeT)
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Aeson qualified as Aeson
 import Data.ByteString qualified as BS
@@ -10,6 +11,7 @@ import Data.ByteString.Lazy qualified as LBS
 import Prelude
 
 import GHC.Generics (Generic)
+import HydraAuction.PlutusOrphans ()
 import HydraAuction.Types
 import Plutus.V1.Ledger.Crypto (PubKeyHash)
 import Plutus.V1.Ledger.Time (POSIXTime (..))
@@ -42,6 +44,10 @@ data AuctionTermsDynamic = AuctionTermsDynamic
   , configAnnouncementTime :: !POSIXTime
   }
   deriving stock (Generic, Prelude.Show, Prelude.Eq)
+
+instance ToJSON AuctionTermsDynamic
+
+instance FromJSON AuctionTermsDynamic
 
 configToAuctionTerms ::
   AuctionTermsConfig ->
@@ -101,3 +107,30 @@ writeAuctionTermsConfig :: AuctionName -> AuctionTermsConfig -> IO ()
 writeAuctionTermsConfig auctionName config = do
   filepath <- getAuctionConfigFilePath auctionName
   BS.writeFile filepath . LBS.toStrict . Aeson.encode $ config
+
+-- =============================================================================
+-- Read/write auction dynamic files
+
+getAuctionDynamicFilePath :: AuctionName -> IO FilePath
+getAuctionDynamicFilePath (AuctionName auctionName) = do
+  auctionDynamicDir <- getAuctionStateDirectory
+  pure $ auctionDynamicDir </> auctionName <.> "json"
+
+readAuctionTermsDynamic :: AuctionName -> IO (Maybe AuctionTermsDynamic)
+readAuctionTermsDynamic auctionName = do
+  filepath <- getAuctionDynamicFilePath auctionName
+  Aeson.decode . LBS.fromStrict <$> BS.readFile filepath
+
+writeAuctionTermsDynamic :: AuctionName -> AuctionTermsDynamic -> IO ()
+writeAuctionTermsDynamic auctionName config = do
+  filepath <- getAuctionDynamicFilePath auctionName
+  BS.writeFile filepath . LBS.toStrict . Aeson.encode $ config
+
+-- =============================================================================
+-- Read full auction terms
+
+readAuctionTerms :: AuctionName -> IO (Maybe AuctionTerms)
+readAuctionTerms auctionName = runMaybeT $ do
+  dynamicParams <- MaybeT $ readAuctionTermsDynamic auctionName
+  config <- MaybeT $ readAuctionTermsConfig auctionName
+  pure $ configToAuctionTerms config dynamicParams
