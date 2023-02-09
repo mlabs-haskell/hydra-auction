@@ -74,7 +74,7 @@ handleCliAction userAction =
       writeAuctionTermsDynamic auctionName dynamic
       -- FIXME: proper error printing
       Just config <- readAuctionTermsConfig auctionName
-      let terms = configToAuctionTerms config dynamic
+      terms <- configToAuctionTerms config dynamic
       announceAuction node sellerActor terms
     StartBidding auctionName actor -> do
       node <- getNode

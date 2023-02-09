@@ -43,7 +43,8 @@ instance FromJSON AuctionTermsConfig
 
 data AuctionTermsDynamic = AuctionTermsDynamic
   { configAuctionLot :: AssetClass
-  , configSeller :: !PubKeyHash
+  , -- Storing Actor, not only PubKeyHash, is required to simplify CLI actions on seller behalf
+    configSellerActor :: !Actor
   , configDelegates :: ![PubKeyHash]
   , configUtxoRef :: !TxOutRef
   , configAnnouncementTime :: !POSIXTime
@@ -54,15 +55,19 @@ instance ToJSON AuctionTermsDynamic
 
 instance FromJSON AuctionTermsDynamic
 
+getActorVkHash :: Actor -> IO PubKeyHash
+getActorVkHash actor = do
+  (actorVk, _) <- keysFor actor
+  return $ toPlutusKeyHash $ verificationKeyHash actorVk
+
 constructTermsDynamic :: Actor -> TxIn -> IO AuctionTermsDynamic
 constructTermsDynamic sellerActor utxoRef = do
   currentTimeSeconds <- liftIO $ round `fmap` POSIXTime.getPOSIXTime
-  (sellerVk, _) <- keysFor sellerActor
-  let sellerVkHash = toPlutusKeyHash $ verificationKeyHash sellerVk
+  sellerVkHash <- getActorVkHash sellerActor
   return $
     AuctionTermsDynamic
       { configAuctionLot = allowMintingAssetClass
-      , configSeller = sellerVkHash
+      , configSellerActor = sellerActor
       , -- FIXME
         configDelegates = [sellerVkHash]
       , configUtxoRef = toPlutusTxOutRef utxoRef
@@ -72,21 +77,23 @@ constructTermsDynamic sellerActor utxoRef = do
 configToAuctionTerms ::
   AuctionTermsConfig ->
   AuctionTermsDynamic ->
-  AuctionTerms
-configToAuctionTerms AuctionTermsConfig {..} AuctionTermsDynamic {..} =
-  AuctionTerms
-    { auctionLot = configAuctionLot
-    , seller = configSeller
-    , delegates = configDelegates
-    , biddingStart = toAbsTime configDiffBiddingStart * 1000
-    , biddingEnd = toAbsTime configDiffBiddingEnd * 1000
-    , voucherExpiry = toAbsTime configDiffVoucherExpiry * 1000
-    , cleanup = toAbsTime configDiffCleanup * 1000
-    , auctionFee = configAuctionFee
-    , startingBid = configStartingBid
-    , minimumBidIncrement = configMinimumBidIncrement
-    , utxoRef = configUtxoRef
-    }
+  IO AuctionTerms
+configToAuctionTerms AuctionTermsConfig {..} AuctionTermsDynamic {..} = do
+  sellerVkHash <- getActorVkHash configSellerActor
+  return $
+    AuctionTerms
+      { auctionLot = configAuctionLot
+      , seller = sellerVkHash
+      , delegates = configDelegates
+      , biddingStart = toAbsTime configDiffBiddingStart * 1000
+      , biddingEnd = toAbsTime configDiffBiddingEnd * 1000
+      , voucherExpiry = toAbsTime configDiffVoucherExpiry * 1000
+      , cleanup = toAbsTime configDiffCleanup * 1000
+      , auctionFee = configAuctionFee
+      , startingBid = configStartingBid
+      , minimumBidIncrement = configMinimumBidIncrement
+      , utxoRef = configUtxoRef
+      }
   where
     (POSIXTime announcementTime) = configAnnouncementTime
     toAbsTime n = POSIXTime $ announcementTime + n

@@ -17,6 +17,7 @@ import Data.Aeson qualified as Aeson
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as LBS
 
+import Hydra.Prelude (liftIO)
 import Prelude
 
 import HydraAuction.Tx.TermsConfig
@@ -63,7 +64,7 @@ readJsonFromPath dirKind auctionName = do
 writeJsonToPath :: (ToJSON a) => DirectoryKind -> AuctionName -> a -> IO ()
 writeJsonToPath dirKind auctionName config = do
   filename <- toJsonFileName dirKind auctionName
-  BS.writeFile filename . LBS.toStrict . Aeson.encode config
+  (BS.writeFile filename . LBS.toStrict . Aeson.encode) config
 
 -- =============================================================================
 -- Read/write auction config files
@@ -87,4 +88,4 @@ readAuctionTerms :: AuctionName -> IO (Maybe AuctionTerms)
 readAuctionTerms auctionName = runMaybeT $ do
   dynamicParams <- MaybeT $ readAuctionTermsDynamic auctionName
   config <- MaybeT $ readAuctionTermsConfig auctionName
-  pure $ configToAuctionTerms config dynamicParams
+  liftIO $ configToAuctionTerms config dynamicParams

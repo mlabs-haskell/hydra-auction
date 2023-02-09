@@ -1,6 +1,6 @@
 {-# OPTIONS -Wno-orphans #-}
 
--- | Orphan instances for Plutus API
+-- | Orphan instances for Plutus, Hydra and Cardano API
 module HydraAuction.PlutusOrphans () where
 
 import Prelude
@@ -9,6 +9,8 @@ import Control.Monad (when)
 import Data.Aeson (FromJSON (..), ToJSON (..))
 import Data.ByteString.Base16 qualified as Base16
 import Data.Text.Encoding (decodeUtf8, encodeUtf8)
+import GHC.Generics (Generic)
+import Hydra.Cluster.Fixture (Actor (..))
 import Plutus.V1.Ledger.Crypto (PubKeyHash (..))
 import Plutus.V1.Ledger.Time (POSIXTime (..))
 import Plutus.V1.Ledger.Value (AssetClass (..), CurrencySymbol (..), TokenName (..))
@@ -58,3 +60,10 @@ instance (ToJSON TxOutRef)
 
 deriving via BuiltinByteString instance (FromJSON TxId)
 deriving via BuiltinByteString instance (ToJSON TxId)
+
+-- Hydra
+
+deriving stock instance (Generic Actor)
+
+instance FromJSON Actor
+instance ToJSON Actor
