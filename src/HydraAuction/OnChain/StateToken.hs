@@ -6,10 +6,9 @@ import HydraAuction.Addresses
 import HydraAuction.OnChain.Common
 import HydraAuction.Types
 import Plutus.V1.Ledger.Interval (contains, from, to)
-import Plutus.V1.Ledger.Value (flattenValue)
-import Plutus.V2.Ledger.Api (TokenName (..))
-import Plutus.V2.Ledger.Contexts (ScriptContext, TxInfo, TxOutRef, ownCurrencySymbol, scriptContextTxInfo, txInInfoOutRef, txInfoInputs, txInfoMint, txInfoOutputs, txInfoValidRange, txOutAddress)
-import PlutusTx.AssocMap qualified as Map
+import Plutus.V1.Ledger.Value (Value, singleton)
+import Plutus.V2.Ledger.Api (TokenName (..), TxOutRef)
+import Plutus.V2.Ledger.Contexts (ScriptContext, TxInfo, ownCurrencySymbol, scriptContextTxInfo, txInInfoOutRef, txInfoInputs, txInfoMint, txInfoOutputs, txInfoValidRange, txOutAddress)
 
 data StateTokenKind = Voucher
 
@@ -26,44 +25,29 @@ elem y (x : xs)
 elem _ [] = False
 
 {-# INLINEABLE mkPolicy #-}
-mkPolicy :: (EscrowAddress, AuctionTerms) -> () -> ScriptContext -> Bool
-mkPolicy (EscrowAddress escrowAddressLocal, terms) () ctx =
-  traceIfFalse "AuctionTerms is invalid" (validAuctionTerms terms)
-    && ( case onlyVoucherForgedCount of
-          Just x ->
-            -- XXX: Pattern matching by integer does not seem to work in Plutus
-            case (x == 1, x == -1) of
-              (True, False) ->
-                traceIfFalse
-                  "Valid range not before bidding start"
-                  (contains (to (biddingStart terms)) (txInfoValidRange info))
-                  && utxoNonceConsumed
-                  && exactlyOneOutputToEscrow
-              (False, True) ->
-                traceIfFalse "Not exactly one input" (length (txInfoInputs info) == 1)
-                  && traceIfFalse "Not exactly none outputs" (length (txInfoInputs info) == 0)
-                  && traceIfFalse
-                    "Valid range not after voucher expiry"
-                    (contains (from (voucherExpiry terms)) (txInfoValidRange info))
-              (_, _) -> traceError "Wrong voucher amount forged"
-          Nothing -> traceError "Wrong token kind forged"
-       )
+mkPolicy :: (EscrowAddress, AuctionTerms) -> VoucherForgingRedeemer -> ScriptContext -> Bool
+mkPolicy (EscrowAddress escrowAddressLocal, terms) redeemer ctx =
+  case redeemer of
+    MintVoucher ->
+      traceIfFalse "AuctionTerms is invalid" (validAuctionTerms terms)
+        && traceIfFalse
+          "Valid range not before bidding start"
+          (contains (to (biddingStart terms)) (txInfoValidRange info))
+        && traceIfFalse "Not exactly one Voucher minted" (txInfoMint info == voucherOnlyValue 1)
+        && utxoNonceConsumed
+        && exactlyOneOutputToEscrow
+    BurnVoucher ->
+      traceIfFalse "Not exactly one Voucher burned" (txInfoMint info == voucherOnlyValue (-1))
+        && traceIfFalse "Not exactly one input" (length (txInfoInputs info) == 1)
+        && traceIfFalse "Not exactly none outputs" (length (txInfoInputs info) == 0)
+        && traceIfFalse
+          "Valid range not after voucher expiry"
+          (contains (from (voucherExpiry terms)) (txInfoValidRange info))
   where
+    voucherOnlyValue :: Integer -> Value
+    voucherOnlyValue = singleton (ownCurrencySymbol ctx) (stateTokenKindToTokenName Voucher)
     info :: TxInfo
     info = scriptContextTxInfo ctx
-    ourTokensForged =
-      Map.fromList
-        [ (tn, amount)
-        | (cs, tn, amount) <- flattenValue (txInfoMint info)
-        , ownCurrencySymbol ctx == cs
-        ]
-    onlyVoucherForgedCount :: Maybe Integer
-    onlyVoucherForgedCount =
-      case Map.keys ourTokensForged of
-        [_] -> Map.lookup tn ourTokensForged
-        _ -> Nothing
-      where
-        tn = stateTokenKindToTokenName Voucher
     utxoNonceConsumed :: Bool
     utxoNonceConsumed =
       traceIfFalse "Utxo nonce was not consumed at auction announcement." $

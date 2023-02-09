@@ -15,49 +15,48 @@ import Plutus.V2.Ledger.Contexts (ScriptContext, ownHash)
 {-# INLINEABLE mkStandingBidValidator #-}
 mkStandingBidValidator :: AuctionTerms -> StandingBidDatum -> StandingBidRedeemer -> ScriptContext -> Bool
 mkStandingBidValidator terms datum redeemer context =
-  validAuctionTerms terms
-    -- All cases require single standing bid input
-    && case byAddress (scriptHashAddress $ ownHash context) $ txInInfoResolved <$> txInfoInputs info of
-      [inputOut] -> case redeemer of
-        MoveToHydra ->
-          -- XXX: using strange check, cuz == for lists failed compilation of Plutus Tx
-          length (txInfoOutputs info) == 1 -- Check that nothing changed in output
-            && head (txInfoOutputs info) == inputOut
-        NewBid ->
-          ( case byAddress (scriptHashAddress $ ownHash context) $ txInfoOutputs info of
-              [out] ->
-                -- FIXME: Check bidder has right to make a bid
-                traceIfFalse "Output is not into standing bid" $
-                  txOutAddress out == scriptHashAddress (ownHash context)
-                    && let inBid = standingBidState <$> decodeOutputDatum info inputOut
-                           outBid = standingBidState <$> decodeOutputDatum info out
-                        in case validNewBid <$> inBid <*> outBid of
-                            Just x -> traceIfFalse "Incorrect bid" x
-                            Nothing -> traceError "Incorrect encoding for input or output datum"
-              _ -> traceError "Not exactly one ouput"
-          )
-            && traceIfFalse
-              "Wrong interval for NewBid"
-              (contains (interval 0 (biddingEnd terms)) (txInfoValidRange info))
-        Cleanup ->
-          -- XXX: interval is checked on burning
-          traceIfFalse "Not exactly one voucher was burt during transaction" $
-            let cs = unVoucherCS $ standingBidVoucherCS datum
-                voucherAC = assetClass cs (stateTokenKindToTokenName Voucher)
-             in assetClassValueOf (txInfoMint info) voucherAC == -1
-                  && ( case txInfoOutputs info of
-                        [out] ->
-                          traceIfFalse
-                            "Output is not to seller"
-                            (txOutAddress out == pubKeyHashAddress (seller terms))
-                            && traceIfFalse
-                              "Output value not min ADA"
-                              ( lovelaceOfOutput out == minAuctionFee
-                              )
-                        _ -> traceError "Not exactly one ouput"
-                     )
-      _ : _ -> traceError "More than one standing bid input"
-      [] -> traceError "Impossible happened: no inputs for staning bid validator"
+  -- All cases require single standing bid input
+  case byAddress (scriptHashAddress $ ownHash context) $ txInInfoResolved <$> txInfoInputs info of
+    [inputOut] -> case redeemer of
+      MoveToHydra ->
+        -- XXX: using strange check, cuz == for lists failed compilation of Plutus Tx
+        length (txInfoOutputs info) == 1 -- Check that nothing changed in output
+          && head (txInfoOutputs info) == inputOut
+      NewBid ->
+        ( case byAddress (scriptHashAddress $ ownHash context) $ txInfoOutputs info of
+            [out] ->
+              -- FIXME: Check bidder has right to make a bid
+              traceIfFalse "Output is not into standing bid" $
+                txOutAddress out == scriptHashAddress (ownHash context)
+                  && let inBid = standingBidState <$> decodeOutputDatum info inputOut
+                         outBid = standingBidState <$> decodeOutputDatum info out
+                      in case validNewBid <$> inBid <*> outBid of
+                          Just x -> traceIfFalse "Incorrect bid" x
+                          Nothing -> traceError "Incorrect encoding for input or output datum"
+            _ -> traceError "Not exactly one ouput"
+        )
+          && traceIfFalse
+            "Wrong interval for NewBid"
+            (contains (interval 0 (biddingEnd terms)) (txInfoValidRange info))
+      Cleanup ->
+        -- XXX: interval is checked on burning
+        traceIfFalse "Not exactly one voucher was burt during transaction" $
+          let cs = unVoucherCS $ standingBidVoucherCS datum
+              voucherAC = assetClass cs (stateTokenKindToTokenName Voucher)
+           in assetClassValueOf (txInfoMint info) voucherAC == -1
+                && ( case txInfoOutputs info of
+                      [out] ->
+                        traceIfFalse
+                          "Output is not to seller"
+                          (txOutAddress out == pubKeyHashAddress (seller terms))
+                          && traceIfFalse
+                            "Output value not min ADA"
+                            ( lovelaceOfOutput out == minAuctionFee
+                            )
+                      _ -> traceError "Not exactly one ouput"
+                   )
+    _ : _ -> traceError "More than one standing bid input"
+    [] -> traceError "Impossible happened: no inputs for staning bid validator"
   where
     info :: TxInfo
     info = scriptContextTxInfo context

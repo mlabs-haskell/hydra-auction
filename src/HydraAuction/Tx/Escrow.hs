@@ -61,7 +61,7 @@ announceAuction sellerActor terms = do
       toMintStateToken =
         mintedTokens
           (fromPlutusScript $ getMintingPolicy mp)
-          ()
+          MintVoucher
           [(tokenToAsset $ stateTokenKindToTokenName Voucher, 1)]
 
   (sellerAddress, _, sellerSk) <-
