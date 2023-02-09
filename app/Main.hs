@@ -1,34 +1,48 @@
+{-# LANGUAGE RecordWildCards #-}
+
 module Main (main) where
 
 import Prelude
 
 import Cardano.Api (NetworkId (..), TxIn)
-import CardanoNode (RunningNode (RunningNode, networkId, nodeSocket), withCardanoNodeDevnet)
+import CardanoNode (
+  RunningNode (
+    RunningNode,
+    networkId,
+    nodeSocket
+  ),
+  withCardanoNodeDevnet,
+ )
 import Control.Monad (forM_, void)
 import Data.Functor.Contravariant (contramap)
 import Hydra.Cardano.Api (NetworkMagic (NetworkMagic))
-import Hydra.Cluster.Faucet
 import Hydra.Cluster.Fixture (Actor (..))
-import Hydra.Cluster.Util
 import HydraAuction.Tx.Common
 import HydraAuction.Tx.Escrow
 import HydraAuction.Tx.TestNFT
 import Options.Applicative
 import Test.Hydra.Prelude (withTempDir)
 
-import Hydra.Logging (showLogsOnFailure)
+import Hydra.Logging (
+  Verbosity (Quiet, Verbose),
+ )
 import Hydra.Prelude (liftIO, toList)
 import HydraAuction.OnChain
 import HydraAuction.Runner
 import HydraNode (
-  EndToEndLog (FromCardanoNode, FromFaucet),
+  EndToEndLog (
+    FromCardanoNode
+  ),
  )
-import System.FilePath ((</>))
-import System.IO (IOMode (ReadWriteMode), withFile)
 
 import ParsingCliHelpers
 
-data CLIAction
+data Options = MkOptions
+  { cmd :: Command
+  , verbosity :: Verbosity
+  }
+
+data Command
   = RunCardanoNode
   | ShowScriptUtxos !AuctionScript !Actor !TxIn
   | ShowUtxos !Actor
@@ -39,18 +53,62 @@ data CLIAction
   | BidderBuys !Actor !TxIn
   | SellerReclaims !Actor !TxIn
 
-cliParser :: Parser CLIAction
-cliParser =
-  subparser
-    ( command "run-cardano-node" (info (pure RunCardanoNode) (progDesc "FIXME: add help message"))
-        <> command "show-script-utxos" (info (ShowScriptUtxos <$> script <*> actor <*> utxo) (progDesc "FIXME: add help message"))
-        <> command "show-utxos" (info (ShowUtxos <$> actor) (progDesc "FIXME: add help message"))
-        <> command "seed" (info (Seed <$> actor) (progDesc "FIXME: add help message"))
-        <> command "mint-test-nft" (info (MintTestNFT <$> actor) (progDesc "FIXME: add help message"))
-        <> command "announce-auction" (info (AuctionAnounce <$> actor <*> utxo) (progDesc "FIXME: add help message"))
-        <> command "start-bidding" (info (StartBidding <$> actor <*> utxo) (progDesc "FIXME: add help message"))
-        <> command "bidder-buys" (info (BidderBuys <$> actor <*> utxo) (progDesc "FIXME: add help message"))
-    )
+verboseParser :: Parser Bool
+verboseParser = switch (long "verbose" <> short 'v')
+
+optionsParser :: Parser Options
+optionsParser =
+  MkOptions <$> commandParser <*> (toVerbosity <$> verboseParser)
+  where
+    toVerbosity = \case
+      True -> Verbose "hydra-auction"
+      _ -> Quiet
+
+commandParser :: Parser Command
+commandParser =
+  subparser $
+    mconcat
+      [ command
+          "run-cardano-node"
+          $ info
+            (pure RunCardanoNode)
+            (progDesc "FIXME: add help message")
+      , command
+          "show-script-utxos"
+          $ info
+            (ShowScriptUtxos <$> script <*> actor <*> utxo)
+            (progDesc "FIXME: add help message")
+      , command
+          "show-utxos"
+          $ info
+            (ShowUtxos <$> actor)
+            (progDesc "FIXME: add help message")
+      , command
+          "seed"
+          $ info
+            (Seed <$> actor)
+            (progDesc "FIXME: add help message")
+      , command
+          "mint-test-nft"
+          $ info
+            (MintTestNFT <$> actor)
+            (progDesc "FIXME: add help message")
+      , command
+          "announce-auction"
+          $ info
+            (AuctionAnounce <$> actor <*> utxo)
+            (progDesc "FIXME: add help message")
+      , command
+          "start-bidding"
+          $ info
+            (StartBidding <$> actor <*> utxo)
+            (progDesc "FIXME: add help message")
+      , command
+          "bidder-buys"
+          $ info
+            (BidderBuys <$> actor <*> utxo)
+            (progDesc "FIXME: add help message")
+      ]
   where
     actor :: Parser Actor
     actor =
@@ -60,6 +118,7 @@ cliParser =
               <> metavar "ACTOR"
               <> help "Actor to use for tx and AuctionTerms construction"
           )
+
     script :: Parser AuctionScript
     script =
       parseScript
@@ -68,6 +127,7 @@ cliParser =
               <> metavar "SCRIPT"
               <> help "Script to check"
           )
+
     utxo :: Parser TxIn
     utxo =
       option
@@ -77,14 +137,13 @@ cliParser =
             <> help "Utxo with test NFT for AuctionTerms"
         )
 
-opts :: ParserInfo CLIAction
+opts :: ParserInfo Options
 opts =
   info
-    cliParser
-    ( fullDesc
-        <> progDesc "FIXME: add help message"
-        <> header "FIXME: add help message"
-    )
+    optionsParser
+    $ fullDesc
+      <> progDesc "FIXME: add help message"
+      <> header "FIXME: add help message"
 
 prettyPrintUtxo :: (Foldable t, Show a) => t a -> IO ()
 prettyPrintUtxo utxo = do
@@ -95,27 +154,29 @@ prettyPrintUtxo utxo = do
 
 main :: IO ()
 main = do
-  action <- execParser opts
+  MkOptions {..} <- execParser opts
+  tracer <- stdoutTracer verbosity
+
   let node =
         RunningNode
           { nodeSocket = "./node.socket"
           , networkId = Testnet $ NetworkMagic 42
           }
-      stateDirectory = MkStateDirectory "hydra-auction-1"
-  case action of
+
+  case cmd of
     RunCardanoNode -> do
       putStrLn "Running cardano-node"
       withTempDir "hydra-auction-1" $ \workDir -> do
-        let stateDirectory' = MkStateDirectory workDir
-        tracer <- fileTracer stateDirectory'
-        devnet stateDirectory' tracer $
-          error "Not implemented: RunCardanoNode"
+        withCardanoNodeDevnet
+          (contramap FromCardanoNode tracer)
+          workDir
+          $ \_ ->
+            error "Not implemented: RunCardanoNode"
     -- TODO: proper working dir
     -- Somehow it hangs without infinite loop "/
     Seed actor -> do
-      showLogsOnFailure $ \tracer ->
-        executeRunner tracer node $
-          initWallet actor 100_000_000
+      executeRunner tracer node $
+        initWallet actor 100_000_000
     ShowScriptUtxos script actor utxoRef -> do
       terms <- constructTerms actor utxoRef
       utxos <- scriptUtxos node script terms
@@ -124,26 +185,21 @@ main = do
       utxos <- actorTipUtxo node actor
       prettyPrintUtxo utxos
     MintTestNFT actor -> do
-      showLogsOnFailure $ \tracer ->
-        executeRunner tracer node $
-          void $ mintOneTestNFT actor
+      executeRunner tracer node $
+        void $ mintOneTestNFT actor
     AuctionAnounce actor utxo ->
-      showLogsOnFailure $ \tracer ->
-        executeRunner tracer node $ do
-          terms <- liftIO $ constructTerms actor utxo
-          announceAuction actor terms
+      executeRunner tracer node $ do
+        terms <- liftIO $ constructTerms actor utxo
+        announceAuction actor terms
     StartBidding actor utxo ->
-      showLogsOnFailure $ \tracer ->
-        executeRunner tracer node $ do
-          terms <- liftIO $ constructTerms actor utxo
-          startBidding actor terms
+      executeRunner tracer node $ do
+        terms <- liftIO $ constructTerms actor utxo
+        startBidding actor terms
     BidderBuys actor utxo ->
-      showLogsOnFailure $ \tracer ->
-        executeRunner tracer node $ do
-          terms <- liftIO $ constructTerms actor utxo
-          bidderBuys actor terms
+      executeRunner tracer node $ do
+        terms <- liftIO $ constructTerms actor utxo
+        bidderBuys actor terms
     SellerReclaims actor utxo ->
-      showLogsOnFailure $ \tracer ->
-        executeRunner tracer node $ do
-          terms <- liftIO $ constructTerms actor utxo
-          sellerReclaims actor terms
+      executeRunner tracer node $ do
+        terms <- liftIO $ constructTerms actor utxo
+        sellerReclaims actor terms

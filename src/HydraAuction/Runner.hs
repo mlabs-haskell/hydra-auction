@@ -8,7 +8,7 @@ module HydraAuction.Runner (
   ExecutionContext (..),
   fileTracer,
   initWallet,
-  devnet,
+  stdoutTracer,
 ) where
 
 import CardanoNode (
@@ -20,7 +20,12 @@ import Hydra.Cardano.Api (Lovelace)
 import Hydra.Cluster.Faucet (Marked (Normal), seedFromFaucet_)
 import Hydra.Cluster.Fixture (Actor)
 import Hydra.Cluster.Util (keysFor)
-import Hydra.Logging (Tracer, withTracerOutputTo)
+import Hydra.Logging (
+  Tracer,
+  Verbosity,
+  withTracer,
+  withTracerOutputTo,
+ )
 import Hydra.Prelude (
   Applicative (pure),
   Contravariant (contramap),
@@ -68,20 +73,18 @@ executeRunner :: Tracer IO EndToEndLog -> RunningNode -> Runner a -> IO a
 executeRunner tracer node runner =
   runReaderT (run runner) (MkExecutionContext tracer node)
 
+{- | Filter tracer which logs into a `test.log` file within the given
+ @StateDirectory@.
+-}
 fileTracer :: StateDirectory -> IO (Tracer IO EndToEndLog)
 fileTracer MkStateDirectory {..} = do
   withFile (stateDirectory </> "test.log") ReadWriteMode $ \h ->
     withTracerOutputTo h "Tracer" $ \tracer -> pure tracer
 
-devnet ::
-  StateDirectory ->
-  Tracer IO EndToEndLog ->
-  (RunningNode -> IO ()) ->
-  IO ()
-devnet MkStateDirectory {..} tracer =
-  withCardanoNodeDevnet
-    (contramap FromCardanoNode tracer)
-    stateDirectory
+-- | Stdout tracer using the given verbosity level.
+stdoutTracer :: Verbosity -> IO (Tracer IO EndToEndLog)
+stdoutTracer verbosity =
+  withTracer verbosity $ \tracer -> pure tracer
 
 -- | Executes a test runner using a temporary directory as the @StateDirectory@.
 executeTestRunner :: Runner () -> IO ()
@@ -89,8 +92,10 @@ executeTestRunner runner = do
   withTempDir "test-hydra-auction" $ \tmpDir -> do
     let stateDirectory = MkStateDirectory tmpDir
     tracer <- fileTracer stateDirectory
-    devnet stateDirectory tracer $ \node ->
-      executeRunner tracer node runner
+    withCardanoNodeDevnet
+      (contramap FromCardanoNode tracer)
+      tmpDir
+      $ \node -> executeRunner tracer node runner
 
 -- | @FilePath@ used to store the running node data.
 newtype StateDirectory = MkStateDirectory

@@ -23,7 +23,14 @@ import Options.Applicative
 
 import HydraAuction.OnChain
 
-import Cardano.Api (AsType (AsTxId), TxId (..), TxIn (..), TxIx (..), deserialiseFromRawBytesHex, displayError)
+import Cardano.Api (
+  AsType (AsTxId),
+  TxId (..),
+  TxIn (..),
+  TxIx (..),
+  deserialiseFromRawBytesHex,
+  displayError,
+ )
 
 import Data.Bifunctor (first)
 
