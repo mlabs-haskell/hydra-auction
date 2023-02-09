@@ -1,10 +1,5 @@
-module ParsingCliHelpers (
-  parseActor,
-  parseScript,
-  parseTxId,
+module ParseTxIn (
   parseTxIn,
-  parseTxIx,
-  readerFromParsecParser,
 ) where
 
 import Text.Parsec ((<?>))
@@ -18,30 +13,17 @@ import Data.ByteString.Char8 qualified as BSC
 
 import Prelude
 
-import Hydra.Cluster.Fixture (Actor (..))
 import Options.Applicative
-
-import HydraAuction.OnChain
 
 import Cardano.Api (AsType (AsTxId), TxId (..), TxIn (..), TxIx (..), deserialiseFromRawBytesHex, displayError)
 
 import Data.Bifunctor (first)
 
-parseActor :: String -> Actor
-parseActor "alice" = Alice
-parseActor "bob" = Bob
-parseActor "carol" = Carol
-parseActor "faucet" = error "Not supported actor"
-parseActor _ = error "Actor parsing error"
+parseTxIn :: ReadM TxIn
+parseTxIn = readerFromParsecParser parseTxIn'
 
-parseScript :: String -> AuctionScript
-parseScript "escrow" = Escrow
-parseScript "standing-bid" = StandingBid
-parseScript "fee-escrow" = FeeEscrow
-parseScript _ = error "Escrow parsing error"
-
-parseTxIn :: Parsec.Parser TxIn
-parseTxIn = TxIn <$> parseTxId <*> (Parsec.char '#' *> parseTxIx)
+parseTxIn' :: Parsec.Parser TxIn
+parseTxIn' = TxIn <$> parseTxId <*> (Parsec.char '#' *> parseTxIx)
 
 parseTxId :: Parsec.Parser TxId
 parseTxId = do

@@ -1,4 +1,4 @@
-module HydraAuction.Tx.Escrow (constructTerms, announceAuction, startBidding, bidderBuys, sellerReclaims) where
+module HydraAuction.Tx.Escrow (announceAuction, startBidding, bidderBuys, sellerReclaims) where
 
 import Hydra.Prelude
 import PlutusTx.Prelude (emptyByteString)
@@ -6,40 +6,17 @@ import PlutusTx.Prelude (emptyByteString)
 import Cardano.Api.UTxO qualified as UTxO
 import CardanoClient
 import CardanoNode (RunningNode (..))
-import Data.Maybe (fromJust)
 import Hydra.Cardano.Api hiding (txOutValue)
 import Hydra.Cluster.Fixture (Actor (..))
-import Hydra.Cluster.Util (keysFor)
 import HydraAuction.Addresses
 import HydraAuction.OnChain
 import HydraAuction.OnChain.StateToken
-import HydraAuction.OnChain.TestNFT
 import HydraAuction.PlutusExtras
 import HydraAuction.Tx.Common
 import HydraAuction.Types
 import Plutus.V1.Ledger.Address (pubKeyHashAddress)
 import Plutus.V1.Ledger.Value (CurrencySymbol (..), assetClassValue, unAssetClass)
-import Plutus.V2.Ledger.Api (POSIXTime (..), fromData, getMintingPolicy, getValidator)
-
-constructTerms :: RunningNode -> Actor -> TxIn -> IO AuctionTerms
-constructTerms _ seller utxoRef = do
-  (sellerVk, _) <- keysFor seller
-  let sellerVkHash = toPlutusKeyHash $ verificationKeyHash sellerVk
-      terms =
-        AuctionTerms
-          { auctionLot = allowMintingAssetClass
-          , seller = sellerVkHash
-          , delegates = [sellerVkHash]
-          , biddingStart = POSIXTime 1
-          , biddingEnd = POSIXTime 100
-          , voucherExpiry = POSIXTime 1000
-          , cleanup = POSIXTime 10001
-          , auctionFee = fromJust $ intToNatural 4_000_000
-          , startingBid = fromJust $ intToNatural 8_000_000
-          , minimumBidIncrement = fromJust $ intToNatural 8_000_000
-          , utxoRef = toPlutusTxOutRef utxoRef
-          }
-  return terms
+import Plutus.V2.Ledger.Api (fromData, getMintingPolicy, getValidator)
 
 announceAuction :: RunningNode -> Actor -> AuctionTerms -> IO ()
 announceAuction node@RunningNode {networkId, nodeSocket} sellerActor terms = do
@@ -197,8 +174,6 @@ sellerReclaims node@RunningNode {networkId} seller terms = do
         , changeAddress = sellerAddress
         }
   where
-    mp = policy terms
-
     txOutSellerGotLot sellerAddress = TxOut (ShelleyAddressInEra sellerAddress) valueSellerLot TxOutDatumNone ReferenceScriptNone
       where
         valueSellerLot =
