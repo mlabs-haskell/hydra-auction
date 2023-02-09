@@ -5,7 +5,7 @@ import PlutusTx.Prelude hiding (elem)
 import HydraAuction.Addresses
 import HydraAuction.OnChain.Common
 import HydraAuction.Types
-import Plutus.V1.Ledger.Interval (contains, from)
+import Plutus.V1.Ledger.Interval (contains, from, to)
 import Plutus.V1.Ledger.Value (flattenValue)
 import Plutus.V2.Ledger.Api (TokenName (..))
 import Plutus.V2.Ledger.Contexts (ScriptContext, TxInfo, TxOutRef, ownCurrencySymbol, scriptContextTxInfo, txInInfoOutRef, txInfoInputs, txInfoMint, txInfoOutputs, txInfoValidRange, txOutAddress)
@@ -34,7 +34,11 @@ mkPolicy (EscrowAddress escrowAddressLocal, terms) () ctx =
             -- XXX: Pattern matching by integer does not seem to work in Plutus
             case (x == 1, x == -1) of
               (True, False) ->
-                utxoNonceConsumed && exactlyOneOutputToEscrow
+                traceIfFalse
+                  "Valid range not before bidding start"
+                  (contains (to (biddingStart terms)) (txInfoValidRange info))
+                  && utxoNonceConsumed
+                  && exactlyOneOutputToEscrow
               (False, True) ->
                 traceIfFalse "Not exactly one input" (length (txInfoInputs info) == 1)
                   && traceIfFalse "Not exactly none outputs" (length (txInfoInputs info) == 0)

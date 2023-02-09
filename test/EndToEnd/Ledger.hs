@@ -90,7 +90,7 @@ sellerReclaimsTest = mkAssertion $ do
 
   let config =
         AuctionTermsConfig
-          { configDiffBiddingStart = 0
+          { configDiffBiddingStart = 1
           , configDiffBiddingEnd = 3
           , configDiffVoucherExpiry = 4
           , configDiffCleanup = 5
@@ -106,8 +106,8 @@ sellerReclaimsTest = mkAssertion $ do
     dynamicState <- constructTermsDynamic seller utxoRef
     configToAuctionTerms config dynamicState
 
-  announceAuction node seller terms
-  startBidding node seller terms
+  announceAuction seller terms
+  startBidding seller terms
 
   liftIO $ threadDelay $ 2 * 1_000_000
-  sellerReclaims node seller terms
+  sellerReclaims seller terms

@@ -94,7 +94,7 @@ announceAuction sellerActor terms = do
         , outs = [announcedEscrowTxOut]
         , toMint = toMintStateToken
         , changeAddress = sellerAddress
-        , validityBound = (Just $ biddingStart terms, Just $ biddingEnd terms)
+        , validityBound = (Nothing, Just $ biddingStart terms)
         }
 
 startBidding :: Actor -> AuctionTerms -> Runner ()
