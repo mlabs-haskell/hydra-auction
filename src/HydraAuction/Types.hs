@@ -224,15 +224,16 @@ instance Eq StandingBidDatum where
 PlutusTx.makeIsDataIndexed ''StandingBidDatum [('StandingBidDatum, 0)]
 PlutusTx.makeLift ''StandingBidDatum
 
-newtype BidDepositDatum = BidDepositDatum
+data BidDepositDatum = BidDepositDatum
   { -- | Which bidder made this deposit?
-    bidder :: PubKeyHash
+    bidDepositBidder :: PubKeyHash
+  , bidDepositVoucherCS :: VoucherCS
   }
   deriving stock (Generic, Prelude.Show, Prelude.Eq)
 
 instance Eq BidDepositDatum where
   {-# INLINEABLE (==) #-}
-  (BidDepositDatum x) == (BidDepositDatum y) = x == y
+  (BidDepositDatum x y) == (BidDepositDatum x' y') = (x == x') && (y == y')
 
 PlutusTx.makeIsDataIndexed ''BidDepositDatum [('BidDepositDatum, 0)]
 PlutusTx.makeLift ''BidDepositDatum
