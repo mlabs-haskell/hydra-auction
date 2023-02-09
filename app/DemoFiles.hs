@@ -1,6 +1,16 @@
 {-# LANGUAGE RecordWildCards #-}
 
-module DemoFiles where
+module DemoFiles (
+  AuctionName (..),
+  AuctionTermsConfig (..),
+  AuctionTermsDynamic (..),
+  readAuctionTermsConfig,
+  readAuctionTermsDynamic,
+  readAuctionTerms,
+  writeAuctionTermsConfig,
+  writeAuctionTermsDynamic,
+  configToAuctionTerms,
+) where
 
 import Control.Monad.Trans.Maybe (MaybeT (..), runMaybeT)
 import Data.Aeson (FromJSON, ToJSON)
