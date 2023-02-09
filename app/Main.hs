@@ -7,7 +7,7 @@ import Cardano.Api (NetworkId (..), TxIn)
 import CardanoNode (RunningNode (RunningNode, networkId, nodeSocket), withCardanoNodeDevnet)
 import Control.Monad (forM_, void)
 import Data.Functor.Contravariant (contramap)
-import Hydra.Cardano.Api (NetworkMagic (NetworkMagic))
+import Hydra.Cardano.Api (Lovelace, NetworkMagic (NetworkMagic))
 import Hydra.Cluster.Faucet
 import Hydra.Cluster.Fixture (Actor (..))
 import Hydra.Cluster.Util
@@ -41,14 +41,14 @@ data CLIAction
 cliParser :: Parser CLIAction
 cliParser =
   subparser
-    ( command "run-cardano-node" (info (pure RunCardanoNode) (progDesc "FIXME: add help message"))
-        <> command "show-script-utxos" (info (ShowScriptUtxos <$> script <*> actor <*> utxo) (progDesc "FIXME: add help message"))
-        <> command "show-utxos" (info (ShowUtxos <$> actor) (progDesc "FIXME: add help message"))
-        <> command "seed" (info (Seed <$> actor) (progDesc "FIXME: add help message"))
-        <> command "mint-test-nft" (info (MintTestNFT <$> actor) (progDesc "FIXME: add help message"))
-        <> command "announce-auction" (info (AuctionAnounce <$> actor <*> utxo) (progDesc "FIXME: add help message"))
-        <> command "start-bidding" (info (StartBidding <$> actor <*> utxo) (progDesc "FIXME: add help message"))
-        <> command "bidder-buys" (info (BidderBuys <$> actor <*> utxo) (progDesc "FIXME: add help message"))
+    ( command "run-cardano-node" (info (pure RunCardanoNode) (progDesc "Starts a cardano node instance in the background"))
+        <> command "show-script-utxos" (info (ShowScriptUtxos <$> script <*> actor <*> utxo) (progDesc "Show utxos at a given script. Requires the seller and auction lot for the given script"))
+        <> command "show-utxos" (info (ShowUtxos <$> actor) (progDesc "Shows utxos for a given actor"))
+        <> command "seed" (info (Seed <$> actor) (progDesc $ "Provides " <> show seedAmount <> " Lovelace for the given actor"))
+        <> command "mint-test-nft" (info (MintTestNFT <$> actor) (progDesc "Mints an NFT that can be used as auction lot"))
+        <> command "announce-auction" (info (AuctionAnounce <$> actor <*> utxo) (progDesc "Create an auction. Requires TxIn which identifies the auction lot"))
+        <> command "start-bidding" (info (StartBidding <$> actor <*> utxo) (progDesc "Open an auction for bidding. Requires TxIn which identifies the auction lot"))
+        <> command "bidder-buys" (info (BidderBuys <$> actor <*> utxo) (progDesc "Create an auction. Requires TxIn which identifies the auction lot"))
     )
   where
     actor :: Parser Actor
@@ -65,7 +65,7 @@ cliParser =
         <$> strOption
           ( short 's'
               <> metavar "SCRIPT"
-              <> help "Script to check"
+              <> help "Script to check. One of: escrow, standing-bid, fee-escrow"
           )
     utxo :: Parser TxIn
     utxo =
@@ -92,11 +92,14 @@ prettyPrintUtxo utxo = do
   forM_ (toList utxo) $ \x ->
     putStrLn $ show x
 
+seedAmount :: Lovelace
+seedAmount = 100_000_000
+
 main :: IO ()
 main = do
-  action <- execParser opts
+  userAction <- execParser opts
   let node = RunningNode {nodeSocket = "./node.socket", networkId = Testnet $ NetworkMagic 42}
-  case action of
+  case userAction of
     RunCardanoNode -> do
       putStrLn "Running cardano-node"
       withTempDir "hydra-auction-1" $ \workDir -> do
@@ -109,7 +112,7 @@ main = do
     Seed actor -> do
       showLogsOnFailure $ \tracer -> do
         (key, _) <- keysFor actor
-        seedFromFaucet_ node key 100_000_000 Normal (contramap FromFaucet tracer)
+        seedFromFaucet_ node key seedAmount Normal (contramap FromFaucet tracer)
     ShowScriptUtxos script actor utxoRef -> do
       terms <- constructTerms node actor utxoRef
       utxos <- scriptUtxos node script terms
