@@ -136,7 +136,10 @@ instance Eq ApprovedBidders where
   {-# INLINEABLE (==) #-}
   x == y = bidders x == bidders y
 
-PlutusTx.makeIsDataIndexed ''ApprovedBidders [('ApprovedBidders, 0)]
+deriving newtype instance (UnsafeFromData ApprovedBidders)
+deriving newtype instance (ToData ApprovedBidders)
+deriving newtype instance (FromData ApprovedBidders)
+
 PlutusTx.makeLift ''ApprovedBidders
 
 data StandingBidState = NoBid | Bid BidTerms
@@ -182,11 +185,16 @@ instance Eq AuctionState where
   _ == _ = False
 
 -- | FIXME: Bytetring will be changed to actuall hash
-newtype ApprovedBiddersHash = ApprovedBiddersHash !Plutus.BuiltinByteString
+newtype ApprovedBiddersHash = ApprovedBiddersHash Plutus.BuiltinByteString
   deriving stock (Generic, Prelude.Show, Prelude.Eq)
 {- ^ This hash is calculated from the `ApprovedBidders` value that the seller
  fixes for the auction.
 -}
+
+deriving newtype instance (UnsafeFromData ApprovedBiddersHash)
+deriving newtype instance (ToData ApprovedBiddersHash)
+deriving newtype instance (FromData ApprovedBiddersHash)
+PlutusTx.makeLift ''ApprovedBiddersHash
 
 instance Eq ApprovedBiddersHash where
   {-# INLINEABLE (==) #-}
@@ -194,8 +202,6 @@ instance Eq ApprovedBiddersHash where
 
 PlutusTx.makeIsDataIndexed ''AuctionState [('Announced, 0), ('BiddingStarted, 1)]
 PlutusTx.makeLift ''AuctionState
-PlutusTx.makeIsDataIndexed ''ApprovedBiddersHash [('ApprovedBiddersHash, 0)]
-PlutusTx.makeLift ''ApprovedBiddersHash
 
 -- Datums
 
@@ -236,7 +242,9 @@ instance Eq BidDepositDatum where
   {-# INLINEABLE (==) #-}
   (BidDepositDatum x y) == (BidDepositDatum x' y') = (x == x') && (y == y')
 
-PlutusTx.makeIsDataIndexed ''BidDepositDatum [('BidDepositDatum, 0)]
+deriving newtype instance (UnsafeFromData BidDepositDatum)
+deriving newtype instance (ToData BidDepositDatum)
+deriving newtype instance (FromData BidDepositDatum)
 PlutusTx.makeLift ''BidDepositDatum
 
 type AuctionFeeEscrowDatum = ()
