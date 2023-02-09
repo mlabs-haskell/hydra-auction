@@ -37,6 +37,7 @@ common common-lang
     , record-hasfield
     , stm
     , text
+    , time
     , transformers
     , websockets
 
