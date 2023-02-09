@@ -34,7 +34,7 @@ cliAction =
         <> command "seed" (info (Seed <$> actor) (progDesc "FIXME: add help message"))
         <> command "mint-test-nft" (info (MintTestNFT <$> actor) (progDesc "FIXME: add help message"))
         <> command "announce-auction" (info (AuctionAnounce <$> auctionName <*> actor <*> utxo) (progDesc "FIXME: add help message"))
-        <> command "start-bidding" (info (StartBidding <$> auctionName <*> actor) (progDesc "FIXME: add help message"))
+        <> command "start-bidding" (info (StartBidding <$> auctionName) (progDesc "FIXME: add help message"))
         <> command "bidder-buys" (info (BidderBuys <$> auctionName <*> actor) (progDesc "FIXME: add help message"))
     )
 

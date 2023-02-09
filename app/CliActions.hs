@@ -8,7 +8,16 @@ import Prelude
 
 import Cardano.Api (NetworkId (..), TxIn)
 import CardanoNode (RunningNode (RunningNode, networkId, nodeSocket), withCardanoNodeDevnet)
-import CliConfig (AuctionName, configToAuctionTerms, constructTermsDynamic, readAuctionTerms, readAuctionTermsConfig, writeAuctionTermsDynamic)
+import CliConfig (
+  AuctionName,
+  CLIEnhancedAuctionTerms (..),
+  configToAuctionTerms,
+  constructTermsDynamic,
+  readAuctionTerms,
+  readAuctionTermsConfig,
+  readCLIEnhancedAuctionTerms,
+  writeAuctionTermsDynamic,
+ )
 import Control.Monad (forM_, void)
 import Data.Functor.Contravariant (contramap)
 import Hydra.Cardano.Api (NetworkMagic (NetworkMagic))
@@ -34,9 +43,9 @@ data CliAction
   | Seed !Actor
   | MintTestNFT !Actor
   | AuctionAnounce !AuctionName !Actor !TxIn
-  | StartBidding !AuctionName !Actor
+  | StartBidding !AuctionName
   | BidderBuys !AuctionName !Actor
-  | SellerReclaims !AuctionName !Actor
+  | SellerReclaims !AuctionName
 
 handleCliAction :: CliAction -> IO ()
 handleCliAction userAction =
@@ -76,21 +85,21 @@ handleCliAction userAction =
       Just config <- readAuctionTermsConfig auctionName
       terms <- configToAuctionTerms config dynamic
       announceAuction node sellerActor terms
-    StartBidding auctionName actor -> do
+    StartBidding auctionName -> do
       node <- getNode
       -- FIXME: proper error printing
-      Just terms <- readAuctionTerms auctionName
-      startBidding node actor terms
+      Just (CLIEnhancedAuctionTerms {terms, sellerActor}) <- readCLIEnhancedAuctionTerms auctionName
+      startBidding node sellerActor terms
     BidderBuys auctionName actor -> do
       node <- getNode
       -- FIXME: proper error printing
       Just terms <- readAuctionTerms auctionName
       bidderBuys node actor terms
-    SellerReclaims auctionName actor -> do
+    SellerReclaims auctionName -> do
       node <- getNode
       -- FIXME: proper error printing
-      Just terms <- readAuctionTerms auctionName
-      sellerReclaims node actor terms
+      Just (CLIEnhancedAuctionTerms {terms, sellerActor}) <- readCLIEnhancedAuctionTerms auctionName
+      sellerReclaims node sellerActor terms
 
 prettyPrintUtxo :: (Foldable t, Show a) => t a -> IO ()
 prettyPrintUtxo utxo = do

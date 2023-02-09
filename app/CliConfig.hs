@@ -2,6 +2,8 @@ module CliConfig (
   AuctionName (..),
   AuctionTermsConfig (..),
   AuctionTermsDynamic (..),
+  CLIEnhancedAuctionTerms (..),
+  readCLIEnhancedAuctionTerms,
   constructTermsDynamic,
   readAuctionTermsConfig,
   readAuctionTermsDynamic,
@@ -20,6 +22,7 @@ import Data.ByteString.Lazy qualified as LBS
 import Hydra.Prelude (liftIO)
 import Prelude
 
+import Hydra.Cluster.Fixture (Actor (..))
 import HydraAuction.Tx.TermsConfig
 import HydraAuction.Types
 
@@ -84,8 +87,24 @@ writeAuctionTermsDynamic = writeJsonToPath AuctionState
 -- =============================================================================
 -- Read full auction terms
 
-readAuctionTerms :: AuctionName -> IO (Maybe AuctionTerms)
-readAuctionTerms auctionName = runMaybeT $ do
+data CLIEnhancedAuctionTerms = CLIEnhancedAuctionTerms
+  { -- Storing Actor, not only PubKeyHash, is required to simplify CLI actions on seller behalf
+    terms :: AuctionTerms
+  , sellerActor :: Actor
+  }
+
+readCLIEnhancedAuctionTerms :: AuctionName -> IO (Maybe CLIEnhancedAuctionTerms)
+readCLIEnhancedAuctionTerms auctionName = runMaybeT $ do
   dynamicParams <- MaybeT $ readAuctionTermsDynamic auctionName
   config <- MaybeT $ readAuctionTermsConfig auctionName
-  liftIO $ configToAuctionTerms config dynamicParams
+  terms <- liftIO $ configToAuctionTerms config dynamicParams
+  return $
+    CLIEnhancedAuctionTerms
+      { terms = terms
+      , sellerActor = configSellerActor dynamicParams
+      }
+
+readAuctionTerms :: AuctionName -> IO (Maybe AuctionTerms)
+readAuctionTerms name = do
+  e <- readCLIEnhancedAuctionTerms name
+  return $ terms <$> e
