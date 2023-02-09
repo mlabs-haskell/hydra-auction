@@ -24,9 +24,9 @@ data AuctionTermsConfig = AuctionTermsConfig
   , configDiffBiddingEnd :: !Integer
   , configDiffVoucherExpiry :: !Integer
   , configDiffCleanup :: !Integer
-  , configAuctionFee :: !Integer
-  , configStartingBid :: !Integer
-  , configMinimumBidIncrement :: !Integer
+  , configAuctionFee :: !Natural
+  , configStartingBid :: !Natural
+  , configMinimumBidIncrement :: !Natural
   }
   deriving stock (Generic, Prelude.Show, Prelude.Eq)
 
@@ -46,26 +46,21 @@ data AuctionTermsDynamic = AuctionTermsDynamic
 configToAuctionTerms ::
   AuctionTermsConfig ->
   AuctionTermsDynamic ->
-  Maybe AuctionTerms
-configToAuctionTerms AuctionTermsConfig {..} AuctionTermsDynamic {..} = do
-  auctionFee <- intToNatural configAuctionFee
-  startingBid <- intToNatural configStartingBid
-  minimumBidIncrement <- intToNatural configMinimumBidIncrement
-
-  pure
-    AuctionTerms
-      { auctionLot = configAuctionLot
-      , seller = configSeller
-      , delegates = configDelegates
-      , biddingStart = toAbsTime configDiffBiddingStart * 1000
-      , biddingEnd = toAbsTime configDiffBiddingEnd * 1000
-      , voucherExpiry = toAbsTime configDiffVoucherExpiry * 1000
-      , cleanup = toAbsTime configDiffCleanup * 1000
-      , auctionFee = auctionFee
-      , startingBid = startingBid
-      , minimumBidIncrement = minimumBidIncrement
-      , utxoRef = configUtxoRef
-      }
+  AuctionTerms
+configToAuctionTerms AuctionTermsConfig {..} AuctionTermsDynamic {..} =
+  AuctionTerms
+    { auctionLot = configAuctionLot
+    , seller = configSeller
+    , delegates = configDelegates
+    , biddingStart = toAbsTime configDiffBiddingStart * 1000
+    , biddingEnd = toAbsTime configDiffBiddingEnd * 1000
+    , voucherExpiry = toAbsTime configDiffVoucherExpiry * 1000
+    , cleanup = toAbsTime configDiffCleanup * 1000
+    , auctionFee = configAuctionFee
+    , startingBid = configStartingBid
+    , minimumBidIncrement = configMinimumBidIncrement
+    , utxoRef = configUtxoRef
+    }
   where
     (POSIXTime announcementTime) = configAnnouncementTime
     toAbsTime n = POSIXTime $ announcementTime + n
