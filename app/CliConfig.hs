@@ -12,6 +12,7 @@ module CliConfig (
 ) where
 
 import Control.Monad.Trans.Maybe (MaybeT (..), runMaybeT)
+import Data.Aeson (FromJSON, ToJSON)
 import Data.Aeson qualified as Aeson
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as LBS
@@ -36,48 +37,48 @@ getRelativeDirectory filepath = do
   createDirectoryIfMissing True dir
   pure dir
 
-getAuctionConfigDirectory :: IO FilePath
-getAuctionConfigDirectory =
-  getRelativeDirectory $ "example" </> "auction-config"
+data DirectoryKind = AuctionConfig | AuctionState
 
-getAuctionStateDirectory :: IO FilePath
-getAuctionStateDirectory =
-  getRelativeDirectory "auction-state"
+getAuctionDirectory :: DirectoryKind -> IO FilePath
+getAuctionDirectory kind =
+  getRelativeDirectory path
+  where
+    path = case kind of
+      AuctionConfig -> "example" </> "auction-config"
+      AuctionState -> "auction-state"
+
+-- =============================================================================
+-- Common JSON read/write code
+
+toJsonFileName :: DirectoryKind -> AuctionName -> IO FilePath
+toJsonFileName dirKind (AuctionName auctionName) = do
+  directory <- getAuctionDirectory dirKind
+  return $ directory </> auctionName <.> "json"
+
+readJsonFromPath :: (FromJSON a) => DirectoryKind -> AuctionName -> IO (Maybe a)
+readJsonFromPath dirKind auctionName = do
+  filename <- toJsonFileName dirKind auctionName
+  Aeson.decode . LBS.fromStrict <$> BS.readFile filename
+
+writeJsonToPath :: (ToJSON a) => DirectoryKind -> AuctionName -> a -> IO ()
+writeJsonToPath dirKind auctionName config = do
+  filename <- toJsonFileName dirKind auctionName
+  BS.writeFile filename . LBS.toStrict . Aeson.encode config
 
 -- =============================================================================
 -- Read/write auction config files
-getAuctionConfigFilePath :: AuctionName -> IO FilePath
-getAuctionConfigFilePath (AuctionName auctionName) = do
-  auctionConfigDir <- getAuctionConfigDirectory
-  pure $ auctionConfigDir </> auctionName <.> "json"
 
 readAuctionTermsConfig :: AuctionName -> IO (Maybe AuctionTermsConfig)
-readAuctionTermsConfig auctionName = do
-  filepath <- getAuctionConfigFilePath auctionName
-  Aeson.decode . LBS.fromStrict <$> BS.readFile filepath
+readAuctionTermsConfig = readJsonFromPath AuctionConfig
 
 writeAuctionTermsConfig :: AuctionName -> AuctionTermsConfig -> IO ()
-writeAuctionTermsConfig auctionName config = do
-  filepath <- getAuctionConfigFilePath auctionName
-  BS.writeFile filepath . LBS.toStrict . Aeson.encode $ config
-
--- =============================================================================
--- Read/write auction dynamic files
-
-getAuctionDynamicFilePath :: AuctionName -> IO FilePath
-getAuctionDynamicFilePath (AuctionName auctionName) = do
-  auctionDynamicDir <- getAuctionStateDirectory
-  pure $ auctionDynamicDir </> auctionName <.> "json"
+writeAuctionTermsConfig = writeJsonToPath AuctionConfig
 
 readAuctionTermsDynamic :: AuctionName -> IO (Maybe AuctionTermsDynamic)
-readAuctionTermsDynamic auctionName = do
-  filepath <- getAuctionDynamicFilePath auctionName
-  Aeson.decode . LBS.fromStrict <$> BS.readFile filepath
+readAuctionTermsDynamic = readJsonFromPath AuctionState
 
 writeAuctionTermsDynamic :: AuctionName -> AuctionTermsDynamic -> IO ()
-writeAuctionTermsDynamic auctionName config = do
-  filepath <- getAuctionDynamicFilePath auctionName
-  BS.writeFile filepath . LBS.toStrict . Aeson.encode $ config
+writeAuctionTermsDynamic = writeJsonToPath AuctionState
 
 -- =============================================================================
 -- Read full auction terms
