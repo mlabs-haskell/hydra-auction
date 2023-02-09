@@ -6,13 +6,12 @@ import Data.Maybe (fromJust)
 import Hydra.Cardano.Api (mkTxIn)
 import Hydra.Cluster.Fixture (Actor (..))
 
-import Hydra.Prelude (MonadIO (liftIO), MonadReader (ask))
+import Hydra.Prelude (MonadIO (liftIO))
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (Assertion, testCase)
 
 import EndToEnd.Utils (mkAssertion)
 import HydraAuction.Runner (
-  ExecutionContext (MkExecutionContext, node, tracer),
   initWallet,
  )
 import HydraAuction.Tx.Escrow (

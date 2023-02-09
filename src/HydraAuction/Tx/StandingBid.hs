@@ -54,27 +54,29 @@ newBid bidder terms bidAmount = do
 
   logMsg "Doing Bidder Buy"
 
-  liftIO $ do
-    (bidderAddress, bidderVk, bidderSk) <-
-      addressAndKeysFor networkId' bidder
+  (bidderAddress, bidderVk, bidderSk) <-
+    addressAndKeysFor bidder
 
-    bidderMoneyUtxo <- filterAdaOnlyUtxo <$> actorTipUtxo node bidder
-    standingBidUtxo <- scriptUtxos node StandingBid terms
+  bidderMoneyUtxo <-
+    liftIO $
+      filterAdaOnlyUtxo <$> actorTipUtxo node bidder
+  standingBidUtxo <-
+    liftIO $
+      scriptUtxos node StandingBid terms
 
-    -- FIXME: cover not proper UTxOs
-
-    void $
-      autoSubmitAndAwaitTx node $
-        AutoCreateParams
-          { authoredUtxos =
-              [ (bidderSk, bidderMoneyUtxo)
-              ]
-          , referenceUtxo = mempty
-          , witnessedUtxos =
-              [ (standingBidWitness, standingBidUtxo)
-              ]
-          , collateral = Nothing
-          , outs = [txOutStandingBid bidderVk]
-          , toMint = TxMintValueNone
-          , changeAddress = bidderAddress
-          }
+  -- FIXME: cover not proper UTxOs
+  void $
+    autoSubmitAndAwaitTx $
+      AutoCreateParams
+        { authoredUtxos =
+            [ (bidderSk, bidderMoneyUtxo)
+            ]
+        , referenceUtxo = mempty
+        , witnessedUtxos =
+            [ (standingBidWitness, standingBidUtxo)
+            ]
+        , collateral = Nothing
+        , outs = [txOutStandingBid bidderVk]
+        , toMint = TxMintValueNone
+        , changeAddress = bidderAddress
+        }

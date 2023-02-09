@@ -89,34 +89,37 @@ announceAuction sellerActor terms = do
           ()
           [(tokenToAsset $ stateTokenKindToTokenName Voucher, 1)]
 
-  liftIO $ do
-    (sellerAddress, _, sellerSk) <- addressAndKeysFor networkId' sellerActor
+  (sellerAddress, _, sellerSk) <-
+    addressAndKeysFor sellerActor
 
-    utxoWithLotNFT <-
+  utxoWithLotNFT <-
+    liftIO $
       queryUTxOByTxIn
         networkId'
         nodeSocket'
         QueryTip
         [fromPlutusTxOutRef $ utxoRef terms]
 
-    sellerMoneyUtxo <- filterAdaOnlyUtxo <$> actorTipUtxo node sellerActor
+  sellerMoneyUtxo <-
+    liftIO $
+      filterAdaOnlyUtxo <$> actorTipUtxo node sellerActor
 
-    case length utxoWithLotNFT of
-      0 -> fail "Utxo with Lot was consumed or not created"
-      1 -> pure ()
-      _ -> fail "Impossible happened: multiple utxoRef Utxos"
+  case length utxoWithLotNFT of
+    0 -> fail "Utxo with Lot was consumed or not created"
+    1 -> pure ()
+    _ -> fail "Impossible happened: multiple utxoRef Utxos"
 
-    void $
-      autoSubmitAndAwaitTx node $
-        AutoCreateParams
-          { authoredUtxos = [(sellerSk, utxoWithLotNFT <> sellerMoneyUtxo)]
-          , referenceUtxo = mempty
-          , witnessedUtxos = []
-          , collateral = Nothing
-          , outs = [announcedEscrowTxOut]
-          , toMint = toMintStateToken
-          , changeAddress = sellerAddress
-          }
+  void $
+    autoSubmitAndAwaitTx $
+      AutoCreateParams
+        { authoredUtxos = [(sellerSk, utxoWithLotNFT <> sellerMoneyUtxo)]
+        , referenceUtxo = mempty
+        , witnessedUtxos = []
+        , collateral = Nothing
+        , outs = [announcedEscrowTxOut]
+        , toMint = toMintStateToken
+        , changeAddress = sellerAddress
+        }
 
 startBidding :: Actor -> AuctionTerms -> Runner ()
 startBidding sellerActor terms = do
@@ -156,39 +159,43 @@ startBidding sellerActor terms = do
             getValidator $ standingBidValidator terms
       escrowWitness = mkInlinedDatumScriptWitness escrowScript StartBidding
 
-  liftIO $ do
-    (sellerAddress, _, sellerSk) <- addressAndKeysFor networkId' sellerActor
+  (sellerAddress, _, sellerSk) <-
+    addressAndKeysFor sellerActor
 
-    sellerMoneyUtxo <- filterAdaOnlyUtxo <$> actorTipUtxo node sellerActor
-    let escrowAnnounceSymbols =
-          [ fst $
-              unAssetClass $
-                auctionLot terms
-          , scriptCurrencySymbol mp
-          , CurrencySymbol emptyByteString
-          ]
+  sellerMoneyUtxo <-
+    liftIO $
+      filterAdaOnlyUtxo <$> actorTipUtxo node sellerActor
 
-    escrowAnnounceUtxo <-
+  let escrowAnnounceSymbols =
+        [ fst $
+            unAssetClass $
+              auctionLot terms
+        , scriptCurrencySymbol mp
+        , CurrencySymbol emptyByteString
+        ]
+
+  escrowAnnounceUtxo <-
+    liftIO $
       filterUtxoByCurrencySymbols
         escrowAnnounceSymbols
         <$> scriptUtxos node Escrow terms
 
-    case length escrowAnnounceUtxo of
-      0 -> fail "Utxo with announced escrow was consumed or not created"
-      1 -> pure ()
-      _ -> fail "Cannot choose between multiple utxos with announced escrow"
+  case length escrowAnnounceUtxo of
+    0 -> fail "Utxo with announced escrow was consumed or not created"
+    1 -> pure ()
+    _ -> fail "Cannot choose between multiple utxos with announced escrow"
 
-    void $
-      autoSubmitAndAwaitTx node $
-        AutoCreateParams
-          { authoredUtxos = [(sellerSk, sellerMoneyUtxo)]
-          , referenceUtxo = mempty
-          , witnessedUtxos = [(escrowWitness, escrowAnnounceUtxo)]
-          , collateral = Nothing
-          , outs = [txOutStandingBid, txOutEscrow]
-          , toMint = TxMintValueNone
-          , changeAddress = sellerAddress
-          }
+  void $
+    autoSubmitAndAwaitTx $
+      AutoCreateParams
+        { authoredUtxos = [(sellerSk, sellerMoneyUtxo)]
+        , referenceUtxo = mempty
+        , witnessedUtxos = [(escrowWitness, escrowAnnounceUtxo)]
+        , collateral = Nothing
+        , outs = [txOutStandingBid, txOutEscrow]
+        , toMint = TxMintValueNone
+        , changeAddress = sellerAddress
+        }
 
 bidderBuys :: Actor -> AuctionTerms -> Runner ()
 bidderBuys bidder terms = do
@@ -248,40 +255,47 @@ bidderBuys bidder terms = do
 
   logMsg "Doing Bidder Buy"
 
-  liftIO $ do
-    (bidderAddress, _, bidderSk) <- addressAndKeysFor networkId' bidder
+  (bidderAddress, _, bidderSk) <-
+    addressAndKeysFor bidder
 
-    bidderMoneyUtxo <- filterAdaOnlyUtxo <$> actorTipUtxo node bidder
-    let escrowBiddingStartedSymbols =
-          [ CurrencySymbol emptyByteString
-          , fst $ unAssetClass $ auctionLot terms
-          ]
+  bidderMoneyUtxo <-
+    liftIO $
+      filterAdaOnlyUtxo <$> actorTipUtxo node bidder
 
-    escrowBiddingStartedUtxo <-
+  let escrowBiddingStartedSymbols =
+        [ CurrencySymbol emptyByteString
+        , fst $ unAssetClass $ auctionLot terms
+        ]
+
+  escrowBiddingStartedUtxo <-
+    liftIO $
       filterUtxoByCurrencySymbols
         escrowBiddingStartedSymbols
         <$> scriptUtxos node Escrow terms
-    standingBidUtxo <- scriptUtxos node StandingBid terms
 
-    -- FIXME: cover not proper UTxOs
+  standingBidUtxo <-
+    liftIO $
+      scriptUtxos node StandingBid terms
 
-    void $
-      autoSubmitAndAwaitTx node $
-        AutoCreateParams
-          { authoredUtxos = [(bidderSk, bidderMoneyUtxo)]
-          , referenceUtxo = standingBidUtxo
-          , witnessedUtxos =
-              [ (escrowWitness, escrowBiddingStartedUtxo)
-              ]
-          , collateral = Nothing
-          , outs =
-              [ txOutBidderGotLot bidderAddress
-              , txOutSellerGotBid standingBidUtxo
-              , txOutFeeEscrow
-              ]
-          , toMint = TxMintValueNone
-          , changeAddress = bidderAddress
-          }
+  -- FIXME: cover not proper UTxOs
+
+  void $
+    autoSubmitAndAwaitTx $
+      AutoCreateParams
+        { authoredUtxos = [(bidderSk, bidderMoneyUtxo)]
+        , referenceUtxo = standingBidUtxo
+        , witnessedUtxos =
+            [ (escrowWitness, escrowBiddingStartedUtxo)
+            ]
+        , collateral = Nothing
+        , outs =
+            [ txOutBidderGotLot bidderAddress
+            , txOutSellerGotBid standingBidUtxo
+            , txOutFeeEscrow
+            ]
+        , toMint = TxMintValueNone
+        , changeAddress = bidderAddress
+        }
 
 sellerReclaims :: Actor -> AuctionTerms -> Runner ()
 sellerReclaims seller terms = do
@@ -320,32 +334,36 @@ sellerReclaims seller terms = do
 
   logMsg "Doing Seller reclaims"
 
-  liftIO $ do
-    (sellerAddress, _, sellerSk) <- addressAndKeysFor networkId' seller
-    sellerMoneyUtxo <- filterAdaOnlyUtxo <$> actorTipUtxo node seller
+  (sellerAddress, _, sellerSk) <-
+    addressAndKeysFor seller
 
-    let escrowBiddingStartedSymbols =
-          [ CurrencySymbol emptyByteString
-          , fst $ unAssetClass $ auctionLot terms
-          ]
+  sellerMoneyUtxo <-
+    liftIO $
+      filterAdaOnlyUtxo <$> actorTipUtxo node seller
 
-    escrowBiddingStartedUtxo <-
+  let escrowBiddingStartedSymbols =
+        [ CurrencySymbol emptyByteString
+        , fst $ unAssetClass $ auctionLot terms
+        ]
+
+  escrowBiddingStartedUtxo <-
+    liftIO $
       filterUtxoByCurrencySymbols escrowBiddingStartedSymbols
         <$> scriptUtxos node Escrow terms
 
-    void $
-      autoSubmitAndAwaitTx node $
-        AutoCreateParams
-          { authoredUtxos = [(sellerSk, sellerMoneyUtxo)]
-          , referenceUtxo = mempty
-          , witnessedUtxos =
-              [ (escrowWitness, escrowBiddingStartedUtxo)
-              ]
-          , collateral = Nothing
-          , outs =
-              [ txOutSellerGotLot sellerAddress
-              , txOutFeeEscrow -- TODO: fee escrow
-              ]
-          , toMint = TxMintValueNone
-          , changeAddress = sellerAddress
-          }
+  void $
+    autoSubmitAndAwaitTx $
+      AutoCreateParams
+        { authoredUtxos = [(sellerSk, sellerMoneyUtxo)]
+        , referenceUtxo = mempty
+        , witnessedUtxos =
+            [ (escrowWitness, escrowBiddingStartedUtxo)
+            ]
+        , collateral = Nothing
+        , outs =
+            [ txOutSellerGotLot sellerAddress
+            , txOutFeeEscrow -- TODO: fee escrow
+            ]
+        , toMint = TxMintValueNone
+        , changeAddress = sellerAddress
+        }

@@ -5,7 +5,6 @@ module HydraAuction.Tx.TestNFT (mintOneTestNFT) where
 import Hydra.Prelude
 import PlutusTx.Prelude (emptyByteString)
 
-import CardanoNode (RunningNode (..))
 import Hydra.Cardano.Api hiding (txOutValue)
 import Hydra.Cluster.Fixture (Actor)
 import HydraAuction.OnChain.TestNFT
@@ -17,34 +16,38 @@ import Plutus.V2.Ledger.Api (TokenName (..), getMintingPolicy)
 mintOneTestNFT :: Actor -> Runner Tx
 mintOneTestNFT actor = do
   MkExecutionContext {..} <- ask
-  liftIO $ do
-    (actorAddress, _, actorSk) <- addressAndKeysFor (networkId node) actor
-    actorMoneyUtxo <- filterAdaOnlyUtxo <$> actorTipUtxo node actor
 
-    let valueOut =
-          fromPlutusValue (assetClassValue allowMintingAssetClass 1)
-            <> lovelaceToValue minLovelace
+  (actorAddress, _, actorSk) <-
+    addressAndKeysFor actor
 
-        txOut =
-          TxOut
-            (ShelleyAddressInEra actorAddress)
-            valueOut
-            TxOutDatumNone
-            ReferenceScriptNone
+  actorMoneyUtxo <-
+    liftIO $
+      filterAdaOnlyUtxo <$> actorTipUtxo node actor
 
-        toMint =
-          mintedTokens
-            (fromPlutusScript $ getMintingPolicy allowMintingPolicy)
-            ()
-            [(tokenToAsset $ TokenName emptyByteString, 1)]
+  let valueOut =
+        fromPlutusValue (assetClassValue allowMintingAssetClass 1)
+          <> lovelaceToValue minLovelace
 
-    autoSubmitAndAwaitTx node $
-      AutoCreateParams
-        { authoredUtxos = [(actorSk, actorMoneyUtxo)]
-        , referenceUtxo = mempty
-        , witnessedUtxos = []
-        , collateral = Nothing
-        , outs = [txOut]
-        , toMint = toMint
-        , changeAddress = actorAddress
-        }
+      txOut =
+        TxOut
+          (ShelleyAddressInEra actorAddress)
+          valueOut
+          TxOutDatumNone
+          ReferenceScriptNone
+
+      toMint =
+        mintedTokens
+          (fromPlutusScript $ getMintingPolicy allowMintingPolicy)
+          ()
+          [(tokenToAsset $ TokenName emptyByteString, 1)]
+
+  autoSubmitAndAwaitTx $
+    AutoCreateParams
+      { authoredUtxos = [(actorSk, actorMoneyUtxo)]
+      , referenceUtxo = mempty
+      , witnessedUtxos = []
+      , collateral = Nothing
+      , outs = [txOut]
+      , toMint = toMint
+      , changeAddress = actorAddress
+      }

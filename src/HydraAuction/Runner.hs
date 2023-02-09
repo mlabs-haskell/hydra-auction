@@ -29,18 +29,18 @@ import Hydra.Logging (
  )
 import Hydra.Prelude (
   Applicative (pure),
-  Bool (True),
+  Bool (False),
   Contravariant (contramap),
   FilePath,
   Functor,
   IO,
   IOMode (ReadWriteMode),
   Monad,
+  MonadFail (..),
   MonadIO (..),
   MonadReader (ask),
   ReaderT (..),
   String,
-  not,
   when,
   withFile,
   ($),
@@ -72,6 +72,7 @@ newtype Runner a = MkRunner
     , Applicative
     , Monad
     , MonadIO
+    , MonadFail
     , MonadReader ExecutionContext
     )
     via ReaderT ExecutionContext IO
@@ -113,7 +114,7 @@ executeTestRunner runner = do
     withCardanoNodeDevnet
       (contramap FromCardanoNode tracer)
       tmpDir
-      $ \node -> executeRunner tracer node True runner
+      $ \node -> executeRunner tracer node False runner
 
 -- | @FilePath@ used to store the running node data.
 newtype StateDirectory = MkStateDirectory
