@@ -83,8 +83,8 @@ executable hydra-auction
   main-is:        Main.hs
   other-modules:
     CliActions
+    CliConfig
     CliParsers
-    DemoFiles
     ParseTxIn
 
   build-depends:

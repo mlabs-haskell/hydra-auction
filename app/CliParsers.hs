@@ -12,7 +12,7 @@ import HydraAuction.OnChain
 import Cardano.Api (TxIn)
 
 import CliActions (CliAction (..))
-import DemoFiles (AuctionName (..))
+import CliConfig (AuctionName (..))
 import ParseTxIn (parseTxIn)
 
 getCliAction :: IO CliAction

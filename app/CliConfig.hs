@@ -1,6 +1,6 @@
 {-# LANGUAGE RecordWildCards #-}
 
-module DemoFiles (
+module CliConfig (
   AuctionName (..),
   AuctionTermsConfig (..),
   AuctionTermsDynamic (..),

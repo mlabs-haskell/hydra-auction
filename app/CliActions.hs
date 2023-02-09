@@ -8,9 +8,9 @@ import Prelude
 
 import Cardano.Api (NetworkId (..), TxIn)
 import CardanoNode (RunningNode (RunningNode, networkId, nodeSocket), withCardanoNodeDevnet)
+import CliConfig (AuctionName, configToAuctionTerms, constructTermsDynamic, readAuctionTerms, readAuctionTermsConfig, writeAuctionTermsDynamic)
 import Control.Monad (forM_, void)
 import Data.Functor.Contravariant (contramap)
-import DemoFiles (AuctionName, configToAuctionTerms, constructTermsDynamic, readAuctionTerms, readAuctionTermsConfig, writeAuctionTermsDynamic)
 import Hydra.Cardano.Api (NetworkMagic (NetworkMagic))
 import Hydra.Cluster.Faucet
 import Hydra.Cluster.Fixture (Actor (..))
