@@ -11,7 +11,7 @@ import HydraAuction.OnChain
 
 import Cardano.Api (TxIn)
 
-import CliActions (CliAction (..))
+import CliActions (CliAction (..), seedAmount)
 import CliConfig (AuctionName (..))
 import ParseTxIn (parseTxIn)
 
@@ -28,14 +28,14 @@ getCliAction =
 cliAction :: Parser CliAction
 cliAction =
   subparser
-    ( command "run-cardano-node" (info (pure RunCardanoNode) (progDesc "FIXME: add help message"))
-        <> command "show-script-utxos" (info (ShowScriptUtxos <$> auctionName <*> script) (progDesc "FIXME: add help message"))
-        <> command "show-utxos" (info (ShowUtxos <$> actor) (progDesc "FIXME: add help message"))
-        <> command "seed" (info (Seed <$> actor) (progDesc "FIXME: add help message"))
-        <> command "mint-test-nft" (info (MintTestNFT <$> actor) (progDesc "FIXME: add help message"))
-        <> command "announce-auction" (info (AuctionAnounce <$> auctionName <*> actor <*> utxo) (progDesc "FIXME: add help message"))
-        <> command "start-bidding" (info (StartBidding <$> auctionName) (progDesc "FIXME: add help message"))
-        <> command "bidder-buys" (info (BidderBuys <$> auctionName <*> actor) (progDesc "FIXME: add help message"))
+    ( command "run-cardano-node" (info (pure RunCardanoNode) (progDesc "Starts a cardano node instance in the background"))
+        <> command "show-script-utxos" (info (ShowScriptUtxos <$> auctionName <*> script) (progDesc "Show utxos at a given script. Requires the seller and auction lot for the given script"))
+        <> command "show-utxos" (info (ShowUtxos <$> actor) (progDesc "Shows utxos for a given actor"))
+        <> command "seed" (info (Seed <$> actor) (progDesc $ "Provides " <> show seedAmount <> " Lovelace for the given actor"))
+        <> command "mint-test-nft" (info (MintTestNFT <$> actor) (progDesc "Mints an NFT that can be used as auction lot"))
+        <> command "announce-auction" (info (AuctionAnounce <$> auctionName <*> actor <*> utxo) (progDesc "Create an auction. Requires TxIn which identifies the auction lot"))
+        <> command "start-bidding" (info (StartBidding <$> auctionName) (progDesc "Open an auction for bidding"))
+        <> command "bidder-buys" (info (BidderBuys <$> auctionName <*> actor) (progDesc "Pay and recieve a lot after auction end"))
     )
 
 auctionName :: Parser AuctionName
@@ -62,7 +62,7 @@ script =
     <$> strOption
       ( short 's'
           <> metavar "SCRIPT"
-          <> help "Script to check"
+          <> help "Script to check. One of: escrow, standing-bid, fee-escrow"
       )
 
 utxo :: Parser TxIn

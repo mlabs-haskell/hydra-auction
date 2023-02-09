@@ -1,6 +1,7 @@
 module CliActions (
   CliAction (..),
   handleCliAction,
+  seedAmount,
 ) where
 
 import Hydra.Prelude (toList)
@@ -20,7 +21,7 @@ import CliConfig (
  )
 import Control.Monad (forM_, void)
 import Data.Functor.Contravariant (contramap)
-import Hydra.Cardano.Api (NetworkMagic (NetworkMagic))
+import Hydra.Cardano.Api (Lovelace, NetworkMagic (NetworkMagic))
 import Hydra.Cluster.Faucet
 import Hydra.Cluster.Fixture (Actor (..))
 import Hydra.Cluster.Util (keysFor)
@@ -35,6 +36,9 @@ import HydraNode (
 import System.FilePath ((</>))
 import System.IO (IOMode (ReadWriteMode), withFile)
 import Test.Hydra.Prelude (withTempDir)
+
+seedAmount :: Lovelace
+seedAmount = 100_000_000
 
 data CliAction
   = RunCardanoNode
@@ -63,7 +67,7 @@ handleCliAction userAction =
       showLogsOnFailure $ \tracer -> do
         node <- getNode
         (key, _) <- keysFor actor
-        seedFromFaucet_ node key 100_000_000 Normal (contramap FromFaucet tracer)
+        seedFromFaucet_ node key seedAmount Normal (contramap FromFaucet tracer)
     ShowScriptUtxos auctionName script -> do
       node <- getNode
       -- FIXME: proper error printing
