@@ -1,1 +1,9 @@
-{"configAuctionFee":100,"configDiffBiddingEnd":60,"configDiffBiddingStart":30,"configDiffCleanup":60,"configDiffVoucherExpiry":30,"configMinimumBidIncrement":10,"configStartingBid":200}
+{
+    "configAuctionFee": 4000000,
+    "configDiffBiddingEnd": 60,
+    "configDiffBiddingStart": 0,
+    "configDiffCleanup": 120,
+    "configDiffVoucherExpiry": 90,
+    "configMinimumBidIncrement": 8000000,
+    "configStartingBid": 8000000
+}
