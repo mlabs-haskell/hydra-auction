@@ -41,7 +41,6 @@ instance ToJSON BuiltinByteString where
 
 -- Asset class
 
--- FIXME: serialize using fields
 deriving newtype instance (FromJSON AssetClass)
 deriving newtype instance (ToJSON AssetClass)
 

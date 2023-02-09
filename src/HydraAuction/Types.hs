@@ -34,6 +34,9 @@ import PlutusTx.Prelude qualified as Plutus
 
 -- Custom Natural
 
+-- Not using natural-numbers package, cuz it does not provide Integer conversion methods,
+-- which are compatible with PlutusTx
+
 newtype Natural = Natural Integer
   deriving stock (Generic, Prelude.Show, Prelude.Eq)
   deriving newtype (Eq, Ord, AdditiveSemigroup, ToJSON)
