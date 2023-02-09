@@ -14,7 +14,6 @@ module HydraAuction.Types (
   EscrowRedeemer (..),
   StandingBidRedeemer (..),
   AuctionFeeEscrowDatum,
-  BidderMembershipDatum,
 ) where
 
 import Prelude qualified
@@ -238,9 +237,6 @@ PlutusTx.makeLift ''BidDepositDatum
 
 type AuctionFeeEscrowDatum = ()
 -- ^ This datum is empty because the auction terms have all the required info.
-
-type BidderMembershipDatum = ApprovedBidders
--- ^ The datum is just the list of approved bidders.
 
 -- Redeemers
 
