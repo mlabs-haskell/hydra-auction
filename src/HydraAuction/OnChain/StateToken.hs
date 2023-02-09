@@ -67,7 +67,7 @@ mkPolicy (EscrowAddress escrowAddressLocal, terms) () ctx =
     utxoNonceConsumed :: Bool
     utxoNonceConsumed =
       traceIfFalse "Utxo nonce was not consumed at auction announcement." $
-        utxoRef terms `elem` (txInInfoOutRef <$> txInfoInputs info)
+        utxoNonce terms `elem` (txInInfoOutRef <$> txInfoInputs info)
     expectedOutput :: AuctionEscrowDatum
     expectedOutput = AuctionEscrowDatum Announced (VoucherCS $ ownCurrencySymbol ctx)
     exactlyOneOutputToEscrow :: Bool

@@ -73,7 +73,7 @@ announceAuction sellerActor terms = do
         networkId'
         nodeSocket'
         QueryTip
-        [fromPlutusTxOutRef $ utxoRef terms]
+        [fromPlutusTxOutRef $ utxoNonce terms]
 
   sellerMoneyUtxo <-
     liftIO $
