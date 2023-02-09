@@ -127,7 +127,6 @@ executable hydra-auction
     , serialise
     , strict-containers               ==0.1.0.0
     , text
-    , time
 
   hs-source-dirs: app
 
@@ -142,6 +141,7 @@ library
     HydraAuction.Tx.Common
     HydraAuction.Tx.Escrow
     HydraAuction.Tx.StandingBid
+    HydraAuction.Tx.TermsConfig
     HydraAuction.Tx.TestNFT
     HydraAuction.Types
 
@@ -163,6 +163,7 @@ library
     , natural-numbers
     , plutus-ledger-api
     , plutus-tx
+    , time
 
   hs-source-dirs:  src
 
