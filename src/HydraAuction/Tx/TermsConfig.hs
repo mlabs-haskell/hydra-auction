@@ -85,10 +85,10 @@ configToAuctionTerms AuctionTermsConfig {..} AuctionTermsDynamic {..} = do
       { auctionLot = configAuctionLot
       , seller = sellerVkHash
       , delegates = configDelegates
-      , biddingStart = toAbsTime configDiffBiddingStart * 1000
-      , biddingEnd = toAbsTime configDiffBiddingEnd * 1000
-      , voucherExpiry = toAbsTime configDiffVoucherExpiry * 1000
-      , cleanup = toAbsTime configDiffCleanup * 1000
+      , biddingStart = toAbsTime configDiffBiddingStart
+      , biddingEnd = toAbsTime configDiffBiddingEnd
+      , voucherExpiry = toAbsTime configDiffVoucherExpiry
+      , cleanup = toAbsTime configDiffCleanup
       , auctionFee = configAuctionFee
       , startingBid = configStartingBid
       , minimumBidIncrement = configMinimumBidIncrement
@@ -96,4 +96,5 @@ configToAuctionTerms AuctionTermsConfig {..} AuctionTermsDynamic {..} = do
       }
   where
     (POSIXTime announcementTime) = configAnnouncementTime
-    toAbsTime n = POSIXTime $ announcementTime + n
+    -- Converting seconds to milliseconds
+    toAbsTime n = POSIXTime $ announcementTime + (n * 1000)
