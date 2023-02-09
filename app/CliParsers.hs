@@ -5,6 +5,7 @@ module CliParsers (
 
 import Prelude
 
+import Data.Maybe (fromJust)
 import Hydra.Cluster.Fixture (Actor (..))
 import Options.Applicative (
   Parser,
@@ -25,6 +26,7 @@ import Options.Applicative (
  )
 
 import HydraAuction.OnChain (AuctionScript (..))
+import HydraAuction.Types (Natural, intToNatural)
 
 import Cardano.Api (TxIn)
 
@@ -52,6 +54,7 @@ cliActionParser =
         <> command "mint-test-nft" (info (MintTestNFT <$> actor) (progDesc "Mints an NFT that can be used as auction lot"))
         <> command "announce-auction" (info (AuctionAnounce <$> auctionName <*> actor <*> utxo) (progDesc "Create an auction. Requires TxIn which identifies the auction lot"))
         <> command "start-bidding" (info (StartBidding <$> auctionName) (progDesc "Open an auction for bidding"))
+        <> command "new-bid" (info (NewBid <$> auctionName <*> actor <*> bidAmount) (progDesc "Actor places new bid after bidding is started"))
         <> command "bidder-buys" (info (BidderBuys <$> auctionName <*> actor) (progDesc "Pay and recieve a lot after auction end"))
         <> command "seller-reclaims" (info (SellerReclaims <$> auctionName) (progDesc "Seller reclaims lot after voucher end time"))
     )
@@ -71,7 +74,7 @@ actor =
     <$> strOption
       ( short 'a'
           <> metavar "ACTOR"
-          <> help "Actor to use for tx and AuctionTerms construction"
+          <> help "Actor who will use for tx and AuctionTerms construction"
       )
 
 script :: Parser AuctionScript
@@ -92,6 +95,15 @@ utxo =
         <> help "Utxo with test NFT for AuctionTerms"
     )
 
+bidAmount :: Parser Natural
+bidAmount =
+  parseNatural
+    <$> strOption
+      ( short 'b'
+          <> metavar "BID_AMOUNT"
+          <> help "Bid amount"
+      )
+
 parseActor :: String -> Actor
 parseActor "alice" = Alice
 parseActor "bob" = Bob
@@ -104,6 +116,9 @@ parseScript "escrow" = Escrow
 parseScript "standing-bid" = StandingBid
 parseScript "fee-escrow" = FeeEscrow
 parseScript _ = error "Escrow parsing error"
+
+parseNatural :: String -> Natural
+parseNatural = fromJust . intToNatural . read
 
 verboseParser :: Parser Bool
 verboseParser = switch (long "verbose" <> short 'v')
