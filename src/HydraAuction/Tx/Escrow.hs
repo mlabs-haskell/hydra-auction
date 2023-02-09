@@ -197,8 +197,6 @@ sellerReclaims node@RunningNode {networkId} seller terms = do
         , changeAddress = sellerAddress
         }
   where
-    mp = policy terms
-
     txOutSellerGotLot sellerAddress = TxOut (ShelleyAddressInEra sellerAddress) valueSellerLot TxOutDatumNone ReferenceScriptNone
       where
         valueSellerLot =
