@@ -1,7 +1,6 @@
 {-# LANGUAGE RecordWildCards #-}
 
 module HydraAuction.Tx.Escrow (
-  constructTerms,
   announceAuction,
   startBidding,
   bidderBuys,
@@ -14,50 +13,27 @@ import PlutusTx.Prelude (emptyByteString)
 import Cardano.Api.UTxO qualified as UTxO
 import CardanoClient (QueryPoint (QueryTip), queryUTxOByTxIn)
 import CardanoNode (RunningNode (..))
-import Data.Maybe (fromJust)
 import Hydra.Cardano.Api hiding (txOutValue)
 import Hydra.Cluster.Fixture (Actor (..))
-import Hydra.Cluster.Util (keysFor)
 import HydraAuction.Addresses
 import HydraAuction.OnChain
 import HydraAuction.OnChain.StateToken
-import HydraAuction.OnChain.TestNFT
 import HydraAuction.PlutusExtras
 import HydraAuction.Runner
 import HydraAuction.Tx.Common
 import HydraAuction.Types
 import Plutus.V1.Ledger.Address (pubKeyHashAddress)
-import Plutus.V1.Ledger.Value (
-  CurrencySymbol (..),
-  assetClassValue,
-  unAssetClass,
- )
 import Plutus.V2.Ledger.Api (
-  POSIXTime (..),
   fromData,
   getMintingPolicy,
   getValidator,
  )
 
-constructTerms :: Actor -> TxIn -> IO AuctionTerms
-constructTerms seller utxoRef = do
-  (sellerVk, _) <- keysFor seller
-  let sellerVkHash = toPlutusKeyHash $ verificationKeyHash sellerVk
-      terms =
-        AuctionTerms
-          { auctionLot = allowMintingAssetClass
-          , seller = sellerVkHash
-          , delegates = [sellerVkHash]
-          , biddingStart = POSIXTime 1
-          , biddingEnd = POSIXTime 100
-          , voucherExpiry = POSIXTime 1000
-          , cleanup = POSIXTime 10001
-          , auctionFee = fromJust $ intToNatural 4_000_000
-          , startingBid = fromJust $ intToNatural 8_000_000
-          , minimumBidIncrement = fromJust $ intToNatural 8_000_000
-          , utxoRef = toPlutusTxOutRef utxoRef
-          }
-  pure terms
+import Plutus.V1.Ledger.Value (
+  CurrencySymbol (..),
+  assetClassValue,
+  unAssetClass,
+ )
 
 announceAuction :: Actor -> AuctionTerms -> Runner ()
 announceAuction sellerActor terms = do

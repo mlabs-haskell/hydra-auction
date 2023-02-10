@@ -17,11 +17,24 @@ import HydraAuction.Runner (
 import HydraAuction.Tx.Escrow (
   announceAuction,
   bidderBuys,
-  constructTerms,
   sellerReclaims,
   startBidding,
  )
 import HydraAuction.Tx.StandingBid (newBid)
+import HydraAuction.Tx.TermsConfig (
+  AuctionTermsConfig (
+    AuctionTermsConfig,
+    configAuctionFee,
+    configDiffBiddingEnd,
+    configDiffBiddingStart,
+    configDiffCleanup,
+    configDiffVoucherExpiry,
+    configMinimumBidIncrement,
+    configStartingBid
+  ),
+  configToAuctionTerms,
+  constructTermsDynamic,
+ )
 import HydraAuction.Tx.TestNFT (mintOneTestNFT)
 import HydraAuction.Types (intToNatural)
 
@@ -41,10 +54,23 @@ successfulBidTest = mkAssertion $ do
   initWallet seller 100_000_000
   initWallet buyer 100_000_000
 
+  let config =
+        AuctionTermsConfig
+          { configDiffBiddingStart = 0
+          , configDiffBiddingEnd = 4
+          , configDiffVoucherExpiry = 8
+          , configDiffCleanup = 10
+          , configAuctionFee = fromJust $ intToNatural 4_000_000
+          , configStartingBid = fromJust $ intToNatural 8_000_000
+          , configMinimumBidIncrement = fromJust $ intToNatural 8_000_000
+          }
+
   nftTx <- mintOneTestNFT seller
   let utxoRef = mkTxIn nftTx 0
 
-  terms <- liftIO $ constructTerms seller utxoRef
+  terms <- liftIO $ do
+    dynamicState <- constructTermsDynamic seller utxoRef
+    configToAuctionTerms config dynamicState
 
   announceAuction seller terms
   startBidding seller terms
@@ -59,10 +85,23 @@ sellerReclaimsTest = mkAssertion $ do
   initWallet seller 100_000_000
   initWallet buyer 100_000_000
 
+  let config =
+        AuctionTermsConfig
+          { configDiffBiddingStart = 0
+          , configDiffBiddingEnd = 4
+          , configDiffVoucherExpiry = 8
+          , configDiffCleanup = 10
+          , configAuctionFee = fromJust $ intToNatural 4_000_000
+          , configStartingBid = fromJust $ intToNatural 8_000_000
+          , configMinimumBidIncrement = fromJust $ intToNatural 8_000_000
+          }
+
   nftTx <- mintOneTestNFT seller
   let utxoRef = mkTxIn nftTx 0
 
-  terms <- liftIO $ constructTerms seller utxoRef
+  terms <- liftIO $ do
+    dynamicState <- constructTermsDynamic seller utxoRef
+    configToAuctionTerms config dynamicState
 
   announceAuction seller terms
   startBidding seller terms
