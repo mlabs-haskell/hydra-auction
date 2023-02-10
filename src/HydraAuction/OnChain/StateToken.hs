@@ -8,7 +8,7 @@ import HydraAuction.Types
 import Plutus.V1.Ledger.Interval (contains, from)
 import Plutus.V1.Ledger.Value (flattenValue)
 import Plutus.V2.Ledger.Api (TokenName (..))
-import Plutus.V2.Ledger.Contexts (ScriptContext, TxInfo, ownCurrencySymbol, scriptContextTxInfo, txInInfoOutRef, txInfoInputs, txInfoMint, txInfoOutputs, txInfoValidRange, txOutAddress)
+import Plutus.V2.Ledger.Contexts (ScriptContext, TxInfo, TxOutRef, ownCurrencySymbol, scriptContextTxInfo, txInInfoOutRef, txInfoInputs, txInfoMint, txInfoOutputs, txInfoValidRange, txOutAddress)
 import PlutusTx.AssocMap qualified as Map
 
 data StateTokenKind = Voucher
@@ -18,6 +18,8 @@ stateTokenKindToTokenName :: StateTokenKind -> TokenName
 stateTokenKindToTokenName Voucher = TokenName "Voucher"
 
 {-# INLINEABLE elem #-}
+-- XXX: PlutuxTx fails if we have `Eq a` constraint
+elem :: TxOutRef -> [TxOutRef] -> Bool
 elem y (x : xs)
   | x == y = True
   | otherwise = elem y xs
