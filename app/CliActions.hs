@@ -53,11 +53,15 @@ import HydraNode (
 seedAmount :: Lovelace
 seedAmount = 100_000_000
 
+allActors :: [Actor]
+allActors = [Alice, Bob, Carol]
+
 data CliAction
   = RunCardanoNode
   | ShowScriptUtxos !AuctionName !AuctionScript
   | ShowUtxos !Actor
   | Seed !Actor
+  | Prepare !Actor
   | MintTestNFT !Actor
   | AuctionAnounce !AuctionName !Actor !TxIn
   | StartBidding !AuctionName
@@ -83,6 +87,9 @@ handleCliAction userAction = do
           error "Not implemented: RunCardanoNode"
     Seed actor ->
       initWallet actor seedAmount
+    Prepare sellerActor -> do
+      forM_ allActors $ \actor -> initWallet actor seedAmount
+      void $ mintOneTestNFT sellerActor
     ShowScriptUtxos auctionName script -> liftIO $ do
       -- FIXME: proper error printing
       Just terms <- readAuctionTerms auctionName
