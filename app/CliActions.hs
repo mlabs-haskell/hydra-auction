@@ -1,6 +1,7 @@
 {-# LANGUAGE RecordWildCards #-}
 
 module CliActions (
+  CliInput (..),
   CliAction (..),
   handleCliAction,
   seedAmount,
@@ -60,6 +61,11 @@ data CliAction
   | StartBidding !AuctionName
   | BidderBuys !AuctionName !Actor
   | SellerReclaims !AuctionName
+
+data CliInput = MkCliInput
+  { cmd :: CliAction
+  , verbosity :: Bool
+  }
 
 handleCliAction :: CliAction -> Runner ()
 handleCliAction userAction = do

@@ -1,6 +1,6 @@
 module CliParsers (
-  getOptions,
-  Options (..),
+  getCliInput,
+  CliInput (..),
 ) where
 
 import Prelude
@@ -24,20 +24,19 @@ import Options.Applicative (
   switch,
  )
 
-import Hydra.Logging (Verbosity (..))
 import HydraAuction.OnChain (AuctionScript (..))
 
 import Cardano.Api (TxIn)
 
-import CliActions (CliAction (..), seedAmount)
+import CliActions (CliAction (..), CliInput (..), seedAmount)
 import CliConfig (AuctionName (..))
 import ParseTxIn (parseTxIn)
 
-getOptions :: IO Options
-getOptions =
+getCliInput :: IO CliInput
+getCliInput =
   execParser $
     info
-      optionsParser
+      cliInputParser
       ( fullDesc
           <> progDesc "FIXME: add help message"
           <> header "FIXME: add help message"
@@ -108,15 +107,5 @@ parseScript _ = error "Escrow parsing error"
 verboseParser :: Parser Bool
 verboseParser = switch (long "verbose" <> short 'v')
 
-data Options = MkOptions
-  { cmd :: CliAction
-  , verbosity :: Verbosity
-  }
-
-optionsParser :: Parser Options
-optionsParser =
-  MkOptions <$> commandParser <*> (toVerbosity <$> verboseParser)
-  where
-    toVerbosity = \case
-      True -> Verbose "hydra-auction"
-      _ -> Quiet
+cliInputParser :: Parser CliInput
+cliInputParser = MkCliInput <$> cliActionParser <*> verboseParser

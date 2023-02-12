@@ -11,32 +11,28 @@ import CardanoNode (
   ),
  )
 import Hydra.Cardano.Api (NetworkMagic (NetworkMagic))
-import Hydra.Logging (Verbosity (Quiet))
+import Hydra.Logging (Verbosity (Quiet, Verbose))
 import Prelude
 
 import CliActions (handleCliAction)
 import CliParsers (
-  Options (MkOptions, cmd, verbosity),
-  getOptions,
+  CliInput (MkCliInput, cmd, verbosity),
+  getCliInput,
  )
 import HydraAuction.Runner (executeRunner, stdoutTracer)
 
 main :: IO ()
 main = do
-  MkOptions {..} <- getOptions
-  tracer <- stdoutTracer verbosity
+  MkCliInput {..} <- getCliInput
 
-  let node =
+  let hydraVerbosity =
+        if verbosity then Verbose "hydra-auction" else Quiet
+      node =
         RunningNode
           { nodeSocket = "./node.socket"
           , networkId = Testnet $ NetworkMagic 42
           }
-      verbose = case verbosity of
-        Quiet -> False
-        _ -> True
 
-  executeRunner
-    tracer
-    node
-    verbose
-    $ handleCliAction cmd
+  tracer <- stdoutTracer hydraVerbosity
+
+  executeRunner tracer node verbosity (handleCliAction cmd)
