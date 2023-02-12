@@ -52,9 +52,7 @@ successfulBidTest = mkAssertion $ do
       buyer1 = Bob
       buyer2 = Carol
 
-  initWallet seller 100_000_000
-  initWallet buyer1 100_000_000
-  initWallet buyer2 100_000_000
+  mapM_ (initWallet 100_000_000) [seller, buyer1, buyer2]
 
   let config =
         AuctionTermsConfig
@@ -88,7 +86,7 @@ sellerReclaimsTest :: Assertion
 sellerReclaimsTest = mkAssertion $ do
   let seller = Alice
 
-  initWallet seller 100_000_000
+  initWallet 100_000_000 seller
 
   let config =
         AuctionTermsConfig

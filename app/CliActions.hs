@@ -75,9 +75,9 @@ handleCliAction userAction = do
       putStrLn "Running cardano-node"
       runCardanoNode tracer
     Seed actor ->
-      initWallet actor seedAmount
+      initWallet seedAmount actor
     Prepare sellerActor -> do
-      forM_ allActors $ \actor -> initWallet actor seedAmount
+      forM_ allActors $ initWallet seedAmount
       void $ mintOneTestNFT sellerActor
     ShowScriptUtxos auctionName script -> liftIO $ do
       -- FIXME: proper error printing
