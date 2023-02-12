@@ -29,7 +29,7 @@ import Hydra.Logging (
  )
 import Hydra.Prelude (
   Applicative (pure),
-  Bool (False),
+  Bool (True),
   Contravariant (contramap),
   FilePath,
   Functor,
@@ -114,7 +114,7 @@ executeTestRunner runner = do
     withCardanoNodeDevnet
       (contramap FromCardanoNode tracer)
       tmpDir
-      $ \node -> executeRunner tracer node False runner
+      $ \node -> executeRunner tracer node True runner
 
 -- | @FilePath@ used to store the running node data.
 newtype StateDirectory = MkStateDirectory

@@ -270,7 +270,7 @@ autoSubmitAndAwaitTx params = do
       nodeSocket' = nodeSocket node
 
   tx <- autoCreateTx params
-  logMsg $ "Signed:" <> show tx
+  logMsg "Signed"
 
   liftIO $
     submitTransaction
