@@ -10,6 +10,7 @@ import Hydra.Prelude (ask, liftIO, toList)
 import Prelude
 
 import Cardano.Api (TxIn)
+import CardanoNode (withCardanoNodeDevnet)
 import CliConfig (
   AuctionName,
   CLIEnhancedAuctionTerms (..),
@@ -20,6 +21,8 @@ import CliConfig (
   readCLIEnhancedAuctionTerms,
   writeAuctionTermsDynamic,
  )
+import Hydra.Logging (Verbosity (Quiet), contramap)
+
 import Control.Monad (forM_, void)
 import Hydra.Cardano.Api (Lovelace)
 import Hydra.Cluster.Fixture (Actor (..))
@@ -29,6 +32,12 @@ import HydraAuction.Runner (
   Runner,
   initWallet,
  )
+import HydraNode (
+  EndToEndLog (
+    FromCardanoNode
+  ),
+ )
+
 import HydraAuction.Tx.Common (actorTipUtxo, scriptUtxos)
 import HydraAuction.Tx.Escrow (
   announceAuction,
@@ -56,6 +65,13 @@ handleCliAction :: Command -> Runner ()
 handleCliAction userAction = do
   MkExecutionContext {..} <- ask
   case userAction of
+    RunCardanoNode -> liftIO $ do
+      putStrLn "Running cardano-node"
+      withCardanoNodeDevnet
+        (contramap FromCardanoNode tracer)
+        "."
+        $ \_ ->
+          error "Not implemented: RunCardanoNode"
     Seed actor ->
       initWallet actor seedAmount
     ShowScriptUtxos auctionName script -> liftIO $ do
@@ -89,7 +105,6 @@ handleCliAction userAction = do
       Just (CLIEnhancedAuctionTerms {terms, sellerActor}) <-
         liftIO $ readCLIEnhancedAuctionTerms auctionName
       sellerReclaims sellerActor terms
-    _ -> pure ()
 
 prettyPrintUtxo :: (Foldable t, Show a) => t a -> IO ()
 prettyPrintUtxo utxo = do

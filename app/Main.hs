@@ -9,25 +9,17 @@ import CardanoNode (
     networkId,
     nodeSocket
   ),
-  withCardanoNodeDevnet,
  )
 import Hydra.Cardano.Api (NetworkMagic (NetworkMagic))
+import Hydra.Logging (Verbosity (Quiet))
 import Prelude
-
-import Hydra.Logging (Verbosity (Quiet), contramap)
-import HydraAuction.Runner (executeRunner, stdoutTracer)
-import HydraNode (
-  EndToEndLog (
-    FromCardanoNode
-  ),
- )
 
 import CliActions (handleCliAction)
 import CliParsers (
-  Command (RunCardanoNode),
   Options (MkOptions, cmd, verbosity),
   getOptions,
  )
+import HydraAuction.Runner (executeRunner, stdoutTracer)
 
 main :: IO ()
 main = do
@@ -39,22 +31,12 @@ main = do
           { nodeSocket = "./node.socket"
           , networkId = Testnet $ NetworkMagic 42
           }
-
       verbose = case verbosity of
         Quiet -> False
         _ -> True
 
-  case cmd of
-    RunCardanoNode -> do
-      putStrLn "Running cardano-node"
-      withCardanoNodeDevnet
-        (contramap FromCardanoNode tracer)
-        "."
-        $ \_ ->
-          error "Not implemented: RunCardanoNode"
-    _ ->
-      executeRunner
-        tracer
-        node
-        verbose
-        $ handleCliAction cmd
+  executeRunner
+    tracer
+    node
+    verbose
+    $ handleCliAction cmd
