@@ -83,6 +83,14 @@ instance FromJSON Natural where
       Just nat -> return nat
       Nothing -> fail "Integer is not natural"
 
+instance Prelude.Num Natural where
+  (Natural x) + (Natural y) = Natural $ x + y
+  (Natural x) * (Natural y) = Natural $ x * y
+  abs = id
+  signum _ = 1
+  negate _ = Prelude.error "Not supported for Natural"
+  fromInteger _ = Prelude.error "Not supported for Natural"
+
 -- Base datatypes
 
 data AuctionTerms = AuctionTerms
