@@ -49,10 +49,12 @@ testSuite =
 successfulBidTest :: Assertion
 successfulBidTest = mkAssertion $ do
   let seller = Alice
-      buyer = Bob
+      buyer1 = Bob
+      buyer2 = Carol
 
   initWallet seller 100_000_000
-  initWallet buyer 100_000_000
+  initWallet buyer1 100_000_000
+  initWallet buyer2 100_000_000
 
   let config =
         AuctionTermsConfig
@@ -76,18 +78,17 @@ successfulBidTest = mkAssertion $ do
 
   liftIO $ waitUntil $ biddingStart terms
   startBidding seller terms
-  newBid buyer terms (fromJust $ intToNatural 16_000_000)
+  newBid buyer1 terms $ startingBid terms
+  newBid buyer2 terms $ startingBid terms + minimumBidIncrement terms
 
   liftIO $ waitUntil $ biddingEnd terms
-  bidderBuys buyer terms
+  bidderBuys buyer2 terms
 
 sellerReclaimsTest :: Assertion
 sellerReclaimsTest = mkAssertion $ do
   let seller = Alice
-      buyer = Bob
 
   initWallet seller 100_000_000
-  initWallet buyer 100_000_000
 
   let config =
         AuctionTermsConfig
