@@ -18,6 +18,7 @@ import Plutus.V2.Ledger.Api (getValidator)
 
 newBid :: Actor -> AuctionTerms -> Natural -> Runner ()
 newBid bidder terms bidAmount = do
+  putStrLn "Doing new bid"
   MkExecutionContext {..} <- ask
   let networkId' = networkId node
 
@@ -52,7 +53,7 @@ newBid bidder terms bidAmount = do
             fromPlutusScript @PlutusScriptV2 $
               getValidator $ standingBidValidator terms
 
-  logMsg "Doing Bidder Buy"
+  logMsg "Doing New bid"
 
   (bidderAddress, bidderVk, bidderSk) <-
     addressAndKeysFor bidder
@@ -79,4 +80,5 @@ newBid bidder terms bidAmount = do
         , outs = [txOutStandingBid bidderVk]
         , toMint = TxMintValueNone
         , changeAddress = bidderAddress
+        , validityBound = (Just $ biddingStart terms, Just $ biddingEnd terms)
         }

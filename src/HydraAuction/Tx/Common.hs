@@ -15,6 +15,7 @@ module HydraAuction.Tx.Common (
   tokenToAsset,
   mintedTokens,
   scriptUtxos,
+  currentTimeSeconds,
 ) where
 
 import Hydra.Prelude (ask, liftIO, toList, void)
@@ -29,8 +30,12 @@ import CardanoNode (
  )
 import Data.List (sort)
 import Data.Map qualified as Map
+import Data.Time (secondsToNominalDiffTime)
+import Data.Time.Clock.POSIX (posixSecondsToUTCTime)
+import Data.Time.Clock.POSIX qualified as POSIXTime
 import Data.Tuple.Extra (first)
 import Hydra.Cardano.Api hiding (txOutValue)
+import Hydra.Chain.Direct.TimeHandle (queryTimeHandle, slotFromUTCTime)
 import Hydra.Cluster.Fixture
 import Hydra.Cluster.Util
 import HydraAuction.OnChain
@@ -42,6 +47,7 @@ import Plutus.V1.Ledger.Value (
   symbols,
  )
 import Plutus.V2.Ledger.Api (
+  POSIXTime (..),
   ToData,
   fromBuiltin,
   getValidator,
@@ -56,6 +62,9 @@ networkIdToNetwork Mainnet = Cardano.Mainnet
 
 minLovelace :: Lovelace
 minLovelace = 2_000_000
+
+currentTimeSeconds :: IO Integer
+currentTimeSeconds = round `fmap` POSIXTime.getPOSIXTime
 
 tokenToAsset :: TokenName -> AssetName
 tokenToAsset (TokenName t) = AssetName $ fromBuiltin t
@@ -147,7 +156,16 @@ data AutoCreateParams = AutoCreateParams
   , outs :: [TxOut CtxTx]
   , toMint :: TxMintValue BuildTx
   , changeAddress :: Address ShelleyAddr
+  , validityBound :: (Maybe POSIXTime, Maybe POSIXTime)
   }
+
+toSlotNo :: RunningNode -> POSIXTime -> IO SlotNo
+toSlotNo (RunningNode {networkId, nodeSocket}) ptime = do
+  timeHandle <- queryTimeHandle networkId nodeSocket
+  let timeInSeconds = getPOSIXTime ptime `div` 1000
+      ndtime = secondsToNominalDiffTime $ fromInteger timeInSeconds
+      utcTime = posixSecondsToUTCTime ndtime
+  either (error . show) return $ slotFromUTCTime timeHandle utcTime
 
 autoCreateTx :: AutoCreateParams -> Runner Tx
 autoCreateTx (AutoCreateParams {..}) = do
@@ -157,17 +175,26 @@ autoCreateTx (AutoCreateParams {..}) = do
 
   liftIO $ do
     pparams <- queryProtocolParameters networkId' nodeSocket' QueryTip
+
+    let (lowerBound', upperBound') = validityBound
+    lowerBound <- case lowerBound' of
+      Nothing -> pure TxValidityNoLowerBound
+      Just x -> TxValidityLowerBound <$> toSlotNo node x
+    upperBound <- case upperBound' of
+      Nothing -> pure TxValidityNoUpperBound
+      Just x -> TxValidityUpperBound <$> toSlotNo node x
+
     body <-
       either (\x -> error $ "Autobalance error: " <> show x) id
         <$> callBodyAutoBalance
           node
           (allAuthoredUtxos <> allWitnessedUtxos <> referenceUtxo)
-          (preBody pparams)
+          (preBody pparams lowerBound upperBound)
           changeAddress
     pure $ makeSignedTransaction (signingWitnesses body) body
   where
-    allAuthoredUtxos = foldl (<>) mempty $ fmap snd authoredUtxos
-    allWitnessedUtxos = foldl (<>) mempty $ fmap snd witnessedUtxos
+    allAuthoredUtxos = foldMap snd authoredUtxos
+    allWitnessedUtxos = foldMap snd witnessedUtxos
     txInsToSign = toList (UTxO.inputSet allAuthoredUtxos)
     witnessedTxIns =
       [ (txIn, witness)
@@ -180,7 +207,7 @@ autoCreateTx (AutoCreateParams {..}) = do
         Nothing -> fst $ case UTxO.pairs $ filterAdaOnlyUtxo allAuthoredUtxos of
           x : _ -> x
           [] -> error "Cannot select collateral, cuz no money utxo was provided"
-    preBody pparams =
+    preBody pparams lowerBound upperBound =
       TxBodyContent
         ((withWitness <$> txInsToSign) <> witnessedTxIns)
         (TxInsCollateral [txInCollateral])
@@ -189,7 +216,7 @@ autoCreateTx (AutoCreateParams {..}) = do
         TxTotalCollateralNone
         TxReturnCollateralNone
         (TxFeeExplicit 0)
-        (TxValidityNoLowerBound, TxValidityNoUpperBound)
+        (lowerBound, upperBound)
         TxMetadataNone
         TxAuxScriptsNone
         -- Adding all keys here, cuz other way `txSignedBy` does not see those
@@ -243,7 +270,7 @@ autoSubmitAndAwaitTx params = do
       nodeSocket' = nodeSocket node
 
   tx <- autoCreateTx params
-  logMsg $ "Signed:" <> show tx
+  logMsg "Signed"
 
   liftIO $
     submitTransaction

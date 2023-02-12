@@ -23,16 +23,15 @@ import HydraAuction.Runner
 import HydraAuction.Tx.Common
 import HydraAuction.Types
 import Plutus.V1.Ledger.Address (pubKeyHashAddress)
-import Plutus.V2.Ledger.Api (
-  fromData,
-  getMintingPolicy,
-  getValidator,
- )
-
 import Plutus.V1.Ledger.Value (
   CurrencySymbol (..),
   assetClassValue,
   unAssetClass,
+ )
+import Plutus.V2.Ledger.Api (
+  fromData,
+  getMintingPolicy,
+  getValidator,
  )
 
 announceAuction :: Actor -> AuctionTerms -> Runner ()
@@ -95,10 +94,12 @@ announceAuction sellerActor terms = do
         , outs = [announcedEscrowTxOut]
         , toMint = toMintStateToken
         , changeAddress = sellerAddress
+        , validityBound = (Nothing, Just $ biddingStart terms)
         }
 
 startBidding :: Actor -> AuctionTerms -> Runner ()
 startBidding sellerActor terms = do
+  liftIO $ putStrLn "Doing start bidding"
   MkExecutionContext {..} <- ask
   let networkId' = networkId node
 
@@ -171,6 +172,7 @@ startBidding sellerActor terms = do
         , outs = [txOutStandingBid, txOutEscrow]
         , toMint = TxMintValueNone
         , changeAddress = sellerAddress
+        , validityBound = (Just $ biddingStart terms, Just $ biddingEnd terms)
         }
 
 bidderBuys :: Actor -> AuctionTerms -> Runner ()
@@ -271,6 +273,7 @@ bidderBuys bidder terms = do
             ]
         , toMint = TxMintValueNone
         , changeAddress = bidderAddress
+        , validityBound = (Just $ biddingEnd terms, Just $ voucherExpiry terms)
         }
 
 sellerReclaims :: Actor -> AuctionTerms -> Runner ()
@@ -338,8 +341,9 @@ sellerReclaims seller terms = do
         , collateral = Nothing
         , outs =
             [ txOutSellerGotLot sellerAddress
-            , txOutFeeEscrow -- TODO: fee escrow
+            , txOutFeeEscrow
             ]
         , toMint = TxMintValueNone
         , changeAddress = sellerAddress
+        , validityBound = (Just $ voucherExpiry terms, Nothing)
         }

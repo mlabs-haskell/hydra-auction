@@ -6,7 +6,7 @@ import PlutusTx.Prelude
 
 import HydraAuction.Types
 import Plutus.V1.Ledger.Value (assetClass, assetClassValueOf)
-import Plutus.V2.Ledger.Api (Address, CurrencySymbol (..), OutputDatum (..), POSIXTime (..), TokenName (..), fromBuiltinData, getDatum)
+import Plutus.V2.Ledger.Api (Address, CurrencySymbol (..), OutputDatum (..), TokenName (..), fromBuiltinData, getDatum)
 import Plutus.V2.Ledger.Contexts (TxInfo, TxOut, findDatum, txOutAddress, txOutDatum, txOutValue)
 import PlutusTx qualified
 
@@ -14,11 +14,11 @@ import PlutusTx qualified
 minAuctionFee :: Integer
 minAuctionFee = 2_000_000
 
-{-# INLINEABLE validAuctionTerms' #-}
-validAuctionTerms' :: AuctionTerms -> POSIXTime -> Bool
-validAuctionTerms' AuctionTerms {..} announcementTxValidityUpperBound =
-  traceIfFalse "VAT1" (announcementTxValidityUpperBound < biddingStart)
-    && traceIfFalse "VAT2" (biddingStart < biddingEnd)
+{-# INLINEABLE validAuctionTerms #-}
+validAuctionTerms :: AuctionTerms -> Bool
+validAuctionTerms AuctionTerms {..} =
+  -- VAT1 was removed
+  traceIfFalse "VAT2" (biddingStart < biddingEnd)
     && traceIfFalse "VAT3" (biddingEnd < voucherExpiry)
     && traceIfFalse "VAT4" (voucherExpiry < cleanup)
     && traceIfFalse "VAT5" (naturalToInt minimumBidIncrement > 0)
@@ -26,11 +26,6 @@ validAuctionTerms' AuctionTerms {..} announcementTxValidityUpperBound =
     && traceIfFalse "VAT7" (naturalToInt auctionFee > length delegates * minAuctionFee)
     && traceIfFalse "VAT8" (length delegates > 0)
     && traceIfFalse "VAT9" (modulo (naturalToInt auctionFee) (length delegates) == 0)
-
--- FIXME: check interval from TxInfo
-{-# INLINEABLE validAuctionTerms #-}
-validAuctionTerms :: AuctionTerms -> Bool
-validAuctionTerms terms = validAuctionTerms' terms (POSIXTime 0)
 
 {-# INLINEABLE decodeOutputDatum #-}
 decodeOutputDatum :: PlutusTx.FromData a => TxInfo -> TxOut -> Maybe a

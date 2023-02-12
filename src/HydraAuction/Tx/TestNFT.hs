@@ -50,4 +50,5 @@ mintOneTestNFT actor = do
       , outs = [txOut]
       , toMint = toMint
       , changeAddress = actorAddress
+      , validityBound = (Nothing, Nothing)
       }

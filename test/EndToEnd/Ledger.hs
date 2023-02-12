@@ -10,7 +10,7 @@ import Hydra.Prelude (MonadIO (liftIO))
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (Assertion, testCase)
 
-import EndToEnd.Utils (mkAssertion)
+import EndToEnd.Utils (mkAssertion, waitUntil)
 import HydraAuction.Runner (
   initWallet,
  )
@@ -36,7 +36,7 @@ import HydraAuction.Tx.TermsConfig (
   constructTermsDynamic,
  )
 import HydraAuction.Tx.TestNFT (mintOneTestNFT)
-import HydraAuction.Types (intToNatural)
+import HydraAuction.Types (AuctionTerms (..), intToNatural)
 
 testSuite :: TestTree
 testSuite =
@@ -56,7 +56,7 @@ successfulBidTest = mkAssertion $ do
 
   let config =
         AuctionTermsConfig
-          { configDiffBiddingStart = 0
+          { configDiffBiddingStart = 1
           , configDiffBiddingEnd = 4
           , configDiffVoucherExpiry = 8
           , configDiffCleanup = 10
@@ -73,8 +73,12 @@ successfulBidTest = mkAssertion $ do
     configToAuctionTerms config dynamicState
 
   announceAuction seller terms
+
+  liftIO $ waitUntil $ biddingStart terms
   startBidding seller terms
   newBid buyer terms (fromJust $ intToNatural 16_000_000)
+
+  liftIO $ waitUntil $ biddingEnd terms
   bidderBuys buyer terms
 
 sellerReclaimsTest :: Assertion
@@ -87,10 +91,10 @@ sellerReclaimsTest = mkAssertion $ do
 
   let config =
         AuctionTermsConfig
-          { configDiffBiddingStart = 0
-          , configDiffBiddingEnd = 4
-          , configDiffVoucherExpiry = 8
-          , configDiffCleanup = 10
+          { configDiffBiddingStart = 1
+          , configDiffBiddingEnd = 3
+          , configDiffVoucherExpiry = 4
+          , configDiffCleanup = 5
           , configAuctionFee = fromJust $ intToNatural 4_000_000
           , configStartingBid = fromJust $ intToNatural 8_000_000
           , configMinimumBidIncrement = fromJust $ intToNatural 8_000_000
@@ -104,5 +108,9 @@ sellerReclaimsTest = mkAssertion $ do
     configToAuctionTerms config dynamicState
 
   announceAuction seller terms
+
+  liftIO $ waitUntil $ biddingStart terms
   startBidding seller terms
+
+  liftIO $ waitUntil $ voucherExpiry terms
   sellerReclaims seller terms
