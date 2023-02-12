@@ -53,7 +53,7 @@ newBid bidder terms bidAmount = do
             fromPlutusScript @PlutusScriptV2 $
               getValidator $ standingBidValidator terms
 
-  logMsg "Doing Bidder Buy"
+  logMsg "Doing New bid"
 
   (bidderAddress, bidderVk, bidderSk) <-
     addressAndKeysFor bidder
