@@ -1,3 +1,5 @@
+{-# LANGUAGE RecordWildCards #-}
+
 module HydraAuction.Tx.StandingBid (newBid) where
 
 import Hydra.Prelude hiding (Natural)
@@ -8,23 +10,63 @@ import Hydra.Cluster.Fixture (Actor)
 import HydraAuction.Addresses
 import HydraAuction.OnChain
 import HydraAuction.PlutusExtras
+import HydraAuction.Runner
 import HydraAuction.Tx.Common
 import HydraAuction.Types
 import Plutus.V1.Ledger.Value (assetClassValue)
 import Plutus.V2.Ledger.Api (getValidator)
 
-newBid :: RunningNode -> Actor -> AuctionTerms -> Natural -> IO ()
-newBid node bidder terms bidAmount = do
-  putStrLn "Doing Bidder Buy"
-  (bidderAddress, bidderVk, bidderSk) <- addressAndKeysFor (networkId node) bidder
+newBid :: Actor -> AuctionTerms -> Natural -> Runner ()
+newBid bidder terms bidAmount = do
+  MkExecutionContext {..} <- ask
+  let networkId' = networkId node
 
-  bidderMoneyUtxo <- filterAdaOnlyUtxo <$> actorTipUtxo node bidder
-  standingBidUtxo <- scriptUtxos node StandingBid terms
+      txOutStandingBid bidderVk =
+        TxOut
+          standingBidAddress'
+          valueStandingBid
+          (mkInlineDatum datum)
+          ReferenceScriptNone
+        where
+          mp = policy terms
+          voucherCS = VoucherCS $ scriptCurrencySymbol mp
+          datum =
+            StandingBidDatum
+              ( Bid $
+                  BidTerms
+                    (toPlutusKeyHash $ verificationKeyHash bidderVk)
+                    bidAmount
+              )
+              voucherCS
+          standingBidAddress' =
+            mkScriptAddress @PlutusScriptV2
+              networkId'
+              $ fromPlutusScript @PlutusScriptV2 $
+                getValidator $ standingBidValidator terms
+          valueStandingBid =
+            fromPlutusValue (assetClassValue (voucherAssetClass terms) 1)
+              <> lovelaceToValue minLovelace
+      standingBidWitness = mkInlinedDatumScriptWitness script NewBid
+        where
+          script =
+            fromPlutusScript @PlutusScriptV2 $
+              getValidator $ standingBidValidator terms
+
+  logMsg "Doing Bidder Buy"
+
+  (bidderAddress, bidderVk, bidderSk) <-
+    addressAndKeysFor bidder
+
+  bidderMoneyUtxo <-
+    liftIO $
+      filterAdaOnlyUtxo <$> actorTipUtxo node bidder
+  standingBidUtxo <-
+    liftIO $
+      scriptUtxos node StandingBid terms
 
   -- FIXME: cover not proper UTxOs
-
   void $
-    autoSubmitAndAwaitTx node $
+    autoSubmitAndAwaitTx $
       AutoCreateParams
         { authoredUtxos =
             [ (bidderSk, bidderMoneyUtxo)
@@ -38,16 +80,3 @@ newBid node bidder terms bidAmount = do
         , toMint = TxMintValueNone
         , changeAddress = bidderAddress
         }
-  where
-    txOutStandingBid bidderVk = TxOut standingBidAddress' valueStandingBid (mkInlineDatum datum) ReferenceScriptNone
-      where
-        mp = policy terms
-        voucherCS = VoucherCS $ scriptCurrencySymbol mp
-        datum = StandingBidDatum (Bid (BidTerms (toPlutusKeyHash $ verificationKeyHash bidderVk) bidAmount)) voucherCS
-        standingBidAddress' = mkScriptAddress @PlutusScriptV2 (networkId node) $ fromPlutusScript @PlutusScriptV2 $ getValidator $ standingBidValidator terms
-        valueStandingBid =
-          fromPlutusValue (assetClassValue (voucherAssetClass terms) 1)
-            <> lovelaceToValue minLovelace
-    standingBidWitness = mkInlinedDatumScriptWitness script NewBid
-      where
-        script = fromPlutusScript @PlutusScriptV2 $ getValidator $ standingBidValidator terms

@@ -1,5 +1,7 @@
 {-# LANGUAGE RecordWildCards #-}
 
+{-# OPTIONS -Wno-incomplete-uni-patterns #-}
+
 module EndToEnd.Hydra (testSuite) where
 
 import Test.Tasty (TestTree, testGroup)
@@ -7,7 +9,6 @@ import Test.Tasty.HUnit (Assertion, testCase)
 
 import Hydra.Prelude (
   Contravariant (contramap),
-  Either (Right),
   Enum (toEnum),
   Eq ((==)),
   Foldable (toList),
@@ -23,6 +24,7 @@ import Hydra.Prelude (
   Semigroup ((<>)),
   ToJSON (toJSON),
   diffUTCTime,
+  either,
   guard,
   id,
   show,
@@ -176,11 +178,12 @@ initAndClose clusterIx hydraScriptsTxId = do
           -- generate a payment
           let firstCommittedUTxO =
                 Prelude.head $ UTxO.pairs committedUTxOByAlice
-          let Right tx =
-                mkSimpleTx
-                  firstCommittedUTxO
-                  (inHeadAddress bobCardanoVk, lovelaceToValue 1_000_000)
-                  aliceCardanoSk
+          let tx =
+                either (Prelude.error "Impossible happened") id $
+                  mkSimpleTx
+                    firstCommittedUTxO
+                    (inHeadAddress bobCardanoVk, lovelaceToValue 1_000_000)
+                    aliceCardanoSk
 
           send n1 $ input "NewTx" ["transaction" .= tx]
           waitFor tracer 10 [n1, n2, n3] $

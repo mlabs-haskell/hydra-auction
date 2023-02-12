@@ -1,32 +1,49 @@
 module CliParsers (
-  getCliAction,
+  getCliInput,
+  CliInput (..),
 ) where
 
 import Prelude
 
 import Hydra.Cluster.Fixture (Actor (..))
-import Options.Applicative
+import Options.Applicative (
+  Parser,
+  command,
+  execParser,
+  fullDesc,
+  header,
+  help,
+  info,
+  long,
+  metavar,
+  option,
+  progDesc,
+  short,
+  strOption,
+  subparser,
+  switch,
+ )
 
-import HydraAuction.OnChain
+import HydraAuction.OnChain (AuctionScript (..))
 
 import Cardano.Api (TxIn)
 
-import CliActions (CliAction (..), seedAmount)
+import CliActions (CliAction (..), CliInput (..), seedAmount)
 import CliConfig (AuctionName (..))
 import ParseTxIn (parseTxIn)
 
-getCliAction :: IO CliAction
-getCliAction =
+getCliInput :: IO CliInput
+getCliInput =
   execParser $
     info
-      cliAction
+      cliInputParser
       ( fullDesc
           <> progDesc "FIXME: add help message"
           <> header "FIXME: add help message"
       )
 
-cliAction :: Parser CliAction
-cliAction =
+cliActionParser :: Parser CliAction
+cliActionParser =
   subparser
     ( command "run-cardano-node" (info (pure RunCardanoNode) (progDesc "Starts a cardano node instance in the background"))
         <> command "show-script-utxos" (info (ShowScriptUtxos <$> auctionName <*> script) (progDesc "Show utxos at a given script. Requires the seller and auction lot for the given script"))
@@ -86,3 +103,9 @@ parseScript "escrow" = Escrow
 parseScript "standing-bid" = StandingBid
 parseScript "fee-escrow" = FeeEscrow
 parseScript _ = error "Escrow parsing error"
+
+verboseParser :: Parser Bool
+verboseParser = switch (long "verbose" <> short 'v')
+
+cliInputParser :: Parser CliInput
+cliInputParser = MkCliInput <$> cliActionParser <*> verboseParser

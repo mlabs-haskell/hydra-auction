@@ -17,7 +17,7 @@ module HydraAuction.Tx.Common (
   scriptUtxos,
 ) where
 
-import Hydra.Prelude (toList, void)
+import Hydra.Prelude (ask, liftIO, toList, void)
 import PlutusTx.Prelude (emptyByteString)
 import Prelude
 
@@ -27,7 +27,6 @@ import CardanoClient hiding (networkId)
 import CardanoNode (
   RunningNode (RunningNode, networkId, nodeSocket),
  )
-import Control.Monad.IO.Class (liftIO)
 import Data.List (sort)
 import Data.Map qualified as Map
 import Data.Tuple.Extra (first)
@@ -35,9 +34,21 @@ import Hydra.Cardano.Api hiding (txOutValue)
 import Hydra.Cluster.Fixture
 import Hydra.Cluster.Util
 import HydraAuction.OnChain
+import HydraAuction.Runner
 import HydraAuction.Types
-import Plutus.V1.Ledger.Value (CurrencySymbol (..), TokenName (..), symbols)
-import Plutus.V2.Ledger.Api (ToData, fromBuiltin, getValidator, toBuiltinData, toData, txOutValue)
+import Plutus.V1.Ledger.Value (
+  CurrencySymbol (..),
+  TokenName (..),
+  symbols,
+ )
+import Plutus.V2.Ledger.Api (
+  ToData,
+  fromBuiltin,
+  getValidator,
+  toBuiltinData,
+  toData,
+  txOutValue,
+ )
 
 networkIdToNetwork :: NetworkId -> Cardano.Network
 networkIdToNetwork (Testnet _) = Cardano.Testnet
@@ -49,7 +60,12 @@ minLovelace = 2_000_000
 tokenToAsset :: TokenName -> AssetName
 tokenToAsset (TokenName t) = AssetName $ fromBuiltin t
 
-mintedTokens :: ToScriptData redeemer => PlutusScript -> redeemer -> [(AssetName, Quantity)] -> TxMintValue BuildTx
+mintedTokens ::
+  ToScriptData redeemer =>
+  PlutusScript ->
+  redeemer ->
+  [(AssetName, Quantity)] ->
+  TxMintValue BuildTx
 mintedTokens script redeemer assets =
   TxMintValue mintedTokens' mintedWitnesses'
   where
@@ -70,19 +86,36 @@ mkInlinedDatumScriptWitness ::
   PlutusScript ->
   a ->
   BuildTxWith BuildTx (Witness WitCtxTxIn)
-mkInlinedDatumScriptWitness script redeemer = BuildTxWith $ ScriptWitness scriptWitnessCtx $ mkScriptWitness script InlineScriptDatum (toScriptData redeemer)
+mkInlinedDatumScriptWitness script redeemer =
+  BuildTxWith $
+    ScriptWitness scriptWitnessCtx $
+      mkScriptWitness script InlineScriptDatum (toScriptData redeemer)
 
-addressAndKeysFor :: NetworkId -> Actor -> IO (Address ShelleyAddr, VerificationKey PaymentKey, SigningKey PaymentKey)
-addressAndKeysFor networkId actor = do
-  (actorVk, actorSk) <- keysFor actor
-  let actorAddress = buildAddress actorVk networkId
-  putStrLn $ "Using actor: " <> show actor <> " with address: " <> show actorAddress
-  return (actorAddress, actorVk, actorSk)
+addressAndKeysFor ::
+  Actor ->
+  Runner
+    ( Address ShelleyAddr
+    , VerificationKey PaymentKey
+    , SigningKey PaymentKey
+    )
+addressAndKeysFor actor = do
+  MkExecutionContext {..} <- ask
+  let networkId' = networkId node
+
+  (actorVk, actorSk) <- liftIO $ keysFor actor
+  let actorAddress = buildAddress actorVk networkId'
+
+  logMsg $
+    "Using actor: " <> show actor <> " with address: " <> show actorAddress
+
+  pure (actorAddress, actorVk, actorSk)
 
 filterUtxoByCurrencySymbols :: [CurrencySymbol] -> UTxO -> UTxO
 filterUtxoByCurrencySymbols symbolsToMatch = UTxO.filter hasExactlySymbols
   where
-    hasExactlySymbols x = (sort . symbols . txOutValue <$> toPlutusTxOut x) == Just (sort symbolsToMatch)
+    hasExactlySymbols x =
+      (sort . symbols . txOutValue <$> toPlutusTxOut x)
+        == Just (sort symbolsToMatch)
 
 filterAdaOnlyUtxo :: UTxO -> UTxO
 filterAdaOnlyUtxo = filterUtxoByCurrencySymbols [CurrencySymbol emptyByteString]
@@ -94,7 +127,13 @@ actorTipUtxo node actor = do
 
 scriptUtxos :: RunningNode -> AuctionScript -> AuctionTerms -> IO UTxO.UTxO
 scriptUtxos RunningNode {networkId, nodeSocket} script terms = do
-  let scriptAddress = buildScriptAddress (PlutusScript $ fromPlutusScript $ getValidator $ scriptValidatorForTerms script terms) networkId
+  let scriptAddress =
+        buildScriptAddress
+          ( PlutusScript $
+              fromPlutusScript $
+                getValidator $ scriptValidatorForTerms script terms
+          )
+          networkId
   queryUTxO networkId nodeSocket QueryTip [scriptAddress]
 
 data AutoCreateParams = AutoCreateParams
@@ -110,17 +149,22 @@ data AutoCreateParams = AutoCreateParams
   , changeAddress :: Address ShelleyAddr
   }
 
-autoCreateTx :: RunningNode -> AutoCreateParams -> IO Tx
-autoCreateTx node@RunningNode {networkId, nodeSocket} (AutoCreateParams {..}) = do
-  pparams <- queryProtocolParameters networkId nodeSocket QueryTip
-  body <-
-    either (\x -> error $ "Autobalance error: " <> show x) id
-      <$> callBodyAutoBalance
-        node
-        (allAuthoredUtxos <> allWitnessedUtxos <> referenceUtxo)
-        (preBody pparams)
-        changeAddress
-  pure $ makeSignedTransaction (signingWitnesses body) body
+autoCreateTx :: AutoCreateParams -> Runner Tx
+autoCreateTx (AutoCreateParams {..}) = do
+  MkExecutionContext {..} <- ask
+  let networkId' = networkId node
+      nodeSocket' = nodeSocket node
+
+  liftIO $ do
+    pparams <- queryProtocolParameters networkId' nodeSocket' QueryTip
+    body <-
+      either (\x -> error $ "Autobalance error: " <> show x) id
+        <$> callBodyAutoBalance
+          node
+          (allAuthoredUtxos <> allWitnessedUtxos <> referenceUtxo)
+          (preBody pparams)
+          changeAddress
+    pure $ makeSignedTransaction (signingWitnesses body) body
   where
     allAuthoredUtxos = foldl (<>) mempty $ fmap snd authoredUtxos
     allWitnessedUtxos = foldl (<>) mempty $ fmap snd witnessedUtxos
@@ -148,8 +192,11 @@ autoCreateTx node@RunningNode {networkId, nodeSocket} (AutoCreateParams {..}) = 
         (TxValidityNoLowerBound, TxValidityNoUpperBound)
         TxMetadataNone
         TxAuxScriptsNone
-        -- Adding all keys here, cuz other way `txSignedBy` does not see those signatures
-        (TxExtraKeyWitnesses $ fmap (verificationKeyHash . getVerificationKey . fst) authoredUtxos)
+        -- Adding all keys here, cuz other way `txSignedBy` does not see those
+        -- signatures
+        ( TxExtraKeyWitnesses $
+            fmap (verificationKeyHash . getVerificationKey . fst) authoredUtxos
+        )
         (BuildTxWith $ Just pparams)
         TxWithdrawalsNone
         TxCertificatesNone
@@ -160,38 +207,58 @@ autoCreateTx node@RunningNode {networkId, nodeSocket} (AutoCreateParams {..}) = 
     signingWitnesses :: TxBody -> [KeyWitness]
     signingWitnesses body = fmap (makeSignWitness body . fst) authoredUtxos
 
-callBodyAutoBalance :: RunningNode -> UTxO -> TxBodyContent BuildTx -> Address ShelleyAddr -> IO (Either TxBodyErrorAutoBalance TxBody)
-callBodyAutoBalance (RunningNode {networkId, nodeSocket}) utxo preBody changeAddress = do
-  pparams <- queryProtocolParameters networkId nodeSocket QueryTip
-  systemStart <- querySystemStart networkId nodeSocket QueryTip
-  eraHistory <- queryEraHistory networkId nodeSocket QueryTip
-  stakePools <- queryStakePools networkId nodeSocket QueryTip
+callBodyAutoBalance ::
+  RunningNode ->
+  UTxO ->
+  TxBodyContent BuildTx ->
+  Address ShelleyAddr ->
+  IO (Either TxBodyErrorAutoBalance TxBody)
+callBodyAutoBalance
+  (RunningNode {networkId, nodeSocket})
+  utxo
+  preBody
+  changeAddress = do
+    pparams <- queryProtocolParameters networkId nodeSocket QueryTip
+    systemStart <- querySystemStart networkId nodeSocket QueryTip
+    eraHistory <- queryEraHistory networkId nodeSocket QueryTip
+    stakePools <- queryStakePools networkId nodeSocket QueryTip
 
-  return $
-    balancedTxBody
-      <$> makeTransactionBodyAutoBalance
-        BabbageEraInCardanoMode
-        systemStart
-        eraHistory
-        pparams
-        stakePools
-        (UTxO.toApi utxo)
-        preBody
-        (ShelleyAddressInEra changeAddress)
-        Nothing
+    return $
+      balancedTxBody
+        <$> makeTransactionBodyAutoBalance
+          BabbageEraInCardanoMode
+          systemStart
+          eraHistory
+          pparams
+          stakePools
+          (UTxO.toApi utxo)
+          preBody
+          (ShelleyAddressInEra changeAddress)
+          Nothing
 
-autoSubmitAndAwaitTx :: RunningNode -> AutoCreateParams -> IO Tx
-autoSubmitAndAwaitTx node@RunningNode {nodeSocket, networkId} params = do
-  tx <- autoCreateTx node params
-  putStrLn "Signed"
-  putStrLn $ show tx
+autoSubmitAndAwaitTx :: AutoCreateParams -> Runner Tx
+autoSubmitAndAwaitTx params = do
+  MkExecutionContext {..} <- ask
+  let networkId' = networkId node
+      nodeSocket' = nodeSocket node
 
-  submitTransaction networkId nodeSocket tx
-  putStrLn "Submited"
+  tx <- autoCreateTx params
+  logMsg $ "Signed:" <> show tx
 
-  void $ awaitTransaction networkId nodeSocket tx
-  putStrLn "Awaited"
+  liftIO $
+    submitTransaction
+      networkId'
+      nodeSocket'
+      tx
 
-  putStrLn $ "Created Tx id: " <> show (getTxId $ txBody tx)
+  logMsg "Submited"
 
-  return tx
+  void $
+    liftIO $
+      awaitTransaction
+        networkId'
+        nodeSocket'
+        tx
+
+  logMsg $ "Created Tx id: " <> show (getTxId $ txBody tx)
+  pure tx

@@ -1,14 +1,17 @@
+{-# LANGUAGE RecordWildCards #-}
+
 module CliActions (
+  CliInput (..),
   CliAction (..),
   handleCliAction,
   seedAmount,
 ) where
 
-import Hydra.Prelude (toList)
+import Hydra.Prelude (ask, liftIO, toList)
 import Prelude
 
-import Cardano.Api (NetworkId (..), TxIn)
-import CardanoNode (RunningNode (RunningNode, networkId, nodeSocket), withCardanoNodeDevnet)
+import Cardano.Api (TxIn)
+import CardanoNode (withCardanoNodeDevnet)
 import CliConfig (
   AuctionName,
   CLIEnhancedAuctionTerms (..),
@@ -19,23 +22,31 @@ import CliConfig (
   readCLIEnhancedAuctionTerms,
   writeAuctionTermsDynamic,
  )
+import Hydra.Logging (Verbosity (Quiet), contramap)
+
 import Control.Monad (forM_, void)
-import Data.Functor.Contravariant (contramap)
-import Hydra.Cardano.Api (Lovelace, NetworkMagic (NetworkMagic))
-import Hydra.Cluster.Faucet
+import Hydra.Cardano.Api (Lovelace)
 import Hydra.Cluster.Fixture (Actor (..))
-import Hydra.Cluster.Util (keysFor)
-import Hydra.Logging (showLogsOnFailure)
-import HydraAuction.OnChain
-import HydraAuction.Tx.Common
-import HydraAuction.Tx.Escrow
-import HydraAuction.Tx.TestNFT
-import HydraNode (
-  EndToEndLog (FromCardanoNode, FromFaucet),
+import HydraAuction.OnChain (AuctionScript)
+import HydraAuction.Runner (
+  ExecutionContext (MkExecutionContext, node, tracer, verbose),
+  Runner,
+  initWallet,
  )
-import System.FilePath ((</>))
-import System.IO (IOMode (ReadWriteMode), withFile)
-import Test.Hydra.Prelude (withTempDir)
+import HydraNode (
+  EndToEndLog (
+    FromCardanoNode
+  ),
+ )
+
+import HydraAuction.Tx.Common (actorTipUtxo, scriptUtxos)
+import HydraAuction.Tx.Escrow (
+  announceAuction,
+  bidderBuys,
+  sellerReclaims,
+  startBidding,
+ )
+import HydraAuction.Tx.TestNFT (mintOneTestNFT)
 
 seedAmount :: Lovelace
 seedAmount = 100_000_000
@@ -51,59 +62,55 @@ data CliAction
   | BidderBuys !AuctionName !Actor
   | SellerReclaims !AuctionName
 
-handleCliAction :: CliAction -> IO ()
-handleCliAction userAction =
+data CliInput = MkCliInput
+  { cmd :: CliAction
+  , verbosity :: Bool
+  }
+
+handleCliAction :: CliAction -> Runner ()
+handleCliAction userAction = do
+  MkExecutionContext {..} <- ask
   case userAction of
-    RunCardanoNode -> do
+    RunCardanoNode -> liftIO $ do
       putStrLn "Running cardano-node"
-      withTempDir "hydra-auction-1" $ \workDir -> do
-        withFile (workDir </> "test.log") ReadWriteMode $ \_hdl ->
-          showLogsOnFailure $ \tracer -> do
-            withCardanoNodeDevnet (contramap FromCardanoNode tracer) "." $
-              error "Not implemented: RunCardanoNode"
-    -- TODO: proper working dir
-    -- Somehow it hangs without infinite loop "/
-    Seed actor -> do
-      showLogsOnFailure $ \tracer -> do
-        node <- getNode
-        (key, _) <- keysFor actor
-        seedFromFaucet_ node key seedAmount Normal (contramap FromFaucet tracer)
-    ShowScriptUtxos auctionName script -> do
-      node <- getNode
+      withCardanoNodeDevnet
+        (contramap FromCardanoNode tracer)
+        "."
+        $ \_ ->
+          error "Not implemented: RunCardanoNode"
+    Seed actor ->
+      initWallet actor seedAmount
+    ShowScriptUtxos auctionName script -> liftIO $ do
       -- FIXME: proper error printing
       Just terms <- readAuctionTerms auctionName
       utxos <- scriptUtxos node script terms
       prettyPrintUtxo utxos
-    ShowUtxos actor -> do
-      node <- getNode
+    ShowUtxos actor -> liftIO $ do
       utxos <- actorTipUtxo node actor
       prettyPrintUtxo utxos
-    MintTestNFT actor -> do
-      node <- getNode
-      void $ mintOneTestNFT node actor
+    MintTestNFT actor ->
+      void $ mintOneTestNFT actor
     AuctionAnounce auctionName sellerActor utxo -> do
-      node <- getNode
-      dynamic <- constructTermsDynamic sellerActor utxo
-      writeAuctionTermsDynamic auctionName dynamic
+      dynamic <- liftIO $ constructTermsDynamic sellerActor utxo
+      liftIO $ writeAuctionTermsDynamic auctionName dynamic
       -- FIXME: proper error printing
-      Just config <- readAuctionTermsConfig auctionName
-      terms <- configToAuctionTerms config dynamic
-      announceAuction node sellerActor terms
+      Just config <- liftIO $ readAuctionTermsConfig auctionName
+      terms <- liftIO $ configToAuctionTerms config dynamic
+      announceAuction sellerActor terms
     StartBidding auctionName -> do
-      node <- getNode
       -- FIXME: proper error printing
-      Just (CLIEnhancedAuctionTerms {terms, sellerActor}) <- readCLIEnhancedAuctionTerms auctionName
-      startBidding node sellerActor terms
+      Just (CLIEnhancedAuctionTerms {terms, sellerActor}) <-
+        liftIO $ readCLIEnhancedAuctionTerms auctionName
+      startBidding sellerActor terms
     BidderBuys auctionName actor -> do
-      node <- getNode
       -- FIXME: proper error printing
-      Just terms <- readAuctionTerms auctionName
-      bidderBuys node actor terms
+      Just terms <- liftIO $ readAuctionTerms auctionName
+      bidderBuys actor terms
     SellerReclaims auctionName -> do
-      node <- getNode
       -- FIXME: proper error printing
-      Just (CLIEnhancedAuctionTerms {terms, sellerActor}) <- readCLIEnhancedAuctionTerms auctionName
-      sellerReclaims node sellerActor terms
+      Just (CLIEnhancedAuctionTerms {terms, sellerActor}) <-
+        liftIO $ readCLIEnhancedAuctionTerms auctionName
+      sellerReclaims sellerActor terms
 
 prettyPrintUtxo :: (Foldable t, Show a) => t a -> IO ()
 prettyPrintUtxo utxo = do
@@ -111,11 +118,3 @@ prettyPrintUtxo utxo = do
   -- FIXME print properly
   forM_ (toList utxo) $ \x ->
     putStrLn $ show x
-
-getNode :: IO RunningNode
-getNode =
-  pure $
-    RunningNode
-      { nodeSocket = "./node.socket"
-      , networkId = Testnet $ NetworkMagic 42
-      }

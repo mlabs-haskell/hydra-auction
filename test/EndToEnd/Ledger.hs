@@ -1,5 +1,3 @@
-{-# LANGUAGE RecordWildCards #-}
-
 module EndToEnd.Ledger (testSuite) where
 
 import Prelude
@@ -8,13 +6,12 @@ import Data.Maybe (fromJust)
 import Hydra.Cardano.Api (mkTxIn)
 import Hydra.Cluster.Fixture (Actor (..))
 
-import Hydra.Prelude (MonadIO (liftIO), MonadReader (ask))
+import Hydra.Prelude (MonadIO (liftIO))
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (Assertion, testCase)
 
 import EndToEnd.Utils (mkAssertion)
 import HydraAuction.Runner (
-  ExecutionContext (MkExecutionContext, node, tracer),
   initWallet,
  )
 import HydraAuction.Tx.Escrow (
@@ -24,7 +21,20 @@ import HydraAuction.Tx.Escrow (
   startBidding,
  )
 import HydraAuction.Tx.StandingBid (newBid)
-import HydraAuction.Tx.TermsConfig
+import HydraAuction.Tx.TermsConfig (
+  AuctionTermsConfig (
+    AuctionTermsConfig,
+    configAuctionFee,
+    configDiffBiddingEnd,
+    configDiffBiddingStart,
+    configDiffCleanup,
+    configDiffVoucherExpiry,
+    configMinimumBidIncrement,
+    configStartingBid
+  ),
+  configToAuctionTerms,
+  constructTermsDynamic,
+ )
 import HydraAuction.Tx.TestNFT (mintOneTestNFT)
 import HydraAuction.Types (intToNatural)
 
@@ -38,8 +48,6 @@ testSuite =
 
 successfulBidTest :: Assertion
 successfulBidTest = mkAssertion $ do
-  MkExecutionContext {..} <- ask
-
   let seller = Alice
       buyer = Bob
 
@@ -57,22 +65,20 @@ successfulBidTest = mkAssertion $ do
           , configMinimumBidIncrement = fromJust $ intToNatural 8_000_000
           }
 
-  liftIO $ do
-    nftTx <- mintOneTestNFT node seller
-    let utxoRef = mkTxIn nftTx 0
+  nftTx <- mintOneTestNFT seller
+  let utxoRef = mkTxIn nftTx 0
 
+  terms <- liftIO $ do
     dynamicState <- constructTermsDynamic seller utxoRef
-    terms <- configToAuctionTerms config dynamicState
+    configToAuctionTerms config dynamicState
 
-    announceAuction node seller terms
-    startBidding node seller terms
-    newBid node buyer terms (fromJust $ intToNatural 16_000_000)
-    bidderBuys node buyer terms
+  announceAuction seller terms
+  startBidding seller terms
+  newBid buyer terms (fromJust $ intToNatural 16_000_000)
+  bidderBuys buyer terms
 
 sellerReclaimsTest :: Assertion
 sellerReclaimsTest = mkAssertion $ do
-  MkExecutionContext {..} <- ask
-
   let seller = Alice
       buyer = Bob
 
@@ -90,13 +96,13 @@ sellerReclaimsTest = mkAssertion $ do
           , configMinimumBidIncrement = fromJust $ intToNatural 8_000_000
           }
 
-  liftIO $ do
-    nftTx <- mintOneTestNFT node seller
-    let utxoRef = mkTxIn nftTx 0
+  nftTx <- mintOneTestNFT seller
+  let utxoRef = mkTxIn nftTx 0
 
+  terms <- liftIO $ do
     dynamicState <- constructTermsDynamic seller utxoRef
-    terms <- configToAuctionTerms config dynamicState
+    configToAuctionTerms config dynamicState
 
-    announceAuction node seller terms
-    startBidding node seller terms
-    liftIO $ sellerReclaims node seller terms
+  announceAuction seller terms
+  startBidding seller terms
+  sellerReclaims seller terms

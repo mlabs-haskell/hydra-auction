@@ -15,7 +15,14 @@ import Prelude
 
 import Options.Applicative
 
-import Cardano.Api (AsType (AsTxId), TxId (..), TxIn (..), TxIx (..), deserialiseFromRawBytesHex, displayError)
+import Cardano.Api (
+  AsType (AsTxId),
+  TxId (..),
+  TxIn (..),
+  TxIx (..),
+  deserialiseFromRawBytesHex,
+  displayError,
+ )
 
 import Data.Bifunctor (first)
 
