@@ -15,28 +15,28 @@ import Plutus.V2.Ledger.Contexts (ScriptContext, ownHash, txSignedBy)
 {-# INLINEABLE mkEscrowValidator #-}
 mkEscrowValidator :: (StandingBidAddress, FeeEscrowAddress, AuctionTerms) -> AuctionEscrowDatum -> EscrowRedeemer -> ScriptContext -> Bool
 mkEscrowValidator (StandingBidAddress standingBidAddressLocal, FeeEscrowAddress feeEscrowAddressLocal, terms) _ redeemer context =
-  traceIfFalse "AuctionTerms is invalid" (validAuctionTerms terms)
+  nothingForged info
     && checkHasSingleEscrowInput
-      ( \escrowInputOutput -> case redeemer of
-          StartBidding ->
-            checkAuctionState (== Announced) escrowInputOutput
-              && traceIfFalse "Seller not signed" (txSignedBy info (seller terms))
-              && traceIfFalse
-                "Wrong valid range"
-                (contains (interval (biddingStart terms) (biddingEnd terms)) (txInfoValidRange info))
-              && checkStartBiddingOutputs
-          SellerReclaims ->
-            traceIfFalse
-              "Wrong interval for SellerReclaims"
-              (contains (from (voucherExpiry terms)) (txInfoValidRange info))
-              && checkSellerReclaimsOutputs
-          BidderBuys ->
-            checkAuctionState isStarted escrowInputOutput
-              && traceIfFalse
-                "Wrong interval for BidderBuys"
-                (contains (interval (biddingEnd terms) (voucherExpiry terms)) (txInfoValidRange info))
-              && checkBidderBuys escrowInputOutput
-      )
+    ( \escrowInputOutput -> case redeemer of
+        StartBidding ->
+          checkAuctionState (== Announced) escrowInputOutput
+            && traceIfFalse "Seller not signed" (txSignedBy info (seller terms))
+            && traceIfFalse
+              "Wrong valid range"
+              (contains (interval (biddingStart terms) (biddingEnd terms)) (txInfoValidRange info))
+            && checkStartBiddingOutputs
+        SellerReclaims ->
+          traceIfFalse
+            "Wrong interval for SellerReclaims"
+            (contains (from (voucherExpiry terms)) (txInfoValidRange info))
+            && checkSellerReclaimsOutputs
+        BidderBuys ->
+          checkAuctionState isStarted escrowInputOutput
+            && traceIfFalse
+              "Wrong interval for BidderBuys"
+              (contains (interval (biddingEnd terms) (voucherExpiry terms)) (txInfoValidRange info))
+            && checkBidderBuys escrowInputOutput
+    )
   where
     checkHasSingleEscrowInput cont =
       case escrowInputsOuts of

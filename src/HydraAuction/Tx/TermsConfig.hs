@@ -7,6 +7,7 @@ module HydraAuction.Tx.TermsConfig (
   configToAuctionTerms,
 ) where
 
+import PlutusTx.Prelude (emptyByteString)
 import Prelude
 
 import GHC.Generics (Generic)
@@ -17,7 +18,7 @@ import Hydra.Cluster.Fixture (Actor)
 import Hydra.Cluster.Util (keysFor)
 import Plutus.V1.Ledger.Crypto (PubKeyHash)
 import Plutus.V1.Ledger.Time (POSIXTime (..))
-import Plutus.V1.Ledger.Value (AssetClass)
+import Plutus.V1.Ledger.Value (AssetClass, CurrencySymbol (..))
 import Plutus.V2.Ledger.Contexts (TxOutRef)
 
 import HydraAuction.OnChain.TestNFT
@@ -45,7 +46,7 @@ data AuctionTermsDynamic = AuctionTermsDynamic
   , -- Storing Actor, not only PubKeyHash, is required to simplify CLI actions on seller behalf
     configSellerActor :: !Actor
   , configDelegates :: ![PubKeyHash]
-  , configUtxoRef :: !TxOutRef
+  , configUtxoNonce :: !TxOutRef
   , configAnnouncementTime :: !POSIXTime
   }
   deriving stock (Generic, Prelude.Show, Prelude.Eq)
@@ -60,7 +61,7 @@ getActorVkHash actor = do
   return $ toPlutusKeyHash $ verificationKeyHash actorVk
 
 constructTermsDynamic :: Actor -> TxIn -> IO AuctionTermsDynamic
-constructTermsDynamic sellerActor utxoRef = do
+constructTermsDynamic sellerActor utxoNonce = do
   currentTimeSeconds' <- currentTimeSeconds
   sellerVkHash <- getActorVkHash sellerActor
   return $
@@ -69,7 +70,7 @@ constructTermsDynamic sellerActor utxoRef = do
       , configSellerActor = sellerActor
       , -- FIXME
         configDelegates = [sellerVkHash]
-      , configUtxoRef = toPlutusTxOutRef utxoRef
+      , configUtxoNonce = toPlutusTxOutRef utxoNonce
       , configAnnouncementTime = POSIXTime $ currentTimeSeconds' * 1000
       }
 
@@ -83,6 +84,8 @@ configToAuctionTerms AuctionTermsConfig {..} AuctionTermsDynamic {..} = do
     AuctionTerms
       { auctionLot = configAuctionLot
       , seller = sellerVkHash
+      , -- FUTURE FIXME
+        hydraHeadId = CurrencySymbol emptyByteString
       , delegates = configDelegates
       , biddingStart = toAbsTime configDiffBiddingStart
       , biddingEnd = toAbsTime configDiffBiddingEnd
@@ -91,7 +94,7 @@ configToAuctionTerms AuctionTermsConfig {..} AuctionTermsDynamic {..} = do
       , auctionFee = configAuctionFee
       , startingBid = configStartingBid
       , minimumBidIncrement = configMinimumBidIncrement
-      , utxoRef = configUtxoRef
+      , utxoNonce = configUtxoNonce
       }
   where
     (POSIXTime announcementTime) = configAnnouncementTime

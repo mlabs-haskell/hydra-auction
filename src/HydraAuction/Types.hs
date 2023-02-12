@@ -14,6 +14,7 @@ module HydraAuction.Types (
   EscrowRedeemer (..),
   StandingBidRedeemer (..),
   AuctionFeeEscrowDatum,
+  VoucherForgingRedeemer (..),
 ) where
 
 import Prelude qualified
@@ -24,7 +25,7 @@ import GHC.Generics (Generic)
 import HydraAuction.Addresses (VoucherCS)
 import Plutus.V1.Ledger.Crypto (PubKeyHash)
 import Plutus.V1.Ledger.Time (POSIXTime)
-import Plutus.V1.Ledger.Value (AssetClass)
+import Plutus.V1.Ledger.Value (AssetClass, CurrencySymbol)
 import Plutus.V2.Ledger.Contexts (TxOutRef)
 import PlutusTx qualified
 import PlutusTx.IsData.Class (FromData (fromBuiltinData), ToData (toBuiltinData), UnsafeFromData (unsafeFromBuiltinData))
@@ -85,6 +86,8 @@ data AuctionTerms = AuctionTerms
     auctionLot :: AssetClass
   , -- | Who is selling it?
     seller :: PubKeyHash
+  , -- | Which Hydra Head is authorized to host the bidding for this auction?
+    hydraHeadId :: CurrencySymbol
   , -- | Who is running the Hydra Head where bidding occurs?
     delegates :: [PubKeyHash]
   , biddingStart :: POSIXTime
@@ -101,7 +104,7 @@ data AuctionTerms = AuctionTerms
     minimumBidIncrement :: Natural
   , -- | The seller consumed this utxo input in the transaction that
     -- announced this auction, to provide the auction lot to the auction.
-    utxoRef :: TxOutRef
+    utxoNonce :: TxOutRef
   }
   deriving stock (Generic, Prelude.Show, Prelude.Eq)
 
@@ -121,7 +124,7 @@ instance Eq AuctionTerms where
       && (auctionFee x == auctionFee y)
       && (startingBid x == startingBid y)
       && (minimumBidIncrement x == minimumBidIncrement y)
-      && (utxoRef x == utxoRef y)
+      && (utxoNonce x == utxoNonce y)
 
 newtype ApprovedBidders = ApprovedBidders
   { -- | Which bidders are approved to submit bids?
@@ -222,15 +225,16 @@ instance Eq StandingBidDatum where
 PlutusTx.makeIsDataIndexed ''StandingBidDatum [('StandingBidDatum, 0)]
 PlutusTx.makeLift ''StandingBidDatum
 
-newtype BidDepositDatum = BidDepositDatum
+data BidDepositDatum = BidDepositDatum
   { -- | Which bidder made this deposit?
-    bidder :: PubKeyHash
+    bidDepositBidder :: PubKeyHash
+  , bidDepositVoucherCS :: VoucherCS
   }
   deriving stock (Generic, Prelude.Show, Prelude.Eq)
 
 instance Eq BidDepositDatum where
   {-# INLINEABLE (==) #-}
-  (BidDepositDatum x) == (BidDepositDatum y) = x == y
+  (BidDepositDatum x y) == (BidDepositDatum x' y') = (x == x') && (y == y')
 
 PlutusTx.makeIsDataIndexed ''BidDepositDatum [('BidDepositDatum, 0)]
 PlutusTx.makeLift ''BidDepositDatum
@@ -245,3 +249,9 @@ PlutusTx.makeIsDataIndexed ''EscrowRedeemer [('StartBidding, 0), ('SellerReclaim
 
 data StandingBidRedeemer = MoveToHydra | NewBid | Cleanup
 PlutusTx.makeIsDataIndexed ''StandingBidRedeemer [('MoveToHydra, 0), ('NewBid, 1), ('Cleanup, 2)]
+
+data VoucherForgingRedeemer = MintVoucher | BurnVoucher
+PlutusTx.makeIsDataIndexed ''VoucherForgingRedeemer [('MintVoucher, 0), ('BurnVoucher, 1)]
+
+data BidDepositRedeemer = LosingBidder | WinningBidder | SellerClaimsDeposit
+PlutusTx.makeIsDataIndexed ''BidDepositRedeemer [('LosingBidder, 0), ('WinningBidder, 1), ('SellerClaimsDeposit, 2)]
