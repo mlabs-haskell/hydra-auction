@@ -1,7 +1,7 @@
 {-# LANGUAGE RecordWildCards #-}
 
 module CliActions (
-  Command (..),
+  CliAction (..),
   handleCliAction,
   seedAmount,
 ) where
@@ -50,7 +50,7 @@ import HydraAuction.Tx.TestNFT (mintOneTestNFT)
 seedAmount :: Lovelace
 seedAmount = 100_000_000
 
-data Command
+data CliAction
   = RunCardanoNode
   | ShowScriptUtxos !AuctionName !AuctionScript
   | ShowUtxos !Actor
@@ -61,7 +61,7 @@ data Command
   | BidderBuys !AuctionName !Actor
   | SellerReclaims !AuctionName
 
-handleCliAction :: Command -> Runner ()
+handleCliAction :: CliAction -> Runner ()
 handleCliAction userAction = do
   MkExecutionContext {..} <- ask
   case userAction of

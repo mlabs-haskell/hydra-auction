@@ -1,7 +1,6 @@
 module CliParsers (
   getOptions,
   Options (..),
-  Command (..),
 ) where
 
 import Prelude
@@ -30,7 +29,7 @@ import HydraAuction.OnChain (AuctionScript (..))
 
 import Cardano.Api (TxIn)
 
-import CliActions (Command (..), seedAmount)
+import CliActions (CliAction (..), seedAmount)
 import CliConfig (AuctionName (..))
 import ParseTxIn (parseTxIn)
 
@@ -44,8 +43,8 @@ getOptions =
           <> header "FIXME: add help message"
       )
 
-commandParser :: Parser Command
-commandParser =
+cliActionParser :: Parser CliAction
+cliActionParser =
   subparser
     ( command "run-cardano-node" (info (pure RunCardanoNode) (progDesc "Starts a cardano node instance in the background"))
         <> command "show-script-utxos" (info (ShowScriptUtxos <$> auctionName <*> script) (progDesc "Show utxos at a given script. Requires the seller and auction lot for the given script"))
@@ -110,7 +109,7 @@ verboseParser :: Parser Bool
 verboseParser = switch (long "verbose" <> short 'v')
 
 data Options = MkOptions
-  { cmd :: Command
+  { cmd :: CliAction
   , verbosity :: Verbosity
   }
 
