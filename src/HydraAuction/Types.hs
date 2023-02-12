@@ -85,11 +85,11 @@ data AuctionTerms = AuctionTerms
   { -- | What is being sold at the auction?
     auctionLot :: !AssetClass
   , -- | Who is selling it?
-    seller :: !PubKeyHash
+    seller :: PubKeyHash
   , -- | Which Hydra Head is authorized to host the bidding for this auction?
-    hydraHeadId :: !CurrencySymbol
+    hydraHeadId :: CurrencySymbol
   , -- | Who is running the Hydra Head where bidding occurs?
-    delegates :: ![PubKeyHash]
+    delegates :: [PubKeyHash]
   , biddingStart :: !POSIXTime
   , biddingEnd :: !POSIXTime
   , voucherExpiry :: !POSIXTime
@@ -153,7 +153,7 @@ instance Eq StandingBidState where
 
 data BidTerms = BidTerms
   { -- | Who submitted the bid?
-    bidBidder :: !PubKeyHash
+    bidBidder :: PubKeyHash
   , -- | Which amount did the bidder set to buy the auction lot?
     bidAmount :: !Natural
   }
@@ -170,7 +170,7 @@ PlutusTx.makeLift ''BidTerms
 
 data AuctionState
   = Announced
-  | BiddingStarted !ApprovedBiddersHash
+  | BiddingStarted ApprovedBiddersHash
   deriving stock (Generic, Prelude.Show, Prelude.Eq)
 
 {-# INLINEABLE isStarted #-}
@@ -207,7 +207,7 @@ PlutusTx.makeLift ''AuctionState
 
 data AuctionEscrowDatum = AuctionEscrowDatum
   { auctionState :: !AuctionState
-  , auctionVoucherCS :: !VoucherCS
+  , auctionVoucherCS :: VoucherCS
   }
   deriving stock (Generic, Prelude.Show, Prelude.Eq)
 
@@ -220,7 +220,7 @@ PlutusTx.makeLift ''AuctionEscrowDatum
 
 data StandingBidDatum = StandingBidDatum
   { standingBidState :: !StandingBidState
-  , standingBidVoucherCS :: !VoucherCS
+  , standingBidVoucherCS :: VoucherCS
   }
   deriving stock (Generic, Prelude.Show, Prelude.Eq)
 
@@ -242,9 +242,7 @@ instance Eq BidDepositDatum where
   {-# INLINEABLE (==) #-}
   (BidDepositDatum x y) == (BidDepositDatum x' y') = (x == x') && (y == y')
 
-deriving newtype instance (UnsafeFromData BidDepositDatum)
-deriving newtype instance (ToData BidDepositDatum)
-deriving newtype instance (FromData BidDepositDatum)
+PlutusTx.makeIsDataIndexed ''BidDepositDatum [('BidDepositDatum, 0)]
 PlutusTx.makeLift ''BidDepositDatum
 
 type AuctionFeeEscrowDatum = ()
