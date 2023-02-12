@@ -2,7 +2,6 @@ module EndToEnd.Ledger (testSuite) where
 
 import Prelude
 
-import Control.Concurrent (threadDelay)
 import Data.Maybe (fromJust)
 import Hydra.Cardano.Api (mkTxIn)
 import Hydra.Cluster.Fixture (Actor (..))
@@ -11,7 +10,7 @@ import Hydra.Prelude (MonadIO (liftIO))
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (Assertion, testCase)
 
-import EndToEnd.Utils (mkAssertion)
+import EndToEnd.Utils (mkAssertion, waitUntil)
 import HydraAuction.Runner (
   initWallet,
  )
@@ -37,7 +36,7 @@ import HydraAuction.Tx.TermsConfig (
   constructTermsDynamic,
  )
 import HydraAuction.Tx.TestNFT (mintOneTestNFT)
-import HydraAuction.Types (intToNatural)
+import HydraAuction.Types (AuctionTerms (..), intToNatural)
 
 testSuite :: TestTree
 testSuite =
@@ -74,10 +73,12 @@ successfulBidTest = mkAssertion $ do
     configToAuctionTerms config dynamicState
 
   announceAuction seller terms
+
+  liftIO $ waitUntil $ biddingStart terms
   startBidding seller terms
   newBid buyer terms (fromJust $ intToNatural 16_000_000)
 
-  liftIO $ threadDelay $ 1 * 3_000_000
+  liftIO $ waitUntil $ biddingEnd terms
   bidderBuys buyer terms
 
 sellerReclaimsTest :: Assertion
@@ -107,7 +108,9 @@ sellerReclaimsTest = mkAssertion $ do
     configToAuctionTerms config dynamicState
 
   announceAuction seller terms
+
+  liftIO $ waitUntil $ biddingStart terms
   startBidding seller terms
 
-  liftIO $ threadDelay $ 2 * 1_000_000
+  liftIO $ waitUntil $ voucherExpiry terms
   sellerReclaims seller terms
