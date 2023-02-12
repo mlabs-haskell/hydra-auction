@@ -7,10 +7,8 @@ module HydraAuction.Tx.TermsConfig (
   configToAuctionTerms,
 ) where
 
-import Hydra.Prelude (liftIO)
 import Prelude
 
-import Data.Time.Clock.POSIX qualified as POSIXTime
 import GHC.Generics (Generic)
 
 import Data.Aeson (FromJSON, ToJSON)
@@ -24,6 +22,7 @@ import Plutus.V2.Ledger.Contexts (TxOutRef)
 
 import HydraAuction.OnChain.TestNFT
 import HydraAuction.PlutusOrphans ()
+import HydraAuction.Tx.Common (currentTimeSeconds)
 import HydraAuction.Types (AuctionTerms (..), Natural)
 
 data AuctionTermsConfig = AuctionTermsConfig
@@ -62,7 +61,7 @@ getActorVkHash actor = do
 
 constructTermsDynamic :: Actor -> TxIn -> IO AuctionTermsDynamic
 constructTermsDynamic sellerActor utxoRef = do
-  currentTimeSeconds <- liftIO $ round `fmap` POSIXTime.getPOSIXTime
+  currentTimeSeconds' <- currentTimeSeconds
   sellerVkHash <- getActorVkHash sellerActor
   return $
     AuctionTermsDynamic
@@ -71,7 +70,7 @@ constructTermsDynamic sellerActor utxoRef = do
       , -- FIXME
         configDelegates = [sellerVkHash]
       , configUtxoRef = toPlutusTxOutRef utxoRef
-      , configAnnouncementTime = POSIXTime $ currentTimeSeconds * 1000
+      , configAnnouncementTime = POSIXTime $ currentTimeSeconds' * 1000
       }
 
 configToAuctionTerms ::

@@ -1,7 +1,9 @@
-module EndToEnd.Utils (mkAssertion) where
+module EndToEnd.Utils (mkAssertion, waitUntil) where
+
+import Hydra.Prelude
 
 import Hydra.Logging (showLogsOnFailure)
-import Hydra.Prelude (IO, MonadReader (local), ($))
+import Plutus.V1.Ledger.Time (POSIXTime (..))
 import Test.Hydra.Prelude (failAfter)
 import Test.Tasty.HUnit (Assertion)
 
@@ -10,6 +12,7 @@ import HydraAuction.Runner (
   Runner,
   executeTestRunner,
  )
+import HydraAuction.Tx.Common (currentTimeSeconds)
 
 mkAssertion :: Runner () -> Assertion
 mkAssertion runner =
@@ -20,3 +23,13 @@ mkAssertion runner =
     timeoutTest :: Runner () -> IO ()
     timeoutTest runner' =
       failAfter 60 $ executeTestRunner runner'
+
+waitUntil :: POSIXTime -> IO ()
+waitUntil time =
+  whenM (not <$> alreadyHappened) $ do
+    threadDelay 1
+    waitUntil time
+  where
+    alreadyHappened = do
+      currentTimeSeconds' <- currentTimeSeconds
+      return $ getPOSIXTime time <= currentTimeSeconds' * 1000

@@ -15,6 +15,7 @@ module HydraAuction.Tx.Common (
   tokenToAsset,
   mintedTokens,
   scriptUtxos,
+  currentTimeSeconds,
 ) where
 
 import Hydra.Prelude (ask, liftIO, toList, void)
@@ -31,6 +32,7 @@ import Data.List (sort)
 import Data.Map qualified as Map
 import Data.Time (secondsToNominalDiffTime)
 import Data.Time.Clock.POSIX (posixSecondsToUTCTime)
+import Data.Time.Clock.POSIX qualified as POSIXTime
 import Data.Tuple.Extra (first)
 import Hydra.Cardano.Api hiding (txOutValue)
 import Hydra.Chain.Direct.TimeHandle (queryTimeHandle, slotFromUTCTime)
@@ -60,6 +62,9 @@ networkIdToNetwork Mainnet = Cardano.Mainnet
 
 minLovelace :: Lovelace
 minLovelace = 2_000_000
+
+currentTimeSeconds :: IO Integer
+currentTimeSeconds = round `fmap` POSIXTime.getPOSIXTime
 
 tokenToAsset :: TokenName -> AssetName
 tokenToAsset (TokenName t) = AssetName $ fromBuiltin t
