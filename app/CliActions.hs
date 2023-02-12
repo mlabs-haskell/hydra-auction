@@ -22,31 +22,33 @@ import CliConfig (
   readCLIEnhancedAuctionTerms,
   writeAuctionTermsDynamic,
  )
-import Hydra.Logging (Verbosity (Quiet), contramap)
+import Hydra.Logging (contramap)
 
 import Control.Monad (forM_, void)
 import Hydra.Cardano.Api (Lovelace)
 import Hydra.Cluster.Fixture (Actor (..))
+import Hydra.Cluster.Util (keysFor)
 import HydraAuction.OnChain (AuctionScript)
 import HydraAuction.Runner (
   ExecutionContext (MkExecutionContext, node, tracer, verbose),
   Runner,
   initWallet,
  )
-import HydraNode (
-  EndToEndLog (
-    FromCardanoNode
-  ),
- )
-
-import HydraAuction.Tx.Common (actorTipUtxo, scriptUtxos)
+import HydraAuction.Tx.Common
 import HydraAuction.Tx.Escrow (
   announceAuction,
   bidderBuys,
   sellerReclaims,
   startBidding,
  )
-import HydraAuction.Tx.TestNFT (mintOneTestNFT)
+import HydraAuction.Tx.StandingBid
+import HydraAuction.Tx.TestNFT
+import HydraAuction.Types (Natural)
+import HydraNode (
+  EndToEndLog (
+    FromCardanoNode
+  ),
+ )
 
 seedAmount :: Lovelace
 seedAmount = 100_000_000
@@ -59,6 +61,7 @@ data CliAction
   | MintTestNFT !Actor
   | AuctionAnounce !AuctionName !Actor !TxIn
   | StartBidding !AuctionName
+  | NewBid !AuctionName !Actor !Natural
   | BidderBuys !AuctionName !Actor
   | SellerReclaims !AuctionName
 
@@ -102,6 +105,10 @@ handleCliAction userAction = do
       Just (CLIEnhancedAuctionTerms {terms, sellerActor}) <-
         liftIO $ readCLIEnhancedAuctionTerms auctionName
       startBidding sellerActor terms
+    NewBid auctionName bidder bidAmount -> do
+      -- FIXME: proper error printing
+      Just terms <- liftIO $ readAuctionTerms auctionName
+      newBid bidder terms bidAmount
     BidderBuys auctionName actor -> do
       -- FIXME: proper error printing
       Just terms <- liftIO $ readAuctionTerms auctionName
