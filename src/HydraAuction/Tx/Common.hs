@@ -45,7 +45,7 @@ import Plutus.V1.Ledger.Value (
   symbols,
  )
 import Plutus.V2.Ledger.Api (
-  POSIXTime(..),
+  POSIXTime (..),
   ToData,
   fromBuiltin,
   getValidator,
@@ -161,7 +161,6 @@ toSlotNo (RunningNode {networkId, nodeSocket}) ptime = do
       ndtime = secondsToNominalDiffTime $ fromInteger timeInSeconds
       utcTime = posixSecondsToUTCTime ndtime
   either (error . show) return $ slotFromUTCTime timeHandle utcTime
-
 
 autoCreateTx :: AutoCreateParams -> Runner Tx
 autoCreateTx (AutoCreateParams {..}) = do

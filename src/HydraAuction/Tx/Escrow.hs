@@ -23,15 +23,15 @@ import HydraAuction.Runner
 import HydraAuction.Tx.Common
 import HydraAuction.Types
 import Plutus.V1.Ledger.Address (pubKeyHashAddress)
-import Plutus.V2.Ledger.Api (
-  fromData,
-  getMintingPolicy,
-  getValidator,
- )
 import Plutus.V1.Ledger.Value (
   CurrencySymbol (..),
   assetClassValue,
   unAssetClass,
+ )
+import Plutus.V2.Ledger.Api (
+  fromData,
+  getMintingPolicy,
+  getValidator,
  )
 
 announceAuction :: Actor -> AuctionTerms -> Runner ()
