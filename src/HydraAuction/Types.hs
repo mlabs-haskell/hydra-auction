@@ -18,6 +18,7 @@ module HydraAuction.Types (
   StandingBidRedeemer (..),
   AuctionFeeEscrowDatum,
   VoucherForgingRedeemer (..),
+  calculateTotalFee,
 ) where
 
 import Prelude qualified
@@ -93,13 +94,14 @@ data AuctionTerms = AuctionTerms
     hydraHeadId :: !CurrencySymbol
   , -- | Who is running the Hydra Head where bidding occurs?
     delegates :: ![PubKeyHash]
-  , biddingStart :: !POSIXTime
+  , -- | Auction lifecycle times.
+    biddingStart :: !POSIXTime
   , biddingEnd :: !POSIXTime
   , voucherExpiry :: !POSIXTime
-  , -- | Auction lifecycle times.
-    cleanup :: !POSIXTime
-  , -- | Total auction fee that will be evenly split among delegates.
-    auctionFee :: !Natural
+  , cleanup :: !POSIXTime
+  , -- | Each delegate will receive this fee portion from the proceeds of
+    -- the auction, when the auction lot is purchased or reclaimed.
+    auctionFeePerDelegate :: !Natural
   , -- | The auction lot cannot be sold for less than this bid price.
     startingBid :: !Natural
   , -- | A new bid can only supersede the standing bid if it is larger
@@ -124,10 +126,14 @@ instance Eq AuctionTerms where
       && (biddingEnd x == biddingEnd y)
       && (voucherExpiry x == voucherExpiry y)
       && (cleanup x == cleanup y)
-      && (auctionFee x == auctionFee y)
+      && (auctionFeePerDelegate x == auctionFeePerDelegate y)
       && (startingBid x == startingBid y)
       && (minimumBidIncrement x == minimumBidIncrement y)
       && (utxoNonce x == utxoNonce y)
+
+calculateTotalFee :: AuctionTerms -> Integer
+calculateTotalFee terms =
+  naturalToInt (auctionFeePerDelegate terms) * length (delegates terms)
 
 newtype ApprovedBidders = ApprovedBidders
   { -- | Which bidders are approved to submit bids?
@@ -187,7 +193,7 @@ instance Eq AuctionState where
   (BiddingStarted x) == (BiddingStarted y) = x == y
   _ == _ = False
 
--- | FIXME: Bytetring will be changed to actuall hash
+-- | FIXME: Bytetring will be changed to actual hash
 newtype ApprovedBiddersHash = ApprovedBiddersHash Plutus.BuiltinByteString
   deriving stock (Generic, Prelude.Show, Prelude.Eq)
 {- ^ This hash is calculated from the `ApprovedBidders` value that the seller
@@ -249,7 +255,6 @@ PlutusTx.makeIsDataIndexed ''BidDepositDatum [('BidDepositDatum, 0)]
 PlutusTx.makeLift ''BidDepositDatum
 
 type AuctionFeeEscrowDatum = ()
--- ^ This datum is empty because the auction terms have all the required info.
 
 -- Redeemers
 

@@ -191,7 +191,7 @@ bidderBuys bidder terms = do
         where
           value =
             lovelaceToValue $
-              Lovelace $ bidAmount' - naturalToInt (auctionFee terms)
+              Lovelace $ bidAmount' - calculateTotalFee terms
           bidAmount' = case UTxO.pairs standingBidUtxo of
             [(_, out)] -> case txOutDatum out of
               TxOutDatumInline scriptData ->
@@ -219,7 +219,7 @@ bidderBuys bidder terms = do
       txOutFeeEscrow =
         TxOut feeEscrowAddress value TxOutDatumNone ReferenceScriptNone
         where
-          value = lovelaceToValue $ Lovelace $ naturalToInt $ auctionFee terms
+          value = lovelaceToValue $ Lovelace $ calculateTotalFee terms
           feeEscrowAddress =
             mkScriptAddress @PlutusScriptV2 networkId' $
               fromPlutusScript @PlutusScriptV2 $
@@ -305,7 +305,7 @@ sellerReclaims seller terms = do
           TxOutDatumNone
           ReferenceScriptNone
         where
-          value = lovelaceToValue $ Lovelace $ naturalToInt $ auctionFee terms
+          value = lovelaceToValue $ Lovelace $ calculateTotalFee terms
           feeEscrowAddress =
             mkScriptAddress @PlutusScriptV2 networkId' $
               fromPlutusScript @PlutusScriptV2 $

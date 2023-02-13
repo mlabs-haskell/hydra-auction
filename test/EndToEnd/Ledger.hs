@@ -24,7 +24,7 @@ import HydraAuction.Tx.StandingBid (newBid)
 import HydraAuction.Tx.TermsConfig (
   AuctionTermsConfig (
     AuctionTermsConfig,
-    configAuctionFee,
+    configAuctionFeePerDelegate,
     configDiffBiddingEnd,
     configDiffBiddingStart,
     configDiffCleanup,
@@ -60,7 +60,7 @@ successfulBidTest = mkAssertion $ do
           , configDiffBiddingEnd = 4
           , configDiffVoucherExpiry = 8
           , configDiffCleanup = 10
-          , configAuctionFee = fromJust $ intToNatural 4_000_000
+          , configAuctionFeePerDelegate = fromJust $ intToNatural 4_000_000
           , configStartingBid = fromJust $ intToNatural 8_000_000
           , configMinimumBidIncrement = fromJust $ intToNatural 8_000_000
           }
@@ -95,7 +95,7 @@ sellerReclaimsTest = mkAssertion $ do
           , configDiffBiddingEnd = 3
           , configDiffVoucherExpiry = 4
           , configDiffCleanup = 5
-          , configAuctionFee = fromJust $ intToNatural 4_000_000
+          , configAuctionFeePerDelegate = fromJust $ intToNatural 4_000_000
           , configStartingBid = fromJust $ intToNatural 8_000_000
           , configMinimumBidIncrement = fromJust $ intToNatural 8_000_000
           }

@@ -22,10 +22,9 @@ validAuctionTerms AuctionTerms {..} =
     && traceIfFalse "VAT3" (biddingEnd < voucherExpiry)
     && traceIfFalse "VAT4" (voucherExpiry < cleanup)
     && traceIfFalse "VAT5" (naturalToInt minimumBidIncrement > 0)
-    && traceIfFalse "VAT6" (startingBid > auctionFee)
-    && traceIfFalse "VAT7" (naturalToInt auctionFee > length delegates * minAuctionFee)
+    && traceIfFalse "VAT6" (naturalToInt startingBid > naturalToInt auctionFeePerDelegate * length delegates)
+    && traceIfFalse "VAT7" (naturalToInt auctionFeePerDelegate > minAuctionFee)
     && traceIfFalse "VAT8" (length delegates > 0)
-    && traceIfFalse "VAT9" (modulo (naturalToInt auctionFee) (length delegates) == 0)
 
 {-# INLINEABLE decodeOutputDatum #-}
 decodeOutputDatum :: PlutusTx.FromData a => TxInfo -> TxOut -> Maybe a
