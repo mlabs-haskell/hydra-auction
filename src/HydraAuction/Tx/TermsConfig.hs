@@ -31,7 +31,7 @@ data AuctionTermsConfig = AuctionTermsConfig
   , configDiffBiddingEnd :: !Integer
   , configDiffVoucherExpiry :: !Integer
   , configDiffCleanup :: !Integer
-  , configAuctionFee :: !Natural
+  , configAuctionFeePerDelegate :: !Natural
   , configStartingBid :: !Natural
   , configMinimumBidIncrement :: !Natural
   }
@@ -91,7 +91,7 @@ configToAuctionTerms AuctionTermsConfig {..} AuctionTermsDynamic {..} = do
       , biddingEnd = toAbsTime configDiffBiddingEnd
       , voucherExpiry = toAbsTime configDiffVoucherExpiry
       , cleanup = toAbsTime configDiffCleanup
-      , auctionFee = configAuctionFee
+      , auctionFeePerDelegate = configAuctionFeePerDelegate
       , startingBid = configStartingBid
       , minimumBidIncrement = configMinimumBidIncrement
       , utxoNonce = configUtxoNonce

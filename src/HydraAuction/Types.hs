@@ -18,6 +18,7 @@ module HydraAuction.Types (
   StandingBidRedeemer (..),
   AuctionFeeEscrowDatum,
   VoucherForgingRedeemer (..),
+  calculateTotalFee,
 ) where
 
 import Prelude qualified
@@ -98,8 +99,9 @@ data AuctionTerms = AuctionTerms
   , voucherExpiry :: !POSIXTime
   , -- | Auction lifecycle times.
     cleanup :: !POSIXTime
-  , -- | Total auction fee that will be evenly split among delegates.
-    auctionFee :: !Natural
+  , -- | Each delegate will receive this fee portion from the proceeds of
+    -- the auction, when the auction lot is purchased or reclaimed.
+    auctionFeePerDelegate :: !Natural
   , -- | The auction lot cannot be sold for less than this bid price.
     startingBid :: !Natural
   , -- | A new bid can only supersede the standing bid if it is larger
@@ -124,10 +126,14 @@ instance Eq AuctionTerms where
       && (biddingEnd x == biddingEnd y)
       && (voucherExpiry x == voucherExpiry y)
       && (cleanup x == cleanup y)
-      && (auctionFee x == auctionFee y)
+      && (auctionFeePerDelegate x == auctionFeePerDelegate y)
       && (startingBid x == startingBid y)
       && (minimumBidIncrement x == minimumBidIncrement y)
       && (utxoNonce x == utxoNonce y)
+
+calculateTotalFee :: AuctionTerms -> Integer
+calculateTotalFee terms =
+  naturalToInt (auctionFeePerDelegate terms) * length (delegates terms)
 
 newtype ApprovedBidders = ApprovedBidders
   { -- | Which bidders are approved to submit bids?

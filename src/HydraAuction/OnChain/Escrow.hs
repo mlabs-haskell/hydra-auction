@@ -114,11 +114,11 @@ mkEscrowValidator (StandingBidAddress standingBidAddressLocal, FeeEscrowAddress 
                     && checkSingleOutputWithAmount
                       (pubKeyHashAddress $ seller terms)
                       "Seller"
-                      (naturalToInt (bidAmount bidTerms) - naturalToInt (auctionFee terms))
+                      (naturalToInt (bidAmount bidTerms) - totalFeeToPay)
                     && checkSingleOutputWithAmount
                       feeEscrowAddressLocal
                       "Fee escrow"
-                      (naturalToInt $ auctionFee terms)
+                      totalFeeToPay
               Nothing -> traceError "Incorrect encoding for standing bid datum"
         _ -> traceError "Wrong number of standing bid inputs"
     checkSellerReclaimsOutputs =
@@ -133,10 +133,11 @@ mkEscrowValidator (StandingBidAddress standingBidAddressLocal, FeeEscrowAddress 
         && checkSingleOutputWithAmount
           feeEscrowAddressLocal
           "Fee escrow"
-          (naturalToInt $ auctionFee terms)
+          totalFeeToPay
     info :: TxInfo
     info = scriptContextTxInfo context
     outputs = txInfoOutputs info
     sellerAddress = pubKeyHashAddress $ seller terms
+    totalFeeToPay = calculateTotalFee terms
     escrowInputsOuts :: [TxOut]
     escrowInputsOuts = byAddress (scriptHashAddress $ ownHash context) $ txInInfoResolved <$> txInfoInputs info
