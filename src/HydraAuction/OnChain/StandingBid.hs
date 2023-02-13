@@ -42,21 +42,19 @@ mkStandingBidValidator terms datum redeemer context =
             (contains (interval 0 (biddingEnd terms)) (txInfoValidRange info))
       Cleanup ->
         -- XXX: interval is checked on burning
-        traceIfFalse "Not exactly one voucher was burt during transaction" $
-          let cs = unVoucherCS $ standingBidVoucherCS datum
-              voucherAC = assetClass cs (stateTokenKindToTokenName Voucher)
-           in assetClassValueOf (txInfoMint info) voucherAC == -1
-                && ( case txInfoOutputs info of
-                      [out] ->
-                        traceIfFalse
-                          "Output is not to seller"
-                          (txOutAddress out == pubKeyHashAddress (seller terms))
-                          && traceIfFalse
-                            "Output value not min ADA"
-                            ( lovelaceOfOutput out == minAuctionFee
-                            )
-                      _ -> traceError "Not exactly one ouput"
-                   )
+        traceIfFalse
+          "Not exactly one voucher was burt during transaction"
+          ( let cs = unVoucherCS $ standingBidVoucherCS datum
+                voucherAC = assetClass cs (stateTokenKindToTokenName Voucher)
+             in assetClassValueOf (txInfoMint info) voucherAC == -1
+          )
+          && ( case txInfoOutputs info of
+                [out] ->
+                  traceIfFalse
+                    "Output is not to seller"
+                    (txOutAddress out == pubKeyHashAddress (seller terms))
+                _ -> traceError "Not exactly one ouput"
+             )
     _ : _ -> traceError "More than one standing bid input"
     [] -> traceError "Impossible happened: no inputs for staning bid validator"
   where

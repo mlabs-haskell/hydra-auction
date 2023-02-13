@@ -32,8 +32,6 @@ mkPolicy (EscrowAddress escrowAddressLocal, terms) redeemer ctx =
         && exactlyOneOutputToEscrow
     BurnVoucher ->
       traceIfFalse "Not exactly one Voucher burned" (txInfoMint info == voucherOnlyValue (-1))
-        && traceIfFalse "Not exactly one input" (length (txInfoInputs info) == 1)
-        && traceIfFalse "Not exactly none outputs" (length (txInfoInputs info) == 0)
         && traceIfFalse
           "Valid range not after voucher expiry"
           (contains (from (voucherExpiry terms)) (txInfoValidRange info))
