@@ -39,7 +39,8 @@ but does not buy the auction lot by the voucher expiry time.
 - **Auction fees**: fees paid to the delegates as compensation for
 hosting the bidding process of the auction on L2.
 These fees must be paid when the winning bidder buys
-or the seller reclaims the auction lot.
+or the seller reclaims the auction lot,
+and they must be distributed equally to the delegates.
 If the winning bidder buys the auction lot,
 then the auction fees are deducted from his payment to the seller.
 
@@ -150,8 +151,9 @@ data AuctionTerms = AuctionTerms
   -- no longer be able to buy the auction lot?
   , cleanup :: POSIXTime
   -- ^ After which time can the remaining auction utxos be cleaned up?
-  , auctionFee :: Natural
-  -- ^ Total auction fee that will be evenly split among delegates.
+  , auctionFeePerDelegate :: Natural
+  -- ^ Each delegate will receive this fee portion from the proceeds of
+  -- the auction, when the auction lot is purchased or reclaimed.
   , startingBid :: Natural
   -- ^ The auction lot cannot be sold for less than this bid price.
   , minimumBidIncrement :: Natural
@@ -312,34 +314,36 @@ The auction terms must satisfy the following conditions:
 ```haskell
 validAuctionTerms :: AuctionTerms -> UtxoRef -> POSIXTime -> Bool
 validAuctionTerms AuctionTerms{..} utxoRef announcementTxValidityUpperBound =
-  utxoNonce == utxoRef &&
-  announcementTxValidityUpperBound < biddingStart &&
-  -- ^ bidding starts after the announcement transaction
+  (biddingStart `after` announcementTxValidityUpperBound) &&
+  -- the announcement transaction must occur before the bidding start time,
+  -- where `announcementTxScriptContext` is set by the caller as follows:
+  --   `txInfoValidRange (scriptContextTxInfo announcementTxScriptContext)`
   biddingStart < biddingEnd &&
-  -- ^ bidding ends after it starts
+  -- bidding ends after it starts
   biddingEnd < voucherExpiry &&
-  -- ^ voucher expires after bidding ends, so that the winning bidder
+  -- voucher expires after bidding ends, so that the winning bidder
   -- can buy the auction lot.
   voucherExpiry < cleanup &&
-  -- ^ cleanup happens after voucher expiry, so that the seller can claim
+  -- cleanup happens after voucher expiry, so that the seller can claim
   -- the winning bidder's deposit if the auction lot is not sold
   minimumBidIncrement > 0 &&
-  -- ^ new bids must be larger than the standing bid
-  startingBid > auctionFee &&
-  -- ^ the auction fee must be covered by the starting bid
-  auctionFee > length delegates * 2 &&
-  -- ^ the auction fee must contain the min 2 ADA for the utxos that
-  -- will be sent to the delegates during fee distribution
+  -- new bids must be larger than the standing bid
+  auctionFeePerDelegate > 2_000_000 &&
+  -- the auction fee for each delegate must contain the min 2 ADA for the utxos
+  -- that will be sent to the delegates during fee distribution.
+  startingBid > auctionFeePerDelegate * length delegates &&
+  -- the auction fees for all delegates must be covered by the starting bid
   length delegates > 0 &&
-  -- ^ there must be at least one delegate
-  mod auctionFee (length delegates) == 0
-  -- ^ the auction fee must be splittable evenly among the delegates
+  -- there must be at least one delegate
+  utxoNonce == utxoRef
+  -- the `utxoRef` that the seller consumed in the announcement transaction
+  -- corresponds to the `utxoNonce` set in the auction terms
 ```
 
 The seller must ensure that the `delegates` defined in the auction terms
 are the same as the Hydra Head participants in the `hydraHeadId` Hydra Head.
 Otherwise, the Hydra Head participants may refuse to host the auction bidding
-because the `auctionFee` would not go to the Hydra Head participants.
+because the auction fees would not go to the Hydra Head participants.
 Unfortunately, this correspondence between delegates and Hydra Head participants
 cannot be verified by on-chain logic in the auction announcement transaction.
 
@@ -420,7 +424,7 @@ Under the **seller reclaims** redeemer, we enforce that:
 - There is one output sent to the seller,
 containing the auction lot.
 - There is one output sent to the fee escrow validator,
-containing the auction fee amount.
+containing the total auction fees that will be distributed to the delegates.
 - The transaction validity interval starts after the voucher expiry time.
 - No tokens are minted or burned.
 
@@ -445,10 +449,10 @@ containing the voucher mentioned in the auction escrow datum
 and defining the standing bid state.
 - There is one output sent to a buyer, containing the auction lot.
 - There is one output sent to the seller,
-containing the standing bid amount minus the auction fee amount,
+containing the standing bid amount minus the total auction fees,
 plus the ADA amount contained in the auction escrow and standing bid utxos.
 - There is one output sent to the fee escrow validator,
-containing the auction fee amount.
+containing the total auction fees that will be distributed to the delegate.
 - The conditions in `validBuyer` are satisfied when applied to
 the auction terms, auction state, standing bid state, and buyer.
 - The transaction validity interval starts after the bidding end time
@@ -700,15 +704,16 @@ flowchart LR
 
 ### Fee escrow validator
 
-This validator is responsible for
-splitting the auction fee evenly among the delegates.
+This validator is responsible distributing the total auction fees
+evenly to the delegates, after deducting the transaction fee.
 
 Under the **distribute fees** redeemer, we enforce that:
 
 - There is one input spent from the fee escrow validator,
 defining the delegates.
-- There is one output per delegate
-containing that delegate’s portion of the evenly split auction fees.
+- There is one output per delegate.
+The conditions in `validFeeDistribution` are satisfied
+when applied to these outputs and the transaction fee.
 - No tokens are minted or burned.
 
 ```mermaid
@@ -720,6 +725,26 @@ flowchart LR
 
   classDef default font-size:90%, overflow:visible;
   classDef reference stroke-dasharray: 5 5;
+```
+The fee distribution to delegates must satisfy the following conditions:
+```haskell
+validFeeDistribution :: AuctionTerms -> [TxOut] -> Value -> Bool
+validFeeDistribution AuctionTerms{..} outputsToDelegates txFee =
+    allAdaDistributed
+      && adaDistributedEvenly
+  where
+    -- Each delegate received the `auctionFeePerDelegate`,
+    -- after deducting the transaction fees from the total.
+    allAdaDistributed = actualTotalAda == expectedTotalAda
+    actualTotalAda = sum actualAdaValues + adaValueOf txFee
+    expectedTotalAda = length delegates * auctionFeePerDelegate
+
+    -- The amount received by any delegate differs by at most one lovelace
+    -- from what any other delegate received.
+    adaDistributedEvenly = 1 > maximum actualAdaValues - minimum actualAdaValues
+
+    adaValueOf = valueOf adaSymbol adaToken
+    actualAdaValues = adaValueOf . txOutValue <$> outputsToDelegates
 ```
 
 To keep things simple in this design, we require
