@@ -27,7 +27,6 @@ import Hydra.Logging (contramap)
 import Control.Monad (forM_, void)
 import Hydra.Cardano.Api (Lovelace)
 import Hydra.Cluster.Fixture (Actor (..))
-import Hydra.Cluster.Util (keysFor)
 import HydraAuction.OnChain (AuctionScript)
 import HydraAuction.Runner (
   ExecutionContext (MkExecutionContext, node, tracer, verbose),
