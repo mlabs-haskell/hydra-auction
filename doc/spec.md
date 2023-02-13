@@ -277,16 +277,17 @@ It is the starting point in the lifecycle of every auction.
 Under the **mint voucher** redeemer, we enforce that:
 
 - There is one input spent by the seller that contains the auction lot.
+This input's `UtxoRef` is the same as
+the `utxoNonce` defined in the auction terms.
 - This is one voucher NFT minted,
 with this minting policy’s own currency symbol.
 - There is one output sent to the auction escrow validator,
-containing the minted tokens and the auction lot defined in the auction terms.
+containing the minted tokens and the auction lot.
 The auction escrow datum is initialized using `initAuctionEscrowDatum`
 with the auction’s voucher currency symbol.
 - The conditions in `validAuctionTerms` are satisfied
-when applied to the auction terms,
-the `UtxoRef` of the input that provided the auction lot to the transaction,
-and the transaction’s validity range upper bound.
+when applied to the auction terms.
+- The transaction validity interval ends before the bidding start time.
 
 ```mermaid
 flowchart LR
@@ -312,12 +313,8 @@ initAuctionEscrowDatum voucherCS = AuctionEscrowDatum
 The auction terms must satisfy the following conditions:
 
 ```haskell
-validAuctionTerms :: AuctionTerms -> UtxoRef -> POSIXTime -> Bool
-validAuctionTerms AuctionTerms{..} utxoRef announcementTxValidityUpperBound =
-  (biddingStart `after` announcementTxValidityUpperBound) &&
-  -- the announcement transaction must occur before the bidding start time,
-  -- where `announcementTxScriptContext` is set by the caller as follows:
-  --   `txInfoValidRange (scriptContextTxInfo announcementTxScriptContext)`
+validAuctionTerms :: AuctionTerms -> Bool
+validAuctionTerms AuctionTerms{..} =
   biddingStart < biddingEnd &&
   -- bidding ends after it starts
   biddingEnd < voucherExpiry &&
@@ -335,9 +332,6 @@ validAuctionTerms AuctionTerms{..} utxoRef announcementTxValidityUpperBound =
   -- the auction fees for all delegates must be covered by the starting bid
   length delegates > 0 &&
   -- there must be at least one delegate
-  utxoNonce == utxoRef
-  -- the `utxoRef` that the seller consumed in the announcement transaction
-  -- corresponds to the `utxoNonce` set in the auction terms
 ```
 
 The seller must ensure that the `delegates` defined in the auction terms
@@ -726,7 +720,9 @@ flowchart LR
   classDef default font-size:90%, overflow:visible;
   classDef reference stroke-dasharray: 5 5;
 ```
+
 The fee distribution to delegates must satisfy the following conditions:
+
 ```haskell
 validFeeDistribution :: AuctionTerms -> [TxOut] -> Value -> Bool
 validFeeDistribution AuctionTerms{..} outputsToDelegates txFee =
