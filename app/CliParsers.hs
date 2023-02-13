@@ -10,19 +10,23 @@ import Hydra.Cluster.Fixture (Actor (..))
 import Options.Applicative (
   Parser,
   command,
-  execParser,
+  customExecParser,
   fullDesc,
-  header,
   help,
+  helper,
+  hsubparser,
   info,
   long,
   metavar,
   option,
+  prefs,
   progDesc,
   short,
+  showHelpOnEmpty,
+  showHelpOnError,
   strOption,
-  subparser,
   switch,
+  (<**>),
  )
 
 import HydraAuction.OnChain (AuctionScript (..))
@@ -35,18 +39,17 @@ import CliConfig (AuctionName (..))
 import ParseTxIn (parseTxIn)
 
 getCliInput :: IO CliInput
-getCliInput =
-  execParser $
-    info
-      cliInputParser
-      ( fullDesc
-          <> progDesc "FIXME: add help message"
-          <> header "FIXME: add help message"
-      )
+getCliInput = customExecParser preferences options
+  where
+    options =
+      info
+        (cliInputParser <**> helper)
+        fullDesc
+    preferences = prefs (showHelpOnEmpty <> showHelpOnError)
 
 cliActionParser :: Parser CliAction
 cliActionParser =
-  subparser
+  hsubparser
     ( command "run-cardano-node" (info (pure RunCardanoNode) (progDesc "Starts a cardano node instance in the background"))
         <> command "show-script-utxos" (info (ShowScriptUtxos <$> auctionName <*> script) (progDesc "Show utxos at a given script. Requires the seller and auction lot for the given script"))
         <> command "show-utxos" (info (ShowUtxos <$> actor) (progDesc "Shows utxos for a given actor"))
