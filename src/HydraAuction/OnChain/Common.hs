@@ -6,7 +6,7 @@ import PlutusTx.Prelude
 
 import HydraAuction.Types
 import Plutus.V1.Ledger.Value (assetClass, assetClassValueOf, isZero)
-import Plutus.V2.Ledger.Api (Address, CurrencySymbol (..), OutputDatum (..), POSIXTime (..), TokenName (..), fromBuiltinData, getDatum)
+import Plutus.V2.Ledger.Api (Address, CurrencySymbol (..), OutputDatum (..), TokenName (..), fromBuiltinData, getDatum)
 import Plutus.V2.Ledger.Contexts (TxInfo, TxOut, findDatum, txInfoMint, txOutAddress, txOutDatum, txOutValue)
 import PlutusTx qualified
 

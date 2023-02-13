@@ -14,12 +14,12 @@ import Cardano.Api (TxIn)
 import CardanoNode (withCardanoNodeDevnet)
 import CliConfig (
   AuctionName,
-  CLIEnhancedAuctionTerms (..),
+  CliEnhancedAuctionTerms (..),
   configToAuctionTerms,
   constructTermsDynamic,
   readAuctionTerms,
   readAuctionTermsConfig,
-  readCLIEnhancedAuctionTerms,
+  readCliEnhancedAuctionTerms,
   writeAuctionTermsDynamic,
  )
 import Hydra.Logging (contramap)
@@ -27,7 +27,6 @@ import Hydra.Logging (contramap)
 import Control.Monad (forM_, void)
 import Hydra.Cardano.Api (Lovelace)
 import Hydra.Cluster.Fixture (Actor (..))
-import Hydra.Cluster.Util (keysFor)
 import HydraAuction.OnChain (AuctionScript)
 import HydraAuction.Runner (
   ExecutionContext (MkExecutionContext, node, tracer, verbose),
@@ -109,8 +108,8 @@ handleCliAction userAction = do
       announceAuction sellerActor terms
     StartBidding auctionName -> do
       -- FIXME: proper error printing
-      Just (CLIEnhancedAuctionTerms {terms, sellerActor}) <-
-        liftIO $ readCLIEnhancedAuctionTerms auctionName
+      Just (CliEnhancedAuctionTerms {terms, sellerActor}) <-
+        liftIO $ readCliEnhancedAuctionTerms auctionName
       startBidding sellerActor terms
     NewBid auctionName bidder bidAmount -> do
       -- FIXME: proper error printing
@@ -122,8 +121,8 @@ handleCliAction userAction = do
       bidderBuys actor terms
     SellerReclaims auctionName -> do
       -- FIXME: proper error printing
-      Just (CLIEnhancedAuctionTerms {terms, sellerActor}) <-
-        liftIO $ readCLIEnhancedAuctionTerms auctionName
+      Just (CliEnhancedAuctionTerms {terms, sellerActor}) <-
+        liftIO $ readCliEnhancedAuctionTerms auctionName
       sellerReclaims sellerActor terms
 
 prettyPrintUtxo :: (Foldable t, Show a) => t a -> IO ()

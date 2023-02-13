@@ -2,8 +2,8 @@ module CliConfig (
   AuctionName (..),
   AuctionTermsConfig (..),
   AuctionTermsDynamic (..),
-  CLIEnhancedAuctionTerms (..),
-  readCLIEnhancedAuctionTerms,
+  CliEnhancedAuctionTerms (..),
+  readCliEnhancedAuctionTerms,
   constructTermsDynamic,
   readAuctionTermsConfig,
   readAuctionTermsDynamic,
@@ -87,24 +87,24 @@ writeAuctionTermsDynamic = writeJsonToPath AuctionState
 -- =============================================================================
 -- Read full auction terms
 
-data CLIEnhancedAuctionTerms = CLIEnhancedAuctionTerms
+data CliEnhancedAuctionTerms = CliEnhancedAuctionTerms
   { -- Storing Actor, not only PubKeyHash, is required to simplify CLI actions on seller behalf
     terms :: AuctionTerms
   , sellerActor :: Actor
   }
 
-readCLIEnhancedAuctionTerms :: AuctionName -> IO (Maybe CLIEnhancedAuctionTerms)
-readCLIEnhancedAuctionTerms auctionName = runMaybeT $ do
+readCliEnhancedAuctionTerms :: AuctionName -> IO (Maybe CliEnhancedAuctionTerms)
+readCliEnhancedAuctionTerms auctionName = runMaybeT $ do
   dynamicParams <- MaybeT $ readAuctionTermsDynamic auctionName
   config <- MaybeT $ readAuctionTermsConfig auctionName
   terms <- liftIO $ configToAuctionTerms config dynamicParams
   return $
-    CLIEnhancedAuctionTerms
+    CliEnhancedAuctionTerms
       { terms = terms
       , sellerActor = configSellerActor dynamicParams
       }
 
 readAuctionTerms :: AuctionName -> IO (Maybe AuctionTerms)
 readAuctionTerms name = do
-  e <- readCLIEnhancedAuctionTerms name
+  e <- readCliEnhancedAuctionTerms name
   return $ terms <$> e
