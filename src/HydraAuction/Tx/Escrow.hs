@@ -48,6 +48,8 @@ toForgeStateToken terms redeemer =
 
 announceAuction :: Actor -> AuctionTerms -> Runner ()
 announceAuction sellerActor terms = do
+  liftIO $ putStrLn "Doing announce auction"
+
   MkExecutionContext {..} <- ask
   let networkId' = networkId node
       nodeSocket' = nodeSocket node
