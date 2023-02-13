@@ -20,7 +20,7 @@ import HydraAuction.Tx.Escrow (
   sellerReclaims,
   startBidding,
  )
-import HydraAuction.Tx.StandingBid (newBid)
+import HydraAuction.Tx.StandingBid (cleanupTx, newBid)
 import HydraAuction.Tx.TermsConfig (
   AuctionTermsConfig (
     AuctionTermsConfig,
@@ -82,6 +82,9 @@ successfulBidTest = mkAssertion $ do
   liftIO $ waitUntil $ biddingEnd terms
   bidderBuys buyer2 terms
 
+  liftIO $ waitUntil $ cleanup terms
+  cleanupTx seller terms
+
 sellerReclaimsTest :: Assertion
 sellerReclaimsTest = mkAssertion $ do
   let seller = Alice
@@ -113,3 +116,6 @@ sellerReclaimsTest = mkAssertion $ do
 
   liftIO $ waitUntil $ voucherExpiry terms
   sellerReclaims seller terms
+
+  liftIO $ waitUntil $ cleanup terms
+  cleanupTx seller terms
