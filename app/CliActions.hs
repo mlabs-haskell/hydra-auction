@@ -79,14 +79,14 @@ handleCliAction userAction = do
     Prepare sellerActor -> do
       forM_ allActors $ initWallet seedAmount
       void $ mintOneTestNFT sellerActor
-    ShowScriptUtxos auctionName script -> liftIO $ do
+    ShowScriptUtxos auctionName script -> do
       -- FIXME: proper error printing
-      Just terms <- readAuctionTerms auctionName
-      utxos <- scriptUtxos node script terms
-      prettyPrintUtxo utxos
-    ShowUtxos actor -> liftIO $ do
-      utxos <- actorTipUtxo node actor
-      prettyPrintUtxo utxos
+      Just terms <- liftIO $ readAuctionTerms auctionName
+      utxos <- scriptUtxos script terms
+      liftIO $ prettyPrintUtxo utxos
+    ShowUtxos actor -> do
+      utxos <- actorTipUtxo actor
+      liftIO $ prettyPrintUtxo utxos
     MintTestNFT actor ->
       void $ mintOneTestNFT actor
     AuctionAnounce auctionName sellerActor utxo -> do

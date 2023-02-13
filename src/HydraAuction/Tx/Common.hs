@@ -129,13 +129,16 @@ filterUtxoByCurrencySymbols symbolsToMatch = UTxO.filter hasExactlySymbols
 filterAdaOnlyUtxo :: UTxO -> UTxO
 filterAdaOnlyUtxo = filterUtxoByCurrencySymbols [CurrencySymbol emptyByteString]
 
-actorTipUtxo :: RunningNode -> Actor -> IO UTxO.UTxO
-actorTipUtxo node actor = do
-  (vk, _) <- keysFor actor
+actorTipUtxo :: Actor -> Runner UTxO.UTxO
+actorTipUtxo actor = do
+  MkExecutionContext {node} <- ask
+  (vk, _) <- liftIO $ keysFor actor
   liftIO $ queryUTxOFor (networkId node) (nodeSocket node) QueryTip vk
 
-scriptUtxos :: RunningNode -> AuctionScript -> AuctionTerms -> IO UTxO.UTxO
-scriptUtxos RunningNode {networkId, nodeSocket} script terms = do
+scriptUtxos :: AuctionScript -> AuctionTerms -> Runner UTxO.UTxO
+scriptUtxos script terms = do
+  MkExecutionContext {node} <- ask
+  let RunningNode {networkId, nodeSocket} = node
   let scriptAddress =
         buildScriptAddress
           ( PlutusScript $
@@ -143,7 +146,7 @@ scriptUtxos RunningNode {networkId, nodeSocket} script terms = do
                 getValidator $ scriptValidatorForTerms script terms
           )
           networkId
-  queryUTxO networkId nodeSocket QueryTip [scriptAddress]
+  liftIO $ queryUTxO networkId nodeSocket QueryTip [scriptAddress]
 
 data AutoCreateParams = AutoCreateParams
   { authoredUtxos :: [(SigningKey PaymentKey, UTxO)]

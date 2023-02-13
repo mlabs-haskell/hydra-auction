@@ -58,12 +58,8 @@ newBid bidder terms bidAmount = do
   (bidderAddress, bidderVk, bidderSk) <-
     addressAndKeysFor bidder
 
-  bidderMoneyUtxo <-
-    liftIO $
-      filterAdaOnlyUtxo <$> actorTipUtxo node bidder
-  standingBidUtxo <-
-    liftIO $
-      scriptUtxos node StandingBid terms
+  bidderMoneyUtxo <- filterAdaOnlyUtxo <$> actorTipUtxo bidder
+  standingBidUtxo <- scriptUtxos StandingBid terms
 
   -- FIXME: cover not proper UTxOs
   void $

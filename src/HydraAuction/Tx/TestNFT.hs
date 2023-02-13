@@ -1,5 +1,3 @@
-{-# LANGUAGE RecordWildCards #-}
-
 module HydraAuction.Tx.TestNFT (mintOneTestNFT) where
 
 import Hydra.Prelude
@@ -15,14 +13,10 @@ import Plutus.V2.Ledger.Api (TokenName (..), getMintingPolicy)
 
 mintOneTestNFT :: Actor -> Runner Tx
 mintOneTestNFT actor = do
-  MkExecutionContext {..} <- ask
-
   (actorAddress, _, actorSk) <-
     addressAndKeysFor actor
 
-  actorMoneyUtxo <-
-    liftIO $
-      filterAdaOnlyUtxo <$> actorTipUtxo node actor
+  actorMoneyUtxo <- filterAdaOnlyUtxo <$> actorTipUtxo actor
 
   let valueOut =
         fromPlutusValue (assetClassValue allowMintingAssetClass 1)
