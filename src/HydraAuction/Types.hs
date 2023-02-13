@@ -1,3 +1,6 @@
+{-# OPTIONS_GHC -fno-unbox-small-strict-fields #-}
+{-# OPTIONS_GHC -fno-unbox-strict-fields #-}
+
 -- FIXME: Use template Haskell to derive Eq instances
 module HydraAuction.Types (
   isStarted,
@@ -85,11 +88,11 @@ data AuctionTerms = AuctionTerms
   { -- | What is being sold at the auction?
     auctionLot :: !AssetClass
   , -- | Who is selling it?
-    seller :: PubKeyHash
+    seller :: !PubKeyHash
   , -- | Which Hydra Head is authorized to host the bidding for this auction?
-    hydraHeadId :: CurrencySymbol
+    hydraHeadId :: !CurrencySymbol
   , -- | Who is running the Hydra Head where bidding occurs?
-    delegates :: [PubKeyHash]
+    delegates :: ![PubKeyHash]
   , biddingStart :: !POSIXTime
   , biddingEnd :: !POSIXTime
   , voucherExpiry :: !POSIXTime
@@ -142,7 +145,7 @@ deriving newtype instance (FromData ApprovedBidders)
 
 PlutusTx.makeLift ''ApprovedBidders
 
-data StandingBidState = NoBid | Bid BidTerms
+data StandingBidState = NoBid | Bid !BidTerms
   deriving stock (Generic, Prelude.Show, Prelude.Eq)
 
 instance Eq StandingBidState where
@@ -153,7 +156,7 @@ instance Eq StandingBidState where
 
 data BidTerms = BidTerms
   { -- | Who submitted the bid?
-    bidBidder :: PubKeyHash
+    bidBidder :: !PubKeyHash
   , -- | Which amount did the bidder set to buy the auction lot?
     bidAmount :: !Natural
   }
@@ -170,7 +173,7 @@ PlutusTx.makeLift ''BidTerms
 
 data AuctionState
   = Announced
-  | BiddingStarted ApprovedBiddersHash
+  | BiddingStarted !ApprovedBiddersHash
   deriving stock (Generic, Prelude.Show, Prelude.Eq)
 
 {-# INLINEABLE isStarted #-}
@@ -207,7 +210,7 @@ PlutusTx.makeLift ''AuctionState
 
 data AuctionEscrowDatum = AuctionEscrowDatum
   { auctionState :: !AuctionState
-  , auctionVoucherCS :: VoucherCS
+  , auctionVoucherCS :: !VoucherCS
   }
   deriving stock (Generic, Prelude.Show, Prelude.Eq)
 
@@ -220,7 +223,7 @@ PlutusTx.makeLift ''AuctionEscrowDatum
 
 data StandingBidDatum = StandingBidDatum
   { standingBidState :: !StandingBidState
-  , standingBidVoucherCS :: VoucherCS
+  , standingBidVoucherCS :: !VoucherCS
   }
   deriving stock (Generic, Prelude.Show, Prelude.Eq)
 
@@ -233,8 +236,8 @@ PlutusTx.makeLift ''StandingBidDatum
 
 data BidDepositDatum = BidDepositDatum
   { -- | Which bidder made this deposit?
-    bidDepositBidder :: PubKeyHash
-  , bidDepositVoucherCS :: VoucherCS
+    bidDepositBidder :: !PubKeyHash
+  , bidDepositVoucherCS :: !VoucherCS
   }
   deriving stock (Generic, Prelude.Show, Prelude.Eq)
 
