@@ -1,6 +1,7 @@
 {-# LANGUAGE RecordWildCards #-}
 
 module HydraAuction.Tx.Escrow (
+  toForgeStateToken,
   announceAuction,
   startBidding,
   bidderBuys,
@@ -34,6 +35,17 @@ import Plutus.V2.Ledger.Api (
   getValidator,
  )
 
+toForgeStateToken :: AuctionTerms -> VoucherForgingRedeemer -> TxMintValue BuildTx
+toForgeStateToken terms redeemer =
+  mintedTokens
+    (fromPlutusScript $ getMintingPolicy $ policy terms)
+    redeemer
+    [(tokenToAsset $ stateTokenKindToTokenName Voucher, num)]
+  where
+    num = case redeemer of
+      MintVoucher -> 1
+      BurnVoucher -> -1
+
 announceAuction :: Actor -> AuctionTerms -> Runner ()
 announceAuction sellerActor terms = do
   MkExecutionContext {..} <- ask
@@ -57,12 +69,6 @@ announceAuction sellerActor terms = do
         mkScriptAddress @PlutusScriptV2 networkId' $
           fromPlutusScript @PlutusScriptV2 $
             getValidator $ escrowValidator terms
-
-      toMintStateToken =
-        mintedTokens
-          (fromPlutusScript $ getMintingPolicy mp)
-          MintVoucher
-          [(tokenToAsset $ stateTokenKindToTokenName Voucher, 1)]
 
   (sellerAddress, _, sellerSk) <-
     addressAndKeysFor sellerActor
@@ -90,7 +96,7 @@ announceAuction sellerActor terms = do
         , witnessedUtxos = []
         , collateral = Nothing
         , outs = [announcedEscrowTxOut]
-        , toMint = toMintStateToken
+        , toMint = toForgeStateToken terms MintVoucher
         , changeAddress = sellerAddress
         , validityBound = (Nothing, Just $ biddingStart terms)
         }
