@@ -1,13 +1,15 @@
+{-# OPTIONS_GHC -fno-specialise #-}
+
 module HydraAuction.OnChain.StateToken (StateTokenKind (..), stateTokenKindToTokenName, mkPolicy) where
 
-import PlutusTx.Prelude hiding (elem)
+import PlutusTx.Prelude
 
 import HydraAuction.Addresses
 import HydraAuction.OnChain.Common
 import HydraAuction.Types
 import Plutus.V1.Ledger.Interval (contains, from, to)
 import Plutus.V1.Ledger.Value (Value, singleton)
-import Plutus.V2.Ledger.Api (TokenName (..), TxOutRef)
+import Plutus.V2.Ledger.Api (TokenName (..))
 import Plutus.V2.Ledger.Contexts (ScriptContext, TxInfo, ownCurrencySymbol, scriptContextTxInfo, txInInfoOutRef, txInfoInputs, txInfoMint, txInfoOutputs, txInfoValidRange, txOutAddress)
 
 data StateTokenKind = Voucher
@@ -15,14 +17,6 @@ data StateTokenKind = Voucher
 {-# INLINEABLE stateTokenKindToTokenName #-}
 stateTokenKindToTokenName :: StateTokenKind -> TokenName
 stateTokenKindToTokenName Voucher = TokenName "Voucher"
-
-{-# INLINEABLE elem #-}
--- XXX: PlutuxTx fails if we have `Eq a` constraint
-elem :: TxOutRef -> [TxOutRef] -> Bool
-elem y (x : xs)
-  | x == y = True
-  | otherwise = elem y xs
-elem _ [] = False
 
 {-# INLINEABLE mkPolicy #-}
 mkPolicy :: (EscrowAddress, AuctionTerms) -> VoucherForgingRedeemer -> ScriptContext -> Bool
