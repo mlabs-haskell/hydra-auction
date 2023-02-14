@@ -56,8 +56,8 @@ successfulBidTest = mkAssertion $ do
 
   let config =
         AuctionTermsConfig
-          { configDiffBiddingStart = 1
-          , configDiffBiddingEnd = 4
+          { configDiffBiddingStart = 2
+          , configDiffBiddingEnd = 5
           , configDiffVoucherExpiry = 8
           , configDiffCleanup = 10
           , configAuctionFeePerDelegate = fromJust $ intToNatural 4_000_000
@@ -93,10 +93,10 @@ sellerReclaimsTest = mkAssertion $ do
 
   let config =
         AuctionTermsConfig
-          { configDiffBiddingStart = 1
-          , configDiffBiddingEnd = 3
-          , configDiffVoucherExpiry = 4
-          , configDiffCleanup = 5
+          { configDiffBiddingStart = 2
+          , configDiffBiddingEnd = 4
+          , configDiffVoucherExpiry = 6
+          , configDiffCleanup = 8
           , configAuctionFeePerDelegate = fromJust $ intToNatural 4_000_000
           , configStartingBid = fromJust $ intToNatural 8_000_000
           , configMinimumBidIncrement = fromJust $ intToNatural 8_000_000
