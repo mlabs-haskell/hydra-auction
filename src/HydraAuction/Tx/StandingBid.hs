@@ -1,14 +1,11 @@
-{-# LANGUAGE RecordWildCards #-}
-
 module HydraAuction.Tx.StandingBid (newBid, cleanupTx) where
 
 import Hydra.Prelude hiding (Natural)
 
-import CardanoNode (RunningNode (..))
 import Hydra.Cardano.Api hiding (txOutValue)
 import Hydra.Cluster.Fixture (Actor)
 import HydraAuction.Addresses
-import HydraAuction.OnChain
+import HydraAuction.OnChain hiding (standingBidAddress)
 import HydraAuction.PlutusExtras
 import HydraAuction.Runner
 import HydraAuction.Tx.Common
@@ -20,12 +17,12 @@ import Plutus.V2.Ledger.Api (getValidator)
 newBid :: Actor -> AuctionTerms -> Natural -> Runner ()
 newBid bidder terms bidAmount = do
   putStrLn "Doing new bid"
-  MkExecutionContext {..} <- ask
-  let networkId' = networkId node
 
-      txOutStandingBid bidderVk =
+  standingBidAddress <- scriptAddress StandingBid terms
+
+  let txOutStandingBid bidderVk =
         TxOut
-          standingBidAddress'
+          (ShelleyAddressInEra standingBidAddress)
           valueStandingBid
           (mkInlineDatum datum)
           ReferenceScriptNone
@@ -40,19 +37,12 @@ newBid bidder terms bidAmount = do
                     bidAmount
               )
               voucherCS
-          standingBidAddress' =
-            mkScriptAddress @PlutusScriptV2
-              networkId'
-              $ fromPlutusScript @PlutusScriptV2 $
-                getValidator $ standingBidValidator terms
           valueStandingBid =
             fromPlutusValue (assetClassValue (voucherAssetClass terms) 1)
               <> lovelaceToValue minLovelace
       standingBidWitness = mkInlinedDatumScriptWitness script NewBid
         where
-          script =
-            fromPlutusScript @PlutusScriptV2 $
-              getValidator $ standingBidValidator terms
+          script = scriptPlutusScript StandingBid terms
 
   logMsg "Doing New bid"
 

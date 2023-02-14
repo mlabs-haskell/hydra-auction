@@ -12,12 +12,11 @@ import Hydra.Prelude
 import PlutusTx.Prelude (emptyByteString)
 
 import Cardano.Api.UTxO qualified as UTxO
-import CardanoClient (QueryPoint (QueryTip), queryUTxOByTxIn)
 import CardanoNode (RunningNode (..))
 import Hydra.Cardano.Api hiding (txOutValue)
 import Hydra.Cluster.Fixture (Actor (..))
 import HydraAuction.Addresses
-import HydraAuction.OnChain
+import HydraAuction.OnChain hiding (escrowAddress, standingBidAddress)
 import HydraAuction.OnChain.StateToken
 import HydraAuction.PlutusExtras
 import HydraAuction.Runner
@@ -50,16 +49,14 @@ announceAuction :: Actor -> AuctionTerms -> Runner ()
 announceAuction sellerActor terms = do
   liftIO $ putStrLn "Doing announce auction"
 
-  MkExecutionContext {..} <- ask
-  let networkId' = networkId node
-      nodeSocket' = nodeSocket node
+  escrowAddress <- scriptAddress Escrow terms
 
   let mp = policy terms
       voucerCS = VoucherCS $ scriptCurrencySymbol mp
       escrowAnnouncedUtxo = AuctionEscrowDatum Announced voucerCS
       announcedEscrowTxOut =
         TxOut
-          escrowAddress'
+          (ShelleyAddressInEra escrowAddress)
           valueWithLotAndStateToken
           (mkInlineDatum escrowAnnouncedUtxo)
           ReferenceScriptNone
@@ -67,21 +64,12 @@ announceAuction sellerActor terms = do
         fromPlutusValue (assetClassValue (auctionLot terms) 1)
           <> fromPlutusValue (assetClassValue (voucherAssetClass terms) 1)
           <> lovelaceToValue minLovelace
-      escrowAddress' =
-        mkScriptAddress @PlutusScriptV2 networkId' $
-          fromPlutusScript @PlutusScriptV2 $
-            getValidator $ escrowValidator terms
 
   (sellerAddress, _, sellerSk) <-
     addressAndKeysFor sellerActor
 
   utxoWithLotNFT <-
-    liftIO $
-      queryUTxOByTxIn
-        networkId'
-        nodeSocket'
-        QueryTip
-        [fromPlutusTxOutRef $ utxoNonce terms]
+    queryUTxOByTxInInRunner [fromPlutusTxOutRef $ utxoNonce terms]
 
   sellerMoneyUtxo <- filterAdaOnlyUtxo <$> actorTipUtxo sellerActor
 
@@ -106,11 +94,13 @@ announceAuction sellerActor terms = do
 startBidding :: Actor -> AuctionTerms -> Runner ()
 startBidding sellerActor terms = do
   liftIO $ putStrLn "Doing start bidding"
-  MkExecutionContext {..} <- ask
-  let networkId' = networkId node
+
+  let escrowScript = scriptPlutusScript Escrow terms
+
+  standingAddress <- scriptAddress StandingBid terms
+  escrowAddress <- scriptAddress Escrow terms
 
   let mp = policy terms
-      escrowScript = fromPlutusScript $ getValidator $ escrowValidator terms
       voucherCS = VoucherCS $ scriptCurrencySymbol mp
       biddingStartedDatum =
         AuctionEscrowDatum
@@ -118,17 +108,16 @@ startBidding sellerActor terms = do
           voucherCS
       txOutEscrow =
         TxOut
-          escrowAddress'
+          (ShelleyAddressInEra escrowAddress)
           valueOutEscrow
           (mkInlineDatum biddingStartedDatum)
           ReferenceScriptNone
       valueOutEscrow =
         fromPlutusValue (assetClassValue (auctionLot terms) 1)
           <> lovelaceToValue minLovelace
-      escrowAddress' = mkScriptAddress @PlutusScriptV2 networkId' escrowScript
       txOutStandingBid =
         TxOut
-          standingAddress
+          (ShelleyAddressInEra standingAddress)
           valueOutStanding
           (mkInlineDatum standingBidDatum)
           ReferenceScriptNone
@@ -136,10 +125,6 @@ startBidding sellerActor terms = do
       valueOutStanding =
         fromPlutusValue (assetClassValue (voucherAssetClass terms) 1)
           <> lovelaceToValue minLovelace
-      standingAddress =
-        mkScriptAddress @PlutusScriptV2 networkId' $
-          fromPlutusScript @PlutusScriptV2 $
-            getValidator $ standingBidValidator terms
       escrowWitness = mkInlinedDatumScriptWitness escrowScript StartBidding
 
   (sellerAddress, _, sellerSk) <-
@@ -180,14 +165,12 @@ startBidding sellerActor terms = do
 
 bidderBuys :: Actor -> AuctionTerms -> Runner ()
 bidderBuys bidder terms = do
-  MkExecutionContext {..} <- ask
-  let networkId' = networkId node
+  feeEscrowAddress <- scriptAddress FeeEscrow terms
+  sellerAddress <- fromPlutusAddressInRunner $ pubKeyHashAddress $ seller terms
 
-      txOutSellerGotBid standingBidUtxo =
+  let txOutSellerGotBid standingBidUtxo =
         TxOut
-          ( fromPlutusAddress (networkIdToNetwork networkId') $
-              pubKeyHashAddress $ seller terms
-          )
+          sellerAddress
           value
           TxOutDatumNone
           ReferenceScriptNone
@@ -220,19 +203,13 @@ bidderBuys bidder terms = do
               <> lovelaceToValue minLovelace
 
       txOutFeeEscrow =
-        TxOut feeEscrowAddress value TxOutDatumNone ReferenceScriptNone
+        TxOut (ShelleyAddressInEra feeEscrowAddress) value TxOutDatumNone ReferenceScriptNone
         where
           value = lovelaceToValue $ Lovelace $ calculateTotalFee terms
-          feeEscrowAddress =
-            mkScriptAddress @PlutusScriptV2 networkId' $
-              fromPlutusScript @PlutusScriptV2 $
-                getValidator $ feeEscrowValidator terms
 
       escrowWitness = mkInlinedDatumScriptWitness script BidderBuys
         where
-          script =
-            fromPlutusScript @PlutusScriptV2 $
-              getValidator $ escrowValidator terms
+          script = scriptPlutusScript Escrow terms
 
   logMsg "Doing Bidder Buy"
 
