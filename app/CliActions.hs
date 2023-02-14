@@ -7,10 +7,14 @@ module CliActions (
   seedAmount,
 ) where
 
-import Hydra.Prelude (ask, liftIO, toList)
+import Hydra.Prelude (ask, liftIO)
 import Prelude
 
-import Cardano.Api (TxIn)
+import Data.Map.Strict qualified as Map
+
+import Cardano.Api (TxIn, TxOut (..))
+import Cardano.Api.UTxO (UTxO, toMap)
+
 import CliConfig (
   AuctionName,
   CliEnhancedAuctionTerms (..),
@@ -24,7 +28,7 @@ import CliConfig (
 
 import CardanoNodeDevnet (runCardanoNode)
 import Control.Monad (forM_, void)
-import Hydra.Cardano.Api (Lovelace)
+import Hydra.Cardano.Api (Lovelace, TxOut, TxOutValue (..))
 import Hydra.Cluster.Fixture (Actor (..))
 import HydraAuction.OnChain (AuctionScript)
 import HydraAuction.Runner (
@@ -115,9 +119,15 @@ handleCliAction userAction = do
         liftIO $ readCliEnhancedAuctionTerms auctionName
       sellerReclaims sellerActor terms
 
-prettyPrintUtxo :: (Foldable t, Show a) => t a -> IO ()
+prettyPrintUtxo :: UTxO -> IO ()
 prettyPrintUtxo utxo = do
   putStrLn "Utxos: \n"
   -- FIXME print properly
-  forM_ (toList utxo) $ \x ->
-    putStrLn $ show x
+  forM_ (Map.toList $ toMap utxo) $ \(x, y) ->
+    putStrLn $ show x <> ": " <> showValueTxOut y
+
+showValueTxOut :: Hydra.Cardano.Api.TxOut ctx -> String
+showValueTxOut (Cardano.Api.TxOut _address txOutValue _datum _refScript) =
+  case txOutValue of
+    TxOutValue _era value -> show value
+    TxOutAdaOnly _era value -> show value
