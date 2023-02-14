@@ -83,6 +83,7 @@ executable hydra-auction
   import:         common-lang
   main-is:        Main.hs
   other-modules:
+    CardanoNodeDevnet
     CliActions
     CliConfig
     CliParsers

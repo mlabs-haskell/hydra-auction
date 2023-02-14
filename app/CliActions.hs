@@ -21,7 +21,6 @@ import CliConfig (
   readCliEnhancedAuctionTerms,
   writeAuctionTermsDynamic,
  )
-import Hydra.Logging (contramap)
 
 import CardanoNodeDevnet (runCardanoNode)
 import Control.Monad (forM_, void)
@@ -43,11 +42,6 @@ import HydraAuction.Tx.Escrow (
 import HydraAuction.Tx.StandingBid
 import HydraAuction.Tx.TestNFT
 import HydraAuction.Types (Natural)
-import HydraNode (
-  EndToEndLog (
-    FromCardanoNode
-  ),
- )
 
 seedAmount :: Lovelace
 seedAmount = 100_000_000

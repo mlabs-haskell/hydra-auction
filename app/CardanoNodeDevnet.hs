@@ -14,6 +14,7 @@ import CardanoNode (
   withCardanoNodeDevnet,
  )
 import Hydra.Cardano.Api (NetworkMagic (NetworkMagic))
+import Hydra.Logging (Tracer)
 import Hydra.Prelude (contramap)
 import HydraNode (
   EndToEndLog (
@@ -26,6 +27,7 @@ import CliConfig (
   getAuctionDirectory,
  )
 
+runCardanoNode :: Tracer IO EndToEndLog -> IO ()
 runCardanoNode tracer = do
   stateDirectory <- getAuctionDirectory AuctionStateCardanoNode
   withCardanoNodeDevnet
@@ -34,6 +36,7 @@ runCardanoNode tracer = do
     $ \_ ->
       error "Not implemented: RunCardanoNode"
 
+getCardanoNode :: IO RunningNode
 getCardanoNode = do
   stateDirectory <- getAuctionDirectory AuctionStateCardanoNode
   return $
