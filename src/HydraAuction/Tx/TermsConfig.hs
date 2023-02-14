@@ -71,7 +71,8 @@ constructTermsDynamic sellerActor utxoNonce = do
       , -- FIXME
         configDelegates = [sellerVkHash]
       , configUtxoNonce = toPlutusTxOutRef utxoNonce
-      , configAnnouncementTime = POSIXTime $ currentTimeSeconds' * 1000
+      , -- Convert to miliseconds and add one more second to have some time for submiting Tx
+        configAnnouncementTime = POSIXTime $ currentTimeSeconds' * 1000 + 1000
       }
 
 configToAuctionTerms ::
