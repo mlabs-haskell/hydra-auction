@@ -24,37 +24,15 @@ mkStandingBidValidator terms datum redeemer context =
           && head (txInfoOutputs info) == inputOut
           && nothingForged info
       NewBid ->
-        ( case byAddress (scriptHashAddress $ ownHash context) $ txInfoOutputs info of
-            [out] ->
-              -- FIXME: Check bidder has right to make a bid
-              traceIfFalse "Output is not into standing bid" $
-                txOutAddress out == scriptHashAddress (ownHash context)
-                  && let inBid = standingBidState <$> decodeOutputDatum info inputOut
-                         outBid = standingBidState <$> decodeOutputDatum info out
-                      in case validNewBid <$> inBid <*> outBid of
-                          Just x -> traceIfFalse "Incorrect bid" x
-                          Nothing -> traceError "Incorrect encoding for input or output datum"
-            _ -> traceError "Not exactly one ouput"
-        )
+        checkCorrectNewBidOutput inputOut
           && nothingForged info
           && traceIfFalse
             "Wrong interval for NewBid"
             (contains (interval 0 (biddingEnd terms)) (txInfoValidRange info))
       Cleanup ->
         -- XXX: interval is checked on burning
-        traceIfFalse
-          "Not exactly one voucher was burt during transaction"
-          ( let cs = unVoucherCS $ standingBidVoucherCS datum
-                voucherAC = assetClass cs (stateTokenKindToTokenName Voucher)
-             in assetClassValueOf (txInfoMint info) voucherAC == -1
-          )
-          && ( case txInfoOutputs info of
-                [out] ->
-                  traceIfFalse
-                    "Output is not to seller"
-                    (txOutAddress out == pubKeyHashAddress (seller terms))
-                _ -> traceError "Not exactly one ouput"
-             )
+        checkExactlyOneVoucherBurned
+          && checkOutputIsToSeller
     _ : _ -> traceError "More than one standing bid input"
     [] -> traceError "Impossible happened: no inputs for staning bid validator"
   where
@@ -70,3 +48,30 @@ mkStandingBidValidator terms datum redeemer context =
           traceIfFalse "Bid is not greater than startingBid" $
             startingBid terms <= bidAmount newBidTerms
     validNewBid _ NoBid = False
+    checkCorrectNewBidOutput inputOut = case byAddress (scriptHashAddress $ ownHash context) $ txInfoOutputs info of
+      [out] ->
+        -- FIXME: Check bidder has right to make a bid
+        traceIfFalse "Output is not into standing bid" $
+          txOutAddress out == scriptHashAddress (ownHash context)
+            && checkValidtNewBid out
+      _ -> traceError "Not exactly one ouput"
+      where
+        checkValidtNewBid out =
+          let inBid = standingBidState <$> decodeOutputDatum info inputOut
+              outBid = standingBidState <$> decodeOutputDatum info out
+           in case validNewBid <$> inBid <*> outBid of
+                Just x -> traceIfFalse "Incorrect bid" x
+                Nothing -> traceError "Incorrect encoding for input or output datum"
+    checkOutputIsToSeller = case txInfoOutputs info of
+      [out] ->
+        traceIfFalse
+          "Output is not to seller"
+          (txOutAddress out == pubKeyHashAddress (seller terms))
+      _ -> traceError "Not exactly one ouput"
+    checkExactlyOneVoucherBurned =
+      traceIfFalse
+        "Not exactly one voucher was burt during transaction"
+        ( let cs = unVoucherCS $ standingBidVoucherCS datum
+              voucherAC = assetClass cs (stateTokenKindToTokenName Voucher)
+           in assetClassValueOf (txInfoMint info) voucherAC == -1
+        )
