@@ -44,6 +44,6 @@ clean:
 requires_nix_shell:
 	@ [ "$(IN_NIX_SHELL)" ] || { \
 	echo "The $(MAKECMDGOALS) target must be run from inside a nix shell"; \
-	echo "    run 'nix develop .#onchain' first"; \
+	echo "    run 'nix develop .' first"; \
 	false; \
 	}
