@@ -4,6 +4,7 @@ module HydraAuction.Tx.Common (
   AutoCreateParams (..),
   filterAdaOnlyUtxo,
   actorTipUtxo,
+  toSlotNo,
   addressAndKeysFor,
   networkIdToNetwork,
   filterUtxoByCurrencySymbols,

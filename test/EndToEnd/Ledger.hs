@@ -74,15 +74,15 @@ successfulBidTest = mkAssertion $ do
 
   announceAuction seller terms
 
-  liftIO $ waitUntil $ biddingStart terms
+  waitUntil $ biddingStart terms
   startBidding seller terms
   newBid buyer1 terms $ startingBid terms
   newBid buyer2 terms $ startingBid terms + minimumBidIncrement terms
 
-  liftIO $ waitUntil $ biddingEnd terms
+  waitUntil $ biddingEnd terms
   bidderBuys buyer2 terms
 
-  liftIO $ waitUntil $ cleanup terms
+  waitUntil $ cleanup terms
   cleanupTx seller terms
 
 sellerReclaimsTest :: Assertion
@@ -111,11 +111,11 @@ sellerReclaimsTest = mkAssertion $ do
 
   announceAuction seller terms
 
-  liftIO $ waitUntil $ biddingStart terms
+  waitUntil $ biddingStart terms
   startBidding seller terms
 
-  liftIO $ waitUntil $ voucherExpiry terms
+  waitUntil $ voucherExpiry terms
   sellerReclaims seller terms
 
-  liftIO $ waitUntil $ cleanup terms
+  waitUntil $ cleanup terms
   cleanupTx seller terms
