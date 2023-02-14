@@ -43,7 +43,7 @@ import PlutusTx.Prelude qualified as Plutus
 
 newtype Natural = Natural Integer
   deriving stock (Generic, Prelude.Show, Prelude.Eq)
-  deriving newtype (Eq, Ord, AdditiveSemigroup, ToJSON)
+  deriving newtype (Eq, Ord, AdditiveSemigroup, MultiplicativeSemigroup, ToJSON)
 
 instance UnsafeFromData Natural where
   {-# INLINEABLE unsafeFromBuiltinData #-}
@@ -82,14 +82,6 @@ instance FromJSON Natural where
     case intToNatural int of
       Just nat -> return nat
       Nothing -> fail "Integer is not natural"
-
-instance Prelude.Num Natural where
-  (Natural x) + (Natural y) = Natural $ x + y
-  (Natural x) * (Natural y) = Natural $ x * y
-  abs = id
-  signum _ = 1
-  negate _ = Prelude.error "Not supported for Natural"
-  fromInteger _ = Prelude.error "Not supported for Natural"
 
 -- Base datatypes
 

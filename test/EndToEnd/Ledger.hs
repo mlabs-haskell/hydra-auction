@@ -1,6 +1,6 @@
 module EndToEnd.Ledger (testSuite) where
 
-import Prelude
+import PlutusTx.Prelude
 
 import Data.Maybe (fromJust)
 import Hydra.Cardano.Api (mkTxIn)
