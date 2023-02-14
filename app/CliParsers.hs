@@ -61,6 +61,7 @@ cliActionParser =
         <> command "new-bid" (info (NewBid <$> auctionName <*> actor <*> bidAmount) (progDesc "Actor places new bid after bidding is started"))
         <> command "bidder-buys" (info (BidderBuys <$> auctionName <*> actor) (progDesc "Pay and recieve a lot after auction end"))
         <> command "seller-reclaims" (info (SellerReclaims <$> auctionName) (progDesc "Seller reclaims lot after voucher end time"))
+        <> command "cleanup" (info (Cleanup <$> auctionName) (progDesc "Remove standing bid UTxO after cleanup time"))
     )
 
 auctionName :: Parser AuctionName
