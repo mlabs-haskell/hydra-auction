@@ -11,7 +11,6 @@ import Hydra.Prelude (ask, liftIO, toList)
 import Prelude
 
 import Cardano.Api (TxIn)
-import CardanoNode (withCardanoNodeDevnet)
 import CliConfig (
   AuctionName,
   CliEnhancedAuctionTerms (..),
@@ -22,8 +21,8 @@ import CliConfig (
   readCliEnhancedAuctionTerms,
   writeAuctionTermsDynamic,
  )
-import Hydra.Logging (contramap)
 
+import CardanoNodeDevnet (runCardanoNode)
 import Control.Monad (forM_, void)
 import Hydra.Cardano.Api (Lovelace)
 import Hydra.Cluster.Fixture (Actor (..))
@@ -43,11 +42,6 @@ import HydraAuction.Tx.Escrow (
 import HydraAuction.Tx.StandingBid
 import HydraAuction.Tx.TestNFT
 import HydraAuction.Types (Natural)
-import HydraNode (
-  EndToEndLog (
-    FromCardanoNode
-  ),
- )
 
 seedAmount :: Lovelace
 seedAmount = 100_000_000
@@ -79,11 +73,7 @@ handleCliAction userAction = do
   case userAction of
     RunCardanoNode -> liftIO $ do
       putStrLn "Running cardano-node"
-      withCardanoNodeDevnet
-        (contramap FromCardanoNode tracer)
-        "."
-        $ \_ ->
-          error "Not implemented: RunCardanoNode"
+      runCardanoNode tracer
     Seed actor ->
       initWallet actor seedAmount
     Prepare sellerActor -> do

@@ -1,9 +1,11 @@
 module CliConfig (
   AuctionName (..),
+  DirectoryKind (..),
   AuctionTermsConfig (..),
   AuctionTermsDynamic (..),
   CliEnhancedAuctionTerms (..),
   readCliEnhancedAuctionTerms,
+  getAuctionDirectory,
   constructTermsDynamic,
   readAuctionTermsConfig,
   readAuctionTermsDynamic,
@@ -41,7 +43,7 @@ getRelativeDirectory filepath = do
   createDirectoryIfMissing True dir
   pure dir
 
-data DirectoryKind = AuctionConfig | AuctionState
+data DirectoryKind = AuctionConfig | AuctionStateDynamic | AuctionStateCardanoNode
 
 getAuctionDirectory :: DirectoryKind -> IO FilePath
 getAuctionDirectory kind =
@@ -49,7 +51,8 @@ getAuctionDirectory kind =
   where
     path = case kind of
       AuctionConfig -> "example" </> "auction-config"
-      AuctionState -> "auction-state"
+      AuctionStateDynamic -> "auction-state" </> "dynamic"
+      AuctionStateCardanoNode -> "auction-state" </> "cardano-node"
 
 -- =============================================================================
 -- Common JSON read/write code
@@ -79,10 +82,10 @@ writeAuctionTermsConfig :: AuctionName -> AuctionTermsConfig -> IO ()
 writeAuctionTermsConfig = writeJsonToPath AuctionConfig
 
 readAuctionTermsDynamic :: AuctionName -> IO (Maybe AuctionTermsDynamic)
-readAuctionTermsDynamic = readJsonFromPath AuctionState
+readAuctionTermsDynamic = readJsonFromPath AuctionStateDynamic
 
 writeAuctionTermsDynamic :: AuctionName -> AuctionTermsDynamic -> IO ()
-writeAuctionTermsDynamic = writeJsonToPath AuctionState
+writeAuctionTermsDynamic = writeJsonToPath AuctionStateDynamic
 
 -- =============================================================================
 -- Read full auction terms
