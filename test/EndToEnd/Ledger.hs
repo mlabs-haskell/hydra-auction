@@ -1,6 +1,6 @@
 module EndToEnd.Ledger (testSuite) where
 
-import Prelude
+import PlutusTx.Prelude
 
 import Data.Maybe (fromJust)
 import Hydra.Cardano.Api (mkTxIn)
@@ -20,7 +20,7 @@ import HydraAuction.Tx.Escrow (
   sellerReclaims,
   startBidding,
  )
-import HydraAuction.Tx.StandingBid (newBid)
+import HydraAuction.Tx.StandingBid (cleanupTx, newBid)
 import HydraAuction.Tx.TermsConfig (
   AuctionTermsConfig (
     AuctionTermsConfig,
@@ -49,15 +49,15 @@ testSuite =
 successfulBidTest :: Assertion
 successfulBidTest = mkAssertion $ do
   let seller = Alice
-      buyer = Bob
+      buyer1 = Bob
+      buyer2 = Carol
 
-  initWallet seller 100_000_000
-  initWallet buyer 100_000_000
+  mapM_ (initWallet 100_000_000) [seller, buyer1, buyer2]
 
   let config =
         AuctionTermsConfig
-          { configDiffBiddingStart = 1
-          , configDiffBiddingEnd = 4
+          { configDiffBiddingStart = 2
+          , configDiffBiddingEnd = 5
           , configDiffVoucherExpiry = 8
           , configDiffCleanup = 10
           , configAuctionFeePerDelegate = fromJust $ intToNatural 4_000_000
@@ -74,27 +74,29 @@ successfulBidTest = mkAssertion $ do
 
   announceAuction seller terms
 
-  liftIO $ waitUntil $ biddingStart terms
+  waitUntil $ biddingStart terms
   startBidding seller terms
-  newBid buyer terms (fromJust $ intToNatural 16_000_000)
+  newBid buyer1 terms $ startingBid terms
+  newBid buyer2 terms $ startingBid terms + minimumBidIncrement terms
 
-  liftIO $ waitUntil $ biddingEnd terms
-  bidderBuys buyer terms
+  waitUntil $ biddingEnd terms
+  bidderBuys buyer2 terms
+
+  waitUntil $ cleanup terms
+  cleanupTx seller terms
 
 sellerReclaimsTest :: Assertion
 sellerReclaimsTest = mkAssertion $ do
   let seller = Alice
-      buyer = Bob
 
-  initWallet seller 100_000_000
-  initWallet buyer 100_000_000
+  initWallet 100_000_000 seller
 
   let config =
         AuctionTermsConfig
-          { configDiffBiddingStart = 1
-          , configDiffBiddingEnd = 3
-          , configDiffVoucherExpiry = 4
-          , configDiffCleanup = 5
+          { configDiffBiddingStart = 2
+          , configDiffBiddingEnd = 4
+          , configDiffVoucherExpiry = 6
+          , configDiffCleanup = 8
           , configAuctionFeePerDelegate = fromJust $ intToNatural 4_000_000
           , configStartingBid = fromJust $ intToNatural 8_000_000
           , configMinimumBidIncrement = fromJust $ intToNatural 8_000_000
@@ -109,8 +111,11 @@ sellerReclaimsTest = mkAssertion $ do
 
   announceAuction seller terms
 
-  liftIO $ waitUntil $ biddingStart terms
+  waitUntil $ biddingStart terms
   startBidding seller terms
 
-  liftIO $ waitUntil $ voucherExpiry terms
+  waitUntil $ voucherExpiry terms
   sellerReclaims seller terms
+
+  waitUntil $ cleanup terms
+  cleanupTx seller terms

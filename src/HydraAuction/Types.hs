@@ -43,7 +43,7 @@ import PlutusTx.Prelude qualified as Plutus
 
 newtype Natural = Natural Integer
   deriving stock (Generic, Prelude.Show, Prelude.Eq)
-  deriving newtype (Eq, Ord, AdditiveSemigroup, ToJSON)
+  deriving newtype (Eq, Ord, AdditiveSemigroup, MultiplicativeSemigroup, ToJSON)
 
 instance UnsafeFromData Natural where
   {-# INLINEABLE unsafeFromBuiltinData #-}

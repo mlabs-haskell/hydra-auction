@@ -38,7 +38,7 @@ index-state:
 
 tests: true
 
-haddock-options: "--optghc=-fplugin-opt PlutusTx.Plugin:defer-errors"
+-- haddock-options: "--optghc=-fplugin-opt PlutusTx.Plugin:defer-errors"
 
 -- Always show detailed output for tests
 test-show-details: direct

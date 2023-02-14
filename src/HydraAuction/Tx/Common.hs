@@ -4,6 +4,7 @@ module HydraAuction.Tx.Common (
   AutoCreateParams (..),
   filterAdaOnlyUtxo,
   actorTipUtxo,
+  toSlotNo,
   addressAndKeysFor,
   networkIdToNetwork,
   filterUtxoByCurrencySymbols,
@@ -129,13 +130,16 @@ filterUtxoByCurrencySymbols symbolsToMatch = UTxO.filter hasExactlySymbols
 filterAdaOnlyUtxo :: UTxO -> UTxO
 filterAdaOnlyUtxo = filterUtxoByCurrencySymbols [CurrencySymbol emptyByteString]
 
-actorTipUtxo :: RunningNode -> Actor -> IO UTxO.UTxO
-actorTipUtxo node actor = do
-  (vk, _) <- keysFor actor
+actorTipUtxo :: Actor -> Runner UTxO.UTxO
+actorTipUtxo actor = do
+  MkExecutionContext {node} <- ask
+  (vk, _) <- liftIO $ keysFor actor
   liftIO $ queryUTxOFor (networkId node) (nodeSocket node) QueryTip vk
 
-scriptUtxos :: RunningNode -> AuctionScript -> AuctionTerms -> IO UTxO.UTxO
-scriptUtxos RunningNode {networkId, nodeSocket} script terms = do
+scriptUtxos :: AuctionScript -> AuctionTerms -> Runner UTxO.UTxO
+scriptUtxos script terms = do
+  MkExecutionContext {node} <- ask
+  let RunningNode {networkId, nodeSocket} = node
   let scriptAddress =
         buildScriptAddress
           ( PlutusScript $
@@ -143,7 +147,7 @@ scriptUtxos RunningNode {networkId, nodeSocket} script terms = do
                 getValidator $ scriptValidatorForTerms script terms
           )
           networkId
-  queryUTxO networkId nodeSocket QueryTip [scriptAddress]
+  liftIO $ queryUTxO networkId nodeSocket QueryTip [scriptAddress]
 
 data AutoCreateParams = AutoCreateParams
   { authoredUtxos :: [(SigningKey PaymentKey, UTxO)]
@@ -159,9 +163,12 @@ data AutoCreateParams = AutoCreateParams
   , validityBound :: (Maybe POSIXTime, Maybe POSIXTime)
   }
 
-toSlotNo :: RunningNode -> POSIXTime -> IO SlotNo
-toSlotNo (RunningNode {networkId, nodeSocket}) ptime = do
-  timeHandle <- queryTimeHandle networkId nodeSocket
+toSlotNo :: POSIXTime -> Runner SlotNo
+toSlotNo ptime = do
+  MkExecutionContext {node} <- ask
+  timeHandle <-
+    liftIO $
+      queryTimeHandle (networkId node) (nodeSocket node)
   let timeInSeconds = getPOSIXTime ptime `div` 1000
       ndtime = secondsToNominalDiffTime $ fromInteger timeInSeconds
       utcTime = posixSecondsToUTCTime ndtime
@@ -169,21 +176,18 @@ toSlotNo (RunningNode {networkId, nodeSocket}) ptime = do
 
 autoCreateTx :: AutoCreateParams -> Runner Tx
 autoCreateTx (AutoCreateParams {..}) = do
-  MkExecutionContext {..} <- ask
-  let networkId' = networkId node
-      nodeSocket' = nodeSocket node
+  MkExecutionContext {node} <- ask
+  let (lowerBound', upperBound') = validityBound
+  lowerBound <- case lowerBound' of
+    Nothing -> pure TxValidityNoLowerBound
+    Just x -> TxValidityLowerBound <$> toSlotNo x
+  upperBound <- case upperBound' of
+    Nothing -> pure TxValidityNoUpperBound
+    Just x -> TxValidityUpperBound <$> toSlotNo x
 
   liftIO $ do
-    pparams <- queryProtocolParameters networkId' nodeSocket' QueryTip
-
-    let (lowerBound', upperBound') = validityBound
-    lowerBound <- case lowerBound' of
-      Nothing -> pure TxValidityNoLowerBound
-      Just x -> TxValidityLowerBound <$> toSlotNo node x
-    upperBound <- case upperBound' of
-      Nothing -> pure TxValidityNoUpperBound
-      Just x -> TxValidityUpperBound <$> toSlotNo node x
-
+    pparams <-
+      queryProtocolParameters (networkId node) (nodeSocket node) QueryTip
     body <-
       either (\x -> error $ "Autobalance error: " <> show x) id
         <$> callBodyAutoBalance

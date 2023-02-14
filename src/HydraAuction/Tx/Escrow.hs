@@ -1,6 +1,7 @@
 {-# LANGUAGE RecordWildCards #-}
 
 module HydraAuction.Tx.Escrow (
+  toForgeStateToken,
   announceAuction,
   startBidding,
   bidderBuys,
@@ -34,8 +35,21 @@ import Plutus.V2.Ledger.Api (
   getValidator,
  )
 
+toForgeStateToken :: AuctionTerms -> VoucherForgingRedeemer -> TxMintValue BuildTx
+toForgeStateToken terms redeemer =
+  mintedTokens
+    (fromPlutusScript $ getMintingPolicy $ policy terms)
+    redeemer
+    [(tokenToAsset $ stateTokenKindToTokenName Voucher, num)]
+  where
+    num = case redeemer of
+      MintVoucher -> 1
+      BurnVoucher -> -1
+
 announceAuction :: Actor -> AuctionTerms -> Runner ()
 announceAuction sellerActor terms = do
+  liftIO $ putStrLn "Doing announce auction"
+
   MkExecutionContext {..} <- ask
   let networkId' = networkId node
       nodeSocket' = nodeSocket node
@@ -58,12 +72,6 @@ announceAuction sellerActor terms = do
           fromPlutusScript @PlutusScriptV2 $
             getValidator $ escrowValidator terms
 
-      toMintStateToken =
-        mintedTokens
-          (fromPlutusScript $ getMintingPolicy mp)
-          MintVoucher
-          [(tokenToAsset $ stateTokenKindToTokenName Voucher, 1)]
-
   (sellerAddress, _, sellerSk) <-
     addressAndKeysFor sellerActor
 
@@ -75,9 +83,7 @@ announceAuction sellerActor terms = do
         QueryTip
         [fromPlutusTxOutRef $ utxoNonce terms]
 
-  sellerMoneyUtxo <-
-    liftIO $
-      filterAdaOnlyUtxo <$> actorTipUtxo node sellerActor
+  sellerMoneyUtxo <- filterAdaOnlyUtxo <$> actorTipUtxo sellerActor
 
   case length utxoWithLotNFT of
     0 -> fail "Utxo with Lot was consumed or not created"
@@ -92,7 +98,7 @@ announceAuction sellerActor terms = do
         , witnessedUtxos = []
         , collateral = Nothing
         , outs = [announcedEscrowTxOut]
-        , toMint = toMintStateToken
+        , toMint = toForgeStateToken terms MintVoucher
         , changeAddress = sellerAddress
         , validityBound = (Nothing, Just $ biddingStart terms)
         }
@@ -139,9 +145,7 @@ startBidding sellerActor terms = do
   (sellerAddress, _, sellerSk) <-
     addressAndKeysFor sellerActor
 
-  sellerMoneyUtxo <-
-    liftIO $
-      filterAdaOnlyUtxo <$> actorTipUtxo node sellerActor
+  sellerMoneyUtxo <- filterAdaOnlyUtxo <$> actorTipUtxo sellerActor
 
   let escrowAnnounceSymbols =
         [ fst $
@@ -152,10 +156,9 @@ startBidding sellerActor terms = do
         ]
 
   escrowAnnounceUtxo <-
-    liftIO $
-      filterUtxoByCurrencySymbols
-        escrowAnnounceSymbols
-        <$> scriptUtxos node Escrow terms
+    filterUtxoByCurrencySymbols
+      escrowAnnounceSymbols
+      <$> scriptUtxos Escrow terms
 
   case length escrowAnnounceUtxo of
     0 -> fail "Utxo with announced escrow was consumed or not created"
@@ -236,9 +239,7 @@ bidderBuys bidder terms = do
   (bidderAddress, _, bidderSk) <-
     addressAndKeysFor bidder
 
-  bidderMoneyUtxo <-
-    liftIO $
-      filterAdaOnlyUtxo <$> actorTipUtxo node bidder
+  bidderMoneyUtxo <- filterAdaOnlyUtxo <$> actorTipUtxo bidder
 
   let escrowBiddingStartedSymbols =
         [ CurrencySymbol emptyByteString
@@ -246,14 +247,11 @@ bidderBuys bidder terms = do
         ]
 
   escrowBiddingStartedUtxo <-
-    liftIO $
-      filterUtxoByCurrencySymbols
-        escrowBiddingStartedSymbols
-        <$> scriptUtxos node Escrow terms
+    filterUtxoByCurrencySymbols
+      escrowBiddingStartedSymbols
+      <$> scriptUtxos Escrow terms
 
-  standingBidUtxo <-
-    liftIO $
-      scriptUtxos node StandingBid terms
+  standingBidUtxo <- scriptUtxos StandingBid terms
 
   -- FIXME: cover not proper UTxOs
 
@@ -316,9 +314,7 @@ sellerReclaims seller terms = do
   (sellerAddress, _, sellerSk) <-
     addressAndKeysFor seller
 
-  sellerMoneyUtxo <-
-    liftIO $
-      filterAdaOnlyUtxo <$> actorTipUtxo node seller
+  sellerMoneyUtxo <- filterAdaOnlyUtxo <$> actorTipUtxo seller
 
   let escrowBiddingStartedSymbols =
         [ CurrencySymbol emptyByteString
@@ -326,9 +322,8 @@ sellerReclaims seller terms = do
         ]
 
   escrowBiddingStartedUtxo <-
-    liftIO $
-      filterUtxoByCurrencySymbols escrowBiddingStartedSymbols
-        <$> scriptUtxos node Escrow terms
+    filterUtxoByCurrencySymbols escrowBiddingStartedSymbols
+      <$> scriptUtxos Escrow terms
 
   void $
     autoSubmitAndAwaitTx $

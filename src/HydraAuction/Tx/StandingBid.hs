@@ -1,6 +1,6 @@
 {-# LANGUAGE RecordWildCards #-}
 
-module HydraAuction.Tx.StandingBid (newBid) where
+module HydraAuction.Tx.StandingBid (newBid, cleanupTx) where
 
 import Hydra.Prelude hiding (Natural)
 
@@ -12,6 +12,7 @@ import HydraAuction.OnChain
 import HydraAuction.PlutusExtras
 import HydraAuction.Runner
 import HydraAuction.Tx.Common
+import HydraAuction.Tx.Escrow (toForgeStateToken)
 import HydraAuction.Types
 import Plutus.V1.Ledger.Value (assetClassValue)
 import Plutus.V2.Ledger.Api (getValidator)
@@ -58,12 +59,8 @@ newBid bidder terms bidAmount = do
   (bidderAddress, bidderVk, bidderSk) <-
     addressAndKeysFor bidder
 
-  bidderMoneyUtxo <-
-    liftIO $
-      filterAdaOnlyUtxo <$> actorTipUtxo node bidder
-  standingBidUtxo <-
-    liftIO $
-      scriptUtxos node StandingBid terms
+  bidderMoneyUtxo <- filterAdaOnlyUtxo <$> actorTipUtxo bidder
+  standingBidUtxo <- scriptUtxos StandingBid terms
 
   -- FIXME: cover not proper UTxOs
   void $
@@ -82,3 +79,34 @@ newBid bidder terms bidAmount = do
         , changeAddress = bidderAddress
         , validityBound = (Just $ biddingStart terms, Just $ biddingEnd terms)
         }
+
+cleanupTx :: Actor -> AuctionTerms -> Runner ()
+cleanupTx actor terms = do
+  logMsg "Doing standing bid cleanup"
+
+  (actorAddress, _, actorSk) <- addressAndKeysFor actor
+
+  standingBidUtxo <- scriptUtxos StandingBid terms
+  actorMoneyUtxo <- filterAdaOnlyUtxo <$> actorTipUtxo actor
+
+  -- FIXME: cover not proper UTxOs
+  void $
+    autoSubmitAndAwaitTx $
+      AutoCreateParams
+        { authoredUtxos = [(actorSk, actorMoneyUtxo)]
+        , referenceUtxo = mempty
+        , witnessedUtxos =
+            [ (standingBidWitness, standingBidUtxo)
+            ]
+        , collateral = Nothing
+        , outs = []
+        , toMint = toForgeStateToken terms BurnVoucher
+        , changeAddress = actorAddress
+        , validityBound = (Just $ cleanup terms, Nothing)
+        }
+  where
+    standingBidWitness = mkInlinedDatumScriptWitness script Cleanup
+      where
+        script =
+          fromPlutusScript @PlutusScriptV2 $
+            getValidator $ standingBidValidator terms

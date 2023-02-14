@@ -125,8 +125,8 @@ newtype StateDirectory = MkStateDirectory
 {- | Initiates the actor's wallet using the prescribed amount of faucet
  @Lovelace@.
 -}
-initWallet :: Actor -> Lovelace -> Runner ()
-initWallet actor amount = do
+initWallet :: Lovelace -> Actor -> Runner ()
+initWallet amount actor = do
   MkExecutionContext {..} <- ask
   liftIO $ do
     (vk, _) <- keysFor actor
