@@ -1,5 +1,3 @@
-{-# LANGUAGE RecordWildCards #-}
-
 module HydraAuction.Runner (
   Runner,
   executeRunner,
@@ -90,7 +88,7 @@ executeRunner tracer node verbose runner =
  @StateDirectory@.
 -}
 fileTracer :: StateDirectory -> IO (Tracer IO EndToEndLog)
-fileTracer MkStateDirectory {..} = do
+fileTracer MkStateDirectory {stateDirectory} = do
   withFile (stateDirectory </> "test.log") ReadWriteMode $ \h ->
     withTracerOutputTo h "Tracer" $ \tracer -> pure tracer
 
@@ -101,7 +99,7 @@ stdoutTracer verbosity =
 
 logMsg :: String -> Runner ()
 logMsg s = do
-  MkExecutionContext {..} <- ask
+  MkExecutionContext {verbose} <- ask
   when verbose $
     liftIO $ hPutStrLn stderr s
 
@@ -127,7 +125,7 @@ newtype StateDirectory = MkStateDirectory
 -}
 initWallet :: Lovelace -> Actor -> Runner ()
 initWallet amount actor = do
-  MkExecutionContext {..} <- ask
+  MkExecutionContext {tracer, node} <- ask
   liftIO $ do
     (vk, _) <- keysFor actor
     seedFromFaucet_
