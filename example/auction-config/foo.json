@@ -1,5 +1,5 @@
 {
-    "configAuctionFee": 4000000,
+    "configAuctionFeePerDelegate": 4000000,
     "configDiffBiddingEnd": 60,
     "configDiffBiddingStart": 0,
     "configDiffCleanup": 120,
