@@ -1,7 +1,5 @@
 {-# LANGUAGE RecordWildCards #-}
 
-{-# OPTIONS -Wno-incomplete-uni-patterns #-}
-
 module EndToEnd.Hydra (testSuite) where
 
 import Test.Tasty (TestTree, testGroup)
@@ -144,7 +142,7 @@ initAndClose clusterIx hydraScriptsTxId = do
         hydraScriptsTxId
         contestationPeriod
         $ \nodes -> do
-          let [n1, n2, n3] = toList nodes
+          [n1, n2, n3] <- Prelude.return $ toList nodes
           waitForNodesConnected tracer [n1, n2, n3]
 
           -- Funds to be used as fuel by Hydra protocol transactions
