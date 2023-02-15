@@ -18,7 +18,8 @@
 
 * Single constructors are witten like this: `newtype MyType = MkMyType Integer`
 * Acronims are written with normal case (like `Xml` or `Cli`)
-* Merged comments on things to be changed later are marked with `FIXME`. `TODO` comments are reserved for local/draft changes and should not be merged.
+* Merged comments on things to be changed later are marked with `FIXME`.
+  `TODO` comments are reserved for local/draft changes and should not be merged.
 
 # Documentation styleguide
 
@@ -26,8 +27,11 @@
 
 # PR/commit guide
 
-* Better separate refactoring PRs from actuall changes
-* Tests should be successful at every commit: add expectFail or comment it in TestTree if something is broken temporarily.
+* Better separate refactoring PRs from actual changes
+  -- to ease reviewing and conflict resolution
+* Tests should be successful at every commit:
+  add expectFail or comment it in TestTree if something is broken temporarily.
+  This may help with rebasing and bisection.
 
 # Reviewers checklist
 
