@@ -72,7 +72,7 @@ constructTermsDynamic sellerActor utxoNonce = do
   sellerVkHash <- getActorVkHash sellerActor
   return $
     AuctionTermsDynamic
-      { configAuctionLot = allowMintingAssetClass
+      { configAuctionLot = testNftAssetClass
       , configSellerActor = sellerActor
       , -- FIXME
         configDelegates = [sellerVkHash]
