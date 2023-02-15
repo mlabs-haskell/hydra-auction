@@ -9,16 +9,26 @@ import Data.Maybe (fromJust)
 
 -- Haskell test imports
 import Test.Tasty (TestTree, testGroup)
-import Test.Tasty.HUnit (Assertion, testCase)
+import Test.Tasty.HUnit (Assertion, testCase, (@=?))
+
+-- Cardano node imports
+import Cardano.Api.UTxO qualified as UTxO
+
+-- Plutus imports
+import Plutus.V1.Ledger.Value (assetClassValueOf)
 
 -- Hydra imports
-import Hydra.Cardano.Api (mkTxIn)
+
+import Hydra.Cardano.Api (mkTxIn, toPlutusValue, txOutValue)
 import Hydra.Cluster.Fixture (Actor (..))
 
 -- Hydra auction imports
+import HydraAuction.OnChain.TestNFT (testNftAssetClass)
 import HydraAuction.Runner (
+  Runner,
   initWallet,
  )
+import HydraAuction.Tx.Common (actorTipUtxo)
 import HydraAuction.Tx.Escrow (
   announceAuction,
   bidderBuys,
@@ -54,6 +64,13 @@ testSuite =
     , testCase "Seller reclaims lot" sellerReclaimsTest
     ]
 
+assertNFTNumEquals :: Actor -> Integer -> Runner ()
+assertNFTNumEquals actor expectedNum = do
+  utxo <- actorTipUtxo actor
+  liftIO $ do
+    let value = mconcat [toPlutusValue $ txOutValue out | (_, out) <- UTxO.pairs utxo]
+    assetClassValueOf value testNftAssetClass @=? expectedNum
+
 config :: AuctionTermsConfig
 config =
   AuctionTermsConfig
@@ -81,15 +98,24 @@ successfulBidTest = mkAssertion $ do
     dynamicState <- constructTermsDynamic seller utxoRef
     configToAuctionTerms config dynamicState
 
+  assertNFTNumEquals seller 1
+
   announceAuction seller terms
 
   waitUntil $ biddingStart terms
   startBidding seller terms
+
+  assertNFTNumEquals seller 0
+
   newBid buyer1 terms $ startingBid terms
   newBid buyer2 terms $ startingBid terms + minimumBidIncrement terms
 
   waitUntil $ biddingEnd terms
   bidderBuys buyer2 terms
+
+  assertNFTNumEquals seller 0
+  assertNFTNumEquals buyer1 0
+  assertNFTNumEquals buyer2 1
 
   waitUntil $ cleanup terms
   cleanupTx seller terms
@@ -107,13 +133,17 @@ sellerReclaimsTest = mkAssertion $ do
     dynamicState <- constructTermsDynamic seller utxoRef
     configToAuctionTerms config dynamicState
 
+  assertNFTNumEquals seller 1
   announceAuction seller terms
 
   waitUntil $ biddingStart terms
   startBidding seller terms
+  assertNFTNumEquals seller 0
 
   waitUntil $ voucherExpiry terms
   sellerReclaims seller terms
+
+  assertNFTNumEquals seller 1
 
   waitUntil $ cleanup terms
   cleanupTx seller terms
