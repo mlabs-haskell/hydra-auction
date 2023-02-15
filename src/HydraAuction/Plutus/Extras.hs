@@ -1,20 +1,26 @@
 -- | More Extras for Plutus.Extras
 module HydraAuction.Plutus.Extras (module X, validatorAddress, scriptCurrencySymbol) where
 
+-- Prelude imports
 import Hydra.Prelude hiding (fromMaybe)
+import PlutusTx.Prelude (toBuiltin)
 
+-- Plutus imports
+import Plutus.V1.Ledger.Address (Address, scriptHashAddress)
+import Plutus.V1.Ledger.Scripts (MintingPolicy, unMintingPolicyScript, unValidatorScript)
+import Plutus.V1.Ledger.Value (CurrencySymbol (..))
+import Plutus.V2.Ledger.Api (Validator)
+
+-- Plutus extra imports
+import Plutus.Extras as X
+
+-- Hydra imports
 import Hydra.Cardano.Api (
   SerialiseAsRawBytes (serialiseToRawBytes),
   fromPlutusScript,
   hashScript,
   pattern PlutusScript,
  )
-import Plutus.Extras as X
-import Plutus.V1.Ledger.Address (Address, scriptHashAddress)
-import Plutus.V1.Ledger.Scripts (MintingPolicy, unMintingPolicyScript, unValidatorScript)
-import Plutus.V1.Ledger.Value (CurrencySymbol (..))
-import Plutus.V2.Ledger.Api (Validator)
-import PlutusTx.Prelude (toBuiltin)
 
 validatorAddress :: Validator -> Address
 validatorAddress = scriptHashAddress . scriptValidatorHash . unValidatorScript

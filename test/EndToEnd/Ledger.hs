@@ -1,16 +1,21 @@
 module EndToEnd.Ledger (testSuite) where
 
+-- Prelude imports
+import Hydra.Prelude (MonadIO (liftIO))
 import PlutusTx.Prelude
 
+-- Haskell imports
 import Data.Maybe (fromJust)
-import Hydra.Cardano.Api (mkTxIn)
-import Hydra.Cluster.Fixture (Actor (..))
 
-import Hydra.Prelude (MonadIO (liftIO))
+-- Haskell test imports
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (Assertion, testCase)
 
-import EndToEnd.Utils (mkAssertion, waitUntil)
+-- Hydra imports
+import Hydra.Cardano.Api (mkTxIn)
+import Hydra.Cluster.Fixture (Actor (..))
+
+-- Hydra auction imports
 import HydraAuction.Runner (
   initWallet,
  )
@@ -37,6 +42,9 @@ import HydraAuction.Tx.TermsConfig (
  )
 import HydraAuction.Tx.TestNFT (mintOneTestNFT)
 import HydraAuction.Types (AuctionTerms (..), intToNatural)
+
+-- Hydra auction test imports
+import EndToEnd.Utils (mkAssertion, waitUntil)
 
 testSuite :: TestTree
 testSuite =

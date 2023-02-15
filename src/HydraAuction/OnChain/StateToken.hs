@@ -2,15 +2,19 @@
 
 module HydraAuction.OnChain.StateToken (StateTokenKind (..), stateTokenKindToTokenName, mkPolicy) where
 
+-- Prelude imports
 import PlutusTx.Prelude
 
-import HydraAuction.Addresses
-import HydraAuction.OnChain.Common
-import HydraAuction.Types
+-- Plutus imports
 import Plutus.V1.Ledger.Interval (contains, from, to)
 import Plutus.V1.Ledger.Value (Value, singleton)
 import Plutus.V2.Ledger.Api (TokenName (..))
 import Plutus.V2.Ledger.Contexts (ScriptContext, TxInfo, ownCurrencySymbol, scriptContextTxInfo, txInInfoOutRef, txInfoInputs, txInfoMint, txInfoOutputs, txInfoValidRange, txOutAddress)
+
+-- Hydra auction imports
+import HydraAuction.Addresses
+import HydraAuction.OnChain.Common
+import HydraAuction.Types
 
 data StateTokenKind = Voucher
 

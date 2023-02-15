@@ -1,16 +1,20 @@
 module HydraAuction.OnChain.StandingBid (mkStandingBidValidator) where
 
+-- Prelude imports
 import PlutusTx.Prelude
 
-import HydraAuction.Addresses
-import HydraAuction.OnChain.Common
-import HydraAuction.OnChain.StateToken (StateTokenKind (..), stateTokenKindToTokenName)
-import HydraAuction.Types
+-- Plutus imports
 import Plutus.V1.Ledger.Address (pubKeyHashAddress, scriptHashAddress)
 import Plutus.V1.Ledger.Interval (contains, interval)
 import Plutus.V1.Ledger.Value (assetClass, assetClassValueOf)
 import Plutus.V2.Ledger.Api (TxInfo, scriptContextTxInfo, txInInfoResolved, txInfoInputs, txInfoMint, txInfoOutputs, txInfoValidRange, txOutAddress)
 import Plutus.V2.Ledger.Contexts (ScriptContext, ownHash)
+
+-- Hydra auction imports
+import HydraAuction.Addresses
+import HydraAuction.OnChain.Common
+import HydraAuction.OnChain.StateToken (StateTokenKind (..), stateTokenKindToTokenName)
+import HydraAuction.Types
 
 {-# INLINEABLE mkStandingBidValidator #-}
 mkStandingBidValidator :: AuctionTerms -> StandingBidDatum -> StandingBidRedeemer -> ScriptContext -> Bool

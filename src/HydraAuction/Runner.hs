@@ -10,21 +10,7 @@ module HydraAuction.Runner (
   logMsg,
 ) where
 
-import CardanoNode (
-  RunningNode,
-  withCardanoNodeDevnet,
- )
-
-import Hydra.Cardano.Api (Lovelace)
-import Hydra.Cluster.Faucet (Marked (Normal), seedFromFaucet_)
-import Hydra.Cluster.Fixture (Actor)
-import Hydra.Cluster.Util (keysFor)
-import Hydra.Logging (
-  Tracer,
-  Verbosity,
-  withTracer,
-  withTracerOutputTo,
- )
+-- Prelude imports
 import Hydra.Prelude (
   Applicative (pure),
   Bool (True),
@@ -43,13 +29,28 @@ import Hydra.Prelude (
   withFile,
   ($),
  )
+import Test.Hydra.Prelude (withTempDir)
 
-import HydraNode (EndToEndLog (FromCardanoNode, FromFaucet))
-
+-- Haskell imports
 import System.FilePath ((</>))
 import System.IO (hPutStrLn, stderr)
 
-import Test.Hydra.Prelude (withTempDir)
+-- Hydra imports
+import CardanoNode (
+  RunningNode,
+  withCardanoNodeDevnet,
+ )
+import Hydra.Cardano.Api (Lovelace)
+import Hydra.Cluster.Faucet (Marked (Normal), seedFromFaucet_)
+import Hydra.Cluster.Fixture (Actor)
+import Hydra.Cluster.Util (keysFor)
+import Hydra.Logging (
+  Tracer,
+  Verbosity,
+  withTracer,
+  withTracerOutputTo,
+ )
+import HydraNode (EndToEndLog (FromCardanoNode, FromFaucet))
 
 {- | Execution context holding the current tracer,
  as well as the running node.

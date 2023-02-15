@@ -1,9 +1,17 @@
 module HydraAuction.Tx.StandingBid (newBid, cleanupTx) where
 
+-- Prelude imports
 import Hydra.Prelude hiding (Natural)
 
+-- Plutus imports
+import Plutus.V1.Ledger.Value (assetClassValue)
+import Plutus.V2.Ledger.Api (getValidator)
+
+-- Hydra imports
 import Hydra.Cardano.Api hiding (txOutValue)
 import Hydra.Cluster.Fixture (Actor)
+
+-- Hydra auction imports
 import HydraAuction.Addresses
 import HydraAuction.OnChain hiding (standingBidAddress)
 import HydraAuction.Plutus.Extras
@@ -11,8 +19,6 @@ import HydraAuction.Runner
 import HydraAuction.Tx.Common
 import HydraAuction.Tx.Escrow (toForgeStateToken)
 import HydraAuction.Types
-import Plutus.V1.Ledger.Value (assetClassValue)
-import Plutus.V2.Ledger.Api (getValidator)
 
 newBid :: Actor -> AuctionTerms -> Natural -> Runner ()
 newBid bidder terms bidAmount = do

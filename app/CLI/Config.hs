@@ -15,21 +15,25 @@ module CLI.Config (
   configToAuctionTerms,
 ) where
 
+-- Prelude imports
+import Hydra.Prelude (liftIO)
+import Prelude
+
+-- Haskell imports
 import Control.Monad.Trans.Maybe (MaybeT (..), runMaybeT)
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Aeson qualified as Aeson
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as LBS
-
-import Hydra.Prelude (liftIO)
-import Prelude
-
-import Hydra.Cluster.Fixture (Actor (..))
-import HydraAuction.Tx.TermsConfig
-import HydraAuction.Types
-
 import System.Directory
 import System.FilePath ((<.>), (</>))
+
+-- Hydra imports
+import Hydra.Cluster.Fixture (Actor (..))
+
+-- Hydra auction imports
+import HydraAuction.Tx.TermsConfig
+import HydraAuction.Types
 
 -- =============================================================================
 -- Auction config and state directories

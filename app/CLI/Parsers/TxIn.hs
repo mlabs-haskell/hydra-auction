@@ -2,6 +2,13 @@ module CLI.Parsers.TxIn (
   parseTxIn,
 ) where
 
+-- Prelude imports
+import Prelude
+
+-- Haskell imports
+import Data.Bifunctor (first)
+import Data.ByteString.Char8 qualified as BSC
+import Options.Applicative
 import Text.Parsec ((<?>))
 import Text.Parsec qualified as Parsec
 import Text.Parsec.Error qualified as Parsec
@@ -9,12 +16,7 @@ import Text.Parsec.Language qualified as Parsec
 import Text.Parsec.String qualified as Parsec
 import Text.Parsec.Token qualified as Parsec
 
-import Data.ByteString.Char8 qualified as BSC
-
-import Prelude
-
-import Options.Applicative
-
+-- Cardano node imports
 import Cardano.Api (
   AsType (AsTxId),
   TxId (..),
@@ -23,8 +25,6 @@ import Cardano.Api (
   deserialiseFromRawBytesHex,
   displayError,
  )
-
-import Data.Bifunctor (first)
 
 parseTxIn :: ReadM TxIn
 parseTxIn = readerFromParsecParser parseTxIn'
