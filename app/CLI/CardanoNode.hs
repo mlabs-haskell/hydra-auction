@@ -1,10 +1,16 @@
-module CardanoNodeDevnet (runCardanoNode, getCardanoNode) where
+module CLI.CardanoNode (runCardanoNode, getCardanoNode) where
 
+-- Prelude imports
+import Hydra.Prelude (contramap)
 import Prelude
 
+-- Haskell imports
 import System.FilePath ((</>))
 
+-- Cardano node imports
 import Cardano.Api (NetworkId (..))
+
+-- Hydra imports
 import CardanoNode (
   RunningNode (
     RunningNode,
@@ -15,14 +21,14 @@ import CardanoNode (
  )
 import Hydra.Cardano.Api (NetworkMagic (NetworkMagic))
 import Hydra.Logging (Tracer)
-import Hydra.Prelude (contramap)
 import HydraNode (
   EndToEndLog (
     FromCardanoNode
   ),
  )
 
-import CliConfig (
+-- Hydra auction CLI imports
+import CLI.Config (
   DirectoryKind (..),
   getAuctionDirectory,
  )

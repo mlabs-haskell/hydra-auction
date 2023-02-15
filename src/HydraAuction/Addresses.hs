@@ -5,10 +5,14 @@ module HydraAuction.Addresses (
   FeeEscrowAddress (..),
 ) where
 
+-- Prelude imports
 import PlutusTx.Prelude
 import Prelude qualified
 
+-- Haskell imports
 import GHC.Generics (Generic)
+
+-- Plutus imports
 import Plutus.V1.Ledger.Value (CurrencySymbol)
 import Plutus.V2.Ledger.Api (Address)
 import PlutusTx qualified

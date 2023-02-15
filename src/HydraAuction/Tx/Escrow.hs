@@ -8,20 +8,11 @@ module HydraAuction.Tx.Escrow (
   sellerReclaims,
 ) where
 
+-- Prelude imports
 import Hydra.Prelude
 import PlutusTx.Prelude (emptyByteString)
 
-import Cardano.Api.UTxO qualified as UTxO
-import CardanoNode (RunningNode (..))
-import Hydra.Cardano.Api hiding (txOutValue)
-import Hydra.Cluster.Fixture (Actor (..))
-import HydraAuction.Addresses
-import HydraAuction.OnChain hiding (escrowAddress, standingBidAddress)
-import HydraAuction.OnChain.StateToken
-import HydraAuction.PlutusExtras
-import HydraAuction.Runner
-import HydraAuction.Tx.Common
-import HydraAuction.Types
+-- Plutus imports
 import Plutus.V1.Ledger.Address (pubKeyHashAddress)
 import Plutus.V1.Ledger.Value (
   CurrencySymbol (..),
@@ -33,6 +24,21 @@ import Plutus.V2.Ledger.Api (
   getMintingPolicy,
   getValidator,
  )
+
+-- Hydra imports
+import Cardano.Api.UTxO qualified as UTxO
+import CardanoNode (RunningNode (..))
+import Hydra.Cardano.Api hiding (txOutValue)
+import Hydra.Cluster.Fixture (Actor (..))
+
+-- Hydra auction imports
+import HydraAuction.Addresses
+import HydraAuction.OnChain hiding (escrowAddress, standingBidAddress)
+import HydraAuction.OnChain.StateToken
+import HydraAuction.Plutus.Extras
+import HydraAuction.Runner
+import HydraAuction.Tx.Common
+import HydraAuction.Types
 
 toForgeStateToken :: AuctionTerms -> VoucherForgingRedeemer -> TxMintValue BuildTx
 toForgeStateToken terms redeemer =

@@ -7,22 +7,28 @@ module HydraAuction.Tx.TermsConfig (
   configToAuctionTerms,
 ) where
 
+-- Prelude imports
 import PlutusTx.Prelude (emptyByteString)
 import Prelude
 
+-- Haskell imports
+import Data.Aeson (FromJSON, ToJSON)
 import GHC.Generics (Generic)
 
-import Data.Aeson (FromJSON, ToJSON)
-import Hydra.Cardano.Api (TxIn, toPlutusKeyHash, toPlutusTxOutRef, verificationKeyHash)
-import Hydra.Cluster.Fixture (Actor)
-import Hydra.Cluster.Util (keysFor)
+-- Plutus imports
 import Plutus.V1.Ledger.Crypto (PubKeyHash)
 import Plutus.V1.Ledger.Time (POSIXTime (..))
 import Plutus.V1.Ledger.Value (AssetClass, CurrencySymbol (..))
 import Plutus.V2.Ledger.Contexts (TxOutRef)
 
+-- Hydra imports
+import Hydra.Cardano.Api (TxIn, toPlutusKeyHash, toPlutusTxOutRef, verificationKeyHash)
+import Hydra.Cluster.Fixture (Actor)
+import Hydra.Cluster.Util (keysFor)
+
+-- Hydra auction imports
 import HydraAuction.OnChain.TestNFT
-import HydraAuction.PlutusOrphans ()
+import HydraAuction.Plutus.Orphans ()
 import HydraAuction.Tx.Common (currentTimeSeconds)
 import HydraAuction.Types (AuctionTerms (..), Natural)
 
@@ -66,7 +72,7 @@ constructTermsDynamic sellerActor utxoNonce = do
   sellerVkHash <- getActorVkHash sellerActor
   return $
     AuctionTermsDynamic
-      { configAuctionLot = allowMintingAssetClass
+      { configAuctionLot = testNftAssetClass
       , configSellerActor = sellerActor
       , -- FIXME
         configDelegates = [sellerVkHash]

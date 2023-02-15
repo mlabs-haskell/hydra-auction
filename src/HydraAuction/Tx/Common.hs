@@ -23,29 +23,23 @@ module HydraAuction.Tx.Common (
   currentTimeSeconds,
 ) where
 
+-- Prelude imports
 import Hydra.Prelude (ask, liftIO, toList, void)
 import PlutusTx.Prelude (emptyByteString)
 import Prelude
 
-import Cardano.Api.UTxO qualified as UTxO
-import Cardano.Ledger.BaseTypes qualified as Cardano
-import CardanoClient hiding (networkId)
-import CardanoNode (
-  RunningNode (RunningNode, networkId, nodeSocket),
- )
+-- Haskell imports
 import Data.List (sort)
 import Data.Map qualified as Map
 import Data.Time (secondsToNominalDiffTime)
 import Data.Time.Clock.POSIX (posixSecondsToUTCTime)
 import Data.Time.Clock.POSIX qualified as POSIXTime
 import Data.Tuple.Extra (first)
-import Hydra.Cardano.Api hiding (txIns, txOutValue)
-import Hydra.Chain.Direct.TimeHandle (queryTimeHandle, slotFromUTCTime)
-import Hydra.Cluster.Fixture
-import Hydra.Cluster.Util
-import HydraAuction.OnChain
-import HydraAuction.Runner
-import HydraAuction.Types
+
+-- Cardano ledger imports
+import Cardano.Ledger.BaseTypes qualified as Cardano
+
+-- Plutus imports
 import Plutus.V1.Ledger.Address qualified as PlutusAddress
 import Plutus.V1.Ledger.Value (
   CurrencySymbol (..),
@@ -61,6 +55,22 @@ import Plutus.V2.Ledger.Api (
   toData,
   txOutValue,
  )
+
+-- Hydra imports
+import Cardano.Api.UTxO qualified as UTxO
+import CardanoClient hiding (networkId)
+import CardanoNode (
+  RunningNode (RunningNode, networkId, nodeSocket),
+ )
+import Hydra.Cardano.Api hiding (txIns, txOutValue)
+import Hydra.Chain.Direct.TimeHandle (queryTimeHandle, slotFromUTCTime)
+import Hydra.Cluster.Fixture
+import Hydra.Cluster.Util
+
+-- Hydra auction imports
+import HydraAuction.OnChain
+import HydraAuction.Runner
+import HydraAuction.Types
 
 networkIdToNetwork :: NetworkId -> Cardano.Network
 networkIdToNetwork (Testnet _) = Cardano.Testnet

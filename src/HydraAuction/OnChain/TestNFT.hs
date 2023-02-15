@@ -1,19 +1,27 @@
-module HydraAuction.OnChain.TestNFT (allowMintingPolicy, allowMintingCurrencySymbol, allowMintingAssetClass) where
+module HydraAuction.OnChain.TestNFT (testNftPolicy, testNftCurrencySymbol, testNftAssetClass, testNftTokenName) where
 
+-- Prelude imports
 import PlutusTx.Prelude
 
-import HydraAuction.PlutusExtras
+-- Plutus imports
 import Plutus.V1.Ledger.Value (AssetClass (..))
 import Plutus.V2.Ledger.Api (CurrencySymbol, MintingPolicy, TokenName (..), mkMintingPolicyScript)
 import PlutusTx
 
-allowMintingPolicy :: MintingPolicy
-allowMintingPolicy =
+-- Hydra auction imports
+import HydraAuction.Plutus.Extras
+
+testNftPolicy :: MintingPolicy
+testNftPolicy =
   mkMintingPolicyScript $
     $$(PlutusTx.compile [||\_ _ -> ()||])
 
-allowMintingCurrencySymbol :: CurrencySymbol
-allowMintingCurrencySymbol = scriptCurrencySymbol allowMintingPolicy
+testNftCurrencySymbol :: CurrencySymbol
+testNftCurrencySymbol = scriptCurrencySymbol testNftPolicy
 
-allowMintingAssetClass :: AssetClass
-allowMintingAssetClass = AssetClass (allowMintingCurrencySymbol, TokenName emptyByteString)
+testNftTokenName :: TokenName
+testNftTokenName = TokenName "Mona Lisa by Leonardo da Vinci"
+
+testNftAssetClass :: AssetClass
+testNftAssetClass =
+  AssetClass (testNftCurrencySymbol, testNftTokenName)

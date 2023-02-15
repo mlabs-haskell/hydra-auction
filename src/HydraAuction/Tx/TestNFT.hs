@@ -1,15 +1,20 @@
 module HydraAuction.Tx.TestNFT (mintOneTestNFT) where
 
+-- Prelude imports
 import Hydra.Prelude
-import PlutusTx.Prelude (emptyByteString)
 
+-- Plutus imports
+import Plutus.V1.Ledger.Value (assetClassValue)
+import Plutus.V2.Ledger.Api (getMintingPolicy)
+
+-- Hydra imports
 import Hydra.Cardano.Api hiding (txOutValue)
 import Hydra.Cluster.Fixture (Actor)
+
+-- Hydra auction imports
 import HydraAuction.OnChain.TestNFT
 import HydraAuction.Runner
 import HydraAuction.Tx.Common
-import Plutus.V1.Ledger.Value (assetClassValue)
-import Plutus.V2.Ledger.Api (TokenName (..), getMintingPolicy)
 
 mintOneTestNFT :: Actor -> Runner Tx
 mintOneTestNFT actor = do
@@ -19,7 +24,7 @@ mintOneTestNFT actor = do
   actorMoneyUtxo <- filterAdaOnlyUtxo <$> actorTipUtxo actor
 
   let valueOut =
-        fromPlutusValue (assetClassValue allowMintingAssetClass 1)
+        fromPlutusValue (assetClassValue testNftAssetClass 1)
           <> lovelaceToValue minLovelace
 
       txOut =
@@ -31,9 +36,9 @@ mintOneTestNFT actor = do
 
       toMint =
         mintedTokens
-          (fromPlutusScript $ getMintingPolicy allowMintingPolicy)
+          (fromPlutusScript $ getMintingPolicy testNftPolicy)
           ()
-          [(tokenToAsset $ TokenName emptyByteString, 1)]
+          [(tokenToAsset testNftTokenName, 1)]
 
   autoSubmitAndAwaitTx $
     AutoCreateParams

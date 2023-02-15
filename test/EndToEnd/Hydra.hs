@@ -2,9 +2,7 @@
 
 module EndToEnd.Hydra (testSuite) where
 
-import Test.Tasty (TestTree, testGroup)
-import Test.Tasty.HUnit (Assertion, testCase)
-
+-- Prelude imports
 import Hydra.Prelude (
   Contravariant (contramap),
   Enum (toEnum),
@@ -31,15 +29,9 @@ import Hydra.Prelude (
   (<$>),
  )
 import Test.Hydra.Prelude (failAfter, failure, withTempDir)
+import Prelude qualified
 
-import Cardano.Api.UTxO qualified as UTxO
-import CardanoClient (waitForUTxO)
-import CardanoNode (
-  RunningNode (
-    networkId,
-    nodeSocket
-  ),
- )
+-- Haskell imports
 import Control.Lens ((^?))
 import Data.Aeson (
   Result (..),
@@ -51,6 +43,21 @@ import Data.Aeson (
 import Data.Aeson.Lens (key, _JSON)
 import Data.Map qualified as Map
 import Data.Set qualified as Set
+
+-- Haskell test imports
+import Test.QuickCheck (generate)
+import Test.Tasty (TestTree, testGroup)
+import Test.Tasty.HUnit (Assertion, testCase)
+
+-- Hydra imports
+import Cardano.Api.UTxO qualified as UTxO
+import CardanoClient (waitForUTxO)
+import CardanoNode (
+  RunningNode (
+    networkId,
+    nodeSocket
+  ),
+ )
 import Hydra.Cardano.Api (
   AddressInEra,
   NetworkId (Testnet),
@@ -89,14 +96,15 @@ import HydraNode (
   waitMatch,
   withHydraCluster,
  )
-import Test.QuickCheck (generate)
-import Prelude qualified
 
-import EndToEnd.Utils (mkAssertion)
+-- Hydra auction imports
 import HydraAuction.Runner (
   ExecutionContext (MkExecutionContext, node, tracer),
   Runner,
  )
+
+-- Hydra auction test imports
+import EndToEnd.Utils (mkAssertion)
 
 testSuite :: TestTree
 testSuite =

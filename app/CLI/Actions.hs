@@ -1,35 +1,29 @@
 {-# LANGUAGE RecordWildCards #-}
 
-module CliActions (
+module CLI.Actions (
   CliInput (..),
   CliAction (..),
   handleCliAction,
   seedAmount,
 ) where
 
+-- Prelude imports
 import Hydra.Prelude (ask, liftIO)
 import Prelude
 
+-- Haskell imports
+import Control.Monad (forM_, void)
 import Data.Map.Strict qualified as Map
 
+-- Cardano node imports
 import Cardano.Api (TxIn, TxOut (..))
+
+-- Hydra imports
 import Cardano.Api.UTxO (UTxO, toMap)
-
-import CliConfig (
-  AuctionName,
-  CliEnhancedAuctionTerms (..),
-  configToAuctionTerms,
-  constructTermsDynamic,
-  readAuctionTerms,
-  readAuctionTermsConfig,
-  readCliEnhancedAuctionTerms,
-  writeAuctionTermsDynamic,
- )
-
-import CardanoNodeDevnet (runCardanoNode)
-import Control.Monad (forM_, void)
 import Hydra.Cardano.Api (Lovelace, TxOut, TxOutValue (..))
 import Hydra.Cluster.Fixture (Actor (..))
+
+-- Hydra auction imports
 import HydraAuction.OnChain (AuctionScript)
 import HydraAuction.Runner (
   ExecutionContext (MkExecutionContext, node, tracer, verbose),
@@ -46,6 +40,19 @@ import HydraAuction.Tx.Escrow (
 import HydraAuction.Tx.StandingBid
 import HydraAuction.Tx.TestNFT
 import HydraAuction.Types (Natural)
+
+-- Hydra auction CLI imports
+import CLI.CardanoNode (runCardanoNode)
+import CLI.Config (
+  AuctionName,
+  CliEnhancedAuctionTerms (..),
+  configToAuctionTerms,
+  constructTermsDynamic,
+  readAuctionTerms,
+  readAuctionTermsConfig,
+  readCliEnhancedAuctionTerms,
+  writeAuctionTermsDynamic,
+ )
 
 seedAmount :: Lovelace
 seedAmount = 100_000_000

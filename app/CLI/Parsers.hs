@@ -1,12 +1,13 @@
-module CliParsers (
+module CLI.Parsers (
   getCliInput,
   CliInput (..),
 ) where
 
+-- Prelude imports
 import Prelude
 
+-- Haskell imports
 import Data.Maybe (fromJust)
-import Hydra.Cluster.Fixture (Actor (..))
 import Options.Applicative (
   Parser,
   command,
@@ -29,14 +30,20 @@ import Options.Applicative (
   (<**>),
  )
 
+-- Cardano node imports
+import Cardano.Api (TxIn)
+
+-- Hydra imports
+import Hydra.Cluster.Fixture (Actor (..))
+
+-- Hydra auction imports
 import HydraAuction.OnChain (AuctionScript (..))
 import HydraAuction.Types (Natural, intToNatural)
 
-import Cardano.Api (TxIn)
-
-import CliActions (CliAction (..), CliInput (..), seedAmount)
-import CliConfig (AuctionName (..))
-import ParseTxIn (parseTxIn)
+-- Hydra auction CLI imports
+import CLI.Actions (CliAction (..), CliInput (..), seedAmount)
+import CLI.Config (AuctionName (..))
+import CLI.Parsers.TxIn (parseTxIn)
 
 getCliInput :: IO CliInput
 getCliInput = customExecParser preferences options

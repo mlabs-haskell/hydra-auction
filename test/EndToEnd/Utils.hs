@@ -1,16 +1,25 @@
 module EndToEnd.Utils (mkAssertion, waitUntil) where
 
+-- Prelude imports
 import Hydra.Prelude hiding (threadDelay)
 
-import CardanoClient (queryTip)
-import CardanoNode (RunningNode (..))
+-- Haskell imports
 import Control.Concurrent (threadDelay)
-import Hydra.Cardano.Api (ChainPoint (..), SlotNo (..))
-import Hydra.Logging (showLogsOnFailure)
-import Plutus.V1.Ledger.Time (POSIXTime (..))
+
+-- Haskell test imports
 import Test.Hydra.Prelude (failAfter)
 import Test.Tasty.HUnit (Assertion)
 
+-- Plutus imports
+import Plutus.V1.Ledger.Time (POSIXTime (..))
+
+-- Hydra imports
+import CardanoClient (queryTip)
+import CardanoNode (RunningNode (..))
+import Hydra.Cardano.Api (ChainPoint (..), SlotNo (..))
+import Hydra.Logging (showLogsOnFailure)
+
+-- Hydra auction imports
 import HydraAuction.Runner (
   ExecutionContext (..),
   Runner,
