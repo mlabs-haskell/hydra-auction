@@ -6,7 +6,7 @@ import Hydra.Cardano.Api hiding (txOutValue)
 import Hydra.Cluster.Fixture (Actor)
 import HydraAuction.Addresses
 import HydraAuction.OnChain hiding (standingBidAddress)
-import HydraAuction.PlutusExtras
+import HydraAuction.Plutus.Extras
 import HydraAuction.Runner
 import HydraAuction.Tx.Common
 import HydraAuction.Tx.Escrow (toForgeStateToken)

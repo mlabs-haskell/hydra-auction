@@ -1,5 +1,5 @@
 -- | More Extras for Plutus.Extras
-module HydraAuction.PlutusExtras (module X, validatorAddress, scriptCurrencySymbol) where
+module HydraAuction.Plutus.Extras (module X, validatorAddress, scriptCurrencySymbol) where
 
 import Hydra.Prelude hiding (fromMaybe)
 

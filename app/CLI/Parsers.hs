@@ -1,4 +1,4 @@
-module CliParsers (
+module CLI.Parsers (
   getCliInput,
   CliInput (..),
 ) where
@@ -34,9 +34,9 @@ import HydraAuction.Types (Natural, intToNatural)
 
 import Cardano.Api (TxIn)
 
-import CliActions (CliAction (..), CliInput (..), seedAmount)
-import CliConfig (AuctionName (..))
-import ParseTxIn (parseTxIn)
+import CLI.Actions (CliAction (..), CliInput (..), seedAmount)
+import CLI.Config (AuctionName (..))
+import CLI.Parsers.TxIn (parseTxIn)
 
 getCliInput :: IO CliInput
 getCliInput = customExecParser preferences options

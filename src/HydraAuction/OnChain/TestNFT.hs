@@ -2,7 +2,7 @@ module HydraAuction.OnChain.TestNFT (allowMintingPolicy, allowMintingCurrencySym
 
 import PlutusTx.Prelude
 
-import HydraAuction.PlutusExtras
+import HydraAuction.Plutus.Extras
 import Plutus.V1.Ledger.Value (AssetClass (..))
 import Plutus.V2.Ledger.Api (CurrencySymbol, MintingPolicy, TokenName (..), mkMintingPolicyScript)
 import PlutusTx

@@ -22,7 +22,7 @@ import Plutus.V1.Ledger.Value (AssetClass, CurrencySymbol (..))
 import Plutus.V2.Ledger.Contexts (TxOutRef)
 
 import HydraAuction.OnChain.TestNFT
-import HydraAuction.PlutusOrphans ()
+import HydraAuction.Plutus.Orphans ()
 import HydraAuction.Tx.Common (currentTimeSeconds)
 import HydraAuction.Types (AuctionTerms (..), Natural)
 

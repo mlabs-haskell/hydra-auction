@@ -1,7 +1,7 @@
 {-# OPTIONS -Wno-orphans #-}
 
 -- | Orphan instances for Plutus, Hydra and Cardano API
-module HydraAuction.PlutusOrphans () where
+module HydraAuction.Plutus.Orphans () where
 
 import Prelude
 

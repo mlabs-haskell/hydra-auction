@@ -1,4 +1,4 @@
-module ParseTxIn (
+module CLI.Parsers.TxIn (
   parseTxIn,
 ) where
 

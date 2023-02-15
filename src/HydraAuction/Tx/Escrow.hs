@@ -18,7 +18,7 @@ import Hydra.Cluster.Fixture (Actor (..))
 import HydraAuction.Addresses
 import HydraAuction.OnChain hiding (escrowAddress, standingBidAddress)
 import HydraAuction.OnChain.StateToken
-import HydraAuction.PlutusExtras
+import HydraAuction.Plutus.Extras
 import HydraAuction.Runner
 import HydraAuction.Tx.Common
 import HydraAuction.Types

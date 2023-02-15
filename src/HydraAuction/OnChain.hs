@@ -6,7 +6,7 @@ import HydraAuction.Addresses
 import HydraAuction.OnChain.Escrow
 import HydraAuction.OnChain.StandingBid
 import HydraAuction.OnChain.StateToken
-import HydraAuction.PlutusExtras
+import HydraAuction.Plutus.Extras
 import HydraAuction.Types
 import Plutus.V1.Ledger.Value (AssetClass (..))
 import Plutus.V2.Ledger.Api (CurrencySymbol, MintingPolicy, ScriptContext, Validator, mkMintingPolicyScript, mkValidatorScript)

@@ -1,6 +1,6 @@
 {-# LANGUAGE RecordWildCards #-}
 
-module CliActions (
+module CLI.Actions (
   CliInput (..),
   CliAction (..),
   handleCliAction,
@@ -15,7 +15,8 @@ import Data.Map.Strict qualified as Map
 import Cardano.Api (TxIn, TxOut (..))
 import Cardano.Api.UTxO (UTxO, toMap)
 
-import CliConfig (
+import CLI.CardanoNode (runCardanoNode)
+import CLI.Config (
   AuctionName,
   CliEnhancedAuctionTerms (..),
   configToAuctionTerms,
@@ -26,7 +27,6 @@ import CliConfig (
   writeAuctionTermsDynamic,
  )
 
-import CardanoNodeDevnet (runCardanoNode)
 import Control.Monad (forM_, void)
 import Hydra.Cardano.Api (Lovelace, TxOut, TxOutValue (..))
 import Hydra.Cluster.Fixture (Actor (..))

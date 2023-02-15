@@ -5,9 +5,9 @@ module Main (main) where
 import Hydra.Logging (Verbosity (Quiet, Verbose))
 import Prelude
 
-import CardanoNodeDevnet (getCardanoNode)
-import CliActions (handleCliAction)
-import CliParsers (
+import CLI.Actions (handleCliAction)
+import CLI.CardanoNode (getCardanoNode)
+import CLI.Parsers (
   CliInput (MkCliInput, cmd, verbosity),
   getCliInput,
  )

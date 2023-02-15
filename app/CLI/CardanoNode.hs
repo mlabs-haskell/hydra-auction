@@ -1,4 +1,4 @@
-module CardanoNodeDevnet (runCardanoNode, getCardanoNode) where
+module CLI.CardanoNode (runCardanoNode, getCardanoNode) where
 
 import Prelude
 
@@ -22,7 +22,7 @@ import HydraNode (
   ),
  )
 
-import CliConfig (
+import CLI.Config (
   DirectoryKind (..),
   getAuctionDirectory,
  )

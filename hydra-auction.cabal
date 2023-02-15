@@ -90,11 +90,11 @@ executable hydra-auction
   import:         common-lang
   main-is:        Main.hs
   other-modules:
-    CardanoNodeDevnet
-    CliActions
-    CliConfig
-    CliParsers
-    ParseTxIn
+    CLI.Actions
+    CLI.CardanoNode
+    CLI.Config
+    CLI.Parsers
+    CLI.Parsers.TxIn
 
   build-depends:
     , aeson
@@ -145,7 +145,7 @@ library
     HydraAuction.Addresses
     HydraAuction.OnChain
     HydraAuction.OnChain.TestNFT
-    HydraAuction.PlutusOrphans
+    HydraAuction.Plutus.Orphans
     HydraAuction.Runner
     HydraAuction.Tx.Common
     HydraAuction.Tx.Escrow
@@ -159,7 +159,7 @@ library
     HydraAuction.OnChain.Escrow
     HydraAuction.OnChain.StandingBid
     HydraAuction.OnChain.StateToken
-    HydraAuction.PlutusExtras
+    HydraAuction.Plutus.Extras
 
   build-depends:
     , directory

@@ -1,4 +1,4 @@
-module CliConfig (
+module CLI.Config (
   AuctionName (..),
   DirectoryKind (..),
   AuctionTermsConfig (..),
