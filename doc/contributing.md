@@ -37,3 +37,11 @@
 
 * Check styleguide and PR guide
 * Check for no unnecesary unsafe functions used and warnings/linters disabled
+
+# Debugging checklist
+
+## Plutus scripts
+
+* Check out https://plutus.readthedocs.io/en/latest/troubleshooting.html
+* Modules `Api` and `Context` should be imported from `Plutus.V2.Ledger`,
+  not `V1`.
