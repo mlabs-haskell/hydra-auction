@@ -65,6 +65,7 @@ data CliAction
   | NewBid !AuctionName !Actor !Natural
   | BidderBuys !AuctionName !Actor
   | SellerReclaims !AuctionName
+  | Cleanup !AuctionName
 
 data CliInput = MkCliInput
   { cmd :: CliAction
@@ -118,6 +119,11 @@ handleCliAction userAction = do
       Just (CliEnhancedAuctionTerms {terms, sellerActor}) <-
         liftIO $ readCliEnhancedAuctionTerms auctionName
       sellerReclaims sellerActor terms
+    Cleanup auctionName -> do
+      -- FIXME: proper error printing
+      Just (CliEnhancedAuctionTerms {terms, sellerActor}) <-
+        liftIO $ readCliEnhancedAuctionTerms auctionName
+      cleanupTx sellerActor terms
 
 prettyPrintUtxo :: UTxO -> IO ()
 prettyPrintUtxo utxo = do
