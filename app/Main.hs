@@ -1,5 +1,3 @@
-{-# LANGUAGE RecordWildCards #-}
-
 module Main (main) where
 
 -- Prelude imports
@@ -21,7 +19,7 @@ import CLI.Parsers (
 
 main :: IO ()
 main = do
-  MkCliInput {..} <- getCliInput
+  MkCliInput {verbosity, cmd} <- getCliInput
 
   let hydraVerbosity =
         if verbosity then Verbose "hydra-auction" else Quiet

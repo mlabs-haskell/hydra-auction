@@ -1,5 +1,3 @@
-{-# LANGUAGE RecordWildCards #-}
-
 module CLI.Actions (
   CliInput (..),
   CliAction (..),
@@ -81,7 +79,7 @@ data CliInput = MkCliInput
 
 handleCliAction :: CliAction -> Runner ()
 handleCliAction userAction = do
-  MkExecutionContext {..} <- ask
+  MkExecutionContext {node} <- ask
   case userAction of
     RunCardanoNode -> liftIO $ do
       putStrLn "Running cardano-node"
