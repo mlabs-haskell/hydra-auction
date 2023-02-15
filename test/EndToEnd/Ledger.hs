@@ -54,6 +54,18 @@ testSuite =
     , testCase "Seller reclaims lot" sellerReclaimsTest
     ]
 
+config :: AuctionTermsConfig
+config =
+  AuctionTermsConfig
+    { configDiffBiddingStart = 2
+    , configDiffBiddingEnd = 5
+    , configDiffVoucherExpiry = 8
+    , configDiffCleanup = 10
+    , configAuctionFeePerDelegate = fromJust $ intToNatural 4_000_000
+    , configStartingBid = fromJust $ intToNatural 8_000_000
+    , configMinimumBidIncrement = fromJust $ intToNatural 8_000_000
+    }
+
 successfulBidTest :: Assertion
 successfulBidTest = mkAssertion $ do
   let seller = Alice
@@ -61,17 +73,6 @@ successfulBidTest = mkAssertion $ do
       buyer2 = Carol
 
   mapM_ (initWallet 100_000_000) [seller, buyer1, buyer2]
-
-  let config =
-        AuctionTermsConfig
-          { configDiffBiddingStart = 2
-          , configDiffBiddingEnd = 5
-          , configDiffVoucherExpiry = 8
-          , configDiffCleanup = 10
-          , configAuctionFeePerDelegate = fromJust $ intToNatural 4_000_000
-          , configStartingBid = fromJust $ intToNatural 8_000_000
-          , configMinimumBidIncrement = fromJust $ intToNatural 8_000_000
-          }
 
   nftTx <- mintOneTestNFT seller
   let utxoRef = mkTxIn nftTx 0
@@ -98,17 +99,6 @@ sellerReclaimsTest = mkAssertion $ do
   let seller = Alice
 
   initWallet 100_000_000 seller
-
-  let config =
-        AuctionTermsConfig
-          { configDiffBiddingStart = 2
-          , configDiffBiddingEnd = 4
-          , configDiffVoucherExpiry = 6
-          , configDiffCleanup = 8
-          , configAuctionFeePerDelegate = fromJust $ intToNatural 4_000_000
-          , configStartingBid = fromJust $ intToNatural 8_000_000
-          , configMinimumBidIncrement = fromJust $ intToNatural 8_000_000
-          }
 
   nftTx <- mintOneTestNFT seller
   let utxoRef = mkTxIn nftTx 0
