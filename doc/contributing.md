@@ -1,6 +1,21 @@
 # Styleguide
 
-* Imports separation **TBD**
+## Separate imports to section
+
+* Prelude imports -- e.g. Haskell prelude, Plutus prelude, Hydra prelude, etc.
+* Haskell imports -- any modules that a Haskell user outside of Cardano would import
+  (e.g. Data.Map.Strict)
+* Haskell test imports -- e.g. Tasty, Hedgehog, HUnit, etc.
+* Cardano ledger imports -- modules from cardano-ledger
+* Cardano node imports -- modules from cardano-node
+* Plutus imports -- modules from plutus
+* Hydra imports -- modules from hydra
+* Hydra auction imports -- modules from `./src`
+* Hydra auction CLI imports -- modules from `./app`
+* Hydra auction test imports -- modules from `./test`
+
+## Other guidelines
+
 * Single constructors are witten like this: `newtype MyType = MkMyType Integer`
 * Acronims are written with normal case (like `Xml` or `Cli`)
 * Merged comments on things to be changed later are marked with `FIXME`. `TODO` comments are reserved for local/draft changes and should not be merged.
