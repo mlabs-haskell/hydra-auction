@@ -4,7 +4,10 @@ module EndToEnd.Utils (mkAssertion, waitUntil) where
 import Hydra.Prelude hiding (threadDelay)
 
 -- Haskell imports
+
 import Control.Concurrent (threadDelay)
+import Control.Concurrent.STM.TVar (modifyTVar, newTVarIO, readTVarIO)
+import Control.Tracer (Tracer (..))
 
 -- Haskell test imports
 import Test.Hydra.Prelude (failAfter)
@@ -17,7 +20,6 @@ import Plutus.V1.Ledger.Time (POSIXTime (..))
 import CardanoClient (queryTip)
 import CardanoNode (RunningNode (..))
 import Hydra.Cardano.Api (ChainPoint (..), SlotNo (..))
-import Hydra.Logging (showLogsOnFailure)
 
 -- Hydra auction imports
 import HydraAuction.Runner (
@@ -57,3 +59,21 @@ currentSlot = do
     case tip of
       ChainPointAtGenesis -> SlotNo 0
       ChainPoint slotNo _ -> slotNo
+
+-- Capture logs and output them to stdout when an exception was raised by the
+-- given 'action'.
+-- Copied from Hydra and simplified.
+showLogsOnFailure ::
+  (Show msg) =>
+  (Tracer IO msg -> IO a) ->
+  IO a
+showLogsOnFailure action = do
+  tvar <- newTVarIO []
+  action (traceInTVar tvar)
+    `onException` (readTVarIO tvar >>= mapM_ (putStrLn . show) . reverse)
+
+traceInTVar ::
+  TVar IO [msg] ->
+  Tracer IO msg
+traceInTVar tvar = Tracer $ \msg -> do
+  atomically $ modifyTVar tvar (msg :)
