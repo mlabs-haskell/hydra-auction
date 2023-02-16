@@ -91,12 +91,12 @@ executeRunner tracer node verbose runner =
 fileTracer :: StateDirectory -> IO (Tracer IO HydraAuctionLog)
 fileTracer MkStateDirectory {stateDirectory} = do
   withFile (stateDirectory </> "test.log") ReadWriteMode $ \h ->
-    withTracerOutputTo h "Tracer" $ \tracer -> pure tracer
+    withTracerOutputTo h "Tracer" pure
 
 -- | Stdout tracer using the given verbosity level.
 stdoutTracer :: Verbosity -> IO (Tracer IO HydraAuctionLog)
 stdoutTracer verbosity =
-  withTracer verbosity $ \tracer -> pure tracer
+  withTracer verbosity pure
 
 logMsg :: String -> Runner ()
 logMsg s = do
