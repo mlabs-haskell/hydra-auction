@@ -53,7 +53,7 @@ toForgeStateToken terms redeemer =
 
 announceAuction :: Actor -> AuctionTerms -> Runner ()
 announceAuction sellerActor terms = do
-  liftIO $ putStrLn "Doing announce auction"
+  logMsg "Doing announce auction"
 
   escrowAddress <- scriptAddress Escrow terms
 
@@ -99,7 +99,7 @@ announceAuction sellerActor terms = do
 
 startBidding :: Actor -> AuctionTerms -> Runner ()
 startBidding sellerActor terms = do
-  liftIO $ putStrLn "Doing start bidding"
+  logMsg "Doing start bidding"
 
   let escrowScript = scriptPlutusScript Escrow terms
 

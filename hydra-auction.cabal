@@ -25,6 +25,7 @@ common common-lang
     , base16-bytestring
     , cardano-ledger-core
     , containers
+    , contra-tracer
     , extra
     , filepath
     , hydra-cardano-api
