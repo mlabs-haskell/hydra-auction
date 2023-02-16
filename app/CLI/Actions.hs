@@ -28,6 +28,7 @@ import HydraAuction.Runner (
   HydraAuctionLog (..),
   Runner,
   initWallet,
+  withActor,
  )
 import HydraAuction.Tx.Common
 import HydraAuction.Tx.Escrow (
@@ -41,7 +42,6 @@ import HydraAuction.Tx.TestNFT
 import HydraAuction.Types (Natural)
 
 -- Hydra auction CLI imports
-import CLI.CardanoNode (runCardanoNode)
 import CLI.Config (
   AuctionName,
   CliEnhancedAuctionTerms (..),
@@ -60,76 +60,77 @@ allActors :: [Actor]
 allActors = [Alice, Bob, Carol]
 
 data CliAction
-  = RunCardanoNode
-  | ShowScriptUtxos !AuctionName !AuctionScript
-  | ShowUtxos !Actor
-  | Seed !Actor
+  = ShowScriptUtxos !AuctionName !AuctionScript
+  | ShowUtxos
+  | ShowAllUtxos
+  | Seed
   | Prepare !Actor
-  | MintTestNFT !Actor
-  | AuctionAnounce !AuctionName !Actor !TxIn
+  | MintTestNFT
+  | AuctionAnounce !AuctionName !TxIn
   | StartBidding !AuctionName
-  | NewBid !AuctionName !Actor !Natural
-  | BidderBuys !AuctionName !Actor
+  | NewBid !AuctionName !Natural
+  | BidderBuys !AuctionName
   | SellerReclaims !AuctionName
   | Cleanup !AuctionName
 
 data CliInput = MkCliInput
-  { cmd :: CliAction
-  , verbosity :: Bool
+  { ciActor :: Actor
+  , ciVerbosity :: Bool
   }
 
 handleCliAction :: CliAction -> Runner ()
 handleCliAction userAction = do
   MkExecutionContext {tracer} <- ask
   case userAction of
-    RunCardanoNode -> liftIO $ do
-      putStrLn "Running cardano-node"
-      runCardanoNode $ contramap FromHydra tracer
-    Seed actor ->
+    Seed ->
       initWallet seedAmount actor
     Prepare sellerActor -> do
       forM_ allActors $ initWallet seedAmount
-      void $ mintOneTestNFT sellerActor
+      void $ withActor sellerActor mintOneTestNFT
     ShowScriptUtxos auctionName script -> do
       -- FIXME: proper error printing
       Just terms <- liftIO $ readAuctionTerms auctionName
       utxos <- scriptUtxos script terms
       liftIO $ prettyPrintUtxo utxos
-    ShowUtxos actor -> do
-      utxos <- actorTipUtxo actor
+    ShowUtxos -> do
+      utxos <- actorTipUtxo
       liftIO $ prettyPrintUtxo utxos
-    MintTestNFT actor ->
-      void $ mintOneTestNFT actor
-    AuctionAnounce auctionName sellerActor utxo -> do
-      dynamic <- liftIO $ constructTermsDynamic sellerActor utxo
+    ShowAllUtxos -> do
+      forM_ allActors $ \_ -> do
+        utxos <- actorTipUtxo
+        liftIO $ prettyPrintUtxo utxos
+    MintTestNFT ->
+      void mintOneTestNFT
+    AuctionAnounce auctionName utxo -> do
+      dynamic <- liftIO $ constructTermsDynamic actor utxo
       liftIO $ writeAuctionTermsDynamic auctionName dynamic
       -- FIXME: proper error printing
       Just config <- liftIO $ readAuctionTermsConfig auctionName
       terms <- liftIO $ configToAuctionTerms config dynamic
-      announceAuction sellerActor terms
+      announceAuction terms
     StartBidding auctionName -> do
       -- FIXME: proper error printing
       Just (CliEnhancedAuctionTerms {terms, sellerActor}) <-
         liftIO $ readCliEnhancedAuctionTerms auctionName
-      startBidding sellerActor terms
-    NewBid auctionName bidder bidAmount -> do
+      withActor sellerActor $ startBidding terms
+    NewBid auctionName bidAmount -> do
       -- FIXME: proper error printing
       Just terms <- liftIO $ readAuctionTerms auctionName
-      newBid bidder terms bidAmount
-    BidderBuys auctionName actor -> do
+      newBid terms bidAmount
+    BidderBuys auctionName -> do
       -- FIXME: proper error printing
       Just terms <- liftIO $ readAuctionTerms auctionName
-      bidderBuys actor terms
+      bidderBuys terms
     SellerReclaims auctionName -> do
       -- FIXME: proper error printing
-      Just (CliEnhancedAuctionTerms {terms, sellerActor}) <-
+      Just (CliEnhancedAuctionTerms {terms}) <-
         liftIO $ readCliEnhancedAuctionTerms auctionName
-      sellerReclaims sellerActor terms
+      sellerReclaims terms
     Cleanup auctionName -> do
       -- FIXME: proper error printing
-      Just (CliEnhancedAuctionTerms {terms, sellerActor}) <-
+      Just (CliEnhancedAuctionTerms {terms}) <-
         liftIO $ readCliEnhancedAuctionTerms auctionName
-      cleanupTx sellerActor terms
+      cleanupTx terms
 
 prettyPrintUtxo :: UTxO -> IO ()
 prettyPrintUtxo utxo = do

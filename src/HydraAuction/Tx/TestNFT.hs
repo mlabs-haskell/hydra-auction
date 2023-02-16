@@ -9,19 +9,17 @@ import Plutus.V2.Ledger.Api (getMintingPolicy)
 
 -- Hydra imports
 import Hydra.Cardano.Api hiding (txOutValue)
-import Hydra.Cluster.Fixture (Actor)
 
 -- Hydra auction imports
 import HydraAuction.OnChain.TestNFT
 import HydraAuction.Runner
 import HydraAuction.Tx.Common
 
-mintOneTestNFT :: Actor -> Runner Tx
-mintOneTestNFT actor = do
-  (actorAddress, _, actorSk) <-
-    addressAndKeysFor actor
+mintOneTestNFT :: Runner Tx
+mintOneTestNFT = do
+  (actorAddress, _, actorSk) <- addressAndKeys
 
-  actorMoneyUtxo <- filterAdaOnlyUtxo <$> actorTipUtxo actor
+  actorMoneyUtxo <- filterAdaOnlyUtxo <$> actorTipUtxo
 
   let valueOut =
         fromPlutusValue (assetClassValue testNftAssetClass 1)

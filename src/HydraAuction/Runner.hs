@@ -9,6 +9,7 @@ module HydraAuction.Runner (
   executeTestRunner,
   StateDirectory (..),
   ExecutionContext (..),
+  withActor,
   fileTracer,
   initWallet,
   stdoutTracer,
@@ -31,7 +32,7 @@ import CardanoNode (
  )
 import Hydra.Cardano.Api (Lovelace)
 import Hydra.Cluster.Faucet (Marked (Normal), seedFromFaucet_)
-import Hydra.Cluster.Fixture (Actor)
+import Hydra.Cluster.Fixture (Actor (..))
 import Hydra.Cluster.Util (keysFor)
 import Hydra.Logging (
   Tracer,
@@ -54,6 +55,7 @@ data ExecutionContext = MkExecutionContext
   { tracer :: !(Tracer IO HydraAuctionLog)
   , node :: !RunningNode
   , verbose :: !Bool
+  , actor :: !Actor
   }
 
 {- | Hydra computation executor. Note that @Runner@ is
@@ -75,15 +77,20 @@ executeRunner ::
   Tracer IO HydraAuctionLog ->
   RunningNode ->
   Bool ->
+  Actor ->
   Runner a ->
   IO a
-executeRunner tracer node verbose runner =
+executeRunner tracer node verbose actor runner =
   runReaderT (run runner) $
     MkExecutionContext
-      { tracer = tracer
-      , node = node
+      { tracer
+      , node
       , verbose
+      , actor
       }
+
+withActor :: Actor -> Runner a -> Runner a
+withActor actor = local (\ctx -> ctx {actor = actor})
 
 {- | Filter tracer which logs into a `test.log` file within the given
  @StateDirectory@.
@@ -113,7 +120,7 @@ executeTestRunner runner = do
     withCardanoNodeDevnet
       (contramap (FromHydra . FromCardanoNode) tracer)
       tmpDir
-      $ \node -> executeRunner tracer node True runner
+      $ \node -> executeRunner tracer node True Alice runner
 
 -- | @FilePath@ used to store the running node data.
 newtype StateDirectory = MkStateDirectory

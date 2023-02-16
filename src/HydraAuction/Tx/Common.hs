@@ -7,7 +7,7 @@ module HydraAuction.Tx.Common (
   fromPlutusAddressInRunner,
   actorTipUtxo,
   toSlotNo,
-  addressAndKeysFor,
+  addressAndKeys,
   networkIdToNetwork,
   filterUtxoByCurrencySymbols,
   minLovelace,
@@ -64,7 +64,6 @@ import CardanoNode (
  )
 import Hydra.Cardano.Api hiding (txIns, txOutValue)
 import Hydra.Chain.Direct.TimeHandle (queryTimeHandle, slotFromUTCTime)
-import Hydra.Cluster.Fixture
 import Hydra.Cluster.Util
 
 -- Hydra auction imports
@@ -116,15 +115,14 @@ mkInlinedDatumScriptWitness script redeemer =
     ScriptWitness scriptWitnessCtx $
       mkScriptWitness script InlineScriptDatum (toScriptData redeemer)
 
-addressAndKeysFor ::
-  Actor ->
+addressAndKeys ::
   Runner
     ( Address ShelleyAddr
     , VerificationKey PaymentKey
     , SigningKey PaymentKey
     )
-addressAndKeysFor actor = do
-  MkExecutionContext {node} <- ask
+addressAndKeys = do
+  MkExecutionContext {..} <- ask
   let networkId' = networkId node
 
   (actorVk, actorSk) <- liftIO $ keysFor actor
@@ -145,9 +143,9 @@ filterUtxoByCurrencySymbols symbolsToMatch = UTxO.filter hasExactlySymbols
 filterAdaOnlyUtxo :: UTxO -> UTxO
 filterAdaOnlyUtxo = filterUtxoByCurrencySymbols [CurrencySymbol emptyByteString]
 
-actorTipUtxo :: Actor -> Runner UTxO.UTxO
-actorTipUtxo actor = do
-  MkExecutionContext {node} <- ask
+actorTipUtxo :: Runner UTxO.UTxO
+actorTipUtxo = do
+  MkExecutionContext {node, actor} <- ask
   (vk, _) <- liftIO $ keysFor actor
   liftIO $ queryUTxOFor (networkId node) (nodeSocket node) QueryTip vk
 

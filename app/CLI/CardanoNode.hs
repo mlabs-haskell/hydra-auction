@@ -5,6 +5,8 @@ import Hydra.Prelude (contramap)
 import Prelude
 
 -- Haskell imports
+
+import Control.Concurrent.MVar
 import System.FilePath ((</>))
 
 -- Cardano node imports
@@ -33,12 +35,12 @@ import CLI.Config (
 
 runCardanoNode :: Tracer IO EndToEndLog -> IO ()
 runCardanoNode tracer = do
+  mv <- newEmptyMVar
   stateDirectory <- getAuctionDirectory AuctionStateCardanoNode
   withCardanoNodeDevnet
     (contramap FromCardanoNode tracer)
     stateDirectory
-    $ \_ ->
-      error "Not implemented: RunCardanoNode"
+    $ \_ -> takeMVar mv
 
 getCardanoNode :: IO RunningNode
 getCardanoNode = do

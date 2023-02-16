@@ -27,6 +27,7 @@ import HydraAuction.OnChain.TestNFT (testNftAssetClass)
 import HydraAuction.Runner (
   Runner,
   initWallet,
+  withActor,
  )
 import HydraAuction.Tx.Common (actorTipUtxo)
 import HydraAuction.Tx.Escrow (
@@ -66,7 +67,7 @@ testSuite =
 
 assertNFTNumEquals :: Actor -> Integer -> Runner ()
 assertNFTNumEquals actor expectedNum = do
-  utxo <- actorTipUtxo actor
+  utxo <- withActor actor actorTipUtxo
   liftIO $ do
     let value = mconcat [toPlutusValue $ txOutValue out | (_, out) <- UTxO.pairs utxo]
     assetClassValueOf value testNftAssetClass @=? expectedNum
@@ -91,7 +92,7 @@ bidderBuysTest = mkAssertion $ do
 
   mapM_ (initWallet 100_000_000) [seller, buyer1, buyer2]
 
-  nftTx <- mintOneTestNFT seller
+  nftTx <- mintOneTestNFT
   let utxoRef = mkTxIn nftTx 0
 
   terms <- liftIO $ do
@@ -100,25 +101,25 @@ bidderBuysTest = mkAssertion $ do
 
   assertNFTNumEquals seller 1
 
-  announceAuction seller terms
+  announceAuction terms
 
   waitUntil $ biddingStart terms
-  startBidding seller terms
+  startBidding terms
 
   assertNFTNumEquals seller 0
 
-  newBid buyer1 terms $ startingBid terms
-  newBid buyer2 terms $ startingBid terms + minimumBidIncrement terms
+  withActor buyer1 $ newBid terms $ startingBid terms
+  withActor buyer2 $ newBid terms $ startingBid terms + minimumBidIncrement terms
 
   waitUntil $ biddingEnd terms
-  bidderBuys buyer2 terms
+  withActor buyer2 $ bidderBuys terms
 
   assertNFTNumEquals seller 0
   assertNFTNumEquals buyer1 0
   assertNFTNumEquals buyer2 1
 
   waitUntil $ cleanup terms
-  cleanupTx seller terms
+  cleanupTx terms
 
 sellerReclaimsTest :: Assertion
 sellerReclaimsTest = mkAssertion $ do
@@ -126,7 +127,7 @@ sellerReclaimsTest = mkAssertion $ do
 
   initWallet 100_000_000 seller
 
-  nftTx <- mintOneTestNFT seller
+  nftTx <- mintOneTestNFT
   let utxoRef = mkTxIn nftTx 0
 
   terms <- liftIO $ do
@@ -134,16 +135,16 @@ sellerReclaimsTest = mkAssertion $ do
     configToAuctionTerms config dynamicState
 
   assertNFTNumEquals seller 1
-  announceAuction seller terms
+  announceAuction terms
 
   waitUntil $ biddingStart terms
-  startBidding seller terms
+  startBidding terms
   assertNFTNumEquals seller 0
 
   waitUntil $ voucherExpiry terms
-  sellerReclaims seller terms
+  sellerReclaims terms
 
   assertNFTNumEquals seller 1
 
   waitUntil $ cleanup terms
-  cleanupTx seller terms
+  cleanupTx terms
