@@ -59,9 +59,9 @@ import EndToEnd.Utils (mkAssertion, waitUntil)
 testSuite :: TestTree
 testSuite =
   testGroup
-    "L1 ledger tests"
-    [ testCase "Successful auction bid" successfulBidTest
-    , testCase "Seller reclaims lot" sellerReclaimsTest
+    "L1"
+    [ testCase "bidder-buys" bidderBuysTest
+    , testCase "seller-reclaims" sellerReclaimsTest
     ]
 
 assertNFTNumEquals :: Actor -> Integer -> Runner ()
@@ -83,8 +83,8 @@ config =
     , configMinimumBidIncrement = fromJust $ intToNatural 8_000_000
     }
 
-successfulBidTest :: Assertion
-successfulBidTest = mkAssertion $ do
+bidderBuysTest :: Assertion
+bidderBuysTest = mkAssertion $ do
   let seller = Alice
       buyer1 = Bob
       buyer2 = Carol

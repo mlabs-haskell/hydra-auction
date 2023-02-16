@@ -110,11 +110,11 @@ import EndToEnd.Utils (mkAssertion)
 testSuite :: TestTree
 testSuite =
   testGroup
-    "Hydra head tests"
-    [testCase "Basic hydra heads test" basicHydraTest]
+    "L2"
+    [testCase "basic-hydra-tx" basicHydraTxTest]
 
-basicHydraTest :: Assertion
-basicHydraTest = mkAssertion $ do
+basicHydraTxTest :: Assertion
+basicHydraTxTest = mkAssertion $ do
   MkExecutionContext {..} <- ask
   hydraScriptsTxId <- liftIO $ publishHydraScriptsAs node Faucet
   initAndClose 0 hydraScriptsTxId
