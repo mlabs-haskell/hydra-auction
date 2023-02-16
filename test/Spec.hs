@@ -21,7 +21,7 @@ main = do
 testSuite :: TestTree
 testSuite =
   testGroup
-    "Hydra auction tests"
-    [ Hydra.testSuite
-    , Ledger.testSuite
+    "hydra-auction"
+    [ Ledger.testSuite
+    , Hydra.testSuite
     ]
