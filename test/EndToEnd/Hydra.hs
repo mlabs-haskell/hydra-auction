@@ -85,7 +85,6 @@ import Hydra.Ledger (txId)
 import Hydra.Ledger.Cardano (genKeyPair, mkSimpleTx)
 import Hydra.Party (deriveParty)
 import HydraNode (
-  EndToEndLog (..),
   input,
   output,
   send,
@@ -97,7 +96,9 @@ import HydraNode (
 
 -- Hydra auction imports
 import HydraAuction.Runner (
+  EndToEndLog (..),
   ExecutionContext (MkExecutionContext, node, tracer),
+  HydraAuctionLog (..),
   Runner,
  )
 
@@ -119,6 +120,7 @@ basicHydraTest = mkAssertion $ do
 initAndClose :: Int -> TxId -> Runner ()
 initAndClose clusterIx hydraScriptsTxId = do
   MkExecutionContext {node, tracer} <- ask
+  let hydraTracer = contramap FromHydra tracer
   liftIO $
     withTempDir "end-to-end-init-and-close" $ \tmpDir -> do
       aliceKeys@(aliceCardanoVk, aliceCardanoSk) <- generate genKeyPair
@@ -139,7 +141,7 @@ initAndClose clusterIx hydraScriptsTxId = do
       let firstNodeId = clusterIx * 3
       let contestationPeriod = UnsafeContestationPeriod 2
       withHydraCluster
-        tracer
+        hydraTracer
         tmpDir
         (nodeSocket node)
         firstNodeId
@@ -149,16 +151,16 @@ initAndClose clusterIx hydraScriptsTxId = do
         contestationPeriod
         $ \nodes -> do
           [n1, n2, n3] <- Prelude.return $ toList nodes
-          waitForNodesConnected tracer [n1, n2, n3]
+          waitForNodesConnected hydraTracer [n1, n2, n3]
 
           -- Funds to be used as fuel by Hydra protocol transactions
-          let faucetTracer = contramap FromFaucet tracer
+          let faucetTracer = contramap FromFaucet hydraTracer
           seedFromFaucet_ node aliceCardanoVk 100_000_000 Fuel faucetTracer
           seedFromFaucet_ node bobCardanoVk 100_000_000 Fuel faucetTracer
           seedFromFaucet_ node carolCardanoVk 100_000_000 Fuel faucetTracer
 
           send n1 $ input "Init" []
-          waitFor tracer 10 [n1, n2, n3] $
+          waitFor hydraTracer 10 [n1, n2, n3] $
             output
               "ReadyToCommit"
               ["parties" .= Set.fromList [alice, bob, carol]]
@@ -173,7 +175,7 @@ initAndClose clusterIx hydraScriptsTxId = do
           send n1 $ input "Commit" ["utxo" .= committedUTxOByAlice]
           send n2 $ input "Commit" ["utxo" .= committedUTxOByBob]
           send n3 $ input "Commit" ["utxo" .= Object mempty]
-          waitFor tracer 10 [n1, n2, n3] $
+          waitFor hydraTracer 10 [n1, n2, n3] $
             output
               "HeadIsOpen"
               ["utxo" .= (committedUTxOByAlice <> committedUTxOByBob)]
@@ -190,7 +192,7 @@ initAndClose clusterIx hydraScriptsTxId = do
                     aliceCardanoSk
 
           send n1 $ input "NewTx" ["transaction" .= tx]
-          waitFor tracer 10 [n1, n2, n3] $
+          waitFor hydraTracer 10 [n1, n2, n3] $
             output "TxSeen" ["transaction" .= tx]
 
           -- The expected new utxo set is the created payment to bob,
@@ -243,7 +245,7 @@ initAndClose clusterIx hydraScriptsTxId = do
             guard $ snapshot == expectedSnapshot
 
           send n1 $ input "GetUTxO" []
-          waitFor tracer 10 [n1] $ output "GetUTxOResponse" ["utxo" .= newUTxO]
+          waitFor hydraTracer 10 [n1] $ output "GetUTxOResponse" ["utxo" .= newUTxO]
 
           send n1 $ input "Close" []
           deadline <- waitMatch 3 n1 $ \v -> do
@@ -254,11 +256,11 @@ initAndClose clusterIx hydraScriptsTxId = do
 
           -- Expect to see ReadyToFanout within 3 seconds after deadline
           remainingTime <- diffUTCTime deadline <$> getCurrentTime
-          waitFor tracer (truncate $ remainingTime + 3) [n1] $
+          waitFor hydraTracer (truncate $ remainingTime + 3) [n1] $
             output "ReadyToFanout" []
 
           send n1 $ input "Fanout" []
-          waitFor tracer 3 [n1] $
+          waitFor hydraTracer 3 [n1] $
             output "HeadIsFinalized" ["utxo" .= newUTxO]
 
           case fromJSON $ toJSON newUTxO of

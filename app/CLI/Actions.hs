@@ -6,7 +6,7 @@ module CLI.Actions (
 ) where
 
 -- Prelude imports
-import Hydra.Prelude (ask, liftIO)
+import Hydra.Prelude (ask, contramap, liftIO)
 import Prelude
 
 -- Haskell imports
@@ -25,6 +25,7 @@ import Hydra.Cluster.Fixture (Actor (..))
 import HydraAuction.OnChain (AuctionScript)
 import HydraAuction.Runner (
   ExecutionContext (..),
+  HydraAuctionLog (..),
   Runner,
   initWallet,
  )
@@ -83,7 +84,7 @@ handleCliAction userAction = do
   case userAction of
     RunCardanoNode -> liftIO $ do
       putStrLn "Running cardano-node"
-      runCardanoNode tracer
+      runCardanoNode $ contramap FromHydra tracer
     Seed actor ->
       initWallet seedAmount actor
     Prepare sellerActor -> do

@@ -22,7 +22,7 @@ import HydraAuction.Types
 
 newBid :: Actor -> AuctionTerms -> Natural -> Runner ()
 newBid bidder terms bidAmount = do
-  putStrLn "Doing new bid"
+  logMsg "Doing new bid"
 
   standingBidAddress <- scriptAddress StandingBid terms
 
