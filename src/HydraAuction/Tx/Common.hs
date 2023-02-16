@@ -124,7 +124,7 @@ addressAndKeysFor ::
     , SigningKey PaymentKey
     )
 addressAndKeysFor actor = do
-  MkExecutionContext {..} <- ask
+  MkExecutionContext {node} <- ask
   let networkId' = networkId node
 
   (actorVk, actorSk) <- liftIO $ keysFor actor
@@ -302,7 +302,7 @@ callBodyAutoBalance
 
 autoSubmitAndAwaitTx :: AutoCreateParams -> Runner Tx
 autoSubmitAndAwaitTx params = do
-  MkExecutionContext {..} <- ask
+  MkExecutionContext {node} <- ask
   let networkId' = networkId node
       nodeSocket' = nodeSocket node
 

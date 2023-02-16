@@ -1,5 +1,3 @@
-{-# LANGUAGE RecordWildCards #-}
-
 module CLI.Actions (
   CliInput (..),
   CliAction (..),
@@ -26,7 +24,7 @@ import Hydra.Cluster.Fixture (Actor (..))
 -- Hydra auction imports
 import HydraAuction.OnChain (AuctionScript)
 import HydraAuction.Runner (
-  ExecutionContext (MkExecutionContext, node, tracer, verbose),
+  ExecutionContext (..),
   Runner,
   initWallet,
  )
@@ -81,7 +79,7 @@ data CliInput = MkCliInput
 
 handleCliAction :: CliAction -> Runner ()
 handleCliAction userAction = do
-  MkExecutionContext {..} <- ask
+  MkExecutionContext {tracer} <- ask
   case userAction of
     RunCardanoNode -> liftIO $ do
       putStrLn "Running cardano-node"
