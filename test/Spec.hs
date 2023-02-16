@@ -22,6 +22,6 @@ testSuite :: TestTree
 testSuite =
   testGroup
     "Hydra auction tests"
-    [ Hydra.testSuite
-    , Ledger.testSuite
+    [ Ledger.testSuite
+    , Hydra.testSuite
     ]
