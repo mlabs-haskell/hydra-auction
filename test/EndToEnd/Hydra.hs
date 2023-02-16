@@ -118,7 +118,7 @@ basicHydraTest = mkAssertion $ do
 
 initAndClose :: Int -> TxId -> Runner ()
 initAndClose clusterIx hydraScriptsTxId = do
-  MkExecutionContext {node} <- ask
+  MkExecutionContext {node, tracer} <- ask
   liftIO $
     withTempDir "end-to-end-init-and-close" $ \tmpDir -> do
       aliceKeys@(aliceCardanoVk, aliceCardanoSk) <- generate genKeyPair
