@@ -1,5 +1,3 @@
-{-# LANGUAGE RecordWildCards #-}
-
 module HydraAuction.Tx.Escrow (
   toForgeStateToken,
   announceAuction,
@@ -22,12 +20,10 @@ import Plutus.V1.Ledger.Value (
 import Plutus.V2.Ledger.Api (
   fromData,
   getMintingPolicy,
-  getValidator,
  )
 
 -- Hydra imports
 import Cardano.Api.UTxO qualified as UTxO
-import CardanoNode (RunningNode (..))
 import Hydra.Cardano.Api hiding (txOutValue)
 import Hydra.Cluster.Fixture (Actor (..))
 
@@ -259,9 +255,9 @@ bidderBuys bidder terms = do
 
 sellerReclaims :: Actor -> AuctionTerms -> Runner ()
 sellerReclaims seller terms = do
-  MkExecutionContext {..} <- ask
-  let networkId' = networkId node
+  feeEscrowAddress <- scriptAddress FeeEscrow terms
 
+  let escrowScript = scriptPlutusScript Escrow terms
       txOutSellerGotLot sellerAddress =
         TxOut
           (ShelleyAddressInEra sellerAddress)
@@ -273,24 +269,16 @@ sellerReclaims seller terms = do
             fromPlutusValue (assetClassValue (auctionLot terms) 1)
               <> lovelaceToValue minLovelace
 
-      escrowWitness = mkInlinedDatumScriptWitness script SellerReclaims
-        where
-          script =
-            fromPlutusScript @PlutusScriptV2 $
-              getValidator $ escrowValidator terms
+      escrowWitness = mkInlinedDatumScriptWitness escrowScript SellerReclaims
 
       txOutFeeEscrow =
         TxOut
-          feeEscrowAddress
+          (ShelleyAddressInEra feeEscrowAddress)
           value
           TxOutDatumNone
           ReferenceScriptNone
         where
           value = lovelaceToValue $ Lovelace $ calculateTotalFee terms
-          feeEscrowAddress =
-            mkScriptAddress @PlutusScriptV2 networkId' $
-              fromPlutusScript @PlutusScriptV2 $
-                getValidator $ feeEscrowValidator terms
 
   logMsg "Doing Seller reclaims"
 
