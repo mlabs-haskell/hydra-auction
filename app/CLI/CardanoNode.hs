@@ -21,11 +21,9 @@ import CardanoNode (
  )
 import Hydra.Cardano.Api (NetworkMagic (NetworkMagic))
 import Hydra.Logging (Tracer)
-import HydraNode (
-  EndToEndLog (
-    FromCardanoNode
-  ),
- )
+
+-- Hydra auction imports
+import HydraAuction.Runner (EndToEndLog (..))
 
 -- Hydra auction CLI imports
 import CLI.Config (

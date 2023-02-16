@@ -2,6 +2,8 @@
 
 module HydraAuction.Runner (
   HydraAuctionLog (..),
+  EndToEndLog (..),
+  NodeLog (..),
   Runner,
   executeRunner,
   executeTestRunner,
@@ -23,6 +25,7 @@ import System.FilePath ((</>))
 
 -- Hydra imports
 import CardanoNode (
+  NodeLog (..),
   RunningNode,
   withCardanoNodeDevnet,
  )

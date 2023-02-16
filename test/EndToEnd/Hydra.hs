@@ -87,7 +87,6 @@ import Hydra.Ledger (txId)
 import Hydra.Ledger.Cardano (genKeyPair, mkSimpleTx)
 import Hydra.Party (deriveParty)
 import HydraNode (
-  EndToEndLog (..),
   input,
   output,
   send,
@@ -99,6 +98,7 @@ import HydraNode (
 
 -- Hydra auction imports
 import HydraAuction.Runner (
+  EndToEndLog (..),
   ExecutionContext (MkExecutionContext, node, tracer),
   HydraAuctionLog (..),
   Runner,
