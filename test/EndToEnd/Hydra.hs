@@ -1,5 +1,3 @@
-{-# LANGUAGE RecordWildCards #-}
-
 module EndToEnd.Hydra (testSuite) where
 
 -- Prelude imports
@@ -115,13 +113,13 @@ testSuite =
 
 basicHydraTxTest :: Assertion
 basicHydraTxTest = mkAssertion $ do
-  MkExecutionContext {..} <- ask
+  MkExecutionContext {node} <- ask
   hydraScriptsTxId <- liftIO $ publishHydraScriptsAs node Faucet
   initAndClose 0 hydraScriptsTxId
 
 initAndClose :: Int -> TxId -> Runner ()
 initAndClose clusterIx hydraScriptsTxId = do
-  MkExecutionContext {..} <- ask
+  MkExecutionContext {node, tracer} <- ask
   let hydraTracer = contramap FromHydra tracer
   liftIO $
     withTempDir "end-to-end-init-and-close" $ \tmpDir -> do
