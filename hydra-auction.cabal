@@ -1,12 +1,11 @@
-cabal-version:      3.0
-name:               hydra-auction
-version:            0.1.0
-synopsis:           Auction in hydra head
-homepage:           https://github.com/mlabs-haskell/hydra-auction
-author:             MLabs
-maintainer:         giovanni@mlabs.city
-extra-source-files:
-  CHANGELOG.md
+cabal-version: 3.0
+name:          hydra-auction
+version:       0.1.0
+synopsis:      Auction in hydra head
+homepage:      https://github.com/mlabs-haskell/hydra-auction
+author:        MLabs
+maintainer:    giovanni@mlabs.city
+data-files:
   config/credentials/alice.sk
   config/credentials/alice.vk
   config/credentials/bob.sk
