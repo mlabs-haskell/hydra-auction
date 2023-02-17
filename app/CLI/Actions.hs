@@ -78,7 +78,7 @@ data CliInput = MkCliInput
 
 handleCliAction :: CliAction -> Runner ()
 handleCliAction userAction = do
-  MkExecutionContext {tracer} <- ask
+  MkExecutionContext {actor} <- ask
   case userAction of
     Seed ->
       initWallet seedAmount actor

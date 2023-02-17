@@ -12,10 +12,10 @@ import Control.Monad (void, when)
 
 import Hydra.Cluster.Fixture (Actor (..))
 import Hydra.Logging (Verbosity (Quiet, Verbose))
-import Hydra.Prelude (liftIO)
+import Hydra.Prelude (contramap, liftIO)
 
 -- Hydra auction imports
-import HydraAuction.Runner (Runner, executeRunner, stdoutTracer)
+import HydraAuction.Runner (HydraAuctionLog (FromHydra), Runner, executeRunner, stdoutTracer)
 
 -- Hydra auction CLI imports
 import CLI.Actions (handleCliAction)
@@ -28,12 +28,12 @@ import CLI.Parsers (
 
 main :: IO ()
 main = do
-  MkCliInput {verbosity, cmd} <- getCliInput
+  MkCliInput {ciVerbosity, ciActor} <- getCliInput
 
   let hydraVerbosity = if ciVerbosity then Verbose "hydra-auction" else Quiet
   tr <- stdoutTracer hydraVerbosity
   when (ciActor == Alice) $ do
-    void $ async $ runCardanoNode tr
+    void $ async $ runCardanoNode (contramap FromHydra tr)
   putStrLn ("Starting CLI for " <> show ciActor)
   node <- getCardanoNode
   executeRunner tr node ciVerbosity ciActor loopCLI
