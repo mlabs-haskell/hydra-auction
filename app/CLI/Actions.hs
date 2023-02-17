@@ -19,9 +19,10 @@ import Cardano.Api (TxIn, TxOut (..))
 -- Hydra imports
 import Cardano.Api.UTxO (UTxO, toMap)
 import Hydra.Cardano.Api (Lovelace, TxOut, TxOutValue (..))
-import Hydra.Cluster.Fixture (Actor (..))
 
 -- Hydra auction imports
+
+import HydraAuction.Fixture (Actor (..))
 import HydraAuction.OnChain (AuctionScript)
 import HydraAuction.Runner (
   ExecutionContext (..),
@@ -54,7 +55,7 @@ seedAmount :: Lovelace
 seedAmount = 100_000_000
 
 allActors :: [Actor]
-allActors = [Alice, Bob, Carol]
+allActors = [minBound ..]
 
 data CliAction
   = ShowScriptUtxos !AuctionName !AuctionScript
@@ -98,6 +99,7 @@ handleCliAction userAction = do
         utxos <- withActor a actorTipUtxo
         liftIO $ print a
         liftIO $ prettyPrintUtxo utxos
+        liftIO $ putStrLn "\n"
     MintTestNFT ->
       void mintOneTestNFT
     AuctionAnounce auctionName utxo -> do

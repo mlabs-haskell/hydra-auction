@@ -64,9 +64,9 @@ import CardanoNode (
  )
 import Hydra.Cardano.Api hiding (txIns, txOutValue)
 import Hydra.Chain.Direct.TimeHandle (queryTimeHandle, slotFromUTCTime)
-import Hydra.Cluster.Util
 
 -- Hydra auction imports
+import HydraAuction.Fixture (keysFor)
 import HydraAuction.OnChain
 import HydraAuction.Runner
 import HydraAuction.Types

@@ -37,10 +37,8 @@ import Options.Applicative (
 -- Cardano node imports
 import Cardano.Api (TxIn)
 
--- Hydra imports
-import Hydra.Cluster.Fixture (Actor (..))
-
 -- Hydra auction imports
+import HydraAuction.Fixture (Actor (..))
 import HydraAuction.OnChain (AuctionScript (..))
 import HydraAuction.Types (Natural, intToNatural)
 
@@ -136,6 +134,11 @@ parseActor :: String -> Actor
 parseActor "alice" = Alice
 parseActor "bob" = Bob
 parseActor "carol" = Carol
+parseActor "dave" = Dave
+parseActor "eve" = Eve
+parseActor "frank" = Frank
+parseActor "grace" = Grace
+parseActor "hans" = Hans
 parseActor "faucet" = error "Unsupported actor"
 parseActor _ = error "Actor parsing error"
 

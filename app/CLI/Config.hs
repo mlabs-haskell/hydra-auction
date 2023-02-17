@@ -28,10 +28,8 @@ import Data.ByteString.Lazy qualified as LBS
 import System.Directory
 import System.FilePath ((<.>), (</>))
 
--- Hydra imports
-import Hydra.Cluster.Fixture (Actor (..))
-
 -- Hydra auction imports
+import HydraAuction.Fixture (Actor (..))
 import HydraAuction.Tx.TermsConfig
 import HydraAuction.Types
 

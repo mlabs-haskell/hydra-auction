@@ -29,12 +29,11 @@ import CardanoNode (
  )
 import Hydra.Cardano.Api (Lovelace)
 import Hydra.Cluster.Faucet (Marked (Normal), seedFromFaucet_)
-import Hydra.Cluster.Fixture (Actor (..))
-import Hydra.Cluster.Util (keysFor)
 import Hydra.Logging (Tracer)
 import HydraNode (EndToEndLog (FromCardanoNode, FromFaucet))
 
 -- Hydra auction imports
+import HydraAuction.Fixture (Actor (..), keysFor)
 import HydraAuction.Runner.Tracer (
   HydraAuctionLog (..),
   StateDirectory (..),

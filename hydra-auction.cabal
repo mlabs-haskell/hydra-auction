@@ -5,7 +5,25 @@ synopsis:           Auction in hydra head
 homepage:           https://github.com/mlabs-haskell/hydra-auction
 author:             MLabs
 maintainer:         giovanni@mlabs.city
-extra-source-files: CHANGELOG.md
+extra-source-files:
+  CHANGELOG.md
+  config/credentials/alice.sk
+  config/credentials/alice.vk
+  config/credentials/bob.sk
+  config/credentials/bob.vk
+  config/credentials/carol.sk
+  config/credentials/carol.vk
+  config/credentials/dave.sk
+  config/credentials/dave.vk
+  config/credentials/eve.sk
+  config/credentials/eve.vk
+  config/credentials/frank.sk
+  config/credentials/frank.vk
+  config/credentials/grace.sk
+  config/credentials/grace.vk
+  config/credentials/hans.sk
+  config/credentials/hans.vk
+  README.md
 
 source-repository head
   type:     git
@@ -31,6 +49,7 @@ common common-lang
     , async
     , base                     ^>=4.14
     , base16-bytestring
+    , bytestring
     , cardano-ledger-core
     , containers
     , contra-tracer
@@ -154,6 +173,7 @@ library
   import:          common-lang
   exposed-modules:
     HydraAuction.Addresses
+    HydraAuction.Fixture
     HydraAuction.OnChain
     HydraAuction.OnChain.TestNFT
     HydraAuction.Plutus.Orphans
@@ -165,6 +185,7 @@ library
     HydraAuction.Tx.TermsConfig
     HydraAuction.Tx.TestNFT
     HydraAuction.Types
+    Paths_hydra_auction
 
   other-modules:
     HydraAuction.OnChain.Common

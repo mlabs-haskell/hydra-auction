@@ -11,7 +11,6 @@ import Control.Monad (when)
 import Data.Aeson (FromJSON (..), ToJSON (..))
 import Data.ByteString.Base16 qualified as Base16
 import Data.Text.Encoding (decodeUtf8, encodeUtf8)
-import GHC.Generics (Generic)
 
 -- Plutus imports
 import Plutus.V1.Ledger.Crypto (PubKeyHash (..))
@@ -20,9 +19,6 @@ import Plutus.V1.Ledger.Value (AssetClass (..), CurrencySymbol (..), TokenName (
 import Plutus.V2.Ledger.Contexts (TxOutRef)
 import Plutus.V2.Ledger.Tx (TxId (..))
 import PlutusTx.Builtins.Internal (BuiltinByteString (..))
-
--- Hydra imports
-import Hydra.Cluster.Fixture (Actor (..))
 
 -- Time
 
@@ -65,10 +61,3 @@ instance (ToJSON TxOutRef)
 
 deriving via BuiltinByteString instance (FromJSON TxId)
 deriving via BuiltinByteString instance (ToJSON TxId)
-
--- Hydra
-
-deriving stock instance (Generic Actor)
-
-instance FromJSON Actor
-instance ToJSON Actor
