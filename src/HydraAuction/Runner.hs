@@ -48,7 +48,6 @@ import HydraAuction.Runner.Tracer (
 data ExecutionContext = MkExecutionContext
   { tracer :: !(Tracer IO HydraAuctionLog)
   , node :: !RunningNode
-  , verbose :: !Bool
   }
 
 {- | Hydra computation executor. Note that @Runner@ is
@@ -67,24 +66,16 @@ newtype Runner a = MkRunner
     via ReaderT ExecutionContext IO
 
 executeRunner ::
-  Tracer IO HydraAuctionLog ->
-  RunningNode ->
-  Bool ->
+  ExecutionContext ->
   Runner a ->
   IO a
-executeRunner tracer node verbose runner =
-  runReaderT (run runner) $
-    MkExecutionContext
-      { tracer = tracer
-      , node = node
-      , verbose
-      }
+executeRunner context runner =
+  runReaderT (run runner) context
 
 logMsg :: String -> Runner ()
 logMsg s = do
-  MkExecutionContext {verbose, tracer} <- ask
-  when verbose $
-    liftIO $ traceWith tracer (FromHydraAuction s)
+  MkExecutionContext {tracer} <- ask
+  liftIO $ traceWith tracer (FromHydraAuction s)
 
 -- | Executes a test runner using a temporary directory as the @StateDirectory@.
 executeTestRunner :: Runner () -> IO ()
@@ -96,7 +87,9 @@ executeTestRunner runner = do
       (contramap (FromHydra . FromCardanoNode) tracerForCardanoNode)
       tmpDir
       $ \node -> showLogsOnFailure $ \tracer ->
-        executeRunner tracer node True runner
+        executeRunner
+          (MkExecutionContext {tracer = tracer, node = node})
+          runner
 
 -- * Utils
 
