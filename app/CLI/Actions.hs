@@ -44,12 +44,10 @@ import HydraAuction.Types (Natural)
 -- Hydra auction CLI imports
 import CLI.Config (
   AuctionName,
-  CliEnhancedAuctionTerms (..),
   configToAuctionTerms,
   constructTermsDynamic,
   readAuctionTerms,
   readAuctionTermsConfig,
-  readCliEnhancedAuctionTerms,
   writeAuctionTermsDynamic,
  )
 
@@ -94,10 +92,12 @@ handleCliAction userAction = do
       liftIO $ prettyPrintUtxo utxos
     ShowUtxos -> do
       utxos <- actorTipUtxo
+      liftIO $ print actor
       liftIO $ prettyPrintUtxo utxos
     ShowAllUtxos -> do
-      forM_ allActors $ \_ -> do
-        utxos <- actorTipUtxo
+      forM_ allActors $ \a -> do
+        utxos <- withActor a actorTipUtxo
+        liftIO $ print a
         liftIO $ prettyPrintUtxo utxos
     MintTestNFT ->
       void mintOneTestNFT
@@ -110,9 +110,8 @@ handleCliAction userAction = do
       announceAuction terms
     StartBidding auctionName -> do
       -- FIXME: proper error printing
-      Just (CliEnhancedAuctionTerms {terms, sellerActor}) <-
-        liftIO $ readCliEnhancedAuctionTerms auctionName
-      withActor sellerActor $ startBidding terms
+      Just terms <- liftIO $ readAuctionTerms auctionName
+      startBidding terms
     NewBid auctionName bidAmount -> do
       -- FIXME: proper error printing
       Just terms <- liftIO $ readAuctionTerms auctionName
@@ -123,13 +122,11 @@ handleCliAction userAction = do
       bidderBuys terms
     SellerReclaims auctionName -> do
       -- FIXME: proper error printing
-      Just (CliEnhancedAuctionTerms {terms}) <-
-        liftIO $ readCliEnhancedAuctionTerms auctionName
+      Just terms <- liftIO $ readAuctionTerms auctionName
       sellerReclaims terms
     Cleanup auctionName -> do
       -- FIXME: proper error printing
-      Just (CliEnhancedAuctionTerms {terms}) <-
-        liftIO $ readCliEnhancedAuctionTerms auctionName
+      Just terms <- liftIO $ readAuctionTerms auctionName
       cleanupTx terms
 
 prettyPrintUtxo :: UTxO -> IO ()
