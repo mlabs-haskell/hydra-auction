@@ -149,6 +149,7 @@ library
     HydraAuction.OnChain.TestNFT
     HydraAuction.Plutus.Orphans
     HydraAuction.Runner
+    HydraAuction.Runner.Time
     HydraAuction.Tx.Common
     HydraAuction.Tx.Escrow
     HydraAuction.Tx.StandingBid
