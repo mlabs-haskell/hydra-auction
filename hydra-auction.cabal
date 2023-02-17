@@ -48,6 +48,7 @@ common common-lang
     BinaryLiterals
     ConstraintKinds
     DataKinds
+    DeriveAnyClass
     DeriveFunctor
     DeriveGeneric
     DeriveTraversable
@@ -161,6 +162,7 @@ library
     HydraAuction.OnChain.StandingBid
     HydraAuction.OnChain.StateToken
     HydraAuction.Plutus.Extras
+    HydraAuction.Runner.Tracer
 
   build-depends:
     , directory
