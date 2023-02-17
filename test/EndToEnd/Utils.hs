@@ -6,8 +6,6 @@ import Hydra.Prelude hiding (threadDelay)
 -- Haskell imports
 
 import Control.Concurrent (threadDelay)
-import Control.Concurrent.STM.TVar (modifyTVar, newTVarIO, readTVarIO)
-import Control.Tracer (Tracer (..))
 
 -- Haskell test imports
 import Test.Hydra.Prelude (failAfter)
@@ -30,14 +28,7 @@ import HydraAuction.Runner (
 import HydraAuction.Tx.Common (toSlotNo)
 
 mkAssertion :: Runner () -> Assertion
-mkAssertion runner =
-  showLogsOnFailure $
-    \tracer' ->
-      timeoutTest $ local (\ctx -> ctx {tracer = tracer'}) runner
-  where
-    timeoutTest :: Runner () -> IO ()
-    timeoutTest runner' =
-      failAfter 60 $ executeTestRunner runner'
+mkAssertion = failAfter 60 . executeTestRunner
 
 waitUntil :: POSIXTime -> Runner ()
 waitUntil time = do
@@ -59,21 +50,3 @@ currentSlot = do
     case tip of
       ChainPointAtGenesis -> SlotNo 0
       ChainPoint slotNo _ -> slotNo
-
--- Capture logs and output them to stdout when an exception was raised by the
--- given 'action'.
--- Copied from Hydra and simplified.
-showLogsOnFailure ::
-  (Show msg) =>
-  (Tracer IO msg -> IO a) ->
-  IO a
-showLogsOnFailure action = do
-  tvar <- newTVarIO []
-  action (traceInTVar tvar)
-    `onException` (readTVarIO tvar >>= mapM_ (putStrLn . show) . reverse)
-
-traceInTVar ::
-  TVar IO [msg] ->
-  Tracer IO msg
-traceInTVar tvar = Tracer $ \msg -> do
-  atomically $ modifyTVar tvar (msg :)

@@ -19,7 +19,6 @@ import Test.Hydra.Prelude (withTempDir)
 
 -- Haskell imports
 import Control.Tracer (traceWith)
-import System.FilePath ((</>))
 
 -- Hydra imports
 import CardanoNode (
@@ -39,6 +38,7 @@ import HydraAuction.Runner.Tracer (
   HydraAuctionLog (..),
   StateDirectory (..),
   fileTracer,
+  showLogsOnFailure,
   stdoutTracer,
  )
 
@@ -91,11 +91,12 @@ executeTestRunner :: Runner () -> IO ()
 executeTestRunner runner = do
   withTempDir "test-hydra-auction" $ \tmpDir -> do
     let stateDirectory = MkStateDirectory tmpDir
-    tracer <- fileTracer stateDirectory
+    tracerForCardanoNode <- fileTracer stateDirectory
     withCardanoNodeDevnet
-      (contramap (FromHydra . FromCardanoNode) tracer)
+      (contramap (FromHydra . FromCardanoNode) tracerForCardanoNode)
       tmpDir
-      $ \node -> executeRunner tracer node True runner
+      $ \node -> showLogsOnFailure $ \tracer ->
+        executeRunner tracer node True runner
 
 -- * Utils
 
