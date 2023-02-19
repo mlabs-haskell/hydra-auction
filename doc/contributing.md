@@ -17,7 +17,8 @@
 ## Other guidelines
 
 * Follow MLabs styleguide: https://github.com/mlabs-haskell/styleguide
-* Single constructors are witten like this: `newtype MyType = MkMyType Integer`
+* Single constructors are written like this:
+  `newtype MyType = MkMyType Integer`
 * Merged comments on things to be changed later are marked with `FIXME`.
   `TODO` comments are reserved for local/draft changes and should not be merged.
 * Do not use `RecordWildcards`,
