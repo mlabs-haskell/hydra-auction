@@ -20,6 +20,9 @@
 * Single constructors are witten like this: `newtype MyType = MkMyType Integer`
 * Merged comments on things to be changed later are marked with `FIXME`.
   `TODO` comments are reserved for local/draft changes and should not be merged.
+* Do not use `RecordWildcards`,
+  apart for cases with very much fields used at same time.
+  Reasoning: `RecordsWildCards` makes variable source implicit.
 
 # Documentation styleguide
 
