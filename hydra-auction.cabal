@@ -17,7 +17,7 @@ common common-lang
   ghc-options:
     -Wall -Wcompat -Wincomplete-record-updates
     -Wincomplete-uni-patterns -Wredundant-constraints
-    -Wmissing-export-lists -Wmissing-deriving-strategies
+    -Wmissing-export-lists -Wmissing-deriving-strategies -Werror
 
   -- Options for Plutus Tx compilations
   -- (some are enabled additionaly in individual modules)
