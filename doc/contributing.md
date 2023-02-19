@@ -16,8 +16,8 @@
 
 ## Other guidelines
 
+* Follow MLabs styleguide: https://github.com/mlabs-haskell/styleguide
 * Single constructors are witten like this: `newtype MyType = MkMyType Integer`
-* Acronims are written with normal case (like `Xml` or `Cli`)
 * Merged comments on things to be changed later are marked with `FIXME`.
   `TODO` comments are reserved for local/draft changes and should not be merged.
 
