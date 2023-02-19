@@ -24,6 +24,12 @@
 * Do not use `RecordWildcards`,
   apart for cases with very much fields used at same time.
   Reasoning: `RecordsWildCards` makes variable source implicit.
+* Test selector should be writen in kebab case, like `bidder-buys`.
+  Reasoning:
+    * Easier to type shorter lowercased names.
+    * Also, if test names don't have spaces,
+    then you don't have to put them in "double-quotes" when selecting:
+    `cabal test --test-options='-p bidder-buys'`
 
 # Documentation styleguide
 
