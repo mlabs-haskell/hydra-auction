@@ -29,6 +29,7 @@ import HydraAuction.Runner (
   initWallet,
   withActor,
  )
+import HydraAuction.Runner.Time (waitUntil)
 import HydraAuction.Tx.Common (actorTipUtxo)
 import HydraAuction.Tx.Escrow (
   announceAuction,
@@ -55,7 +56,7 @@ import HydraAuction.Tx.TestNFT (mintOneTestNFT)
 import HydraAuction.Types (AuctionTerms (..), intToNatural)
 
 -- Hydra auction test imports
-import EndToEnd.Utils (mkAssertion, waitUntil)
+import EndToEnd.Utils (mkAssertion)
 
 testSuite :: TestTree
 testSuite =

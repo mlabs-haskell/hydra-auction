@@ -6,7 +6,7 @@ module CLI.Actions (
 ) where
 
 -- Prelude imports
-import Hydra.Prelude (ask, contramap, liftIO)
+import Hydra.Prelude (ask, liftIO)
 import Prelude
 
 -- Haskell imports
@@ -25,7 +25,6 @@ import Hydra.Cluster.Fixture (Actor (..))
 import HydraAuction.OnChain (AuctionScript)
 import HydraAuction.Runner (
   ExecutionContext (..),
-  HydraAuctionLog (..),
   Runner,
   initWallet,
   withActor,

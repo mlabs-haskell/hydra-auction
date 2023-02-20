@@ -42,6 +42,12 @@ You can run tests for the entire application by running:
 nix build -L .#checks
 ```
 
+To run app with GHC warnings present you can use:
+
+```bash
+cabal run --ghc-option='-Wwarn'
+```
+
 ## Specification
 
 The full specification can be read [here](/doc/spec.md).
