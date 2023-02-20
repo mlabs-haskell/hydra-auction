@@ -9,7 +9,7 @@ module HydraAuction.Runner (
   ExecutionContext (..),
   fileTracer,
   initWallet,
-  stdoutTracer,
+  stdoutOrNullTracer,
   logMsg,
 ) where
 
@@ -39,7 +39,7 @@ import HydraAuction.Runner.Tracer (
   StateDirectory (..),
   fileTracer,
   showLogsOnFailure,
-  stdoutTracer,
+  stdoutOrNullTracer,
  )
 
 {- | Execution context holding the current tracer,

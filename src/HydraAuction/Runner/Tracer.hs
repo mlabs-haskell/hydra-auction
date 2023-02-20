@@ -2,7 +2,7 @@ module HydraAuction.Runner.Tracer (
   StateDirectory (..),
   HydraAuctionLog (..),
   fileTracer,
-  stdoutTracer,
+  stdoutOrNullTracer,
   showLogsOnFailure,
 ) where
 
@@ -40,9 +40,9 @@ fileTracer MkStateDirectory {stateDirectory} = do
   withFile (stateDirectory </> "test.log") ReadWriteMode $ \h ->
     withTracerOutputTo h "Tracer" pure
 
--- | Stdout tracer using the given verbosity level.
-stdoutTracer :: Verbosity -> IO (Tracer IO HydraAuctionLog)
-stdoutTracer verbosity =
+-- | Stdout or null tracer depending the given verbosity level.
+stdoutOrNullTracer :: Verbosity -> IO (Tracer IO HydraAuctionLog)
+stdoutOrNullTracer verbosity =
   withTracer verbosity pure
 
 -- Capture logs and output them to stdout when an exception was raised by the
