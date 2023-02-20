@@ -71,8 +71,8 @@ data CliAction
   | Cleanup !AuctionName
 
 data CliInput = MkCliInput
-  { ciActor :: Actor
-  , ciVerbosity :: Bool
+  { cliActor :: Actor
+  , cliVerbosity :: Bool
   }
 
 handleCliAction :: CliAction -> Runner ()
