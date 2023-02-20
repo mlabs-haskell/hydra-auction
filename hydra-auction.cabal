@@ -56,6 +56,7 @@ common common-lang
     BinaryLiterals
     ConstraintKinds
     DataKinds
+    DeriveAnyClass
     DeriveFunctor
     DeriveGeneric
     DeriveTraversable
@@ -156,6 +157,7 @@ library
     HydraAuction.OnChain.TestNFT
     HydraAuction.Plutus.Orphans
     HydraAuction.Runner
+    HydraAuction.Runner.Time
     HydraAuction.Tx.Common
     HydraAuction.Tx.Escrow
     HydraAuction.Tx.StandingBid
@@ -169,6 +171,7 @@ library
     HydraAuction.OnChain.StandingBid
     HydraAuction.OnChain.StateToken
     HydraAuction.Plutus.Extras
+    HydraAuction.Runner.Tracer
 
   build-depends:
     , directory

@@ -1,5 +1,3 @@
-{-# LANGUAGE DeriveAnyClass #-}
-
 module HydraAuction.Runner (
   HydraAuctionLog (..),
   EndToEndLog (..),
@@ -11,7 +9,7 @@ module HydraAuction.Runner (
   ExecutionContext (..),
   fileTracer,
   initWallet,
-  stdoutTracer,
+  stdoutOrNullTracer,
   logMsg,
 ) where
 
@@ -21,7 +19,6 @@ import Test.Hydra.Prelude (withTempDir)
 
 -- Haskell imports
 import Control.Tracer (traceWith)
-import System.FilePath ((</>))
 
 -- Hydra imports
 import CardanoNode (
@@ -33,19 +30,17 @@ import Hydra.Cardano.Api (Lovelace)
 import Hydra.Cluster.Faucet (Marked (Normal), seedFromFaucet_)
 import Hydra.Cluster.Fixture (Actor)
 import Hydra.Cluster.Util (keysFor)
-import Hydra.Logging (
-  Tracer,
-  Verbosity,
-  withTracer,
-  withTracerOutputTo,
- )
+import Hydra.Logging (Tracer)
 import HydraNode (EndToEndLog (FromCardanoNode, FromFaucet))
 
-data HydraAuctionLog
-  = FromHydra !EndToEndLog
-  | FromHydraAuction !String
-  deriving stock (Eq, Show, Generic)
-  deriving anyclass (FromJSON, ToJSON)
+-- Hydra auction imports
+import HydraAuction.Runner.Tracer (
+  HydraAuctionLog (..),
+  StateDirectory (..),
+  fileTracer,
+  showLogsOnFailure,
+  stdoutOrNullTracer,
+ )
 
 {- | Execution context holding the current tracer,
  as well as the running node.
@@ -53,7 +48,6 @@ data HydraAuctionLog
 data ExecutionContext = MkExecutionContext
   { tracer :: !(Tracer IO HydraAuctionLog)
   , node :: !RunningNode
-  , verbose :: !Bool
   }
 
 {- | Hydra computation executor. Note that @Runner@ is
@@ -72,52 +66,30 @@ newtype Runner a = MkRunner
     via ReaderT ExecutionContext IO
 
 executeRunner ::
-  Tracer IO HydraAuctionLog ->
-  RunningNode ->
-  Bool ->
+  ExecutionContext ->
   Runner a ->
   IO a
-executeRunner tracer node verbose runner =
-  runReaderT (run runner) $
-    MkExecutionContext
-      { tracer = tracer
-      , node = node
-      , verbose
-      }
-
-{- | Filter tracer which logs into a `test.log` file within the given
- @StateDirectory@.
--}
-fileTracer :: StateDirectory -> IO (Tracer IO HydraAuctionLog)
-fileTracer MkStateDirectory {stateDirectory} = do
-  withFile (stateDirectory </> "test.log") ReadWriteMode $ \h ->
-    withTracerOutputTo h "Tracer" pure
-
--- | Stdout tracer using the given verbosity level.
-stdoutTracer :: Verbosity -> IO (Tracer IO HydraAuctionLog)
-stdoutTracer verbosity =
-  withTracer verbosity pure
+executeRunner context runner =
+  runReaderT (run runner) context
 
 logMsg :: String -> Runner ()
 logMsg s = do
-  MkExecutionContext {verbose, tracer} <- ask
-  when verbose $
-    liftIO $ traceWith tracer (FromHydraAuction s)
+  MkExecutionContext {tracer} <- ask
+  liftIO $ traceWith tracer (FromHydraAuction s)
 
 -- | Executes a test runner using a temporary directory as the @StateDirectory@.
 executeTestRunner :: Runner () -> IO ()
 executeTestRunner runner = do
   withTempDir "test-hydra-auction" $ \tmpDir -> do
     let stateDirectory = MkStateDirectory tmpDir
-    tracer <- fileTracer stateDirectory
+    tracerForCardanoNode <- fileTracer stateDirectory
     withCardanoNodeDevnet
-      (contramap (FromHydra . FromCardanoNode) tracer)
+      (contramap (FromHydra . FromCardanoNode) tracerForCardanoNode)
       tmpDir
-      $ \node -> executeRunner tracer node True runner
-
--- | @FilePath@ used to store the running node data.
-newtype StateDirectory = MkStateDirectory
-  {stateDirectory :: FilePath}
+      $ \node -> showLogsOnFailure $ \tracer ->
+        executeRunner
+          (MkExecutionContext {tracer = tracer, node = node})
+          runner
 
 -- * Utils
 
