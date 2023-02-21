@@ -10,11 +10,12 @@ import Control.Monad (void, when)
 
 -- Hydra imports
 
-import Hydra.Cluster.Fixture (Actor (..))
 import Hydra.Logging (Verbosity (Quiet, Verbose))
 import Hydra.Prelude (contramap, liftIO)
 
 -- Hydra auction imports
+
+import HydraAuction.Fixture (Actor (..))
 import HydraAuction.Runner (
   ExecutionContext (..),
   HydraAuctionLog (FromHydra),

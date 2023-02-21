@@ -20,9 +20,9 @@ import Plutus.V1.Ledger.Value (assetClassValueOf)
 -- Hydra imports
 
 import Hydra.Cardano.Api (mkTxIn, toPlutusValue, txOutValue)
-import Hydra.Cluster.Fixture (Actor (..))
 
 -- Hydra auction imports
+import HydraAuction.Fixture (Actor (..))
 import HydraAuction.OnChain.TestNFT (testNftAssetClass)
 import HydraAuction.Runner (
   Runner,

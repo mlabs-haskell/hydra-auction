@@ -23,10 +23,9 @@ import Plutus.V2.Ledger.Contexts (TxOutRef)
 
 -- Hydra imports
 import Hydra.Cardano.Api (TxIn, toPlutusKeyHash, toPlutusTxOutRef, verificationKeyHash)
-import Hydra.Cluster.Fixture (Actor)
-import Hydra.Cluster.Util (keysFor)
 
 -- Hydra auction imports
+import HydraAuction.Fixture (Actor, keysFor)
 import HydraAuction.OnChain.TestNFT
 import HydraAuction.Plutus.Orphans ()
 import HydraAuction.Tx.Common (currentTimeSeconds)

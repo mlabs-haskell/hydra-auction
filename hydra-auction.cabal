@@ -1,11 +1,28 @@
-cabal-version:      3.0
-name:               hydra-auction
-version:            0.1.0
-synopsis:           Auction in hydra head
-homepage:           https://github.com/mlabs-haskell/hydra-auction
-author:             MLabs
-maintainer:         giovanni@mlabs.city
-extra-source-files: CHANGELOG.md
+cabal-version: 3.0
+name:          hydra-auction
+version:       0.1.0
+synopsis:      Auction in hydra head
+homepage:      https://github.com/mlabs-haskell/hydra-auction
+author:        MLabs
+maintainer:    giovanni@mlabs.city
+data-files:
+  data/credentials/alice.sk
+  data/credentials/alice.vk
+  data/credentials/bob.sk
+  data/credentials/bob.vk
+  data/credentials/carol.sk
+  data/credentials/carol.vk
+  data/credentials/dave.sk
+  data/credentials/dave.vk
+  data/credentials/eve.sk
+  data/credentials/eve.vk
+  data/credentials/frank.sk
+  data/credentials/frank.vk
+  data/credentials/grace.sk
+  data/credentials/grace.vk
+  data/credentials/hans.sk
+  data/credentials/hans.vk
+  README.md
 
 source-repository head
   type:     git
@@ -31,6 +48,7 @@ common common-lang
     , async
     , base                     ^>=4.14
     , base16-bytestring
+    , bytestring
     , cardano-ledger-core
     , containers
     , contra-tracer
@@ -154,6 +172,7 @@ library
   import:          common-lang
   exposed-modules:
     HydraAuction.Addresses
+    HydraAuction.Fixture
     HydraAuction.OnChain
     HydraAuction.OnChain.TestNFT
     HydraAuction.Plutus.Orphans
@@ -165,6 +184,7 @@ library
     HydraAuction.Tx.TermsConfig
     HydraAuction.Tx.TestNFT
     HydraAuction.Types
+    Paths_hydra_auction
 
   other-modules:
     HydraAuction.OnChain.Common
