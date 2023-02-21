@@ -1,5 +1,6 @@
 module CLI.Parsers (
   getCliInput,
+  parseCliAction,
   CliInput (..),
 ) where
 
@@ -10,8 +11,10 @@ import Prelude
 import Data.Maybe (fromJust)
 import Options.Applicative (
   Parser,
+  ParserResult (..),
   command,
   customExecParser,
+  execParserPure,
   fullDesc,
   help,
   helper,
@@ -22,6 +25,7 @@ import Options.Applicative (
   option,
   prefs,
   progDesc,
+  renderFailure,
   short,
   showHelpOnEmpty,
   showHelpOnError,
@@ -45,6 +49,18 @@ import CLI.Actions (CliAction (..), CliInput (..), seedAmount)
 import CLI.Config (AuctionName (..))
 import CLI.Parsers.TxIn (parseTxIn)
 
+parseCliAction :: [String] -> Either String CliAction
+parseCliAction s = case execParserPure preferences options s of
+  Success a -> Right a
+  Failure failure -> Left $ fst $ renderFailure failure ""
+  _ -> Left "error"
+  where
+    options =
+      info
+        (cliActionParser <**> helper)
+        fullDesc
+    preferences = prefs (showHelpOnEmpty <> showHelpOnError)
+
 getCliInput :: IO CliInput
 getCliInput = customExecParser preferences options
   where
@@ -57,16 +73,16 @@ getCliInput = customExecParser preferences options
 cliActionParser :: Parser CliAction
 cliActionParser =
   hsubparser
-    ( command "run-cardano-node" (info (pure RunCardanoNode) (progDesc "Starts a cardano node instance in the background"))
-        <> command "show-script-utxos" (info (ShowScriptUtxos <$> auctionName <*> script) (progDesc "Show utxos at a given script. Requires the seller and auction lot for the given script"))
-        <> command "show-utxos" (info (ShowUtxos <$> actor) (progDesc "Shows utxos for a given actor"))
-        <> command "seed" (info (Seed <$> actor) (progDesc $ "Provides " <> show seedAmount <> " Lovelace for the given actor"))
+    ( command "show-script-utxos" (info (ShowScriptUtxos <$> auctionName <*> script) (progDesc "Show utxos at a given script. Requires the seller and auction lot for the given script"))
+        <> command "show-utxos" (info (pure ShowUtxos) (progDesc "Shows utxos for a given actor"))
+        <> command "show-all-utxos" (info (pure ShowAllUtxos) (progDesc "Shows utxos for all actors"))
+        <> command "seed" (info (pure Seed) (progDesc $ "Provides " <> show seedAmount <> " Lovelace for the given actor"))
         <> command "prepare-for-demo" (info (Prepare <$> actor) (progDesc $ "Provides " <> show seedAmount <> " Lovelace for every actor and 1 Test NFT for given actor"))
-        <> command "mint-test-nft" (info (MintTestNFT <$> actor) (progDesc "Mints an NFT that can be used as auction lot"))
-        <> command "announce-auction" (info (AuctionAnounce <$> auctionName <*> actor <*> utxo) (progDesc "Create an auction. Requires TxIn which identifies the auction lot"))
+        <> command "mint-test-nft" (info (pure MintTestNFT) (progDesc "Mints an NFT that can be used as auction lot"))
+        <> command "announce-auction" (info (AuctionAnounce <$> auctionName <*> utxo) (progDesc "Create an auction. Requires TxIn which identifies the auction lot"))
         <> command "start-bidding" (info (StartBidding <$> auctionName) (progDesc "Open an auction for bidding"))
-        <> command "new-bid" (info (NewBid <$> auctionName <*> actor <*> bidAmount) (progDesc "Actor places new bid after bidding is started"))
-        <> command "bidder-buys" (info (BidderBuys <$> auctionName <*> actor) (progDesc "Pay and recieve a lot after auction end"))
+        <> command "new-bid" (info (NewBid <$> auctionName <*> bidAmount) (progDesc "Actor places new bid after bidding is started"))
+        <> command "bidder-buys" (info (BidderBuys <$> auctionName) (progDesc "Pay and recieve a lot after auction end"))
         <> command "seller-reclaims" (info (SellerReclaims <$> auctionName) (progDesc "Seller reclaims lot after voucher end time"))
         <> command "cleanup" (info (Cleanup <$> auctionName) (progDesc "Remove standing bid UTxO after cleanup time"))
     )
@@ -86,7 +102,7 @@ actor =
     <$> strOption
       ( short 'a'
           <> metavar "ACTOR"
-          <> help "Actor who will use for tx and AuctionTerms construction"
+          <> help "Actor running the cli tool"
       )
 
 script :: Parser AuctionScript
@@ -136,4 +152,4 @@ verboseParser :: Parser Bool
 verboseParser = switch (long "verbose" <> short 'v')
 
 cliInputParser :: Parser CliInput
-cliInputParser = MkCliInput <$> cliActionParser <*> verboseParser
+cliInputParser = MkCliInput <$> actor <*> verboseParser

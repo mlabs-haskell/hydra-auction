@@ -148,6 +148,7 @@ executable hydra-auction
     , text
 
   hs-source-dirs: app
+  ghc-options:    -threaded -rtsopts
 
 library
   import:          common-lang

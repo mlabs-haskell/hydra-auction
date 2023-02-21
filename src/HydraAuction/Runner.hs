@@ -7,6 +7,7 @@ module HydraAuction.Runner (
   executeTestRunner,
   StateDirectory (..),
   ExecutionContext (..),
+  withActor,
   fileTracer,
   initWallet,
   stdoutOrNullTracer,
@@ -28,7 +29,7 @@ import CardanoNode (
  )
 import Hydra.Cardano.Api (Lovelace)
 import Hydra.Cluster.Faucet (Marked (Normal), seedFromFaucet_)
-import Hydra.Cluster.Fixture (Actor)
+import Hydra.Cluster.Fixture (Actor (..))
 import Hydra.Cluster.Util (keysFor)
 import Hydra.Logging (Tracer)
 import HydraNode (EndToEndLog (FromCardanoNode, FromFaucet))
@@ -48,6 +49,7 @@ import HydraAuction.Runner.Tracer (
 data ExecutionContext = MkExecutionContext
   { tracer :: !(Tracer IO HydraAuctionLog)
   , node :: !RunningNode
+  , actor :: !Actor
   }
 
 {- | Hydra computation executor. Note that @Runner@ is
@@ -72,6 +74,9 @@ executeRunner ::
 executeRunner context runner =
   runReaderT (run runner) context
 
+withActor :: Actor -> Runner a -> Runner a
+withActor actor = local (\ctx -> ctx {actor = actor})
+
 logMsg :: String -> Runner ()
 logMsg s = do
   MkExecutionContext {tracer} <- ask
@@ -88,7 +93,7 @@ executeTestRunner runner = do
       tmpDir
       $ \node -> showLogsOnFailure $ \tracer ->
         executeRunner
-          (MkExecutionContext {tracer = tracer, node = node})
+          (MkExecutionContext {tracer = tracer, node = node, actor = Alice})
           runner
 
 -- * Utils

@@ -9,7 +9,6 @@ import Plutus.V2.Ledger.Api (getValidator)
 
 -- Hydra imports
 import Hydra.Cardano.Api hiding (txOutValue)
-import Hydra.Cluster.Fixture (Actor)
 
 -- Hydra auction imports
 import HydraAuction.Addresses
@@ -20,8 +19,8 @@ import HydraAuction.Tx.Common
 import HydraAuction.Tx.Escrow (toForgeStateToken)
 import HydraAuction.Types
 
-newBid :: Actor -> AuctionTerms -> Natural -> Runner ()
-newBid bidder terms bidAmount = do
+newBid :: AuctionTerms -> Natural -> Runner ()
+newBid terms bidAmount = do
   logMsg "Doing new bid"
 
   standingBidAddress <- scriptAddress StandingBid terms
@@ -52,10 +51,9 @@ newBid bidder terms bidAmount = do
 
   logMsg "Doing New bid"
 
-  (bidderAddress, bidderVk, bidderSk) <-
-    addressAndKeysFor bidder
+  (bidderAddress, bidderVk, bidderSk) <- addressAndKeys
 
-  bidderMoneyUtxo <- filterAdaOnlyUtxo <$> actorTipUtxo bidder
+  bidderMoneyUtxo <- filterAdaOnlyUtxo <$> actorTipUtxo
   standingBidUtxo <- scriptUtxos StandingBid terms
 
   -- FIXME: cover not proper UTxOs
@@ -76,14 +74,14 @@ newBid bidder terms bidAmount = do
         , validityBound = (Just $ biddingStart terms, Just $ biddingEnd terms)
         }
 
-cleanupTx :: Actor -> AuctionTerms -> Runner ()
-cleanupTx actor terms = do
+cleanupTx :: AuctionTerms -> Runner ()
+cleanupTx terms = do
   logMsg "Doing standing bid cleanup"
 
-  (actorAddress, _, actorSk) <- addressAndKeysFor actor
+  (actorAddress, _, actorSk) <- addressAndKeys
 
   standingBidUtxo <- scriptUtxos StandingBid terms
-  actorMoneyUtxo <- filterAdaOnlyUtxo <$> actorTipUtxo actor
+  actorMoneyUtxo <- filterAdaOnlyUtxo <$> actorTipUtxo
 
   -- FIXME: cover not proper UTxOs
   void $

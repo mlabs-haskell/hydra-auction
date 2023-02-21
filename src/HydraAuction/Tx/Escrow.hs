@@ -25,7 +25,6 @@ import Plutus.V2.Ledger.Api (
 -- Hydra imports
 import Cardano.Api.UTxO qualified as UTxO
 import Hydra.Cardano.Api hiding (txOutValue)
-import Hydra.Cluster.Fixture (Actor (..))
 
 -- Hydra auction imports
 import HydraAuction.Addresses
@@ -47,8 +46,8 @@ toForgeStateToken terms redeemer =
       MintVoucher -> 1
       BurnVoucher -> -1
 
-announceAuction :: Actor -> AuctionTerms -> Runner ()
-announceAuction sellerActor terms = do
+announceAuction :: AuctionTerms -> Runner ()
+announceAuction terms = do
   logMsg "Doing announce auction"
 
   escrowAddress <- scriptAddress Escrow terms
@@ -67,13 +66,12 @@ announceAuction sellerActor terms = do
           <> fromPlutusValue (assetClassValue (voucherAssetClass terms) 1)
           <> lovelaceToValue minLovelace
 
-  (sellerAddress, _, sellerSk) <-
-    addressAndKeysFor sellerActor
+  (sellerAddress, _, sellerSk) <- addressAndKeys
 
   utxoWithLotNFT <-
     queryUTxOByTxInInRunner [fromPlutusTxOutRef $ utxoNonce terms]
 
-  sellerMoneyUtxo <- filterAdaOnlyUtxo <$> actorTipUtxo sellerActor
+  sellerMoneyUtxo <- filterAdaOnlyUtxo <$> actorTipUtxo
 
   case length utxoWithLotNFT of
     0 -> fail "Utxo with Lot was consumed or not created"
@@ -93,8 +91,8 @@ announceAuction sellerActor terms = do
         , validityBound = (Nothing, Just $ biddingStart terms)
         }
 
-startBidding :: Actor -> AuctionTerms -> Runner ()
-startBidding sellerActor terms = do
+startBidding :: AuctionTerms -> Runner ()
+startBidding terms = do
   logMsg "Doing start bidding"
 
   let escrowScript = scriptPlutusScript Escrow terms
@@ -129,10 +127,9 @@ startBidding sellerActor terms = do
           <> lovelaceToValue minLovelace
       escrowWitness = mkInlinedDatumScriptWitness escrowScript StartBidding
 
-  (sellerAddress, _, sellerSk) <-
-    addressAndKeysFor sellerActor
+  (sellerAddress, _, sellerSk) <- addressAndKeys
 
-  sellerMoneyUtxo <- filterAdaOnlyUtxo <$> actorTipUtxo sellerActor
+  sellerMoneyUtxo <- filterAdaOnlyUtxo <$> actorTipUtxo
 
   let escrowAnnounceSymbols =
         [ fst $
@@ -165,8 +162,8 @@ startBidding sellerActor terms = do
         , validityBound = (Just $ biddingStart terms, Just $ biddingEnd terms)
         }
 
-bidderBuys :: Actor -> AuctionTerms -> Runner ()
-bidderBuys bidder terms = do
+bidderBuys :: AuctionTerms -> Runner ()
+bidderBuys terms = do
   feeEscrowAddress <- scriptAddress FeeEscrow terms
   sellerAddress <- fromPlutusAddressInRunner $ pubKeyHashAddress $ seller terms
 
@@ -215,10 +212,9 @@ bidderBuys bidder terms = do
 
   logMsg "Doing Bidder Buy"
 
-  (bidderAddress, _, bidderSk) <-
-    addressAndKeysFor bidder
+  (bidderAddress, _, bidderSk) <- addressAndKeys
 
-  bidderMoneyUtxo <- filterAdaOnlyUtxo <$> actorTipUtxo bidder
+  bidderMoneyUtxo <- filterAdaOnlyUtxo <$> actorTipUtxo
 
   let escrowBiddingStartedSymbols =
         [ CurrencySymbol emptyByteString
@@ -253,8 +249,8 @@ bidderBuys bidder terms = do
         , validityBound = (Just $ biddingEnd terms, Just $ voucherExpiry terms)
         }
 
-sellerReclaims :: Actor -> AuctionTerms -> Runner ()
-sellerReclaims seller terms = do
+sellerReclaims :: AuctionTerms -> Runner ()
+sellerReclaims terms = do
   feeEscrowAddress <- scriptAddress FeeEscrow terms
 
   let escrowScript = scriptPlutusScript Escrow terms
@@ -282,10 +278,9 @@ sellerReclaims seller terms = do
 
   logMsg "Doing Seller reclaims"
 
-  (sellerAddress, _, sellerSk) <-
-    addressAndKeysFor seller
+  (sellerAddress, _, sellerSk) <- addressAndKeys
 
-  sellerMoneyUtxo <- filterAdaOnlyUtxo <$> actorTipUtxo seller
+  sellerMoneyUtxo <- filterAdaOnlyUtxo <$> actorTipUtxo
 
   let escrowBiddingStartedSymbols =
         [ CurrencySymbol emptyByteString
