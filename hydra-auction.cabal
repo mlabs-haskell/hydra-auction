@@ -6,22 +6,22 @@ homepage:      https://github.com/mlabs-haskell/hydra-auction
 author:        MLabs
 maintainer:    giovanni@mlabs.city
 data-files:
-  config/credentials/alice.sk
-  config/credentials/alice.vk
-  config/credentials/bob.sk
-  config/credentials/bob.vk
-  config/credentials/carol.sk
-  config/credentials/carol.vk
-  config/credentials/dave.sk
-  config/credentials/dave.vk
-  config/credentials/eve.sk
-  config/credentials/eve.vk
-  config/credentials/frank.sk
-  config/credentials/frank.vk
-  config/credentials/grace.sk
-  config/credentials/grace.vk
-  config/credentials/hans.sk
-  config/credentials/hans.vk
+  data/credentials/alice.sk
+  data/credentials/alice.vk
+  data/credentials/bob.sk
+  data/credentials/bob.vk
+  data/credentials/carol.sk
+  data/credentials/carol.vk
+  data/credentials/dave.sk
+  data/credentials/dave.vk
+  data/credentials/eve.sk
+  data/credentials/eve.vk
+  data/credentials/frank.sk
+  data/credentials/frank.vk
+  data/credentials/grace.sk
+  data/credentials/grace.vk
+  data/credentials/hans.sk
+  data/credentials/hans.vk
   README.md
 
 source-repository head

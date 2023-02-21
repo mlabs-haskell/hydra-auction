@@ -14,6 +14,8 @@ import Hydra.Logging (Verbosity (Quiet, Verbose))
 import Hydra.Prelude (contramap, liftIO)
 
 -- Hydra auction imports
+
+import HydraAuction.Fixture (Actor (..))
 import HydraAuction.Runner (
   ExecutionContext (..),
   HydraAuctionLog (FromHydra),
@@ -21,7 +23,6 @@ import HydraAuction.Runner (
   executeRunner,
   stdoutOrNullTracer,
  )
-import HydraAuction.Fixture (Actor (..))
 
 -- Hydra auction CLI imports
 import CLI.Actions (handleCliAction)

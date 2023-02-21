@@ -58,7 +58,7 @@ keysFor actor = do
 -- | Lookup a config file similar reading a file from disk.
 readConfigFile :: FilePath -> IO ByteString
 readConfigFile source = do
-  filename <- Pkg.getDataFileName ("config" </> source)
+  filename <- Pkg.getDataFileName ("data" </> source)
   BS.readFile filename
 
 actorName :: Actor -> String
