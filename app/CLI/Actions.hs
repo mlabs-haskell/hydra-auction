@@ -92,7 +92,6 @@ handleCliAction userAction = do
       liftIO $ prettyPrintUtxo utxos
     ShowUtxos -> do
       utxos <- actorTipUtxo
-      liftIO $ print actor
       liftIO $ prettyPrintUtxo utxos
     ShowAllUtxos -> do
       forM_ allActors $ \a -> do
