@@ -54,7 +54,7 @@ seedAmount :: Lovelace
 seedAmount = 100_000_000
 
 allActors :: [Actor]
-allActors = [a | a <- [minBound ..], a /= Faucet]
+allActors = [a | a <- [minBound .. maxBound], a /= Faucet]
 
 data CliAction
   = ShowScriptUtxos !AuctionName !AuctionScript
