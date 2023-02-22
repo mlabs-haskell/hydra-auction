@@ -61,6 +61,7 @@ common common-lang
     , hydra-prelude
     , mtl
     , plutus-tx-plugin
+    , prettyprinter
     , record-dot-preprocessor
     , record-hasfield
     , stm
@@ -124,6 +125,7 @@ executable hydra-auction
     CLI.Config
     CLI.Parsers
     CLI.Parsers.TxIn
+    CLI.Prettyprinter
 
   build-depends:
     , aeson
