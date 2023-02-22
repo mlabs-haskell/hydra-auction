@@ -44,6 +44,7 @@ main = do
   -- At the moment, only Alice will start the node, other users will assume the
   -- node is present.
   when (cliActor == Alice) $ do
+    putStrLn "Running cardano-node in background"
     void $ async $ runCardanoNode (contramap FromHydra tracer)
 
   node <- getCardanoNode
