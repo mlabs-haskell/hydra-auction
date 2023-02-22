@@ -21,7 +21,6 @@ import Cardano.Api.UTxO (UTxO, toMap)
 import Hydra.Cardano.Api (Lovelace, TxOut, TxOutValue (..))
 
 -- Hydra auction imports
-
 import HydraAuction.Fixture (Actor (..))
 import HydraAuction.OnChain (AuctionScript)
 import HydraAuction.Runner (
@@ -70,6 +69,7 @@ data CliAction
   | BidderBuys !AuctionName
   | SellerReclaims !AuctionName
   | Cleanup !AuctionName
+  deriving stock (Show)
 
 data CliInput = MkCliInput
   { cliActor :: Actor

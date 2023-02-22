@@ -5,13 +5,12 @@ import Prelude
 
 -- Haskell imports
 import Control.Concurrent.Async (async)
-import Control.Exception (SomeException, displayException, try)
 import Control.Monad (void, when)
+import System.Console.Haskeline
 
 -- Hydra imports
-
 import Hydra.Logging (Verbosity (Quiet, Verbose))
-import Hydra.Prelude (contramap, liftIO)
+import Hydra.Prelude (ask, contramap, liftIO)
 
 -- Hydra auction imports
 
@@ -47,7 +46,6 @@ main = do
   when (cliActor == Alice) $ do
     void $ async $ runCardanoNode (contramap FromHydra tracer)
 
-  putStrLn ("Starting CLI for " <> show cliActor)
   node <- getCardanoNode
 
   let runnerContext =
@@ -61,16 +59,19 @@ main = do
 
 loopCLI :: Runner ()
 loopCLI = do
-  result <- liftIO $ try @SomeException getLine
-  case result of
-    Left ex -> do
-      liftIO $ putStrLn $ "input error: " <> displayException ex
-      pure ()
-    Right command -> do
-      case parseCliAction $ words command of
-        Left e -> do
-          liftIO $ putStrLn e
-          loopCLI
-        Right cmd -> do
-          handleCliAction cmd
-          loopCLI
+  ctx <- ask
+  let loop :: InputT IO ()
+      loop = do
+        minput <- getInputLine $ show (actor ctx) <> "> "
+        case minput of
+          Nothing -> pure ()
+          Just "quit" -> pure ()
+          Just input -> do
+            case parseCliAction $ words input of
+              Left e -> do
+                liftIO $ putStrLn e
+                loop
+              Right cmd -> do
+                liftIO $ executeRunner ctx $ handleCliAction cmd
+                loop
+  liftIO $ runInputT defaultSettings loop

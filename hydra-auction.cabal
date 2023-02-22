@@ -150,6 +150,7 @@ executable hydra-auction
     , containers
     , data-default
     , directory
+    , haskeline
     , hydra-auction
     , hydra-cardano-api
     , hydra-plutus
