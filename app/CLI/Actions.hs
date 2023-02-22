@@ -120,10 +120,14 @@ handleCliAction userAction = do
       -- FIXME: proper error printing
       Just terms <- liftIO $ readAuctionTerms auctionName
       bidderBuys terms
+      utxos <- actorTipUtxo
+      liftIO $ prettyPrintUtxo utxos
     SellerReclaims auctionName -> do
       -- FIXME: proper error printing
       Just terms <- liftIO $ readAuctionTerms auctionName
       sellerReclaims terms
+      utxos <- actorTipUtxo
+      liftIO $ prettyPrintUtxo utxos
     Cleanup auctionName -> do
       -- FIXME: proper error printing
       Just terms <- liftIO $ readAuctionTerms auctionName
