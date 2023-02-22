@@ -70,8 +70,10 @@ loopCLI = do
             case parseCliAction $ words input of
               Left e -> do
                 liftIO $ putStrLn e
+                liftIO $ putStrLn ""
                 loop
               Right cmd -> do
                 liftIO $ executeRunner ctx $ handleCliAction cmd
+                liftIO $ putStrLn ""
                 loop
   liftIO $ runInputT defaultSettings loop
