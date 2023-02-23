@@ -19,6 +19,8 @@ module HydraAuction.Types (
   AuctionFeeEscrowDatum,
   VoucherForgingRedeemer (..),
   calculateTotalFee,
+  AuctionStage (..),
+  auctionStages,
 ) where
 
 -- Prelude imports
@@ -90,6 +92,25 @@ instance FromJSON Natural where
       Nothing -> fail "Integer is not natural"
 
 -- Base datatypes
+
+data AuctionStage
+  = AnnouncedStage
+  | BiddingStartedStage
+  | BiddingEndedStage
+  | VoucherExpiredStage
+  deriving stock (Prelude.Eq, Prelude.Ord, Prelude.Bounded, Prelude.Enum)
+
+PlutusTx.makeIsDataIndexed
+  ''AuctionStage
+  [ ('AnnouncedStage, 0)
+  , ('BiddingStartedStage, 1)
+  , ('BiddingEndedStage, 2)
+  , ('VoucherExpiredStage, 3)
+  ]
+PlutusTx.makeLift ''AuctionStage
+
+auctionStages :: [AuctionStage]
+auctionStages = [Prelude.minBound .. Prelude.maxBound]
 
 data AuctionTerms = AuctionTerms
   { -- | What is being sold at the auction?

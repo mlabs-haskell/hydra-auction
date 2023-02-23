@@ -6,10 +6,9 @@ module HydraAuction.OnChain.StateToken (StateTokenKind (..), stateTokenKindToTok
 import PlutusTx.Prelude
 
 -- Plutus imports
-import Plutus.V1.Ledger.Interval (contains, from, to)
 import Plutus.V1.Ledger.Value (Value, singleton)
 import Plutus.V2.Ledger.Api (TokenName (..))
-import Plutus.V2.Ledger.Contexts (ScriptContext, TxInfo, ownCurrencySymbol, scriptContextTxInfo, txInInfoOutRef, txInfoInputs, txInfoMint, txInfoOutputs, txInfoValidRange, txOutAddress)
+import Plutus.V2.Ledger.Contexts (ScriptContext, TxInfo, ownCurrencySymbol, scriptContextTxInfo, txInInfoOutRef, txInfoInputs, txInfoMint, txInfoOutputs, txOutAddress)
 
 -- Hydra auction imports
 import HydraAuction.Addresses
@@ -28,17 +27,13 @@ mkPolicy (EscrowAddress escrowAddressLocal, terms) redeemer ctx =
   case redeemer of
     MintVoucher ->
       traceIfFalse "AuctionTerms is invalid" (validAuctionTerms terms)
-        && traceIfFalse
-          "Valid range not before bidding start"
-          (contains (to (biddingStart terms)) (txInfoValidRange info))
+        && checkInterval terms AnnouncedStage info
         && traceIfFalse "Not exactly one Voucher minted" (txInfoMint info == voucherOnlyValue 1)
         && utxoNonceConsumed
         && exactlyOneOutputToEscrow
     BurnVoucher ->
       traceIfFalse "Not exactly one Voucher burned" (txInfoMint info == voucherOnlyValue (-1))
-        && traceIfFalse
-          "Valid range not after voucher expiry"
-          (contains (from (voucherExpiry terms)) (txInfoValidRange info))
+        && checkInterval terms VoucherExpiredStage info
   where
     voucherOnlyValue :: Integer -> Value
     voucherOnlyValue = singleton (ownCurrencySymbol ctx) (stateTokenKindToTokenName Voucher)
