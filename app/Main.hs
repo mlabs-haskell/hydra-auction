@@ -4,14 +4,13 @@ module Main (main) where
 import Prelude
 
 -- Haskell imports
-import Control.Concurrent.Async (async)
-import Control.Exception (SomeException, displayException, try)
+import Control.Concurrent.Async (withAsync)
 import Control.Monad (void, when)
+import System.Console.Haskeline
 
 -- Hydra imports
-
 import Hydra.Logging (Verbosity (Quiet, Verbose))
-import Hydra.Prelude (contramap, liftIO)
+import Hydra.Prelude (ask, contramap, liftIO)
 
 -- Hydra auction imports
 
@@ -44,33 +43,36 @@ main = do
   -- This way multiple CLI instances can share the same cardano node.
   -- At the moment, only Alice will start the node, other users will assume the
   -- node is present.
-  when (cliActor == Alice) $ do
-    void $ async $ runCardanoNode (contramap FromHydra tracer)
+  let cardanoNodeRunner =
+        when (cliActor == Alice) $ do
+          putStrLn "Running cardano-node in background"
+          void $ runCardanoNode (contramap FromHydra tracer)
 
-  putStrLn ("Starting CLI for " <> show cliActor)
-  node <- getCardanoNode
+  withAsync cardanoNodeRunner $ \_ -> do
+    node <- getCardanoNode
 
-  let runnerContext =
-        MkExecutionContext
-          { tracer = tracer
-          , node = node
-          , actor = cliActor
-          }
+    let runnerContext =
+          MkExecutionContext
+            { tracer = tracer
+            , node = node
+            , actor = cliActor
+            }
 
-  executeRunner runnerContext loopCLI
+    executeRunner runnerContext loopCLI
 
 loopCLI :: Runner ()
 loopCLI = do
-  result <- liftIO $ try @SomeException getLine
-  case result of
-    Left ex -> do
-      liftIO $ putStrLn $ "input error: " <> displayException ex
-      pure ()
-    Right command -> do
-      case parseCliAction $ words command of
-        Left e -> do
-          liftIO $ putStrLn e
-          loopCLI
-        Right cmd -> do
-          handleCliAction cmd
-          loopCLI
+  ctx <- ask
+  let loop :: InputT IO ()
+      loop = do
+        minput <- getInputLine $ show (actor ctx) <> "> "
+        case minput of
+          Nothing -> pure ()
+          Just "quit" -> pure ()
+          Just input -> do
+            case parseCliAction $ words input of
+              Left e -> liftIO $ putStrLn e
+              Right cmd -> liftIO $ executeRunner ctx $ handleCliAction cmd
+            liftIO $ putStrLn ""
+            loop
+  liftIO $ runInputT defaultSettings loop

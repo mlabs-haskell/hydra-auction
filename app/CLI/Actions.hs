@@ -21,7 +21,6 @@ import Cardano.Api.UTxO (UTxO, toMap)
 import Hydra.Cardano.Api (Lovelace, TxOut, TxOutValue (..))
 
 -- Hydra auction imports
-
 import HydraAuction.Fixture (Actor (..))
 import HydraAuction.OnChain (AuctionScript)
 import HydraAuction.Runner (
@@ -55,7 +54,7 @@ seedAmount :: Lovelace
 seedAmount = 100_000_000
 
 allActors :: [Actor]
-allActors = [a | a <- [minBound ..], a /= Faucet]
+allActors = [a | a <- [minBound .. maxBound], a /= Faucet]
 
 data CliAction
   = ShowScriptUtxos !AuctionName !AuctionScript
@@ -70,6 +69,7 @@ data CliAction
   | BidderBuys !AuctionName
   | SellerReclaims !AuctionName
   | Cleanup !AuctionName
+  deriving stock (Show)
 
 data CliInput = MkCliInput
   { cliActor :: Actor
@@ -92,7 +92,6 @@ handleCliAction userAction = do
       liftIO $ prettyPrintUtxo utxos
     ShowUtxos -> do
       utxos <- actorTipUtxo
-      liftIO $ print actor
       liftIO $ prettyPrintUtxo utxos
     ShowAllUtxos -> do
       forM_ allActors $ \a -> do
