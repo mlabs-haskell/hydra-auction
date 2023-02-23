@@ -4,7 +4,7 @@ module Main (main) where
 import Prelude
 
 -- Haskell imports
-import Control.Concurrent.Async (async)
+import Control.Concurrent.Async (withAsync)
 import Control.Monad (void, when)
 import System.Console.Haskeline
 
@@ -43,20 +43,22 @@ main = do
   -- This way multiple CLI instances can share the same cardano node.
   -- At the moment, only Alice will start the node, other users will assume the
   -- node is present.
-  when (cliActor == Alice) $ do
-    putStrLn "Running cardano-node in background"
-    void $ async $ runCardanoNode (contramap FromHydra tracer)
+  let cardanoNodeRunner =
+        when (cliActor == Alice) $ do
+          putStrLn "Running cardano-node in background"
+          void $ runCardanoNode (contramap FromHydra tracer)
 
-  node <- getCardanoNode
+  withAsync cardanoNodeRunner $ \_ -> do
+    node <- getCardanoNode
 
-  let runnerContext =
-        MkExecutionContext
-          { tracer = tracer
-          , node = node
-          , actor = cliActor
-          }
+    let runnerContext =
+          MkExecutionContext
+            { tracer = tracer
+            , node = node
+            , actor = cliActor
+            }
 
-  executeRunner runnerContext loopCLI
+    executeRunner runnerContext loopCLI
 
 loopCLI :: Runner ()
 loopCLI = do
