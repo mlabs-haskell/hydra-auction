@@ -44,6 +44,7 @@ mkStandingBidValidator terms datum redeemer context =
     info = scriptContextTxInfo context
     validNewBid :: StandingBidState -> StandingBidState -> Bool
     validNewBid oldBid (Bid newBidTerms) =
+      -- FIXME: can be removed when we will have approved bidder functionality
       traceIfFalse
         "Seller cannot place a bid"
         (seller terms /= bidBidder newBidTerms)
