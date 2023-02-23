@@ -162,7 +162,7 @@ import Hydra.Chain.Direct.TimeHandle (queryTimeHandle, slotFromUTCTime)
 import HydraAuction.Fixture (keysFor)
 import HydraAuction.OnChain (AuctionScript, scriptValidatorForTerms)
 import HydraAuction.Runner (ExecutionContext (..), Runner, logMsg)
-import HydraAuction.Types (AuctionTerms)
+import HydraAuction.Types (AuctionStage, AuctionTerms, auctionStages)
 
 networkIdToNetwork :: NetworkId -> Cardano.Network
 networkIdToNetwork (Testnet _) = Cardano.Testnet
