@@ -52,6 +52,7 @@ common common-lang
     , cardano-ledger-core
     , containers
     , contra-tracer
+    , exceptions
     , extra
     , filepath
     , hydra-cardano-api
