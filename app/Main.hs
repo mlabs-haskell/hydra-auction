@@ -10,7 +10,7 @@ import System.Console.Haskeline
 
 -- Hydra imports
 import Hydra.Logging (Verbosity (Quiet, Verbose))
-import Hydra.Prelude (ask, contramap, liftIO)
+import Hydra.Prelude (SomeException, ask, contramap, liftIO, try)
 
 -- Hydra auction imports
 
@@ -70,9 +70,20 @@ loopCLI = do
           Nothing -> pure ()
           Just "quit" -> pure ()
           Just input -> do
-            case parseCliAction $ words input of
-              Left e -> liftIO $ putStrLn e
-              Right cmd -> liftIO $ executeRunner ctx $ handleCliAction cmd
-            liftIO $ putStrLn ""
+            liftIO $ do
+              handleInput ctx input
+              putStrLn ""
             loop
   liftIO $ runInputT defaultSettings loop
+  where
+    handleInput ctx input = case parseCliAction $ words input of
+      Left e -> putStrLn e
+      Right cmd -> handleCliAction' ctx cmd
+    handleCliAction' ctx cmd = do
+      result <- try $ executeRunner ctx $ handleCliAction cmd
+      case result of
+        Right _ -> pure ()
+        Left (actionError :: SomeException) ->
+          liftIO $
+            putStrLn $
+              "Error during CLI action handling: \n\n" <> show actionError
