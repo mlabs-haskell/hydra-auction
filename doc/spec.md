@@ -528,6 +528,7 @@ Under the **new bid** redeemer, we enforce that:
 defining the old standing bid state.
 - There is one output sent to the standing bid validator,
 defining the new standing bid state.
+- Bid is not placed by seller.
 - The conditions in `validNewBid` are satisfied when applied to the auction terms,
 old standing bid state,
 and new standing bid state.

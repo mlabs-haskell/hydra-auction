@@ -43,10 +43,12 @@ import HydraAuction.Types (Natural)
 -- Hydra auction CLI imports
 import CLI.Config (
   AuctionName,
+  CliEnhancedAuctionTerms (..),
   configToAuctionTerms,
   constructTermsDynamic,
   readAuctionTerms,
   readAuctionTermsConfig,
+  readCliEnhancedAuctionTerms,
   writeAuctionTermsDynamic,
  )
 
@@ -114,8 +116,10 @@ handleCliAction userAction = do
       startBidding terms
     NewBid auctionName bidAmount -> do
       -- FIXME: proper error printing
-      Just terms <- liftIO $ readAuctionTerms auctionName
-      newBid terms bidAmount
+      Just CliEnhancedAuctionTerms {terms, sellerActor} <- liftIO $ readCliEnhancedAuctionTerms auctionName
+      if actor == sellerActor
+        then liftIO $ putStrLn "Seller cannot place a bid"
+        else newBid terms bidAmount
     BidderBuys auctionName -> do
       -- FIXME: proper error printing
       Just terms <- liftIO $ readAuctionTerms auctionName

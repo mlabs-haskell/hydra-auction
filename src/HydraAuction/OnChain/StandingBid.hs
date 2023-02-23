@@ -44,13 +44,16 @@ mkStandingBidValidator terms datum redeemer context =
     info = scriptContextTxInfo context
     validNewBid :: StandingBidState -> StandingBidState -> Bool
     validNewBid oldBid (Bid newBidTerms) =
-      case oldBid of
-        Bid oldBidTerms ->
-          traceIfFalse "Bid increment is not greater than minimumBidIncrement" $
-            bidAmount oldBidTerms + minimumBidIncrement terms <= bidAmount newBidTerms
-        NoBid ->
-          traceIfFalse "Bid is not greater than startingBid" $
-            startingBid terms <= bidAmount newBidTerms
+      traceIfFalse
+        "Seller cannot place a bid"
+        (seller terms /= bidBidder newBidTerms)
+        && case oldBid of
+          Bid oldBidTerms ->
+            traceIfFalse "Bid increment is not greater than minimumBidIncrement" $
+              bidAmount oldBidTerms + minimumBidIncrement terms <= bidAmount newBidTerms
+          NoBid ->
+            traceIfFalse "Bid is not greater than startingBid" $
+              startingBid terms <= bidAmount newBidTerms
     validNewBid _ NoBid = False
     checkCorrectNewBidOutput inputOut = case byAddress (scriptHashAddress $ ownHash context) $ txInfoOutputs info of
       [out] ->
