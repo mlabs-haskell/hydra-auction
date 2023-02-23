@@ -11,14 +11,9 @@ import Prelude
 
 -- Haskell imports
 import Control.Monad (forM_, void)
-import Data.Map.Strict qualified as Map
-
--- Cardano node imports
-import Cardano.Api (TxIn, TxOut (..))
 
 -- Hydra imports
-import Cardano.Api.UTxO (UTxO, toMap)
-import Hydra.Cardano.Api (Lovelace, TxOut, TxOutValue (..))
+import Hydra.Cardano.Api (Lovelace, TxIn)
 
 -- Hydra auction imports
 import HydraAuction.Fixture (Actor (..))
@@ -51,6 +46,7 @@ import CLI.Config (
   readCliEnhancedAuctionTerms,
   writeAuctionTermsDynamic,
  )
+import CLI.Prettyprinter (prettyPrintUtxo)
 
 seedAmount :: Lovelace
 seedAmount = 100_000_000
@@ -124,24 +120,15 @@ handleCliAction userAction = do
       -- FIXME: proper error printing
       Just terms <- liftIO $ readAuctionTerms auctionName
       bidderBuys terms
+      utxos <- actorTipUtxo
+      liftIO $ prettyPrintUtxo utxos
     SellerReclaims auctionName -> do
       -- FIXME: proper error printing
       Just terms <- liftIO $ readAuctionTerms auctionName
       sellerReclaims terms
+      utxos <- actorTipUtxo
+      liftIO $ prettyPrintUtxo utxos
     Cleanup auctionName -> do
       -- FIXME: proper error printing
       Just terms <- liftIO $ readAuctionTerms auctionName
       cleanupTx terms
-
-prettyPrintUtxo :: UTxO -> IO ()
-prettyPrintUtxo utxo = do
-  putStrLn "Utxos: \n"
-  -- FIXME print properly
-  forM_ (Map.toList $ toMap utxo) $ \(x, y) ->
-    putStrLn $ show x <> ": " <> showValueTxOut y
-
-showValueTxOut :: Hydra.Cardano.Api.TxOut ctx -> String
-showValueTxOut (Cardano.Api.TxOut _address txOutValue _datum _refScript) =
-  case txOutValue of
-    TxOutValue _era value -> show value
-    TxOutAdaOnly _era value -> show value
