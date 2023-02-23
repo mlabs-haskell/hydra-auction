@@ -70,9 +70,11 @@ loopCLI = do
           Nothing -> pure ()
           Just "quit" -> pure ()
           Just input -> do
-            case parseCliAction $ words input of
-              Left e -> liftIO $ putStrLn e
-              Right cmd -> liftIO $ executeRunner ctx $ handleCliAction cmd
+            handleInput ctx input
             liftIO $ putStrLn ""
             loop
   liftIO $ runInputT defaultSettings loop
+  where
+    handleInput ctx input = case parseCliAction $ words input of
+      Left e -> liftIO $ putStrLn e
+      Right cmd -> liftIO $ executeRunner ctx $ handleCliAction cmd
