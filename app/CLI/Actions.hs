@@ -24,7 +24,7 @@ import HydraAuction.Runner (
   initWallet,
   withActor,
  )
-import HydraAuction.Tx.Common (actorTipUtxo, scriptUtxos)
+import HydraAuction.Tx.Common (actorTipUtxo, currentAuctionStage, scriptUtxos)
 import HydraAuction.Tx.Escrow (
   announceAuction,
   bidderBuys,
@@ -34,7 +34,7 @@ import HydraAuction.Tx.Escrow (
 import HydraAuction.Tx.StandingBid (cleanupTx, newBid)
 import HydraAuction.Tx.TermsConfig (constructTermsDynamic)
 import HydraAuction.Tx.TestNFT (mintOneTestNFT)
-import HydraAuction.Types (Natural, naturalToInt)
+import HydraAuction.Types (AuctionStage (..), AuctionTerms, Natural, naturalToInt)
 
 -- Hydra auction CLI imports
 import CLI.Config (
@@ -74,6 +74,19 @@ data CliInput = MkCliInput
   { cliActor :: Actor
   , cliVerbosity :: Bool
   }
+
+doOnMatchingStage :: AuctionTerms -> AuctionStage -> Runner () -> Runner ()
+doOnMatchingStage terms requiredStage action = do
+  stage <- liftIO $ currentAuctionStage terms
+  if requiredStage == stage
+    then action
+    else
+      liftIO $
+        putStrLn
+          ( "Wrong stage for this transaction. Now: " <> show stage
+              <> ", while required: "
+              <> show requiredStage
+          )
 
 handleCliAction :: CliAction -> Runner ()
 handleCliAction userAction = do
@@ -167,14 +180,16 @@ handleCliAction userAction = do
               <> " ADA in auction "
               <> show auctionName
               <> "."
-          newBid terms bidAmount
+          doOnMatchingStage terms BiddingStartedStage $
+            newBid terms bidAmount
     BidderBuys auctionName -> do
       -- FIXME: proper error printing
       Just terms <- liftIO $ readAuctionTerms auctionName
       liftIO . putStrLn $
         show actor
           <> " buys the auction lot, as the winning bidder."
-      bidderBuys terms
+      doOnMatchingStage terms BiddingEndedStage $
+        bidderBuys terms
       liftIO . putStrLn $
         show actor
           <> " now has the following utxos in their wallet."
@@ -186,7 +201,8 @@ handleCliAction userAction = do
         show actor
           <> " reclaims the auction lot, as the seller."
       Just terms <- liftIO $ readAuctionTerms auctionName
-      sellerReclaims terms
+      doOnMatchingStage terms VoucherExpiredStage $
+        sellerReclaims terms
       liftIO . putStrLn $
         show actor
           <> " now has the following utxos in their wallet."
@@ -199,4 +215,5 @@ handleCliAction userAction = do
         "Cleaning up all remaining script utxos for auction "
           <> show auctionName
           <> "."
-      cleanupTx terms
+      doOnMatchingStage terms VoucherExpiredStage $
+        cleanupTx terms
