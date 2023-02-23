@@ -55,7 +55,8 @@ allActors :: [Actor]
 allActors = [a | a <- [minBound .. maxBound], a /= Faucet]
 
 data CliAction
-  = ShowScriptUtxos !AuctionName !AuctionScript
+  = ShowCurrentStage !AuctionName
+  | ShowScriptUtxos !AuctionName !AuctionScript
   | ShowUtxos
   | ShowAllUtxos
   | Seed
@@ -78,6 +79,12 @@ handleCliAction :: CliAction -> Runner ()
 handleCliAction userAction = do
   MkExecutionContext {actor} <- ask
   case userAction of
+    ShowCurrentStage auctionName -> do
+      -- FIXME: proper error printing
+      Just terms <- liftIO $ readAuctionTerms auctionName
+      liftIO $ do
+        stage <- currentAuctionStage terms
+        putStrLn $ "Current stage: " <> show stage
     Seed ->
       initWallet seedAmount actor
     Prepare sellerActor -> do

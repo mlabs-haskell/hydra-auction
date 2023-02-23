@@ -21,6 +21,7 @@ module HydraAuction.Tx.Common (
   scriptAddress,
   scriptPlutusScript,
   currentTimeSeconds,
+  currentAuctionStage,
 ) where
 
 -- Prelude imports
@@ -41,6 +42,7 @@ import Cardano.Ledger.BaseTypes qualified as Cardano
 
 -- Plutus imports
 import Plutus.V1.Ledger.Address qualified as PlutusAddress
+import Plutus.V1.Ledger.Interval (member)
 import Plutus.V1.Ledger.Value (
   CurrencySymbol (..),
   TokenName (..),
@@ -68,6 +70,7 @@ import Hydra.Chain.Direct.TimeHandle (queryTimeHandle, slotFromUTCTime)
 -- Hydra auction imports
 import HydraAuction.Fixture (keysFor)
 import HydraAuction.OnChain
+import HydraAuction.OnChain.Common (stageToInterval)
 import HydraAuction.Runner
 import HydraAuction.Types
 
@@ -80,6 +83,17 @@ minLovelace = 2_000_000
 
 currentTimeSeconds :: IO Integer
 currentTimeSeconds = round `fmap` POSIXTime.getPOSIXTime
+
+currentTimeMilliseconds :: IO Integer
+currentTimeMilliseconds = round . (* 1000) <$> POSIXTime.getPOSIXTime
+
+currentAuctionStage :: AuctionTerms -> IO AuctionStage
+currentAuctionStage terms = do
+  currentTime <- POSIXTime <$> currentTimeMilliseconds
+  let matchingStages = filter (member currentTime . stageToInterval terms) auctionStages
+  return $ case matchingStages of
+    [stage] -> stage
+    _ -> error "Impossible happend: more than one matching stage"
 
 tokenToAsset :: TokenName -> AssetName
 tokenToAsset (TokenName t) = AssetName $ fromBuiltin t

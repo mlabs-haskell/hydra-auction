@@ -98,7 +98,8 @@ data AuctionStage
   | BiddingStartedStage
   | BiddingEndedStage
   | VoucherExpiredStage
-  deriving stock (Prelude.Eq, Prelude.Ord, Prelude.Bounded, Prelude.Enum)
+  deriving stock
+    (Prelude.Eq, Prelude.Ord, Prelude.Bounded, Prelude.Enum, Prelude.Show)
 
 PlutusTx.makeIsDataIndexed
   ''AuctionStage

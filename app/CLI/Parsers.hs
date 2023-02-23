@@ -73,6 +73,12 @@ cliActionParser =
   hsubparser
     ( command "show-script-utxos" (info (ShowScriptUtxos <$> auctionName <*> script) (progDesc "Show utxos at a given script. Requires the seller and auction lot for the given script"))
         <> command "show-utxos" (info (pure ShowUtxos) (progDesc "Shows utxos for a given actor"))
+        <> command
+          "show-current-stage"
+          ( info
+              (ShowCurrentStage <$> auctionName)
+              (progDesc "Show current auction stage - which depends on time since auction announcement")
+          )
         <> command "show-all-utxos" (info (pure ShowAllUtxos) (progDesc "Shows utxos for all actors"))
         <> command "seed" (info (pure Seed) (progDesc $ "Provides " <> show seedAmount <> " Lovelace for the given actor"))
         <> command "prepare-for-demo" (info (Prepare <$> actor) (progDesc $ "Provides " <> show seedAmount <> " Lovelace for every actor and 1 Test NFT for given actor"))
