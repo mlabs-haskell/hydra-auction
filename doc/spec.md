@@ -412,6 +412,8 @@ initStandingBidDatum voucherCS approvedBidders = StandingBidDatum
   }
 ```
 
+Seller cannot be one of approved bidders.
+
 Under the **seller reclaims** redeemer, we enforce that:
 
 - There is one input spent from the auction escrow validator.

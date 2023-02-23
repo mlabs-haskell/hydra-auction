@@ -63,6 +63,9 @@ newtype Runner a = MkRunner
     , MonadIO
     , MonadFail
     , MonadReader ExecutionContext
+    , MonadThrow
+    , MonadCatch
+    , MonadMask
     )
     via ReaderT ExecutionContext IO
 

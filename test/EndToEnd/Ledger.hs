@@ -1,7 +1,7 @@
 module EndToEnd.Ledger (testSuite) where
 
 -- Prelude imports
-import Hydra.Prelude (MonadIO (liftIO))
+import Hydra.Prelude (MonadIO (liftIO), SomeException, fail, try)
 import PlutusTx.Prelude
 
 -- Haskell imports
@@ -64,6 +64,7 @@ testSuite =
     "L1"
     [ testCase "bidder-buys" bidderBuysTest
     , testCase "seller-reclaims" sellerReclaimsTest
+    , testCase "seller-bids" sellerBidsTest
     ]
 
 assertNFTNumEquals :: Actor -> Integer -> Runner ()
@@ -149,3 +150,29 @@ sellerReclaimsTest = mkAssertion $ do
 
   waitUntil $ cleanup terms
   cleanupTx terms
+
+sellerBidsTest :: Assertion
+sellerBidsTest = mkAssertion $ do
+  let seller = Alice
+
+  initWallet 100_000_000 seller
+
+  nftTx <- mintOneTestNFT
+  let utxoRef = mkTxIn nftTx 0
+
+  terms <- liftIO $ do
+    dynamicState <- constructTermsDynamic seller utxoRef
+    configToAuctionTerms config dynamicState
+
+  assertNFTNumEquals seller 1
+  announceAuction terms
+
+  waitUntil $ biddingStart terms
+  startBidding terms
+  assertNFTNumEquals seller 0
+
+  result <- try $ newBid terms $ startingBid terms
+
+  case result of
+    Left (_ :: SomeException) -> return ()
+    Right _ -> fail "New bid should fail"
