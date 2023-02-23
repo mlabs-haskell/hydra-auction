@@ -44,7 +44,7 @@ If you run it again for different lot dynamic part will be rewritten.
    To start REPL run:
    `cabal run hydra-auction -- -a alice`
 2. Run `prepare-for-demo -a alice` on Alice REPL
-3. Run show-utxos to see which UTxO got
+3. Run show-utxos to see which UTxO got Test NFT
 4. Run `announce-auction` with this utxo, on Alice REPL, like
    `announce-auction -n foo -u f8ececf5a3589b316ecf8a2f72b1295d6319f36857708f1b0a904e03a5a709a6#0`
    From this time auction stages do begin.
