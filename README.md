@@ -59,7 +59,7 @@ If you run it again for different lot dynamic part will be rewritten.
 7. (a) bidder-buys
    Run `bidder-buys -n foo` in Bob REPL.
    Bob gets his winning lot.
-8. UTxOs can be cleaned up by anyone in `VoucherExpiryStage`
+8. UTxOs can be cleaned up by seller in `VoucherExpiryStage`
    Run `cleanup -n foo`.
 
 ### Seller reclaims case
