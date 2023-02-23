@@ -10,7 +10,12 @@ import Hydra.Prelude (ask, liftIO)
 import Prelude
 
 -- Haskell imports
-import Control.Monad (forM_, void)
+import Control.Concurrent (threadDelay)
+import Control.Concurrent.Async (Async, async, cancel)
+import Control.Monad (forM_, void, when)
+import Data.IORef (IORef, modifyIORef, newIORef, readIORef, writeIORef)
+import Data.Map.Strict (Map)
+import Data.Map.Strict qualified as Map
 
 -- Hydra imports
 import Hydra.Cardano.Api (Lovelace, TxIn)
@@ -91,6 +96,10 @@ doOnMatchingStage terms requiredStage action = do
 handleCliAction :: CliAction -> Runner ()
 handleCliAction userAction = do
   MkExecutionContext {actor} <- ask
+  -- FIXME: somehow clean on process interuptions
+  stateChangeNotifyingAsyncs <-
+    liftIO $
+      newIORef (Map.empty :: Map AuctionName (Async ()))
   case userAction of
     ShowCurrentStage auctionName -> do
       -- FIXME: proper error printing
@@ -125,6 +134,10 @@ handleCliAction userAction = do
       -- FIXME: proper error printing
       Just config <- liftIO $ readAuctionTermsConfig auctionName
       terms <- liftIO $ configToAuctionTerms config dynamic
+      asyncId <- liftIO $ async $ notifyOnStageChangeThread terms auctionName
+      liftIO $
+        modifyIORef stateChangeNotifyingAsyncs $
+          Map.insert auctionName asyncId
       announceAuction terms
     StartBidding auctionName -> do
       -- FIXME: proper error printing
@@ -155,5 +168,34 @@ handleCliAction userAction = do
     Cleanup auctionName -> do
       -- FIXME: proper error printing
       Just terms <- liftIO $ readAuctionTerms auctionName
+
+      liftIO $ do
+        asyncMap <- readIORef stateChangeNotifyingAsyncs
+        let asyncId = asyncMap Map.! auctionName
+        cancel asyncId
+        modifyIORef stateChangeNotifyingAsyncs $ Map.delete auctionName
+
       doOnMatchingStage terms VoucherExpiredStage $
         cleanupTx terms
+
+notifyOnStageChangeThread :: AuctionTerms -> AuctionName -> IO ()
+notifyOnStageChangeThread terms auctionName = do
+  stage <- currentAuctionStage terms
+  previousStageVar <- newIORef stage
+  stageCheckingLoop previousStageVar
+  where
+    stageCheckingLoop :: IORef AuctionStage -> IO ()
+    stageCheckingLoop previousStageVar = do
+      currentStage <- currentAuctionStage terms
+      previousStage <- readIORef previousStageVar
+      when (currentStage /= previousStage) $ do
+        putStrLn
+          ( "Current stage of auction " <> show auctionName
+              <> " changed into: "
+              <> show currentStage
+              <> " from: "
+              <> show previousStage
+          )
+        writeIORef previousStageVar currentStage
+      threadDelay 250_000
+      stageCheckingLoop previousStageVar

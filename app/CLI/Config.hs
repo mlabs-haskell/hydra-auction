@@ -36,7 +36,7 @@ import HydraAuction.Types
 -- =============================================================================
 -- Auction config and state directories
 newtype AuctionName = AuctionName String
-  deriving newtype (Prelude.Show, Prelude.Eq)
+  deriving newtype (Prelude.Show, Prelude.Eq, Prelude.Ord)
 
 getRelativeDirectory :: FilePath -> IO FilePath
 getRelativeDirectory filepath = do
