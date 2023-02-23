@@ -57,10 +57,10 @@ mkStandingBidValidator terms datum redeemer context =
         -- FIXME: Check bidder has right to make a bid
         traceIfFalse "Output is not into standing bid" $
           txOutAddress out == scriptHashAddress (ownHash context)
-            && checkValidtNewBid out
+            && checkValidNewBid out
       _ -> traceError "Not exactly one ouput"
       where
-        checkValidtNewBid out =
+        checkValidNewBid out =
           let inBid = standingBidState <$> decodeOutputDatum info inputOut
               outBid = standingBidState <$> decodeOutputDatum info out
            in case validNewBid <$> inBid <*> outBid of
