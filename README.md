@@ -55,7 +55,7 @@ If you run it again for different lot dynamic part will be rewritten.
    They should be bigger than previous bid + configMinimumBidIncrement for
    all next bids.
    For example place first bid from Bob REPL:
-   `new-bid -n foo -
+   `new-bid -n foo -b 8000000`
 7. (a) bidder-buys
    Run `bidder-buys -n foo` in Bob REPL.
    Bob gets his winning lot.
