@@ -36,9 +36,7 @@ addressLikeShowStringDoc stringWithQuotes =
   let stringWithoutQuotes =
         drop 1 $
           take (length stringWithQuotes - 1) stringWithQuotes
-      prefix = take 4 stringWithoutQuotes
-      postfix = drop (length stringWithoutQuotes - 4) stringWithoutQuotes
-   in fromString $ "<" <> prefix <> ".." <> postfix <> ">"
+   in fromString $ "< " <> stringWithoutQuotes <> " >"
 
 instance Pretty TxId where
   pretty (TxId txId) = addressLikeShowStringDoc $ show txId
