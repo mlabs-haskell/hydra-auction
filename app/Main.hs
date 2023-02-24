@@ -26,7 +26,7 @@ import HydraAuction.Runner (
  )
 
 -- Hydra auction CLI imports
-import CLI.Actions (handleCliAction)
+import CLI.Actions (CliAction, handleCliAction)
 import CLI.CardanoNode (getCardanoNode, runCardanoNode)
 import CLI.Parsers (
   CliInput (MkCliInput, cliActor, cliVerbosity),
@@ -82,7 +82,7 @@ loopCLI = do
     handleInput input = case parseCliAction $ words input of
       Left e -> liftIO $ putStrLn e
       Right cmd -> handleCliAction' cmd
-    handleCliAction :: CliAction -> Runner ()
+    handleCliAction' :: CliAction -> Runner ()
     handleCliAction' cmd = do
       result <- try $ handleCliAction cmd
       case result of
