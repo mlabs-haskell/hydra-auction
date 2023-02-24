@@ -5,17 +5,23 @@ commands/requests flow from people (Platform admin, Seller, Bidder, Delegate)
 to systems (Frontend/CLI, Cardano node, Delegate server, Hydra node) as follows:
 
 ```mermaid
-flowchart LR
-  seller([Seller])
-  bidder([Bidder])
-  delegate([Delegate])
-  admin([Platform admin])
-
-  frontend(Frontend CLI)
+flowchart TB
+  subgraph Auction App
+    seller([Seller])
+    bidder([Bidder])
+    frontend(Frontend CLI)
+  end
   
-  cardanoNode(Cardano node)
-  hydraNode(Hydra node)
-  delegateServer(Delegate server)
+  subgraph Hydra
+    delegate([Delegate])
+    delegateServer(Delegate server)
+    hydraNode(Hydra node)
+  end
+  
+  subgraph Cardano
+    admin([Platform admin])
+    cardanoNode(Cardano node)
+  end
 
   admin -- start/stop -----> cardanoNode
   seller -- request --> frontend
