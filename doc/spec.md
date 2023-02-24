@@ -287,6 +287,9 @@ The auction escrow datum is initialized using `initAuctionEscrowDatum`
 with the auction’s voucher currency symbol.
 - The conditions in `validAuctionTerms` are satisfied
 when applied to the auction terms.
+  + We `validAuctionTerms` only here, because all following transactions will
+    conserve `AuctionTerms` automatically,
+    because it is freezed in script adresses.
 - The transaction validity interval ends before the bidding start time.
 
 ```mermaid
