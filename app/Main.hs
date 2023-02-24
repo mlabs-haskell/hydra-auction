@@ -6,11 +6,13 @@ import Prelude
 -- Haskell imports
 import Control.Concurrent.Async (withAsync)
 import Control.Monad (void, when)
+import Control.Monad.Catch (try)
+import Control.Monad.Trans.Class (lift)
 import System.Console.Haskeline
 
 -- Hydra imports
 import Hydra.Logging (Verbosity (Quiet, Verbose))
-import Hydra.Prelude (SomeException, ask, contramap, liftIO, try)
+import Hydra.Prelude (SomeException, ask, contramap, liftIO)
 
 -- Hydra auction imports
 
@@ -63,24 +65,26 @@ main = do
 loopCLI :: Runner ()
 loopCLI = do
   ctx <- ask
-  let loop :: InputT IO ()
+  let promtString = show (actor ctx) <> "> "
+  let loop :: InputT Runner ()
       loop = do
-        minput <- getInputLine $ show (actor ctx) <> "> "
+        minput <- getInputLine promtString
         case minput of
           Nothing -> pure ()
           Just "quit" -> pure ()
           Just input -> do
-            liftIO $ do
-              handleInput ctx input
-              putStrLn ""
+            lift $ handleInput input
+            liftIO $ putStrLn ""
             loop
-  liftIO $ runInputT defaultSettings loop
+  runInputT defaultSettings loop
   where
-    handleInput ctx input = case parseCliAction $ words input of
-      Left e -> putStrLn e
-      Right cmd -> handleCliAction' ctx cmd
-    handleCliAction' ctx cmd = do
-      result <- try $ executeRunner ctx $ handleCliAction cmd
+    handleInput :: String -> Runner ()
+    handleInput input = case parseCliAction $ words input of
+      Left e -> liftIO $ putStrLn e
+      Right cmd -> handleCliAction' cmd
+    handleCliAction :: CliAction -> Runner ()
+    handleCliAction' cmd = do
+      result <- try $ handleCliAction cmd
       case result of
         Right _ -> pure ()
         Left (actionError :: SomeException) ->
