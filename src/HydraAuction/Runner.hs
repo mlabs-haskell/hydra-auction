@@ -15,28 +15,10 @@ module HydraAuction.Runner (
 ) where
 
 -- Prelude imports
-import Hydra.Prelude (
-  Applicative,
-  Functor,
-  IO,
-  Monad,
-  MonadFail,
-  MonadIO,
-  MonadReader,
-  ReaderT,
-  String,
-  ask,
-  contramap,
-  liftIO,
-  local,
-  runReaderT,
-  ($),
-  (.),
- )
+import Hydra.Prelude
 import Test.Hydra.Prelude (withTempDir)
 
 -- Haskell imports
-import Control.Monad.Catch (MonadCatch, MonadMask, MonadThrow)
 import Control.Tracer (traceWith)
 
 -- Hydra imports

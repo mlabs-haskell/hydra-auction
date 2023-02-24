@@ -6,13 +6,11 @@ import Prelude
 -- Haskell imports
 import Control.Concurrent.Async (withAsync)
 import Control.Monad (void, when)
-import Control.Monad.Catch (try)
-import Control.Monad.Trans.Class (lift)
 import System.Console.Haskeline
 
 -- Hydra imports
 import Hydra.Logging (Verbosity (Quiet, Verbose))
-import Hydra.Prelude (SomeException, ask, contramap, liftIO)
+import Hydra.Prelude (SomeException, ask, contramap, liftIO, try)
 
 -- Hydra auction imports
 
@@ -26,7 +24,7 @@ import HydraAuction.Runner (
  )
 
 -- Hydra auction CLI imports
-import CLI.Actions (CliAction, handleCliAction)
+import CLI.Actions (handleCliAction)
 import CLI.CardanoNode (getCardanoNode, runCardanoNode)
 import CLI.Parsers (
   CliInput (MkCliInput, cliActor, cliVerbosity),
@@ -65,26 +63,24 @@ main = do
 loopCLI :: Runner ()
 loopCLI = do
   ctx <- ask
-  let promtString = show (actor ctx) <> "> "
-  let loop :: InputT Runner ()
+  let loop :: InputT IO ()
       loop = do
-        minput <- getInputLine promtString
+        minput <- getInputLine $ show (actor ctx) <> "> "
         case minput of
           Nothing -> pure ()
           Just "quit" -> pure ()
           Just input -> do
-            lift $ handleInput input
-            liftIO $ putStrLn ""
+            liftIO $ do
+              handleInput ctx input
+              putStrLn ""
             loop
-  runInputT defaultSettings loop
+  liftIO $ runInputT defaultSettings loop
   where
-    handleInput :: String -> Runner ()
-    handleInput input = case parseCliAction $ words input of
-      Left e -> liftIO $ putStrLn e
-      Right cmd -> handleCliAction' cmd
-    handleCliAction' :: CliAction -> Runner ()
-    handleCliAction' cmd = do
-      result <- try $ handleCliAction cmd
+    handleInput ctx input = case parseCliAction $ words input of
+      Left e -> putStrLn e
+      Right cmd -> handleCliAction' ctx cmd
+    handleCliAction' ctx cmd = do
+      result <- try $ executeRunner ctx $ handleCliAction cmd
       case result of
         Right _ -> pure ()
         Left (actionError :: SomeException) ->
