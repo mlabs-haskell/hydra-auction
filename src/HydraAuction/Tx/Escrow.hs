@@ -7,8 +7,12 @@ module HydraAuction.Tx.Escrow (
 ) where
 
 -- Prelude imports
-import Hydra.Prelude
+
 import PlutusTx.Prelude (emptyByteString)
+import Prelude
+
+-- Haskell imports
+import Control.Monad (void)
 
 -- Plutus imports
 import Plutus.V1.Ledger.Address (pubKeyHashAddress)

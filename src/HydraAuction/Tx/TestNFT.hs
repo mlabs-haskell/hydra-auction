@@ -1,7 +1,7 @@
 module HydraAuction.Tx.TestNFT (mintOneTestNFT) where
 
 -- Prelude imports
-import Hydra.Prelude
+import Prelude
 
 -- Plutus imports
 import Plutus.V1.Ledger.Value (assetClassValue)

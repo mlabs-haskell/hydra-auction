@@ -1,7 +1,9 @@
 module HydraAuction.Tx.StandingBid (newBid, cleanupTx) where
 
 -- Prelude imports
-import Hydra.Prelude hiding (Natural)
+
+import Hydra.Prelude (void)
+import Prelude
 
 -- Plutus imports
 import Plutus.V1.Ledger.Value (assetClassValue)
