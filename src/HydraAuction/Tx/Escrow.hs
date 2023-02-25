@@ -28,11 +28,27 @@ import Plutus.V2.Ledger.Api (
 
 -- Hydra imports
 import Cardano.Api.UTxO qualified as UTxO
-import Hydra.Cardano.Api hiding (txOutValue)
+import Hydra.Cardano.Api (
+  BuildTx,
+  Lovelace (..),
+  TxMintValue,
+  fromPlutusScript,
+  fromPlutusTxOutRef,
+  fromPlutusValue,
+  lovelaceToValue,
+  toPlutusData,
+  txOutDatum,
+  pattern ReferenceScriptNone,
+  pattern ShelleyAddressInEra,
+  pattern TxMintValueNone,
+  pattern TxOut,
+  pattern TxOutDatumInline,
+  pattern TxOutDatumNone,
+ )
 
 -- Hydra auction imports
 import HydraAuction.Addresses (VoucherCS (..))
-import HydraAuction.OnChain hiding (escrowAddress, standingBidAddress)
+import HydraAuction.OnChain (AuctionScript (..), policy, voucherAssetClass)
 import HydraAuction.OnChain.StateToken (
   StateTokenKind (..),
   stateTokenKindToTokenName,

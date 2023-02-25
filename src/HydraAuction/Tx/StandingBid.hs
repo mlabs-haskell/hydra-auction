@@ -10,7 +10,18 @@ import Plutus.V1.Ledger.Value (assetClassValue)
 import Plutus.V2.Ledger.Api (getValidator)
 
 -- Hydra imports
-import Hydra.Cardano.Api hiding (txOutValue)
+import Hydra.Cardano.Api (
+  PlutusScriptV2,
+  fromPlutusScript,
+  fromPlutusValue,
+  lovelaceToValue,
+  toPlutusKeyHash,
+  verificationKeyHash,
+  pattern ReferenceScriptNone,
+  pattern ShelleyAddressInEra,
+  pattern TxMintValueNone,
+  pattern TxOut,
+ )
 
 -- Hydra auction imports
 import HydraAuction.Addresses (VoucherCS (..))
