@@ -1,10 +1,11 @@
 module EndToEnd.Ledger (testSuite) where
 
 -- Prelude imports
-import Hydra.Prelude (MonadIO (liftIO), SomeException, fail, try)
+import Hydra.Prelude (MonadIO (liftIO), SomeException, fail)
 import PlutusTx.Prelude
 
 -- Haskell imports
+import Control.Monad.Catch (try)
 import Data.Maybe (fromJust)
 
 -- Haskell test imports
