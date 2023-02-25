@@ -11,10 +11,20 @@ import Plutus.V2.Ledger.Api (TxInfo, scriptContextTxInfo, txInInfoResolved, txIn
 import Plutus.V2.Ledger.Contexts (ScriptContext, ownHash)
 
 -- Hydra auction imports
-import HydraAuction.Addresses
-import HydraAuction.OnChain.Common
+import HydraAuction.Addresses (VoucherCS (..))
+import HydraAuction.OnChain.Common (
+  byAddress,
+  decodeOutputDatum,
+  nothingForged,
+ )
 import HydraAuction.OnChain.StateToken (StateTokenKind (..), stateTokenKindToTokenName)
-import HydraAuction.Types
+import HydraAuction.Types (
+  AuctionTerms (..),
+  BidTerms (..),
+  StandingBidDatum (..),
+  StandingBidRedeemer (..),
+  StandingBidState (..),
+ )
 
 {-# INLINEABLE mkStandingBidValidator #-}
 mkStandingBidValidator :: AuctionTerms -> StandingBidDatum -> StandingBidRedeemer -> ScriptContext -> Bool

@@ -1,12 +1,9 @@
 module CLI.Config (
   AuctionName (..),
   DirectoryKind (..),
-  AuctionTermsConfig (..),
-  AuctionTermsDynamic (..),
   CliEnhancedAuctionTerms (..),
   readCliEnhancedAuctionTerms,
   getAuctionDirectory,
-  constructTermsDynamic,
   readAuctionTermsConfig,
   readAuctionTermsDynamic,
   readAuctionTerms,
@@ -25,13 +22,17 @@ import Data.Aeson (FromJSON, ToJSON)
 import Data.Aeson qualified as Aeson
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as LBS
-import System.Directory
+import System.Directory (createDirectoryIfMissing, getCurrentDirectory)
 import System.FilePath ((<.>), (</>))
 
 -- Hydra auction imports
 import HydraAuction.Fixture (Actor (..))
-import HydraAuction.Tx.TermsConfig
-import HydraAuction.Types
+import HydraAuction.Tx.TermsConfig (
+  AuctionTermsConfig,
+  AuctionTermsDynamic (..),
+  configToAuctionTerms,
+ )
+import HydraAuction.Types (AuctionTerms)
 
 -- =============================================================================
 -- Auction config and state directories

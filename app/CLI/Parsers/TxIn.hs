@@ -8,7 +8,7 @@ import Prelude
 -- Haskell imports
 import Data.Bifunctor (first)
 import Data.ByteString.Char8 qualified as BSC
-import Options.Applicative
+import Options.Applicative (ReadM, eitherReader, some)
 import Text.Parsec ((<?>))
 import Text.Parsec qualified as Parsec
 import Text.Parsec.Error qualified as Parsec

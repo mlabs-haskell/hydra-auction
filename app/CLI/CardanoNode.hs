@@ -6,7 +6,7 @@ import Prelude
 
 -- Haskell imports
 
-import Control.Concurrent.MVar
+import Control.Concurrent.MVar (newEmptyMVar, takeMVar)
 import System.FilePath ((</>))
 
 -- Cardano node imports
