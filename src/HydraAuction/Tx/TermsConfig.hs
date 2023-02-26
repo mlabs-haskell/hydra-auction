@@ -65,6 +65,10 @@ getActorVkHash actor = do
   (actorVk, _) <- keysFor actor
   return $ toPlutusKeyHash $ verificationKeyHash actorVk
 
+-- FIXME: more robust solution?
+announcementSubmittingUpperBoundMilliseconds :: Integer
+announcementSubmittingUpperBoundMilliseconds = 2000
+
 constructTermsDynamic :: Actor -> TxIn -> IO AuctionTermsDynamic
 constructTermsDynamic sellerActor utxoNonce = do
   currentTimeSeconds' <- currentTimeSeconds
@@ -76,8 +80,12 @@ constructTermsDynamic sellerActor utxoNonce = do
       , -- FIXME
         configDelegates = [sellerVkHash]
       , configUtxoNonce = toPlutusTxOutRef utxoNonce
-      , -- Convert to miliseconds and add one more second to have some time for submiting Tx
-        configAnnouncementTime = POSIXTime $ currentTimeSeconds' * 1000 + 1000
+      , -- Convert to miliseconds
+        -- and add a little more to have some time for submiting Tx
+        configAnnouncementTime =
+          POSIXTime $
+            currentTimeSeconds' * 1000
+              + announcementSubmittingUpperBoundMilliseconds
       }
 
 configToAuctionTerms ::
