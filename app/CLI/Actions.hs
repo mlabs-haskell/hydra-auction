@@ -12,8 +12,11 @@ import Prelude
 -- Haskell imports
 import Control.Monad (forM_, void)
 
+-- Plutus imports
+import Plutus.V1.Ledger.Address (pubKeyHashAddress)
+
 -- Hydra imports
-import Hydra.Cardano.Api (Lovelace, TxIn)
+import Hydra.Cardano.Api (Lovelace, TxIn, pattern ShelleyAddressInEra)
 
 -- Hydra auction imports
 import HydraAuction.Fixture (Actor (..))
@@ -24,10 +27,17 @@ import HydraAuction.Runner (
   initWallet,
   withActor,
  )
-import HydraAuction.Tx.Common (actorTipUtxo, currentAuctionStage, scriptUtxos)
+import HydraAuction.Tx.Common (
+  actorTipUtxo,
+  addressAndKeys,
+  currentAuctionStage,
+  fromPlutusAddressInRunner,
+  scriptUtxos,
+ )
 import HydraAuction.Tx.Escrow (
   announceAuction,
   bidderBuys,
+  currentWinningBidder,
   sellerReclaims,
   startBidding,
  )
@@ -59,6 +69,7 @@ data CliAction
   | ShowScriptUtxos !AuctionName !AuctionScript
   | ShowUtxos
   | ShowAllUtxos
+  | ShowCurrentWinnigBidder !AuctionName
   | Seed
   | Prepare !Actor
   | MintTestNFT
@@ -140,6 +151,12 @@ handleCliAction userAction = do
         liftIO $ print a
         liftIO $ prettyPrintUtxo utxos
         liftIO $ putStrLn "\n"
+    ShowCurrentWinnigBidder auctionName -> do
+      -- FIXME: proper error printing
+      Just terms <- liftIO $ readAuctionTerms auctionName
+      -- FIXME: show actor instread of PubKey
+      winningBidderPk <- currentWinningBidder terms
+      liftIO $ print winningBidderPk
     MintTestNFT -> do
       liftIO . putStrLn $
         "Minting the test NFT for "
@@ -188,8 +205,24 @@ handleCliAction userAction = do
       liftIO . putStrLn $
         show actor
           <> " buys the auction lot, as the winning bidder."
-      doOnMatchingStage terms BiddingEndedStage $
-        bidderBuys terms
+      doOnMatchingStage terms BiddingEndedStage $ do
+        mWinningBidderPk <- currentWinningBidder terms
+        (currentActorAddress, _, _) <- addressAndKeys
+        case mWinningBidderPk of
+          Just winningBidderPk -> do
+            winningBidderAddress <-
+              fromPlutusAddressInRunner $
+                pubKeyHashAddress winningBidderPk
+            if winningBidderAddress == ShelleyAddressInEra currentActorAddress
+              then do
+                bidderBuys terms
+                utxos <- actorTipUtxo
+                liftIO $ prettyPrintUtxo utxos
+              else
+                liftIO $
+                  putStrLn "Cannot perform: Other actor is the winning bidder!"
+          Nothing ->
+            liftIO $ putStrLn "Cannot perform: No bid is placed!"
       liftIO . putStrLn $
         show actor
           <> " now has the following utxos in their wallet."
