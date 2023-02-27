@@ -32,7 +32,7 @@ Will build the CLI application and link it to `./result/bin/hydra-auction`.
 
 Different terms for auction are stored in JSON and auctions named with string.
 Static part of params like stages timing and minmal bid/bid increment,
-are stored in `examples/auction-congig`.
+are stored in `examples/auction-config`.
 Dynamic part of params is calculated and stored on `auction-announced` command.
 If you run it again for different lot dynamic part will be rewritten.
 
