@@ -1,19 +1,41 @@
 module HydraAuction.Tx.TestNFT (mintOneTestNFT) where
 
 -- Prelude imports
-import Hydra.Prelude
+import Prelude
 
 -- Plutus imports
 import Plutus.V1.Ledger.Value (assetClassValue)
 import Plutus.V2.Ledger.Api (getMintingPolicy)
 
 -- Hydra imports
-import Hydra.Cardano.Api hiding (txOutValue)
+import Hydra.Cardano.Api (
+  Tx,
+  fromPlutusScript,
+  fromPlutusValue,
+  lovelaceToValue,
+  pattern ReferenceScriptNone,
+  pattern ShelleyAddressInEra,
+  pattern TxOut,
+  pattern TxOutDatumNone,
+ )
 
 -- Hydra auction imports
-import HydraAuction.OnChain.TestNFT
-import HydraAuction.Runner
-import HydraAuction.Tx.Common
+import HydraAuction.OnChain.TestNFT (
+  testNftAssetClass,
+  testNftPolicy,
+  testNftTokenName,
+ )
+import HydraAuction.Runner (Runner)
+import HydraAuction.Tx.Common (
+  AutoCreateParams (..),
+  actorTipUtxo,
+  addressAndKeys,
+  autoSubmitAndAwaitTx,
+  filterAdaOnlyUtxo,
+  minLovelace,
+  mintedTokens,
+  tokenToAsset,
+ )
 
 mintOneTestNFT :: Runner Tx
 mintOneTestNFT = do

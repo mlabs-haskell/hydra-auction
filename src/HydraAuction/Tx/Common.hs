@@ -58,18 +58,111 @@ import Plutus.V2.Ledger.Api (
 
 -- Hydra imports
 import Cardano.Api.UTxO qualified as UTxO
-import CardanoClient hiding (networkId)
+import CardanoClient (
+  QueryPoint (QueryTip),
+  awaitTransaction,
+  buildAddress,
+  buildScriptAddress,
+  queryEraHistory,
+  queryProtocolParameters,
+  queryStakePools,
+  querySystemStart,
+  queryUTxO,
+  queryUTxOByTxIn,
+  queryUTxOFor,
+  submitTransaction,
+ )
 import CardanoNode (
   RunningNode (RunningNode, networkId, nodeSocket),
  )
-import Hydra.Cardano.Api hiding (txIns, txOutValue)
+import Hydra.Cardano.Api (
+  Address,
+  AddressInEra,
+  AssetName,
+  BuildTx,
+  BuildTxWith,
+  CtxTx,
+  KeyWitness,
+  Lovelace (..),
+  NetworkId,
+  PaymentKey,
+  PlutusScript,
+  Quantity,
+  ScriptDatum (..),
+  ScriptWitness,
+  ShelleyAddr,
+  SigningKey,
+  SlotNo,
+  ToScriptData,
+  Tx,
+  TxBody,
+  TxBodyContent,
+  TxBodyErrorAutoBalance,
+  TxIn,
+  TxMintValue,
+  TxOut,
+  TxOutDatum,
+  UTxO,
+  VerificationKey,
+  WitCtxMint,
+  WitCtxTxIn,
+  Witness,
+  balancedTxBody,
+  fromPlutusAddress,
+  fromPlutusData,
+  fromPlutusScript,
+  getTxId,
+  getVerificationKey,
+  hashScript,
+  makeShelleyKeyWitness,
+  makeSignedTransaction,
+  makeTransactionBodyAutoBalance,
+  mkScriptWitness,
+  scriptWitnessCtx,
+  toPlutusTxOut,
+  toScriptData,
+  txBody,
+  valueFromList,
+  verificationKeyHash,
+  withWitness,
+  pattern AssetId,
+  pattern AssetName,
+  pattern BabbageEraInCardanoMode,
+  pattern BuildTxWith,
+  pattern Mainnet,
+  pattern PlutusScript,
+  pattern PolicyId,
+  pattern ScriptWitness,
+  pattern ShelleyAddressInEra,
+  pattern Testnet,
+  pattern TxAuxScriptsNone,
+  pattern TxBodyContent,
+  pattern TxCertificatesNone,
+  pattern TxExtraKeyWitnesses,
+  pattern TxFeeExplicit,
+  pattern TxInsCollateral,
+  pattern TxInsReference,
+  pattern TxMetadataNone,
+  pattern TxMintValue,
+  pattern TxOutDatumInline,
+  pattern TxReturnCollateralNone,
+  pattern TxScriptValidityNone,
+  pattern TxTotalCollateralNone,
+  pattern TxUpdateProposalNone,
+  pattern TxValidityLowerBound,
+  pattern TxValidityNoLowerBound,
+  pattern TxValidityNoUpperBound,
+  pattern TxValidityUpperBound,
+  pattern TxWithdrawalsNone,
+  pattern WitnessPaymentKey,
+ )
 import Hydra.Chain.Direct.TimeHandle (queryTimeHandle, slotFromUTCTime)
 
 -- Hydra auction imports
 import HydraAuction.Fixture (keysFor)
-import HydraAuction.OnChain
-import HydraAuction.Runner
-import HydraAuction.Types
+import HydraAuction.OnChain (AuctionScript, scriptValidatorForTerms)
+import HydraAuction.Runner (ExecutionContext (..), Runner, logMsg)
+import HydraAuction.Types (AuctionTerms)
 
 networkIdToNetwork :: NetworkId -> Cardano.Network
 networkIdToNetwork (Testnet _) = Cardano.Testnet

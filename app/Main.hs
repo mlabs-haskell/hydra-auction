@@ -8,7 +8,12 @@ import Control.Concurrent.Async (withAsync)
 import Control.Monad (void, when)
 import Control.Monad.Catch (try)
 import Control.Monad.Trans.Class (lift)
-import System.Console.Haskeline
+import System.Console.Haskeline (
+  InputT,
+  defaultSettings,
+  getInputLine,
+  runInputT,
+ )
 
 -- Hydra imports
 import Hydra.Logging (Verbosity (Quiet, Verbose))

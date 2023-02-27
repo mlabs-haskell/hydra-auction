@@ -24,15 +24,16 @@ import HydraAuction.Runner (
   initWallet,
   withActor,
  )
-import HydraAuction.Tx.Common
+import HydraAuction.Tx.Common (actorTipUtxo, scriptUtxos)
 import HydraAuction.Tx.Escrow (
   announceAuction,
   bidderBuys,
   sellerReclaims,
   startBidding,
  )
-import HydraAuction.Tx.StandingBid
-import HydraAuction.Tx.TestNFT
+import HydraAuction.Tx.StandingBid (cleanupTx, newBid)
+import HydraAuction.Tx.TermsConfig (constructTermsDynamic)
+import HydraAuction.Tx.TestNFT (mintOneTestNFT)
 import HydraAuction.Types (Natural)
 
 -- Hydra auction CLI imports
@@ -40,7 +41,6 @@ import CLI.Config (
   AuctionName,
   CliEnhancedAuctionTerms (..),
   configToAuctionTerms,
-  constructTermsDynamic,
   readAuctionTerms,
   readAuctionTermsConfig,
   readCliEnhancedAuctionTerms,

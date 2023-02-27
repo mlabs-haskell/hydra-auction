@@ -1,7 +1,7 @@
 module EndToEnd.Utils (mkAssertion) where
 
 -- Prelude imports
-import Hydra.Prelude hiding (threadDelay)
+import Prelude
 
 -- Haskell test imports
 import Test.Hydra.Prelude (failAfter)

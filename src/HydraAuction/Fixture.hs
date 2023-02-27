@@ -4,7 +4,7 @@ module HydraAuction.Fixture (
 ) where
 
 -- Prelude imports
-import Hydra.Prelude
+import Prelude
 
 -- Hydra imports
 import Hydra.Cardano.Api (
@@ -20,7 +20,9 @@ import Hydra.Cardano.Api (
 -- Haskell imports
 
 import Data.Aeson qualified as Aeson
+import Data.Bifunctor (first)
 import Data.ByteString qualified as BS
+import GHC.Generics (Generic)
 import Paths_hydra_auction qualified as Pkg
 import System.FilePath ((<.>), (</>))
 
@@ -56,7 +58,7 @@ keysFor actor = do
     asSigningKey = AsSigningKey AsPaymentKey
 
 -- | Lookup a config file similar reading a file from disk.
-readConfigFile :: FilePath -> IO ByteString
+readConfigFile :: FilePath -> IO BS.ByteString
 readConfigFile source = do
   filename <- Pkg.getDataFileName ("data" </> source)
   BS.readFile filename

@@ -22,6 +22,8 @@ module HydraAuction.Types (
 ) where
 
 -- Prelude imports
+
+import PlutusTx.Prelude
 import Prelude qualified
 
 -- Haskell imports
@@ -36,8 +38,6 @@ import Plutus.V1.Ledger.Value (AssetClass, CurrencySymbol)
 import Plutus.V2.Ledger.Contexts (TxOutRef)
 import PlutusTx qualified
 import PlutusTx.IsData.Class (FromData (fromBuiltinData), ToData (toBuiltinData), UnsafeFromData (unsafeFromBuiltinData))
-import PlutusTx.Prelude hiding (fromInteger)
-import PlutusTx.Prelude qualified as Plutus
 
 -- Hydra auction imports
 import HydraAuction.Addresses (VoucherCS)
@@ -200,7 +200,7 @@ instance Eq AuctionState where
   _ == _ = False
 
 -- | FIXME: Bytetring will be changed to actual hash
-newtype ApprovedBiddersHash = ApprovedBiddersHash Plutus.BuiltinByteString
+newtype ApprovedBiddersHash = ApprovedBiddersHash BuiltinByteString
   deriving stock (Generic, Prelude.Show, Prelude.Eq)
 {- ^ This hash is calculated from the `ApprovedBidders` value that the seller
  fixes for the auction.
