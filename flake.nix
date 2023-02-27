@@ -17,14 +17,14 @@
     # when you upgrade `hydra` input remember to also upgrade revs under
     # `source-repository-package`s in `cabal.project`
     hydra = {
-      url = "ssh://git@github.com/input-output-hk/hydra?ref=5ed00dfcd367d0390a774216035e1ea30dde5166";
+      url = "ssh://git@github.com/input-output-hk/hydra?ref=ad3dd93ae3fcfee1be158a7042157d33d0ccd2ef";
       type = "git";
       submodules = true;
     };
 
     haskellNix.url = "github:input-output-hk/haskell.nix";
     # The "empty-flake" is needed until the following is fixed
-    # https://github.com/input-output-hk/cardano-node/issues/4525 
+    # https://github.com/input-output-hk/cardano-node/issues/4525
     cardano-node = {
       url = "github:input-output-hk/cardano-node/a42ca8801ea31cb0b23a3f53dcc063ce4a5a0be5";
       inputs.cardano-node-workbench.follows = "empty";

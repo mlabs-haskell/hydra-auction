@@ -58,6 +58,7 @@ common common-lang
     , hydra-cardano-api
     , hydra-cluster
     , hydra-node
+    , hydra-plutus
     , hydra-prelude
     , mtl
     , plutus-tx-plugin
@@ -177,6 +178,7 @@ library
   exposed-modules:
     HydraAuction.Addresses
     HydraAuction.Fixture
+    HydraAuction.HydraExtras
     HydraAuction.OnChain
     HydraAuction.OnChain.TestNFT
     HydraAuction.Plutus.Orphans
@@ -223,6 +225,7 @@ test-suite hydra-auction-test
   other-modules:
     EndToEnd.Hydra
     EndToEnd.Ledger
+    EndToEnd.LedgerL2
     EndToEnd.Utils
 
   build-depends:
