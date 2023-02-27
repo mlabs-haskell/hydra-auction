@@ -50,6 +50,12 @@
 
 # Debugging checklist
 
+## Regular code
+
+* Check on `Hydra.Prelude` imports. For example:
+  * `threadDelay` uses seconds instread of microseconds
+  * `try` uses `MonadCatch` from `io-classes`
+
 ## Plutus scripts
 
 * Check out https://plutus.readthedocs.io/en/latest/troubleshooting.html
