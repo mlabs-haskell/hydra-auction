@@ -214,6 +214,18 @@ startBidding terms = do
         , validityBound = (Just $ biddingStart terms, Just $ biddingEnd terms)
         }
 
+getStadingBidDatum :: UTxO.UTxO -> StandingBidDatum
+getStadingBidDatum standingBidUtxo =
+  case UTxO.pairs standingBidUtxo of
+    [(_, out)] -> case txOutDatum out of
+      TxOutDatumInline scriptData ->
+        case fromData $ toPlutusData scriptData of
+          Just standingBidDatum -> standingBidDatum
+          Nothing ->
+            error "Impossible happened: Cannot decode standing bid datum"
+      _ -> error "Impossible happened: No inline data for standing bid"
+    _ -> error "Wrong number of standing bid UTxOs found"
+
 bidderBuys :: AuctionTerms -> Runner ()
 bidderBuys terms = do
   feeEscrowAddress <- scriptAddress FeeEscrow terms
@@ -229,19 +241,10 @@ bidderBuys terms = do
           value =
             lovelaceToValue $
               Lovelace $ bidAmount' - calculateTotalFee terms
-          bidAmount' = case UTxO.pairs standingBidUtxo of
-            [(_, out)] -> case txOutDatum out of
-              TxOutDatumInline scriptData ->
-                case fromData $ toPlutusData scriptData of
-                  Just (StandingBidDatum {standingBidState}) ->
-                    case standingBidState of
-                      (Bid (BidTerms {bidAmount})) -> naturalToInt bidAmount
-                      NoBid -> error "Standing bid UTxO has no bid"
-                  Nothing ->
-                    error "Impossible happened: Cannot decode standing bid datum"
-              _ -> error "Impossible happened: No inline data for standing bid"
-            _ -> error "Wrong number of standing bid UTxOs found"
-
+          StandingBidDatum {standingBidState} = getStadingBidDatum standingBidUtxo
+          bidAmount' = case standingBidState of
+            (Bid (BidTerms {bidAmount})) -> naturalToInt bidAmount
+            NoBid -> error "Standing bid UTxO has no bid"
       txOutBidderGotLot bidderAddress =
         TxOut
           (ShelleyAddressInEra bidderAddress)
