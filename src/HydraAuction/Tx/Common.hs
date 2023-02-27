@@ -30,6 +30,7 @@ import PlutusTx.Prelude (emptyByteString)
 import Prelude
 
 -- Haskell imports
+import Control.Monad.TimeMachine (MonadTime (getCurrentTime))
 import Data.List (sort)
 import Data.Map qualified as Map
 import Data.Time (secondsToNominalDiffTime)
@@ -174,13 +175,16 @@ networkIdToNetwork Mainnet = Cardano.Mainnet
 minLovelace :: Lovelace
 minLovelace = 2_000_000
 
-currentTimeSeconds :: IO Integer
-currentTimeSeconds = round `fmap` POSIXTime.getPOSIXTime
+currentTimeSeconds :: MonadTime timedMonad => timedMonad Integer
+currentTimeSeconds =
+  round . POSIXTime.utcTimeToPOSIXSeconds <$> getCurrentTime
 
-currentTimeMilliseconds :: IO Integer
-currentTimeMilliseconds = round . (* 1000) <$> POSIXTime.getPOSIXTime
+currentTimeMilliseconds :: MonadTime timedMonad => timedMonad Integer
+currentTimeMilliseconds =
+  round . (* 1000) . POSIXTime.utcTimeToPOSIXSeconds <$> getCurrentTime
 
-currentAuctionStage :: AuctionTerms -> IO AuctionStage
+currentAuctionStage ::
+  (MonadTime timedMonad) => AuctionTerms -> timedMonad AuctionStage
 currentAuctionStage terms = do
   currentTime <- POSIXTime <$> currentTimeMilliseconds
   let matchingStages = filter (member currentTime . stageToInterval terms) auctionStages
