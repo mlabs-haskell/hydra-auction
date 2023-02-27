@@ -67,6 +67,7 @@ common common-lang
     , stm
     , text
     , time
+    , time-machine
     , transformers
     , websockets
 

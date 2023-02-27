@@ -18,7 +18,6 @@ import Cardano.Api.UTxO qualified as UTxO
 import Plutus.V1.Ledger.Value (assetClassValueOf)
 
 -- Hydra imports
-
 import Hydra.Cardano.Api (mkTxIn, toPlutusValue, txOutValue)
 
 -- Hydra auction imports

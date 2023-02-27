@@ -12,7 +12,10 @@ import PlutusTx.Prelude (emptyByteString)
 import Prelude
 
 -- Haskell imports
+import Control.Monad.IO.Class (MonadIO (liftIO))
+import Control.Monad.TimeMachine (MonadTime)
 import Data.Aeson (FromJSON, ToJSON)
+import Data.Kind (Type)
 import GHC.Generics (Generic)
 
 -- Plutus imports
@@ -65,10 +68,11 @@ getActorVkHash actor = do
   (actorVk, _) <- keysFor actor
   return $ toPlutusKeyHash $ verificationKeyHash actorVk
 
-constructTermsDynamic :: Actor -> TxIn -> IO AuctionTermsDynamic
+constructTermsDynamic ::
+  forall (timedMonad :: Type -> Type). (MonadTime timedMonad, MonadIO timedMonad) => Actor -> TxIn -> timedMonad AuctionTermsDynamic
 constructTermsDynamic sellerActor utxoNonce = do
   currentTimeSeconds' <- currentTimeSeconds
-  sellerVkHash <- getActorVkHash sellerActor
+  sellerVkHash <- liftIO $ getActorVkHash sellerActor
   return $
     AuctionTermsDynamic
       { configAuctionLot = testNftAssetClass
