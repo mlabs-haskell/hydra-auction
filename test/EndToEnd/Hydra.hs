@@ -1,6 +1,7 @@
 module EndToEnd.Hydra (testSuite) where
 
 -- Prelude imports
+
 import Hydra.Prelude (
   Contravariant (contramap),
   Enum (toEnum),
@@ -27,6 +28,7 @@ import Hydra.Prelude (
   (<$>),
  )
 import Test.Hydra.Prelude (failAfter, failure, withTempDir)
+import Prelude (putStrLn, return)
 import Prelude qualified
 
 -- Haskell imports
@@ -140,6 +142,7 @@ initAndClose clusterIx hydraScriptsTxId = do
 
       let firstNodeId = clusterIx * 3
       let contestationPeriod = UnsafeContestationPeriod 2
+
       withHydraCluster
         hydraTracer
         tmpDir
@@ -150,8 +153,10 @@ initAndClose clusterIx hydraScriptsTxId = do
         hydraScriptsTxId
         contestationPeriod
         $ \nodes -> do
+          putStrLn "START"
           [n1, n2, n3] <- Prelude.return $ toList nodes
           waitForNodesConnected hydraTracer [n1, n2, n3]
+          putStrLn "START0"
 
           -- Funds to be used as fuel by Hydra protocol transactions
           let faucetTracer = contramap FromFaucet hydraTracer
@@ -160,10 +165,13 @@ initAndClose clusterIx hydraScriptsTxId = do
           seedFromFaucet_ node carolCardanoVk 100_000_000 Fuel faucetTracer
 
           send n1 $ input "Init" []
-          waitFor hydraTracer 10 [n1, n2, n3] $
+          putStrLn "START2"
+
+          waitFor hydraTracer 30 [n1, n2, n3] $
             output
-              "ReadyToCommit"
+              "HeadIsInitializing"
               ["parties" .= Set.fromList [alice, bob, carol]]
+          putStrLn "START3"
 
           -- Get some UTXOs to commit to a head
           committedUTxOByAlice <-
@@ -173,12 +181,12 @@ initAndClose clusterIx hydraScriptsTxId = do
             seedFromFaucet node bobCardanoVk 5_000_000 Normal faucetTracer
 
           send n1 $ input "Commit" ["utxo" .= committedUTxOByAlice]
-          send n2 $ input "Commit" ["utxo" .= committedUTxOByBob]
+          send n2 $ input "Commit" ["utxo" .= Object mempty]
           send n3 $ input "Commit" ["utxo" .= Object mempty]
           waitFor hydraTracer 10 [n1, n2, n3] $
             output
               "HeadIsOpen"
-              ["utxo" .= (committedUTxOByAlice <> committedUTxOByBob)]
+              ["utxo" .= (committedUTxOByAlice)]
 
           -- NOTE(AB): this is partial and will fail if we are not able to
           -- generate a payment

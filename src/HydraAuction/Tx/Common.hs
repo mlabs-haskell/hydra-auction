@@ -1,6 +1,8 @@
 {-# LANGUAGE RecordWildCards #-}
 
 module HydraAuction.Tx.Common (
+  callBodyAutoBalance,
+  submitAndAwaitTx,
   AutoCreateParams (..),
   filterAdaOnlyUtxo,
   actorTipUtxo,
@@ -363,6 +365,8 @@ callBodyAutoBalance
     eraHistory <- queryEraHistory networkId nodeSocket QueryTip
     stakePools <- queryStakePools networkId nodeSocket QueryTip
 
+    putStrLn "11"
+
     return $
       balancedTxBody
         <$> makeTransactionBodyAutoBalance
@@ -375,6 +379,17 @@ callBodyAutoBalance
           preBody
           (ShelleyAddressInEra changeAddress)
           Nothing
+
+submitAndAwaitTx RunningNode {networkId, nodeSocket} tx = do
+  submitTransaction
+    networkId
+    nodeSocket
+    tx
+  void $
+    awaitTransaction
+      networkId
+      nodeSocket
+      tx
 
 autoSubmitAndAwaitTx :: AutoCreateParams -> Runner Tx
 autoSubmitAndAwaitTx params = do

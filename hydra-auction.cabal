@@ -71,6 +71,7 @@ common common-lang
     , hydra-cardano-api
     , hydra-cluster
     , hydra-node
+    , hydra-plutus
     , hydra-prelude
     , mtl
     , plutus-ledger-api
@@ -196,6 +197,8 @@ library
     HydraAuction.Delegate
     HydraAuction.Delegate.Interface
     HydraAuction.Hydra.Interface
+    HydraAuction.Fixture
+    HydraAuction.HydraExtras
     HydraAuction.OnChain
     HydraAuction.OnChain.Common
     HydraAuction.OnChain.TestNFT
@@ -252,6 +255,7 @@ test-suite hydra-auction-test
   other-modules:
     EndToEnd.Hydra
     EndToEnd.Ledger
+    EndToEnd.LedgerL2
     EndToEnd.Utils
     Unit.Common
 

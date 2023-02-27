@@ -13,6 +13,7 @@ import Test.Tasty (TestTree, defaultMain, testGroup)
 import EndToEnd.Hydra qualified as Hydra
 import EndToEnd.Ledger qualified as Ledger
 import Unit.Common qualified as UnitCommon
+import EndToEnd.LedgerL2 qualified as LedgerL2
 
 main :: IO ()
 main = do
@@ -24,6 +25,7 @@ testSuite =
   testGroup
     "hydra-auction"
     [ Ledger.testSuite
+    , LedgerL2.testSuite
     , Hydra.testSuite
     , UnitCommon.testSuite
     ]

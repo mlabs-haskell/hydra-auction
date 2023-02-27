@@ -28,6 +28,7 @@ import Hydra.Prelude (
   liftIO,
   local,
   runReaderT,
+  show,
   ($),
   (.),
  )
@@ -38,7 +39,7 @@ import Prelude (return)
 
 import Control.Monad (void)
 import Control.Monad.Catch (MonadCatch, MonadMask, MonadThrow)
-import Control.Tracer (traceWith)
+import Control.Tracer (stdoutTracer, traceWith)
 import System.FilePath (FilePath)
 
 -- Cardano imports
@@ -55,9 +56,8 @@ import CardanoNode (
   RunningNode (RunningNode, networkId, nodeSocket),
   withCardanoNodeDevnet,
  )
-
 -- Hydra imports
-import Hydra.Cardano.Api (Lovelace, NetworkId, Tx)
+import Hydra.Cardano.Api (Lovelace, NetworkId, Tx, TxIn, UTxO)
 import Hydra.Cluster.Faucet (Marked (Normal), seedFromFaucet_)
 import Hydra.Logging (Tracer)
 import HydraNode (EndToEndLog (FromCardanoNode, FromFaucet))
@@ -166,10 +166,11 @@ executeTestRunner runner = do
   withTempDir "test-hydra-auction" $ \tmpDir -> do
     let stateDirectory = MkStateDirectory tmpDir
     tracerForCardanoNode <- fileTracer stateDirectory
+    let tracer = contramap show stdoutTracer
     withCardanoNodeDevnet
       (contramap (FromHydra . FromCardanoNode) tracerForCardanoNode)
       tmpDir
-      $ \node -> showLogsOnFailure $ \tracer ->
+      $ \node ->
         executeRunner
           (MkExecutionContext {tracer = tracer, node = node, actor = Alice})
           runner
@@ -179,12 +180,12 @@ executeTestRunner runner = do
 {- | Initiates the actor's wallet using the prescribed amount of faucet
  @Lovelace@.
 -}
-initWallet :: Lovelace -> Actor -> Runner ()
+initWallet :: Lovelace -> Actor -> Runner UTxO
 initWallet amount actor = do
   MkExecutionContext {tracer, node} <- ask
   liftIO $ do
     (vk, _) <- keysFor actor
-    seedFromFaucet_
+    seedFromFaucet
       node
       vk
       amount

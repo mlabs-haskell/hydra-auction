@@ -30,6 +30,11 @@ import HydraAuctionUtils.Extras.Plutus (
   wrapMintingPolicy,
   wrapValidator,
  )
+import HydraAuction.Types (
+  AuctionTerms (..),
+  StandingBidRedeemer (MoveToHydra),
+ )
+import PlutusTx (unsafeFromBuiltinData)
 
 -- Addresses
 
@@ -56,6 +61,9 @@ voucherAssetClass :: AuctionTerms -> AssetClass
 voucherAssetClass terms = AssetClass (voucherCurrencySymbol terms, stateTokenKindToTokenName Voucher)
 
 -- Escrow contract
+
+myWrap f d _r p =
+  check $ f (unsafeFromBuiltinData d) MoveToHydra (unsafeFromBuiltinData p)
 
 {-# INLINEABLE escrowValidator #-}
 escrowValidator :: AuctionTerms -> Validator

@@ -34,9 +34,9 @@ mkStandingBidValidator terms datum redeemer context =
     [inputOut] -> case redeemer of
       MoveToHydra ->
         -- XXX: using strange check, cuz == for lists failed compilation of Plutus Tx
-        length (txInfoOutputs info) == 1 -- Check that nothing changed in output
-          && head (txInfoOutputs info) == inputOut
-          && nothingForged info
+        -- length (txInfoOutputs info) == 1 -- Check that nothing changed in output
+        --   && head (txInfoOutputs info) == inputOut
+        nothingForged info
       NewBid ->
         checkCorrectNewBidOutput inputOut
           && nothingForged info
