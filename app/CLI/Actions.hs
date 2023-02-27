@@ -17,8 +17,11 @@ import Data.IORef (IORef, modifyIORef, newIORef, readIORef, writeIORef)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 
+-- Plutus imports
+import Plutus.V1.Ledger.Address (pubKeyHashAddress)
+
 -- Hydra imports
-import Hydra.Cardano.Api (Lovelace, TxIn)
+import Hydra.Cardano.Api (Lovelace, TxIn, pattern ShelleyAddressInEra)
 
 -- Hydra auction imports
 import HydraAuction.Fixture (Actor (..))
@@ -33,6 +36,7 @@ import HydraAuction.Tx.Common
 import HydraAuction.Tx.Escrow (
   announceAuction,
   bidderBuys,
+  currentWinningBidder,
   sellerReclaims,
   startBidding,
  )
@@ -64,6 +68,7 @@ data CliAction
   | ShowScriptUtxos !AuctionName !AuctionScript
   | ShowUtxos
   | ShowAllUtxos
+  | ShowCurrentWinnigBidder !AuctionName
   | Seed
   | Prepare !Actor
   | MintTestNFT
@@ -126,6 +131,12 @@ handleCliAction userAction = do
         liftIO $ print a
         liftIO $ prettyPrintUtxo utxos
         liftIO $ putStrLn "\n"
+    ShowCurrentWinnigBidder auctionName -> do
+      -- FIXME: proper error printing
+      Just terms <- liftIO $ readAuctionTerms auctionName
+      -- FIXME: show actor instread of PubKey
+      winningBidderPk <- currentWinningBidder terms
+      liftIO $ print winningBidderPk
     MintTestNFT ->
       void mintOneTestNFT
     AuctionAnounce auctionName utxo -> do
@@ -154,10 +165,24 @@ handleCliAction userAction = do
     BidderBuys auctionName -> do
       -- FIXME: proper error printing
       Just terms <- liftIO $ readAuctionTerms auctionName
-      doOnMatchingStage terms BiddingEndedStage $
-        bidderBuys terms
-      utxos <- actorTipUtxo
-      liftIO $ prettyPrintUtxo utxos
+      doOnMatchingStage terms BiddingEndedStage $ do
+        mWinningBidderPk <- currentWinningBidder terms
+        (currentActorAddress, _, _) <- addressAndKeys
+        case mWinningBidderPk of
+          Just winningBidderPk -> do
+            winningBidderAddress <-
+              fromPlutusAddressInRunner $
+                pubKeyHashAddress winningBidderPk
+            if winningBidderAddress == ShelleyAddressInEra currentActorAddress
+              then do
+                bidderBuys terms
+                utxos <- actorTipUtxo
+                liftIO $ prettyPrintUtxo utxos
+              else
+                liftIO $
+                  putStrLn "Cannot perform: Other actor is the winning bidder!"
+          Nothing ->
+            liftIO $ putStrLn "Cannot perform: No bid is placed!"
     SellerReclaims auctionName -> do
       -- FIXME: proper error printing
       Just terms <- liftIO $ readAuctionTerms auctionName

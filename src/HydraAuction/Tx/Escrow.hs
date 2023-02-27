@@ -1,5 +1,6 @@
 module HydraAuction.Tx.Escrow (
   toForgeStateToken,
+  currentWinningBidder,
   announceAuction,
   startBidding,
   bidderBuys,
@@ -12,6 +13,7 @@ import PlutusTx.Prelude (emptyByteString)
 
 -- Plutus imports
 import Plutus.V1.Ledger.Address (pubKeyHashAddress)
+import Plutus.V1.Ledger.Crypto (PubKeyHash)
 import Plutus.V1.Ledger.Value (
   CurrencySymbol (..),
   assetClassValue,
@@ -173,6 +175,14 @@ getStadingBidDatum standingBidUtxo =
             error "Impossible happened: Cannot decode standing bid datum"
       _ -> error "Impossible happened: No inline data for standing bid"
     _ -> error "Wrong number of standing bid UTxOs found"
+
+currentWinningBidder :: AuctionTerms -> Runner (Maybe PubKeyHash)
+currentWinningBidder terms = do
+  standingBidUtxo <- scriptUtxos StandingBid terms
+  let StandingBidDatum {standingBidState} = getStadingBidDatum standingBidUtxo
+  return $ case standingBidState of
+    (Bid (BidTerms {bidBidder})) -> Just bidBidder
+    NoBid -> Nothing
 
 bidderBuys :: AuctionTerms -> Runner ()
 bidderBuys terms = do
