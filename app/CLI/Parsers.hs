@@ -123,7 +123,7 @@ utxo =
 
 bidAmount :: Parser Natural
 bidAmount =
-  parseNatural
+  parseAda
     <$> strOption
       ( short 'b'
           <> metavar "BID_AMOUNT"
@@ -148,8 +148,8 @@ parseScript "standing-bid" = StandingBid
 parseScript "fee-escrow" = FeeEscrow
 parseScript _ = error "Escrow parsing error"
 
-parseNatural :: String -> Natural
-parseNatural = fromJust . intToNatural . read
+parseAda :: String -> Natural
+parseAda = fromJust . intToNatural . (* 1_000_000) . read
 
 verboseParser :: Parser Bool
 verboseParser = switch (long "verbose" <> short 'v')
