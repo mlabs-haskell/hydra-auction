@@ -51,7 +51,9 @@ all daemon services are started (Cardano node, Delegate servers, Hydra nodes).
 6. A delegate moves the standing bid to L2.
 7. The delegates open the Hydra Head.
 8. Bidders may submit new bids on L2.
-9. One of the delegates or bidders closes the Hydra Head.
+9. One of the delegates or bidders closes the Hydra Head on L1.
+The delegates' Hydra nodes continuously monitor L1 for this closing transaction,
+ready to submit contesting transactions if necessary.
 10. Delegates may contest the snapshot with which the Hydra Head was closed.
 11. The seller or one of the bidders or delegates
 fans out the standing bid to L1.
