@@ -35,7 +35,7 @@ import Options.Applicative (
  )
 
 -- Cardano node imports
-import Cardano.Api (TxIn)
+import Cardano.Api (NetworkMagic (..), TxIn, fromNetworkMagic)
 
 -- Hydra auction imports
 import HydraAuction.Fixture (Actor (..))
@@ -130,6 +130,23 @@ bidAmount =
           <> help "Bid amount"
       )
 
+socketDir :: Parser String
+socketDir =
+  strOption
+    ( long "cardano-node-socket"
+        <> metavar "CARDANO_NODE_SOCKET"
+        <> help "Absolute path to the cardano node socket"
+    )
+
+networkMagic :: Parser NetworkMagic
+networkMagic =
+  parseNetworkMagic
+    <$> strOption
+      ( long "network-magic"
+          <> metavar "NETWORK_MAGIC"
+          <> help "Network magic for cardano"
+      )
+
 parseActor :: String -> Actor
 parseActor "alice" = Alice
 parseActor "bob" = Bob
@@ -151,8 +168,11 @@ parseScript _ = error "Escrow parsing error"
 parseNatural :: String -> Natural
 parseNatural = fromJust . intToNatural . read
 
+parseNetworkMagic :: String -> NetworkMagic
+parseNetworkMagic s = NetworkMagic $ read s
+
 verboseParser :: Parser Bool
 verboseParser = switch (long "verbose" <> short 'v')
 
 cliInputParser :: Parser CliInput
-cliInputParser = MkCliInput <$> actor <*> verboseParser
+cliInputParser = MkCliInput <$> actor <*> verboseParser <*> socketDir <*> (fromNetworkMagic <$> networkMagic)

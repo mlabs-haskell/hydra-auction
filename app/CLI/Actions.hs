@@ -14,7 +14,7 @@ import Control.Monad (forM_, void)
 import Data.Map.Strict qualified as Map
 
 -- Cardano node imports
-import Cardano.Api (TxIn, TxOut (..))
+import Cardano.Api (NetworkId, TxIn, TxOut (..))
 
 -- Hydra imports
 import Cardano.Api.UTxO (UTxO, toMap)
@@ -74,6 +74,8 @@ data CliAction
 data CliInput = MkCliInput
   { cliActor :: Actor
   , cliVerbosity :: Bool
+  , cliNodeSocket :: String
+  , cliNetworkId :: NetworkId
   }
 
 handleCliAction :: CliAction -> Runner ()
