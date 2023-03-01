@@ -98,9 +98,9 @@ handleCliAction userAction = do
       liftIO . putStrLn $
         "Showing all utxos under the "
           <> show script
-          <> " script for auction'"
+          <> " script for auction"
           <> show auctionName
-          <> "'."
+          <> "."
       -- FIXME: proper error printing
       Just terms <- liftIO $ readAuctionTerms auctionName
       utxos <- scriptUtxos script terms
@@ -134,18 +134,18 @@ handleCliAction userAction = do
       terms <- liftIO $ configToAuctionTerms config dynamic
       liftIO . putStrLn $
         show actor
-          <> " announces an auction '"
+          <> " announces auction called "
           <> show auctionName
-          <> "'."
+          <> "."
       announceAuction terms
     StartBidding auctionName -> do
       -- FIXME: proper error printing
       Just terms <- liftIO $ readAuctionTerms auctionName
       liftIO . putStrLn $
         show actor
-          <> " starts the bidding phase of auction '"
+          <> " starts the bidding phase of auction "
           <> show auctionName
-          <> "'."
+          <> "."
       startBidding terms
     NewBid auctionName bidAmount -> do
       -- FIXME: proper error printing
@@ -157,9 +157,9 @@ handleCliAction userAction = do
             show actor
               <> " places a new bid of "
               <> show (naturalToInt bidAmount `div` 1_000_000)
-              <> " ADA in auction '"
+              <> " ADA in auction "
               <> show auctionName
-              <> "'."
+              <> "."
           newBid terms bidAmount
     BidderBuys auctionName -> do
       -- FIXME: proper error printing
@@ -189,7 +189,7 @@ handleCliAction userAction = do
       -- FIXME: proper error printing
       Just terms <- liftIO $ readAuctionTerms auctionName
       liftIO . putStrLn $
-        "Cleaning up all remaining script utxos for auction '"
+        "Cleaning up all remaining script utxos for auction "
           <> show auctionName
-          <> "'."
+          <> "."
       cleanupTx terms
