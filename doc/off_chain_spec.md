@@ -96,21 +96,10 @@ The Hydra node is responsible for broadcasting L2 transactions to the Hydra Head
 and participating in the Hydra Head consensus protocol
 (including L1 Hydra Head transactions).
 
-**start.** Start a Hydra node of a given Hydra Head.
+Hydra node API should be only accessible by Delegate server.
+API reference: https://hydra.family/head-protocol/api-reference
 
-Command parameters:
-
-- Hydra node ID
-- Hydra node config
-
-**stop.** Stop the Hydra node.
-
-**initHydraHead.** Initialize a Hydra Head.
-
-Command parameters:
-
-- Delegates
-- (Other Hydra Head configuration options)
+Delegate server may use this commands: `Init`, `Commit`, `NewTx`, `GetUTxO`, `Close`, `Fanout`.
 
 ### Delegate server
 
