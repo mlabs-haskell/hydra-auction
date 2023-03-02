@@ -1,7 +1,7 @@
 # Off-chain architecture and specification
 
 In the Hydra Auction architecture,
-commands/requests flow from people (Platform admin, Seller, Bidder, Delegate)
+commands/requests flow from people (Seller, Bidder, Delegate)
 to systems (Frontend/CLI, Cardano node, Delegate server, Hydra node) as follows:
 
 ```mermaid
@@ -19,7 +19,6 @@ flowchart TB
   end
 
   subgraph Cardano
-    admin([Platform admin])
     cardanoNode(Cardano node)
   end
 
@@ -42,8 +41,8 @@ and the request types that people can submit to those systems.
 
 A typical workflow for an auction should look as follows:
 
-1. The platform admin and delegates ensure that
-all daemon services are started (Cardano node, Delegate servers, Hydra nodes).
+1. The delegates ensure that all daemon services are started
+   (Delegate servers, Hydra nodes).
 2. Delegates initialize the Hydra Head.
 3. The seller announces the auction.
 4. **(Bidding start time is reached)**
@@ -73,9 +72,8 @@ and may claim the winning bidder’s bidder deposit.
 The Cardano node is responsible for
 broadcasting transactions to the Cardano network.
 
-Currently, we have a notional role of “Platform admin”
-to start/stop the Cardano node.
-In the real world, this would correspond to the admin of a light-wallet backend.
+In the real world, this would correspond to the node,
+provided by a light-wallet backend.
 Alternatively, for full decentralization, a user could in principle
 choose to run their own Cardano node, without a trusted intermediary.
 
