@@ -45,11 +45,8 @@ and the request types that people can submit to those systems.
   no real limitation for that in scripts exists.
 * All Hydra nodes know each others IPs before starting node
   (this is a current limitation of Hydra).
-* One-to-one relation of Delegate server to Hydra node and Hydra Head.
-  * Multiple Delegates topology is not possible due to Hydra API
-    allowing any actions from any client.
-  * Multiple Hydra Heads per same delegates is not supported by
-    our archeticture yet.
+* Multiple Delegates per single Hydra node topology is not possible,
+  due to Hydra API allowing any actions from any client.
 * Single auction could be placed on single Hydra head.
 
 
