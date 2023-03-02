@@ -77,12 +77,14 @@ provided by a light-wallet backend.
 Alternatively, for full decentralization, a user could in principle
 choose to run their own Cardano node, without a trusted intermediary.
 
+For testing purposes local cardano-node could be used, which is started
+using `docker-compose`.
+
 **start.** Start a Cardano node, as a single-node development network (devnet)
 or as a node on a known Cardano network (mainnet or testnet).
 
 Command parameters:
 
-- Cardano node ID
 - Cardano node config (state directory, tracer, etc.)
 - Cardano network type = Devnet | Known network
 
