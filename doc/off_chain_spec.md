@@ -11,13 +11,13 @@ flowchart TB
     bidder([Bidder])
     frontend(Frontend CLI)
   end
-  
+
   subgraph Hydra
     delegate([Delegate])
     delegateServer(Delegate server)
     hydraNode(Hydra node)
   end
-  
+
   subgraph Cardano
     admin([Platform admin])
     cardanoNode(Cardano node)
@@ -181,7 +181,7 @@ Request parameters:
 - Hydra Head ID
 - Delegates
 
-The `AuctionTerms` for the Auction ID are cached in the auction state directory. 
+The `AuctionTerms` for the Auction ID are cached in the auction state directory.
 
 **startBiddingL2.** Execute a sequence of actions to allow bidding to start on L2.
 
