@@ -130,7 +130,9 @@ for them to submit their actions to interact with the auction.
 
 Command parameters:
 
-- User ID (corresponds to a saved wallet that the frontend CLI can access)
+- User for transactions
+  (taken from predefined list of actors,
+   with fixed keys laying in `data/credentials`)
 
 **stop.** Quit the frontend CLI session.
 
