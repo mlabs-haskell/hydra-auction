@@ -37,6 +37,22 @@ In the rest of this document,
 we will describe each of these systems
 and the request types that people can submit to those systems.
 
+## Limitations of current approach
+
+* All auctions users are from predefined list of actors
+  (with fixed keys laying in `data/credentials`).
+  This is only to simplify demonstration,
+  no real limitation for that in scripts exists.
+* All Hydra nodes know each others IPs before starting node
+  (this is a current limitation of Hydra).
+* One-to-one relation of Delegate server to Hydra node and Hydra Head.
+  * Multiple Delegates topology is not possible due to Hydra API
+    allowing any actions from any client.
+  * Multiple Hydra Heads per same delegates is not supported by
+    our archeticture yet.
+* Single auction could be placed on single Hydra head.
+
+
 ## Off-chain workflow
 
 A typical workflow for an auction should look as follows:
@@ -130,8 +146,7 @@ for them to submit their actions to interact with the auction.
 Command parameters:
 
 - User for transactions
-  (taken from predefined list of actors,
-   with fixed keys laying in `data/credentials`)
+  (taken from predefined list of actors)
 
 **stop.** Quit the frontend CLI session.
 
