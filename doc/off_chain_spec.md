@@ -116,7 +116,6 @@ Command parameters:
 
 - Delegate server ID
 - Delegate server config
-- …
 
 **stop.** Stop the delegate server and its associated Hydra node.
 
@@ -139,6 +138,8 @@ Command parameters:
 ## APIs
 
 ### Frontend CLI
+
+The `AuctionTerms` for the Auction ID are cached in the auction state directory.
 
 **prepare.** Distribute ADA from the faucet
 to all the potential users in the auction (Alice, Bob, etc.)
@@ -165,12 +166,9 @@ and submit an L1 transaction to the Cardano node.
 Request parameters:
 
 - Auction ID
-- Auction config
 - Auction lot asset class
 - Hydra Head ID
 - Delegates
-
-The `AuctionTerms` for the Auction ID are cached in the auction state directory.
 
 **startBiddingL2.** Execute a sequence of actions to allow bidding to start on L2.
 
@@ -203,15 +201,17 @@ This endpoint performs the following actions:
 
 - Send a request to the chosen delegate server
 to commit the standing bid utxo to the Hydra Head.
-- When confirmation is received for the commit transaction,
-send a request to all other Hydra delegates to commit nothing to the Hydra Head.
-- Send a request to the chosen delegate server to open the Hydra Head.
 
 **newBidL1.** Submit a new bid as an L1 transaction to the Cardano node.
 
+This is required for cases of non-honest delegate server,
+which closed bidding to early.
+Normaly all bids are placed in L2.
+
 Request parameters:
 
-- …
+- Auction ID
+- Bid amount
 
 **newBidL2.** Send a request to a given delegate server (chosen by the bidder)
 to submit a new bid as an L2 transaction to the Hydra Head.
@@ -233,16 +233,19 @@ Cache this post-dated transaction for the bidder.
 **closeHeadByBidder.** Submit the cached post-dated L1 closing transaction
 to the Cardano node.
 
-Request parameters:
+This is required on case of non-honest delegates,
+normally they should do that automatically.
 
-- …
+No request parameters required.
 
-**fanout.** Fan out the standing bid utxo from the Hydra Head,
+**fanoutByBidder.** Fan out the standing bid utxo from the Hydra Head,
 so that it can be used in L1 transactions.
 
-Request parameters:
+This is required on case of non-honest delegates,
+normally they should do that automatically.
 
-- …
+
+No request parameters required.
 
 ### Delegate server
 
