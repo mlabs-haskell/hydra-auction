@@ -145,6 +145,8 @@ to all the potential users in the auction (Alice, Bob, etc.)
 and provide a freshly minted NFT to the recipient,
 so that the NFT can be put up for auction.
 
+This action only makes sense when auction is running on devnet.
+
 Request parameters:
 
 - NFT recipient
