@@ -54,18 +54,17 @@ all daemon services are started (Cardano node, Delegate servers, Hydra nodes).
 9. One of the delegates or bidders closes the Hydra Head on L1.
 The delegates' Hydra nodes continuously monitor L1 for this closing transaction,
 ready to submit contesting transactions if necessary.
-10. Delegates may contest the snapshot with which the Hydra Head was closed.
-11. The seller or one of the bidders or delegates
+10. The seller or one of the bidders or delegates
 fans out the standing bid to L1.
-12. **(Bidding end time is reached)**
-13. The winning bidder may buy the auction lot.
-14. **(Voucher expiry time is reached)**
-15. If the auction lot has not been bought by the winning bidder,
+11. **(Bidding end time is reached)**
+12. The winning bidder may buy the auction lot.
+13. **(Voucher expiry time is reached)**
+14. If the auction lot has not been bought by the winning bidder,
 then the seller reclaims the auction lot
 and may claim the winning bidder’s bidder deposit.
-16. One of the delegates distributes the auction fees to the delegates.
-17. **(Cleanup time is reached)**
-18. The seller spends the standing bid utxo and burns the voucher token.
+15. One of the delegates distributes the auction fees to the delegates.
+16. **(Cleanup time is reached)**
+17. The seller spends the standing bid utxo and burns the voucher token.
 
 ## Services
 
