@@ -149,11 +149,7 @@ Request parameters:
 
 - NFT recipient
 
-**showUtxos.** Show the utxos owned by the user.
-
-Request parameters:
-
-- User
+**showUtxos.** Show the utxos owned by the current user.
 
 **showAllUtxos.** Show the utxos of all users (Alice, Bob, etc.).
 
