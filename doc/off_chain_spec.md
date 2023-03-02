@@ -244,9 +244,24 @@ so that it can be used in L1 transactions.
 This is required on case of non-honest delegates,
 normally they should do that automatically.
 
-
 No request parameters required.
 
 ### Delegate server
 
-…
+Things which should be done automatically:
+
+* Hydra node is called to initialize Head, once Delegate is started.
+* Once one Delegate (via Hydra node) made a commit with standing bid UTxO,
+  all other Delegates place empty commits.
+  Commiting status may be monitored on L2.
+  All commits are required to open Hydra Head,
+  which will be done by Hydra node automatically, once everyone commited.
+  * If they do not - Head is aborted on `voucherExpriy`.
+* Head is closed on `biddingEnd`.
+  Otherwise bidders may place bids after it,
+  because time validity cannot be enforced for transactions on L2.
+* `Fanout` is triggered once contestation time ended.
+
+API:
+
+* `newBid` (used by `newBidL2` in Frontend CLI)
