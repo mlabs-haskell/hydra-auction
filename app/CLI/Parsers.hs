@@ -79,6 +79,7 @@ cliActionParser =
               (ShowCurrentStage <$> auctionName)
               (progDesc "Show current auction stage - which depends on time since auction announcement")
           )
+        <> command "watch" (info (Watch <$> auctionName) (progDesc "Watch auction state and participants"))
         <> command "show-all-utxos" (info (pure ShowAllUtxos) (progDesc "Shows utxos for all actors"))
         <> command "show-current-winner-bidder" (info (ShowCurrentWinnigBidder <$> auctionName) (progDesc "Show current winning bidder for auction"))
         <> command "seed" (info (pure Seed) (progDesc $ "Provides " <> show seedAmount <> " Lovelace for the given actor"))

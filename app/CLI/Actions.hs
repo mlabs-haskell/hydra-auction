@@ -6,19 +6,21 @@ module CLI.Actions (
 ) where
 
 -- Prelude imports
-import Hydra.Prelude (ask, liftIO)
+import Hydra.Prelude (UTCTime, addUTCTime, ask, liftIO)
 import Prelude
 
 -- Haskell imports
-import Control.Concurrent (threadDelay)
-import Control.Concurrent.Async (Async, async, cancel)
-import Control.Monad (forM_, void, when)
-import Data.IORef (IORef, modifyIORef, newIORef, readIORef, writeIORef)
-import Data.Map.Strict (Map)
-import Data.Map.Strict qualified as Map
+
+import Control.Concurrent.AlarmClock (newAlarmClock, setAlarm)
+import Control.Concurrent.MVar (MVar, newEmptyMVar, putMVar, takeMVar)
+import Control.Monad (forM_, void)
+import Data.Time.Clock.POSIX qualified as POSIXTime
+import System.Console.Concurrent (outputConcurrent)
+import System.Console.Regions (ConsoleRegion, RegionLayout (..), displayConsoleRegions, openConsoleRegion, setConsoleRegion)
 
 -- Plutus imports
 import Plutus.V1.Ledger.Address (pubKeyHashAddress)
+import Plutus.V1.Ledger.Time (POSIXTime (..))
 
 -- Hydra imports
 import Hydra.Cardano.Api (Lovelace, TxIn, pattern ShelleyAddressInEra)
@@ -29,6 +31,7 @@ import HydraAuction.OnChain (AuctionScript)
 import HydraAuction.Runner (
   ExecutionContext (..),
   Runner,
+  executeRunner,
   initWallet,
   withActor,
  )
@@ -42,7 +45,7 @@ import HydraAuction.Tx.Escrow (
  )
 import HydraAuction.Tx.StandingBid
 import HydraAuction.Tx.TestNFT
-import HydraAuction.Types (AuctionStage (..), AuctionTerms, Natural)
+import HydraAuction.Types (AuctionStage (..), AuctionTerms (..), Natural)
 
 -- Hydra auction CLI imports
 import CLI.Config (
@@ -73,6 +76,7 @@ data CliAction
   | Prepare !Actor
   | MintTestNFT
   | AuctionAnounce !AuctionName !TxIn
+  | Watch !AuctionName
   | StartBidding !AuctionName
   | NewBid !AuctionName !Natural
   | BidderBuys !AuctionName
@@ -101,10 +105,7 @@ doOnMatchingStage terms requiredStage action = do
 handleCliAction :: CliAction -> Runner ()
 handleCliAction userAction = do
   MkExecutionContext {actor} <- ask
-  -- FIXME: somehow clean on process interuptions
-  stateChangeNotifyingAsyncs <-
-    liftIO $
-      newIORef (Map.empty :: Map AuctionName (Async ()))
+  watchLock <- liftIO newEmptyMVar
   case userAction of
     ShowCurrentStage auctionName -> do
       -- FIXME: proper error printing
@@ -145,11 +146,19 @@ handleCliAction userAction = do
       -- FIXME: proper error printing
       Just config <- liftIO $ readAuctionTermsConfig auctionName
       terms <- liftIO $ configToAuctionTerms config dynamic
-      asyncId <- liftIO $ async $ notifyOnStageChangeThread terms auctionName
-      liftIO $
-        modifyIORef stateChangeNotifyingAsyncs $
-          Map.insert auctionName asyncId
       announceAuction terms
+    Watch auctionName -> do
+      ctx <- ask
+      -- FIXME: proper error printing
+      liftIO $
+        displayConsoleRegions $ do
+          Just terms <- readAuctionTerms auctionName
+          stageRegion <- openConsoleRegion Linear
+          winnerRegion <- openConsoleRegion Linear
+          outputConcurrent $ "Auction: " <> show auctionName <> "\n"
+          setTimerUpdateWinningBidder terms winnerRegion ctx
+          setTimerUpdateStage terms stageRegion watchLock
+          takeMVar watchLock
     StartBidding auctionName -> do
       -- FIXME: proper error printing
       Just terms <- liftIO $ readAuctionTerms auctionName
@@ -193,34 +202,38 @@ handleCliAction userAction = do
     Cleanup auctionName -> do
       -- FIXME: proper error printing
       Just terms <- liftIO $ readAuctionTerms auctionName
-
-      liftIO $ do
-        asyncMap <- readIORef stateChangeNotifyingAsyncs
-        let asyncId = asyncMap Map.! auctionName
-        cancel asyncId
-        modifyIORef stateChangeNotifyingAsyncs $ Map.delete auctionName
-
       doOnMatchingStage terms VoucherExpiredStage $
         cleanupTx terms
 
-notifyOnStageChangeThread :: AuctionTerms -> AuctionName -> IO ()
-notifyOnStageChangeThread terms auctionName = do
+setTimerUpdateWinningBidder :: AuctionTerms -> ConsoleRegion -> ExecutionContext -> IO ()
+setTimerUpdateWinningBidder terms region ctx = do
+  winningBidderAddress <- executeRunner ctx $ currentWinningBidder terms
+  setConsoleRegion region ("Winner: " <> show winningBidderAddress)
+  now <- POSIXTime.getCurrentTime
+  alarm <- newAlarmClock $ \_ -> setTimerUpdateWinningBidder terms region ctx
+  setAlarm alarm (addUTCTime 120 now)
+
+setTimerUpdateStage :: AuctionTerms -> ConsoleRegion -> MVar () -> IO ()
+setTimerUpdateStage terms region watchLock = do
   stage <- currentAuctionStage terms
-  previousStageVar <- newIORef stage
-  stageCheckingLoop previousStageVar
+  let nextStage = getNextStage stage
+  setConsoleRegion region ("Stage: " <> show stage)
+  if nextStage /= stage
+    then do
+      alarm <- newAlarmClock $ \_ -> setTimerUpdateStage terms region watchLock
+      setAlarm alarm (whenIsStageUTC nextStage terms)
+    else putMVar watchLock ()
   where
-    stageCheckingLoop :: IORef AuctionStage -> IO ()
-    stageCheckingLoop previousStageVar = do
-      currentStage <- currentAuctionStage terms
-      previousStage <- readIORef previousStageVar
-      when (currentStage /= previousStage) $ do
-        putStrLn
-          ( "Current stage of auction " <> show auctionName
-              <> " changed into: "
-              <> show currentStage
-              <> " from: "
-              <> show previousStage
-          )
-        writeIORef previousStageVar currentStage
-      threadDelay 250_000
-      stageCheckingLoop previousStageVar
+    getNextStage AnnouncedStage = BiddingStartedStage
+    getNextStage BiddingStartedStage = BiddingEndedStage
+    getNextStage BiddingEndedStage = VoucherExpiredStage
+    getNextStage VoucherExpiredStage = VoucherExpiredStage
+
+whenIsStageUTC :: AuctionStage -> AuctionTerms -> UTCTime
+whenIsStageUTC BiddingStartedStage terms = posixToUTC $ biddingStart terms
+whenIsStageUTC BiddingEndedStage terms = posixToUTC $ biddingEnd terms
+whenIsStageUTC VoucherExpiredStage terms = posixToUTC $ voucherExpiry terms
+whenIsStageUTC s _ = error $ "whenIsStageUTC called on " <> show s
+
+posixToUTC :: POSIXTime -> UTCTime
+posixToUTC = POSIXTime.posixSecondsToUTCTime . fromInteger . (`div` 1000) . getPOSIXTime

@@ -179,10 +179,13 @@ getStadingBidDatum standingBidUtxo =
 currentWinningBidder :: AuctionTerms -> Runner (Maybe PubKeyHash)
 currentWinningBidder terms = do
   standingBidUtxo <- scriptUtxos StandingBid terms
-  let StandingBidDatum {standingBidState} = getStadingBidDatum standingBidUtxo
-  return $ case standingBidState of
-    (Bid (BidTerms {bidBidder})) -> Just bidBidder
-    NoBid -> Nothing
+  case UTxO.pairs standingBidUtxo of
+    [] -> pure Nothing
+    _ -> do
+      let StandingBidDatum {standingBidState} = getStadingBidDatum standingBidUtxo
+      pure $ case standingBidState of
+        (Bid (BidTerms {bidBidder})) -> Just bidBidder
+        NoBid -> Nothing
 
 bidderBuys :: AuctionTerms -> Runner ()
 bidderBuys terms = do

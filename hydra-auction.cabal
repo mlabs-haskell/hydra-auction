@@ -130,6 +130,7 @@ executable hydra-auction
 
   build-depends:
     , aeson
+    , alarmclock
     , array
     , base
     , bech32
@@ -151,6 +152,7 @@ executable hydra-auction
     , cardano-prelude
     , cardano-slotting                ==0.1.0.0
     , cborg
+    , concurrent-output
     , containers
     , data-default
     , directory
