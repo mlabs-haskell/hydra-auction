@@ -2,7 +2,7 @@
 
 In the Hydra Auction architecture,
 commands/requests flow from people (Seller, Bidder, Delegate)
-to systems (Frontend/CLI, Cardano node, Delegate server, Hydra node) as follows:
+to systems (Frontend/CLI, Cardano node, delegate server, Hydra node) as follows:
 
 ```mermaid
 flowchart TB
@@ -39,18 +39,18 @@ In the rest of this document,
 we will describe each of these systems
 and the request types that people can submit to those systems.
 
-## Limitations of current approach
+## Limitations of the current approach
 
-* All auctions users are from predefined list of actors
+* All auction users are from a predefined list of actors
   (with fixed keys laying in `data/credentials`).
   This is only to simplify demonstration,
   no real limitation for that in scripts exists.
-* All Hydra nodes know each others IPs before starting node
+* All Hydra nodes know each others' IPs before starting a node
   (this is a current limitation of Hydra).
-* Multiple Delegates per single Hydra node topology is not possible,
-  due to Hydra API allowing any actions from any client.
-* Single auction could be placed on single Hydra head.
-
+* Multiple delegates cannot share a single Hydra node,
+  due to the Hydra API allowing any actions from any client.
+* An auction can only be hosted on a single Hydra Head
+  and a Hydra Head can only host one auction.
 
 ## Off-chain workflow
 
@@ -92,8 +92,8 @@ provided by a light-wallet backend.
 Alternatively, for full decentralization, a user could in principle
 choose to run their own Cardano node, without a trusted intermediary.
 
-For testing purposes local cardano-node could be used, which is started
-using `docker-compose`.
+For testing purposes, a local Cardano node cluster (with one node)
+can be started using `docker-compose`.
 
 <table><tr><td>
 
@@ -117,10 +117,13 @@ The Hydra node is responsible for broadcasting L2 transactions to the Hydra Head
 and participating in the Hydra Head consensus protocol
 (including L1 Hydra Head transactions).
 
-Hydra node API should be only accessible by Delegate server.
-API reference: https://hydra.family/head-protocol/api-reference
+The Hydra node API should be only accessible to the delegate server.
+It should not be directly accessible to sellers or bidders.
 
-Delegate server may use this commands: `Init`, `Commit`, `NewTx`, `GetUTxO`, `Close`, `Fanout`.
+The delegate server may send the following commands to the Hydra node:
+`Init`, `Commit`, `NewTx`, `GetUTxO`, `Close`, `Fanout`.
+
+Hydra API reference: https://hydra.family/head-protocol/api-reference
 
 ### Delegate server
 
@@ -148,7 +151,7 @@ Command parameters:
 
 ### Frontend CLI
 
-The frontend CLI is a program that can be run by each of the seller and bidders.
+The frontend CLI is a program that can be run by sellers and bidders.
 It provides an interactive prompt
 for them to submit their actions to interact with the auction.
 
@@ -158,8 +161,8 @@ for them to submit their actions to interact with the auction.
 
 Command parameters:
 
-- User for transactions
-  (taken from predefined list of actors)
+- User
+  (selected from a predefined list of actors)
 
 </td></tr><tr></tr><tr><td>
 
@@ -180,7 +183,8 @@ to all the potential users in the auction (Alice, Bob, etc.)
 and provide a freshly minted NFT to the recipient,
 so that the NFT can be put up for auction.
 
-This action only makes sense when auction is running on devnet.
+This action is intended for testing purposes on local devnets.
+It has no effect on mainnet or public testnets.
 
 Request parameters:
 
@@ -250,9 +254,12 @@ to commit the standing bid utxo to the Hydra Head.
 
 **newBidL1.** Submit a new bid as an L1 transaction to the Cardano node.
 
-This is required for cases of non-honest delegate server,
-which closed bidding to early.
-Normaly all bids are placed in L2.
+This request is needed for the fallback scenario when
+the standing bid is not on L2 because either
+it was never moved there
+or the Hydra Head closed prematurely.
+
+Normally, all bids should be submitted to L2.
 
 Request parameters:
 
@@ -266,6 +273,7 @@ to submit a new bid as an L2 transaction to the Hydra Head.
 
 Request parameters:
 
+- Auction ID
 - Bid amount
 - Delegate server ID
 
@@ -283,20 +291,28 @@ Cache this post-dated transaction for the bidder.
 **closeHeadByBidder.** Submit the cached post-dated L1 closing transaction
 to the Cardano node.
 
-This is required on case of non-honest delegates,
-normally they should do that automatically.
+This request is needed for the fallback scenario
+when the delegates fail to close the Hydra Head
+in time for the contestation period to end
+by the bidding end time.
+In that scenario, a bidder can use this request
+to force the Hydra Head to close, preventing
+the Hydra Head from staying open
+significantly past the bidding end time.
 
-No request parameters required.
+No request parameters are required.
 
 </td></tr><tr></tr><tr><td>
 
 **fanoutByBidder.** Fan out the standing bid utxo from the Hydra Head,
 so that it can be used in L1 transactions.
 
-This is required on case of non-honest delegates,
-normally they should do that automatically.
+This request is needed in case the delegates'
+hydra nodes fail to fan out the standing bid
+after the Hydra Head closes.
+Normally, that should happen automatically.
 
-No request parameters required.
+No request parameters are required.
 
 </td></tr></table>
 
@@ -304,34 +320,56 @@ No request parameters required.
 
 Things which should be done automatically:
 
-* Hydra node is called to initialize Head, once Delegate is started.
-* Once one Delegate (via Hydra node) made a commit with standing bid UTxO,
-  all other Delegates place empty commits.
-  Commiting status may be monitored on L2.
-  All commits are required to open Hydra Head,
-  which will be done by Hydra node automatically, once everyone commited.
-  * If they do not - Head is aborted on `voucherExpriy`.
-* Head is closed on `biddingEnd`.
-  Otherwise bidders may place bids after it,
-  because time validity cannot be enforced for transactions on L2.
-* `Fanout` is triggered once contestation time ended.
+* When a delegate server starts,
+  its corresponding Hydra node should start
+  and request the initialization of the Hydra Head.
+* When one of the delegates makes a commit
+  (via Hydra node) with the standing bid UTxO,
+  all of the other delegates should make empty commits.
+  They should be able to do this by monitoring
+  the commit messages on L2.
+* The Hydra Head should be opened automatically
+  as soon as all Hydra nodes commit.
+* If the Hydra Head isn't opened before the bidding end time,
+  it should be aborted.
+* By the bidding end time, the Hydra Head should be closed
+  and all contestation requests should be exhausted.
+  Otherwise, bidders would be able to submit new bids on L2
+  past the bidding end time.
+* `Fanout` should be triggered when the contestation
+  period ends.
 
 <table><tr><td>
 
-**commitStangingBid.** Used by `moveStandingBidToL2` in Frontend CLI.
+**commitStandingBid.** Used by `moveStandingBidToL2` in Frontend CLI.
 
-Required params:
+Request parameters:
 
-* Utxo which should be commited.
-  * Currently commiting script addresses is not supported by Hydra.
-    Details of implementation of this command depend on future API for them.
+* The Utxo that should be commited.
 * Serialized `AuctionTerms`.
-  Are required to know timing for actions performed automatically by
-  * They should be checked by mathing `CurrencySymbol` to prevent
-    timing manipulation by bidder.
+
+The `AuctionTerms` should be validated by the delegate
+by computing a `CurrencySymbol` of the voucher minting policy
+applied to these terms
+and comparing it to the voucher token
+contained in the utxo to be committed.
+
+**Note:** Implementation for this API request is currently blocked
+because Hydra nodes do not support creating transactions
+to commit utxos from script addresses to a Hydra Head.
+The implementation details of this request depend on
+how this feature will be implemented in Hydra.
 
 </td></tr><tr></tr><tr><td>
 
-**newBid.** Used by `newBidL2` in Frontend CLI.
+**newBid.** Construct and submit a `NewBid` transaction on L2,
+based on the information provided in the request parameters.
+
+Request parameters:
+- Auction ID
+- Bid amount
+
+This request is sent by the Frontend CLI when it receives
+a `newBidL2` request from a bidder.
 
 </td></tr></table>
