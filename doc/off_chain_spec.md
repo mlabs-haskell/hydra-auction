@@ -95,6 +95,8 @@ choose to run their own Cardano node, without a trusted intermediary.
 For testing purposes local cardano-node could be used, which is started
 using `docker-compose`.
 
+<table><tr><td>
+
 **start.** Start a Cardano node, as a single-node development network (devnet)
 or as a node on a known Cardano network (mainnet or testnet).
 
@@ -103,7 +105,11 @@ Command parameters:
 - Cardano node config (state directory, tracer, etc.)
 - Cardano network type = Devnet | Known network
 
+</td></tr><tr></tr><tr><td>
+
 **stop.** Stop the Cardano node.
+
+</td></tr></table>
 
 ### Hydra node
 
@@ -125,6 +131,8 @@ to submit to the delegate’s Hydra node.
 
 Each delegate should have its own delegate server and Hydra node running.
 
+<table><tr><td>
+
 **start.** Start a delegate server and an associated Hydra Node.
 
 Command parameters:
@@ -132,13 +140,19 @@ Command parameters:
 - Delegate server ID
 - Delegate server config
 
+</td></tr><tr></tr><tr><td>
+
 **stop.** Stop the delegate server and its associated Hydra node.
+
+</td></tr></table>
 
 ### Frontend CLI
 
 The frontend CLI is a program that can be run by each of the seller and bidders.
 It provides an interactive prompt
 for them to submit their actions to interact with the auction.
+
+<table><tr><td>
 
 **start.** Start a frontend CLI session.
 
@@ -147,13 +161,19 @@ Command parameters:
 - User for transactions
   (taken from predefined list of actors)
 
+</td></tr><tr></tr><tr><td>
+
 **stop.** Quit the frontend CLI session.
 
-## APIs
+</td></tr></table>
+
+## API
 
 ### Frontend CLI
 
 The `AuctionTerms` for the Auction ID are cached in the auction state directory.
+
+<table><tr><td>
 
 **prepare.** Distribute ADA from the faucet
 to all the potential users in the auction (Alice, Bob, etc.)
@@ -166,11 +186,15 @@ Request parameters:
 
 - NFT recipient
 
+</td></tr><tr></tr><tr><td>
+
 **showUtxos.** Show the utxos owned by the current user.
 
 **showAllUtxos.** Show the utxos of all users (Alice, Bob, etc.).
 
 Request parameters: none.
+
+</td></tr><tr></tr><tr><td>
 
 **announceAuction.** Construct `AuctionTerms`
 using the request parameters provided
@@ -184,6 +208,8 @@ Request parameters:
 - Hydra Head ID
 - Delegates
 
+</td></tr><tr></tr><tr><td>
+
 **startBiddingL2.** Execute a sequence of actions to allow bidding to start on L2.
 
 Request parameters:
@@ -194,6 +220,8 @@ Request parameters:
 This endpoint is equivalent to
 calling startBiddingL1 and then calling moveStandingBidToL2.
 
+</td></tr><tr></tr><tr><td>
+
 **startBiddingL1.** If the request submitter is the seller
 corresponding to the `AuctionTerms` of the Auction ID,
 then submit an L1 transaction to the Cardano node
@@ -202,6 +230,8 @@ to start the bidding for the auction.
 Request parameters:
 
 - Auction ID
+
+</td></tr><tr></tr><tr><td>
 
 **moveStandingBidToL2.** Commit the standing bid to the Hydra Head
 and coordinate the opening of the Hydra Head.
@@ -216,6 +246,8 @@ This endpoint performs the following actions:
 - Send a request to the chosen delegate server
 to commit the standing bid utxo to the Hydra Head.
 
+</td></tr><tr></tr><tr><td>
+
 **newBidL1.** Submit a new bid as an L1 transaction to the Cardano node.
 
 This is required for cases of non-honest delegate server,
@@ -226,6 +258,8 @@ Request parameters:
 
 - Auction ID
 - Bid amount
+
+</td></tr><tr></tr><tr><td>
 
 **newBidL2.** Send a request to a given delegate server (chosen by the bidder)
 to submit a new bid as an L2 transaction to the Hydra Head.
@@ -244,6 +278,8 @@ which he can submit start from (biddingEnd - contestationPeriodDuration).
 
 Cache this post-dated transaction for the bidder.
 
+</td></tr><tr></tr><tr><td>
+
 **closeHeadByBidder.** Submit the cached post-dated L1 closing transaction
 to the Cardano node.
 
@@ -252,6 +288,8 @@ normally they should do that automatically.
 
 No request parameters required.
 
+</td></tr><tr></tr><tr><td>
+
 **fanoutByBidder.** Fan out the standing bid utxo from the Hydra Head,
 so that it can be used in L1 transactions.
 
@@ -259,6 +297,8 @@ This is required on case of non-honest delegates,
 normally they should do that automatically.
 
 No request parameters required.
+
+</td></tr></table>
 
 ### Delegate server
 
@@ -276,11 +316,9 @@ Things which should be done automatically:
   because time validity cannot be enforced for transactions on L2.
 * `Fanout` is triggered once contestation time ended.
 
-API:
+<table><tr><td>
 
-**commitStangingBid**
-
-Used by `moveStandingBidToL2` in Frontend CLI.
+**commitStangingBid.** Used by `moveStandingBidToL2` in Frontend CLI.
 
 Required params:
 
@@ -292,6 +330,8 @@ Required params:
   * They should be checked by mathing `CurrencySymbol` to prevent
     timing manipulation by bidder.
 
-**newBid.**
+</td></tr><tr></tr><tr><td>
 
-Used by `newBidL2` in Frontend CLI.
+**newBid.** Used by `newBidL2` in Frontend CLI.
+
+</td></tr></table>
