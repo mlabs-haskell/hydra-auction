@@ -276,4 +276,20 @@ Things which should be done automatically:
 
 API:
 
-* `newBid` (used by `newBidL2` in Frontend CLI)
+**commitStangingBid**
+
+Used by `moveStandingBidToL2` in Frontend CLI.
+
+Required params:
+
+* Utxo which should be commited.
+  * Currently commiting script addresses is not supported by Hydra.
+    Details of implementation of this command depend on future API for them.
+* Serialized `AuctionTerms`.
+  Are required to know timing for actions performed automatically by
+  * They should be checked by mathing `CurrencySymbol` to prevent
+    timing manipulation by bidder.
+
+**newBid.**
+
+Used by `newBidL2` in Frontend CLI.
