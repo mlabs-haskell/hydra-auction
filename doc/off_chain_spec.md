@@ -12,7 +12,7 @@ flowchart TB
     frontend(Frontend CLI)
   end
 
-  subgraph Hydra
+  subgraph Hydra-based Auction Hosting
     delegate([Delegate])
     delegateServer(Delegate server)
     hydraNode(Hydra node)
@@ -21,6 +21,8 @@ flowchart TB
   subgraph Cardano
     cardanoNode(Cardano node)
   end
+
+  admin([Admin])
 
   admin -- start/stop -----> cardanoNode
   seller -- request --> frontend
