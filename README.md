@@ -93,7 +93,7 @@ cabal run --ghc-option='-Wwarn'
 
 ## Specification
 
-The full specification can be read [here](/doc/spec.md).
+The full specification can be read here: [on on-chain](/doc/on_chain_spec.md) and [on off-chain](/doc/off_chain_spec.md).
 
 ## Licensing
 
