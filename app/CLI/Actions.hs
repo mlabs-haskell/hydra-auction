@@ -1,5 +1,4 @@
 module CLI.Actions (
-  CliInput (..),
   CliAction (..),
   handleCliAction,
   seedAmount,
@@ -68,11 +67,6 @@ data CliAction
   | SellerReclaims !AuctionName
   | Cleanup !AuctionName
   deriving stock (Show)
-
-data CliInput = MkCliInput
-  { cliActor :: Actor
-  , cliVerbosity :: Bool
-  }
 
 handleCliAction :: CliAction -> Runner ()
 handleCliAction userAction = do

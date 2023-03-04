@@ -43,9 +43,14 @@ import HydraAuction.OnChain (AuctionScript (..))
 import HydraAuction.Types (Natural, intToNatural)
 
 -- Hydra auction CLI imports
-import CLI.Actions (CliAction (..), CliInput (..), seedAmount)
+import CLI.Actions (CliAction (..), seedAmount)
 import CLI.Config (AuctionName (..))
 import CLI.Parsers.TxIn (parseTxIn)
+
+data CliInput = MkCliInput
+  { cliActor :: !Actor
+  , cliVerbosity :: !Bool
+  }
 
 parseCliAction :: [String] -> Either String CliAction
 parseCliAction s = case execParserPure preferences options s of
