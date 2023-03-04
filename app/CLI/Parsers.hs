@@ -2,6 +2,7 @@ module CLI.Parsers (
   getCliInput,
   parseCliAction,
   CliInput (..),
+  PromptOptions (..),
 ) where
 
 -- Prelude imports
@@ -46,11 +47,32 @@ import HydraAuction.Types (Natural, intToNatural)
 import CLI.Actions (CliAction (..), seedAmount)
 import CLI.Config (AuctionName (..))
 import CLI.Parsers.TxIn (parseTxIn)
+import Cardano.Prelude (asum)
 
-data CliInput = MkCliInput
+data CliInput
+  = Watch !AuctionName
+  | InteractivePrompt !PromptOptions
+
+data PromptOptions = MkPromptOptions
   { cliActor :: !Actor
   , cliVerbosity :: !Bool
   }
+
+getCliInput :: IO CliInput
+getCliInput = customExecParser preferences options
+  where
+    options =
+      info
+        (cliInputParser <**> helper)
+        fullDesc
+    preferences = prefs (showHelpOnEmpty <> showHelpOnError)
+
+cliInputParser :: Parser CliInput
+cliInputParser =
+  asum
+    [ Watch <$> watchAuction
+    , InteractivePrompt <$> (MkPromptOptions <$> actor <*> verboseParser)
+    ]
 
 parseCliAction :: [String] -> Either String CliAction
 parseCliAction s = case execParserPure preferences options s of
@@ -61,15 +83,6 @@ parseCliAction s = case execParserPure preferences options s of
     options =
       info
         (cliActionParser <**> helper)
-        fullDesc
-    preferences = prefs (showHelpOnEmpty <> showHelpOnError)
-
-getCliInput :: IO CliInput
-getCliInput = customExecParser preferences options
-  where
-    options =
-      info
-        (cliInputParser <**> helper)
         fullDesc
     preferences = prefs (showHelpOnEmpty <> showHelpOnError)
 
@@ -135,6 +148,16 @@ bidAmount =
           <> help "Bid amount"
       )
 
+watchAuction :: Parser AuctionName
+watchAuction =
+  AuctionName
+    <$> strOption
+      ( short 'w'
+          <> long "watch-auction"
+          <> metavar "AUCTION"
+          <> help "Watch the status of the given auction"
+      )
+
 parseActor :: String -> Actor
 parseActor "alice" = Alice
 parseActor "bob" = Bob
@@ -158,6 +181,3 @@ parseAda = fromJust . intToNatural . (* 1_000_000) . read
 
 verboseParser :: Parser Bool
 verboseParser = switch (long "verbose" <> short 'v')
-
-cliInputParser :: Parser CliInput
-cliInputParser = MkCliInput <$> actor <*> verboseParser

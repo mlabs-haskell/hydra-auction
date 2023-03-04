@@ -34,15 +34,20 @@ import HydraAuction.Runner (
 import CLI.Actions (CliAction, handleCliAction)
 import CLI.CardanoNode (getCardanoNode, runCardanoNode)
 import CLI.Parsers (
-  CliInput (MkCliInput, cliActor, cliVerbosity),
+  CliInput (InteractivePrompt, Watch),
+  PromptOptions (MkPromptOptions, cliActor, cliVerbosity),
   getCliInput,
   parseCliAction,
  )
 
 main :: IO ()
 main = do
-  MkCliInput {cliVerbosity, cliActor} <- getCliInput
+  ci <- getCliInput
+  handleCliInput ci
 
+handleCliInput :: CliInput -> IO ()
+handleCliInput (Watch _auctionName) = pure ()
+handleCliInput (InteractivePrompt MkPromptOptions {cliVerbosity, cliActor}) = do
   let hydraVerbosity = if cliVerbosity then Verbose "hydra-auction" else Quiet
   tracer <- stdoutOrNullTracer hydraVerbosity
 
