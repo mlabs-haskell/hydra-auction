@@ -69,7 +69,7 @@ data CliAction
   | ShowScriptUtxos !AuctionName !AuctionScript
   | ShowUtxos
   | ShowAllUtxos
-  | ShowCurrentWinnigBidder !AuctionName
+  | ShowCurrentWinningBidder !AuctionName
   | Seed
   | Prepare !Actor
   | MintTestNFT
@@ -151,7 +151,7 @@ handleCliAction userAction = do
         liftIO $ print a
         liftIO $ prettyPrintUtxo utxos
         liftIO $ putStrLn "\n"
-    ShowCurrentWinnigBidder auctionName -> do
+    ShowCurrentWinningBidder auctionName -> do
       -- FIXME: proper error printing
       Just terms <- liftIO $ readAuctionTerms auctionName
       -- FIXME: show actor instread of PubKey
