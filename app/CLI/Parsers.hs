@@ -67,9 +67,9 @@ cliActionParser :: Parser CliAction
 cliActionParser =
   hsubparser
     ( command "show-script-utxos" (info (ShowScriptUtxos <$> auctionName <*> script) (progDesc "Show utxos at a given script. Requires the seller and auction lot for the given script"))
-        <> command "show-utxos" (info (pure ShowUtxos) (progDesc "Shows utxos for a given actor"))
+        <> command "show-utxos" (info (pure ShowUtxos) (progDesc "Shows utxos for current actor"))
         <> command "show-all-utxos" (info (pure ShowAllUtxos) (progDesc "Shows utxos for all actors"))
-        <> command "seed" (info (pure Seed) (progDesc $ "Provides " <> show seedAmount <> " Lovelace for the given actor"))
+        <> command "seed" (info (pure Seed) (progDesc $ "Provides " <> show seedAmount <> " Lovelace for current actor"))
         <> command "prepare-for-demo" (info (Prepare <$> actor) (progDesc $ "Provides " <> show seedAmount <> " Lovelace for every actor and 1 Test NFT for given actor"))
         <> command "mint-test-nft" (info (pure MintTestNFT) (progDesc "Mints an NFT that can be used as auction lot"))
         <> command "announce-auction" (info (AuctionAnounce <$> auctionName) (progDesc "Create an auction"))
