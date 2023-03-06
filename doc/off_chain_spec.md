@@ -425,8 +425,7 @@ Things which should be done automatically:
   as soon as all Hydra nodes commit.
 * If the Hydra Head isn't opened before the bidding end time,
   it should be aborted by Delegate server.
-* By the bidding end time, the Hydra Head should be closed
-  and all contestation requests should be exhausted.
+* Delegate server closes the Hydra Head at the bidding end time.
   Otherwise, bidders would be able to submit new bids on L2
   past the bidding end time.
 * `Fanout` should be triggered when the contestation
