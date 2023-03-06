@@ -428,6 +428,8 @@ Things which should be done automatically:
 * Delegate server closes the Hydra Head at the bidding end time.
   Otherwise, bidders would be able to submit new bids on L2
   past the bidding end time.
+* Delegate server submits fee distribution transaction,
+  if after voucher expiry fee escrow is present.
 * `Fanout` should be triggered when the contestation
   period ends.
 
