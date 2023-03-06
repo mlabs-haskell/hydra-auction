@@ -335,7 +335,13 @@ Request parameters:
 
 **sellerReclaims.** Used by the seller.
 
-Submits a transaction that spends the auction escrow utxo with the `SellerReclaims` redeemer and spends (if available) the winning bidder's deposit with the SellerClaimsDeposit redeemer.
+Performed after VoucherExpiry.
+
+Submits a transaction that spends the auction escrow utxo
+with the `SellerReclaims` redeemer and spends
+(it is guaranted to be available)
+the winning bidder's deposit
+with the SellerClaimsDeposit redeemer.
 
 Request parameters:
 
