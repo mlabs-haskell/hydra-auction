@@ -13,3 +13,6 @@ done
 echo '. done'
 echo 'Setting correct node socket permissions'
 sudo chown -Rv $(id -u):$(id -g) devnet/ipc
+
+echo "Setup cardano-cli env to connect to started network"
+export CARDANO_NODE_SOCKET_PATH=./devnet/ipc/node.socket
