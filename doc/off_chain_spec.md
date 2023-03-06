@@ -206,6 +206,8 @@ Construct `AuctionTerms` using the request parameters provided
 (seller implicitly set to the request submitter),
 and submit an L1 transaction to the Cardano node.
 
+From this moment timing of stages begins.
+
 Request parameters:
 
 - Auction ID
@@ -216,6 +218,8 @@ Request parameters:
 </td></tr><tr></tr><tr><td>
 
 **createBidDeposit.** Used by bidders, to place deposit.
+
+Performed before BiddingStart.
 
 Approved bidders will be selected from bidders,
 which placed deposit big enough.
@@ -243,6 +247,8 @@ Response:
 
 **startBiddingL2.** Used by seller.
 
+Performed after BiddingStart and before BiddingEnd.
+
 Execute a sequence of actions to allow bidding to start on L2.
 
 Request parameters:
@@ -257,6 +263,8 @@ calling startBiddingL1 and then calling moveStandingBidToL2.
 </td></tr><tr></tr><tr><td>
 
 **startBiddingL1.** Used by seller.
+
+Performed after BiddingStart and before BiddingEnd.
 
 If the request submitter is the seller
 corresponding to the `AuctionTerms` of the Auction ID,
@@ -289,6 +297,8 @@ to commit the standing bid utxo to the Hydra Head.
 
 **newBidL1.** Submit a new bid as an L1 transaction to the Cardano node.
 
+Performed after BiddingStart and before BiddingEnd.
+
 This request is needed for the fallback scenario when
 the standing bid is not on L2 because either
 it was never moved there
@@ -305,6 +315,10 @@ Request parameters:
 
 **newBidL2.** Send a request to a given delegate server (chosen by the bidder)
 to submit a new bid as an L2 transaction to the Hydra Head.
+
+Performed after BiddingStart and before BiddingEnd.
+Timing could not be enforced on L2, but delegate will close Head
+on BiddingEnd.
 
 Request parameters:
 
@@ -324,6 +338,8 @@ Cache this post-dated transaction for the bidder.
 </td></tr><tr></tr><tr><td>
 
 **bidderBuys.** Used by the winning bidder.
+
+Peformed after BiddingEnd and before VoucherExpiry.
 
 Submits a transaction that spends the auction escrow utxo with the `BidderBuys` redeemer and spends (if available) the bidder's deposit with the WinningBidder redeemer.
 
@@ -350,6 +366,8 @@ Request parameters:
 </td></tr><tr></tr><tr><td>
 
 **refundDeposit.** Used by losing bidders.
+
+Peformed after BiddingEnd.
 
 Submits a transaction that spends a bidder deposit
 with the `LosingBidder` redeemer.
