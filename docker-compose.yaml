@@ -14,9 +14,7 @@ services:
       , "--config", "/devnet/cardano-node.json"
       , "--topology", "/devnet/topology.json"
       , "--database-path", "/devnet/db"
-      , "--shelley-kes-key", "/devnet/kes.skey"
-      , "--shelley-vrf-key", "/devnet/vrf.skey"
-      , "--shelley-operational-certificate", "/devnet/opcert.cert"
-      , "--byron-delegation-certificate", "/devnet/byron-delegation.cert"
-      , "--byron-signing-key", "/devnet/byron-delegate.key"
+      , "--shelley-operational-certificate", "/devnet/credentials/opcert1.cert"
+      , "--shelley-kes-key", "/devnet/credentials/delegate1.kes.skey"
+      , "--shelley-vrf-key", "/devnet/credentials/delegate1.vrf.skey"
       ]
