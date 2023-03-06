@@ -39,6 +39,9 @@ import CLI.Parsers (
   getCliInput,
   parseCliAction,
  )
+import CLI.Watch (
+  watchAuction,
+ )
 
 main :: IO ()
 main = do
@@ -46,7 +49,7 @@ main = do
   handleCliInput ci
 
 handleCliInput :: CliInput -> IO ()
-handleCliInput (Watch _auctionName) = pure ()
+handleCliInput (Watch auctionName) = watchAuction auctionName
 handleCliInput (InteractivePrompt MkPromptOptions {cliVerbosity, cliActor}) = do
   let hydraVerbosity = if cliVerbosity then Verbose "hydra-auction" else Quiet
   tracer <- stdoutOrNullTracer hydraVerbosity
