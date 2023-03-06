@@ -414,18 +414,17 @@ No request parameters are required.
 
 Things which should be done automatically:
 
-* When a delegate server starts,
-  its corresponding Hydra node should start
-  and request the initialization of the Hydra Head.
+* Delegate server should be started when Hydra node already running.
+  After start it asks for the initialization of the Hydra Head.
 * When one of the delegates makes a commit
   (via Hydra node) with the standing bid UTxO,
   all of the other delegates should make empty commits.
   They should be able to do this by monitoring
   the commit messages on L2.
-* The Hydra Head should be opened automatically
+* The Hydra Head is opened by Hydra node automatically
   as soon as all Hydra nodes commit.
 * If the Hydra Head isn't opened before the bidding end time,
-  it should be aborted.
+  it should be aborted by Delegate server.
 * By the bidding end time, the Hydra Head should be closed
   and all contestation requests should be exhausted.
   Otherwise, bidders would be able to submit new bids on L2
