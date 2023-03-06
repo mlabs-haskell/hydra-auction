@@ -162,6 +162,9 @@ data AuctionTerms = AuctionTerms
   , utxoNonce :: UtxoRef
   -- ^ The seller consumed this utxo input in the auction announcement
   -- transaction that provided the auction lot to the auction.
+  , minDepositSize :: Natural
+  -- ^ Minimal desposit amount, for which seller may include bidder
+  -- in the list of approved. Checked only off-chain.
   }
 ```
 

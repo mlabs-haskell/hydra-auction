@@ -255,7 +255,7 @@ Request parameters:
 
 - Auction ID
 - Delegate Server ID
-- Approved Bidders
+- Blacklist
 
 This endpoint is equivalent to
 calling startBiddingL1 and then calling moveStandingBidToL2.
@@ -271,10 +271,14 @@ corresponding to the `AuctionTerms` of the Auction ID,
 then submit an L1 transaction to the Cardano node
 to start the bidding for the auction.
 
+List of approved bidders is formed here offchain.
+All bidders who bid more than `minDepositSize` included,
+except for those who are in Blacklist.
+
 Request parameters:
 
 - Auction ID
-- Approved Bidders
+- Blacklist of bidders
 
 </td></tr><tr></tr><tr><td>
 
