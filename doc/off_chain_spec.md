@@ -200,8 +200,9 @@ Request parameters: none.
 
 </td></tr><tr></tr><tr><td>
 
-**announceAuction.** Construct `AuctionTerms`
-using the request parameters provided
+**announceAuction.** Used by seller.
+
+Construct `AuctionTerms` using the request parameters provided
 (seller implicitly set to the request submitter),
 and submit an L1 transaction to the Cardano node.
 
@@ -215,6 +216,7 @@ Request parameters:
 </td></tr><tr></tr><tr><td>
 
 **createBidDeposit.** Used by bidders, to place deposit.
+
 Approved bidders will be selected from bidders,
 which placed deposit big enough.
 
@@ -239,7 +241,9 @@ Response:
 
 </td></tr><tr></tr><tr><td>
 
-**startBiddingL2.** Execute a sequence of actions to allow bidding to start on L2.
+**startBiddingL2.** Used by seller.
+
+Execute a sequence of actions to allow bidding to start on L2.
 
 Request parameters:
 
@@ -252,7 +256,9 @@ calling startBiddingL1 and then calling moveStandingBidToL2.
 
 </td></tr><tr></tr><tr><td>
 
-**startBiddingL1.** If the request submitter is the seller
+**startBiddingL1.** Used by seller.
+
+If the request submitter is the seller
 corresponding to the `AuctionTerms` of the Auction ID,
 then submit an L1 transaction to the Cardano node
 to start the bidding for the auction.
@@ -264,7 +270,9 @@ Request parameters:
 
 </td></tr><tr></tr><tr><td>
 
-**moveStandingBidToL2.** Commit the standing bid to the Hydra Head
+**moveStandingBidToL2.** Used by seller.
+
+Commit the standing bid to the Hydra Head
 and coordinate the opening of the Hydra Head.
 
 Request parameters:
