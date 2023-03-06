@@ -341,7 +341,10 @@ Cache this post-dated transaction for the bidder.
 
 Peformed after BiddingEnd and before VoucherExpiry.
 
-Submits a transaction that spends the auction escrow utxo with the `BidderBuys` redeemer and spends (if available) the bidder's deposit with the WinningBidder redeemer.
+Submits a transaction that spends the auction escrow utxo
+with the `BidderBuys` redeemer
+and spends (if available) the bidder's deposit
+with the WinningBidder redeemer.
 
 Request parameters:
 
