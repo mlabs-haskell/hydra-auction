@@ -200,7 +200,7 @@ Request parameters: none.
 
 </td></tr><tr></tr><tr><td>
 
-**announceAuction.** Used by seller.
+**announceAuction.** Used by sellers.
 
 Construct `AuctionTerms` using the request parameters provided
 (seller implicitly set to the request submitter),
@@ -217,35 +217,23 @@ Request parameters:
 
 </td></tr><tr></tr><tr><td>
 
-**createBidDeposit.** Used by bidders, to place deposit.
-
-Performed before BiddingStart.
-
-Approved bidders will be selected from bidders,
-which placed deposit big enough.
+**createBidDeposit.** Used by bidders to place deposits for auctions,
+before the bidding start time.
 
 Request parameters:
 
 - Auction ID
 - Deposit amount
 
-</td></tr><tr></tr><tr><td>
+This request will return an error if the deposit amount is smaller than
+the `minDepositAmount` defined in the auction's terms.
 
-**getBiddersWithSufficientDeposits.** Used by the seller.
-
-This query shows which bidders have made sufficient deposits for the auction. The seller can consult this list to decide on which bidders to include in the approved bidders list, when starting the auction.
-
-Request parameters:
-
-- Auction ID
-
-Response:
-
-- List of bidders
+Approved bidders at bidding start time will be selected
+from bidders that created sufficient deposits.
 
 </td></tr><tr></tr><tr><td>
 
-**startBiddingL2.** Used by seller.
+**startBiddingL2.** Used by sellers.
 
 Performed after BiddingStart and before BiddingEnd.
 
@@ -255,14 +243,13 @@ Request parameters:
 
 - Auction ID
 - Delegate Server ID
-- Blacklist
 
 This endpoint is equivalent to
 calling startBiddingL1 and then calling moveStandingBidToL2.
 
 </td></tr><tr></tr><tr><td>
 
-**startBiddingL1.** Used by seller.
+**startBiddingL1.** Used by sellers.
 
 Performed after BiddingStart and before BiddingEnd.
 
@@ -271,18 +258,17 @@ corresponding to the `AuctionTerms` of the Auction ID,
 then submit an L1 transaction to the Cardano node
 to start the bidding for the auction.
 
-List of approved bidders is formed here offchain.
-All bidders who bid more than `minDepositSize` included,
-except for those who are in Blacklist.
-
 Request parameters:
 
 - Auction ID
-- Blacklist of bidders
+
+The list of approved bidders is automatically determined here
+via an L1 off-chain query that selects
+all bidders who created sufficient deposits for the auction.
 
 </td></tr><tr></tr><tr><td>
 
-**moveStandingBidToL2.** Used by seller.
+**moveStandingBidToL2.** Used by sellers.
 
 Commit the standing bid to the Hydra Head
 and coordinate the opening of the Hydra Head.
@@ -321,8 +307,6 @@ Request parameters:
 to submit a new bid as an L2 transaction to the Hydra Head.
 
 Performed after BiddingStart and before BiddingEnd.
-Timing could not be enforced on L2, but delegate will close Head
-on BiddingEnd.
 
 Request parameters:
 
@@ -345,10 +329,14 @@ Cache this post-dated transaction for the bidder.
 
 Peformed after BiddingEnd and before VoucherExpiry.
 
-Submits a transaction that spends the auction escrow utxo
-with the `BidderBuys` redeemer
-and spends (if available) the bidder's deposit
-with the WinningBidder redeemer.
+Submits a transaction that:
+- spends the auction escrow utxo with the `BidderBuys` redeemer
+- spends (if available) the bidder's deposit with the `WinningBidder` redeemer
+- spends an input from the bidder to provide ADA for the outputs and transaction fees
+- sends the bid payment to the seller
+- sends the auction lot to the bidder
+- sends the total auction fees for delegates to the fee escrow script
+- sends the ADA change to the bidder
 
 Request parameters:
 
@@ -360,11 +348,13 @@ Request parameters:
 
 Performed after VoucherExpiry.
 
-Submits a transaction that spends the auction escrow utxo
-with the `SellerReclaims` redeemer and spends
-(it is guaranted to be available)
-the winning bidder's deposit
-with the SellerClaimsDeposit redeemer.
+Submits a transaction that:
+- spends the auction escrow utxo with the `SellerReclaims` redeemer
+- spends (if available) the bidder's deposit with the `SellerClaimsDeposit` redeemer
+- spends an input from the seller to provide ADA for transaction fees
+- sends the auction lot to the seller
+- sends the total auction fees for delegates to the fee escrow script
+- sends the ADA change to the seller
 
 Request parameters:
 
@@ -376,8 +366,9 @@ Request parameters:
 
 Peformed after BiddingEnd.
 
-Submits a transaction that spends a bidder deposit
-with the `LosingBidder` redeemer.
+Submits a transaction that:
+- spends the bidder's deposit
+- sends ADA to the bidder
 
 Request parameters:
 
