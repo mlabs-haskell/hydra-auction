@@ -214,12 +214,38 @@ Request parameters:
 
 </td></tr><tr></tr><tr><td>
 
+**createBidDeposit.** Used by bidders, to place deposit.
+Approved bidders will be selected from bidders,
+which placed deposit big enough.
+
+Request parameters:
+
+- Auction ID
+- Deposit amount
+
+</td></tr><tr></tr><tr><td>
+
+**getBiddersWithSufficientDeposits.** Used by the seller.
+
+This query shows which bidders have made sufficient deposits for the auction. The seller can consult this list to decide on which bidders to include in the approved bidders list, when starting the auction.
+
+Request parameters:
+
+- Auction ID
+
+Response:
+
+- List of bidders
+
+</td></tr><tr></tr><tr><td>
+
 **startBiddingL2.** Execute a sequence of actions to allow bidding to start on L2.
 
 Request parameters:
 
 - Auction ID
 - Delegate Server ID
+- Approved Bidders
 
 This endpoint is equivalent to
 calling startBiddingL1 and then calling moveStandingBidToL2.
@@ -234,6 +260,7 @@ to start the bidding for the auction.
 Request parameters:
 
 - Auction ID
+- Approved Bidders
 
 </td></tr><tr></tr><tr><td>
 
@@ -287,6 +314,38 @@ which he can submit start from (biddingEnd - contestationPeriodDuration).
 Cache this post-dated transaction for the bidder.
 
 </td></tr><tr></tr><tr><td>
+
+**bidderBuys.** Used by the winning bidder.
+
+Submits a transaction that spends the auction escrow utxo with the `BidderBuys` redeemer and spends (if available) the bidder's deposit with the WinningBidder redeemer.
+
+Request parameters:
+
+- Auction ID
+
+</td></tr><tr></tr><tr><td>
+
+**sellerReclaims.** Used by the seller.
+
+Submits a transaction that spends the auction escrow utxo with the `SellerReclaims` redeemer and spends (if available) the winning bidder's deposit with the SellerClaimsDeposit redeemer.
+
+Request parameters:
+
+- Auction ID
+
+</td></tr><tr></tr><tr><td>
+
+**refundDeposit.** Used by losing bidders.
+
+Submits a transaction that spends a bidder deposit
+with the `LosingBidder` redeemer.
+
+Request parameters:
+
+- Auction ID
+
+</td></tr><tr></tr><tr><td>
+
 
 **closeHeadByBidder.** Submit the cached post-dated L1 closing transaction
 to the Cardano node.
