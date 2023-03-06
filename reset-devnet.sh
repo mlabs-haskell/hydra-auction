@@ -8,7 +8,7 @@ TARGETDIR="devnet"
 
 [ -d "$TARGETDIR" ] && { echo "Cleaning up directory $TARGETDIR" ; sudo rm -r $TARGETDIR ; }
 
-cp -af "./data/devnet/" "$TARGETDIR"
+cp -af "./data/devnet-source/" "$TARGETDIR"
 cp -af "./data/credentials" "$TARGETDIR"
 cp -af "./data/protocol-parameters.json" "$TARGETDIR"
 
