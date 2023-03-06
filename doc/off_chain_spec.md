@@ -403,6 +403,19 @@ Normally, that should happen automatically.
 
 No request parameters are required.
 
+</td></tr><tr></tr><tr><td>
+
+**cleanupStandingBid.** Used by the seller.
+
+Performed after an auction's cleanup time.
+
+Spend the standing bid utxo with the `Cleanup` redeemer
+and recover the min 2 ADA that was put into it.
+
+Request parameters:
+
+- Auction ID
+
 </td></tr></table>
 
 ### Delegate server
