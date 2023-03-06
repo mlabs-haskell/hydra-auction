@@ -162,6 +162,10 @@ data AuctionTerms = AuctionTerms
   , utxoNonce :: UtxoRef
   -- ^ The seller consumed this utxo input in the auction announcement
   -- transaction that provided the auction lot to the auction.
+  , minDepositAmount :: Natural
+  -- ^ Minimal amount of ADA that a bidder must deposit in a
+  -- bid deposit utxo for the auction, to be included in the
+  -- list of approved bidders. This is only checked off-chain.
   }
 ```
 
