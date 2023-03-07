@@ -2,6 +2,7 @@ module HydraAuction.Delegate (
   delegateStep,
   DelegateEvent (..),
   DelegateInput (..),
+  DelegateRunnerT (..),
 ) where
 
 -- Prelude imports
@@ -26,11 +27,7 @@ import HydraAuction.Delegate.Interface (
 import HydraAuction.Hydra.Interface (HydraEvent (..))
 import HydraAuction.Types (AuctionStage (..), AuctionTerms (..))
 
--- TODO: separate API and hydra
-
--- FIXME: how to track contenstation time
-
--- FIXME: add signature checking (where is issue on this)
+-- FIXME: add client authentication (where is issue on this)
 
 data DelegateEvent
   = Start
