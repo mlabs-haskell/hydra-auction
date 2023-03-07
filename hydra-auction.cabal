@@ -182,6 +182,7 @@ library
   import:          common-lang
   exposed-modules:
     HydraAuction.Addresses
+    HydraAuction.Delegate
     HydraAuction.Fixture
     HydraAuction.OnChain
     HydraAuction.OnChain.TestNFT
@@ -197,6 +198,8 @@ library
     Paths_hydra_auction
 
   other-modules:
+    HydraAuction.Hydra.Interface
+    HydraAuction.Delegate.Interface
     HydraAuction.OnChain.Common
     HydraAuction.OnChain.Escrow
     HydraAuction.OnChain.StandingBid
