@@ -14,7 +14,6 @@ import Control.Monad.State (MonadState, StateT (..), get, put)
 import Control.Monad.Trans.Except (ExceptT (..))
 
 -- HydraAuction imports
-
 import HydraAuction.Delegate.Interface (
   DelegateError (..),
   DelegateResponse (..),
@@ -40,7 +39,7 @@ data DelegateInput
   | FrontendRequest FrontendRequest
 data DelegateState = NoClient | HasClient FrontendKind AuctionTerms
 
-newtype Monad m => DelegateRunnerT m x
+newtype DelegateRunnerT m x
   = MkDelegateRunner (StateT DelegateState (ExceptT DelegateError m) x)
   deriving newtype
     ( Functor
@@ -49,9 +48,6 @@ newtype Monad m => DelegateRunnerT m x
     , MonadState DelegateState
     , MonadError DelegateError
     )
-
--- instance MonadTrans DelegateRunnerT where
---     lift = MkDelegateRunner . lift
 
 delegateStep ::
   forall m. Monad m => DelegateInput -> DelegateRunnerT m DelegateResponse
