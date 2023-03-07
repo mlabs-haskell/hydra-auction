@@ -12,6 +12,7 @@ import Prelude
 
 import Control.Monad.Except (MonadError (throwError))
 import Control.Monad.State (MonadState, StateT (..), get, put)
+import Control.Monad.Trans (MonadTrans (lift))
 import Control.Monad.Trans.Except (ExceptT (..))
 
 -- HydraAuction imports
@@ -45,6 +46,9 @@ newtype DelegateRunnerT m x
     , MonadState DelegateState
     , MonadError DelegateError
     )
+
+instance MonadTrans DelegateRunnerT where
+  lift = MkDelegateRunner . lift . lift
 
 delegateStep ::
   forall m. Monad m => DelegateInput -> DelegateRunnerT m DelegateResponse
