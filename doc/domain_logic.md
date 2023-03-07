@@ -104,32 +104,54 @@ The auction lifecycle is defined by the following times,
 declared by the seller when the auction is announced:
 
 <table><tr><td>
+
 `T0` Auction announcement time
+
 </td></tr><tr></tr><tr><td>
+
 `T1` Bidding start time
+
 </td></tr><tr></tr><tr><td>
+
 `T2` Bidding end time
+
 </td></tr><tr></tr><tr><td>
+
 `T3` Voucher expiry time
+
 </td></tr><tr></tr><tr><td>
+
 `T4` Cleanup time
+
 </td></tr></table>
 
 For the purposes of modeling the state transitions of the auction,
 we partition time into periods () by the above lifecycle times:
 
 <table><tr><td>
+
 `P0 = [0,  T0)` Pre-auction period
+
 </td></tr><tr></tr><tr><td>
+
 `P1 = [T0, T1)` Pre-bidding period
+
 </td></tr><tr></tr><tr><td>
+
 `P2 = [T1, T2)` Bidding period
+
 </td></tr><tr></tr><tr><td>
+
 `P3 = [T2, T3)` Voucher active period
+
 </td></tr><tr></tr><tr><td>
+
 `P4 = [T3, T4)` Voucher expired period
+
 </td></tr><tr></tr><tr><td>
+
 `P5 = [T4,  ∞)` Cleanup period
+
 </td></tr></table>
 
 ```mermaid
