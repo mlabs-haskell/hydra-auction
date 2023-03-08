@@ -1,25 +1,16 @@
-# Design considerations
+---
+slug: 2
+title: |
+  2. Handling time on L2
+authors: [George Flerovsky]
+tags: [Accepted]
+---
 
-## Ensuring that snapshots are closable
+## Status
 
-The current Hydra Head implementation does not support
-minting and burning tokens in the fanout transaction,
-and there is a limit to the number of utxos
-that can be produced by the fanout transaction.
-This means that it is impossible to close a Hydra Head
-if its ledger contains newly minted or burned tokens,
-or if it contains more utxos than can be supported by the fanout transaction.
-The Hydra team is planning to address these limitations
-by excluding “phantom tokens” (minted/burned on L2) from Hydra Head snapshots
-([Hydra Issue #358](https://github.com/input-output-hk/hydra/issues/358))
-and by only signing snapshots that are known to be closable
-([Hydra Issue #370](https://github.com/input-output-hk/hydra/issues/370)).
+Accepted
 
-These limitations do not affect the Hydra-based auction
-because we do not mint or burn any tokens within the Hydra Head
-and we only commit and fan out one utxo to/from the Hydra Head.
-
-## Handling time on L2
+## Context
 
 The Cardano mainnet (L1) ledger keeps track of time
 via slot numbers associated with each block in the chain,
@@ -56,13 +47,14 @@ whereby the first bid among them to exceed the standing bid
 and be multi-signed by the Hydra Head delegates
 will replace the standing bid.
 
-
 Simultaneous bids should occur less frequently on a Hydra Head because,
 in principle, it should take much less time for the Head Head delegates
 to achieve consensus on a ledger state transition
 than it takes to achieve consensus on L1.
 In other words, time resolution can effectively be much more granular
 within a Hydra Head than on L1.
+
+## Decision
 
 For bidding start/end times, the only option is
 to introduce explicit time dependence into the auction protocol.
@@ -77,6 +69,7 @@ and for at least one Hydra Head delegate to reject bid transactions
 that exceed this bidding deadline.
 This isn’t feasible with the current Hydra Head protocol implementation,
 which keeps the slot number fixed at zero.
+
 However, we can work around this limitation
 by combining the following three techniques:
 
@@ -163,23 +156,3 @@ to submit contestation transactions with the latest standing bid.
 The original security properties would be recovered
 if the Hydra Head participant that submitted a closing transaction
 were also allowed to submit a contestation transaction.
-
-## Open vs closed auctions
-
-In this project, we implement a closed auction,
-where the seller controls which bidders
-can enter the auction before bidding starts.
-This auction type is appropriate where the seller needs
-to verify the list of bidders before allowing them to enter the auction,
-and most auction platforms need to be able to support this type of auction.
-
-The other type of auction is an open auction,
-where bidders can freely enter the auction and place bids.
-In order for open auctions to be feasible in our design,
-we would have to replace the fixed security deposit mechanism
-with proofs of full backing for bids.
-Otherwise, any seller that creates an open auction
-would have no way to vet bidders
-to control the risk that he is willing to take on
-that insincere bidders with insufficient deposits
-sabotaging the auction.
