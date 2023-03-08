@@ -127,10 +127,10 @@ handleCliAction userAction = do
           <> "."
       void mintOneTestNFT
     AuctionAnounce auctionName -> do
-      mUtxo <- findTestNFT <$> actorTipUtxo
-      case mUtxo of
-        Just utxo -> do
-          dynamic <- liftIO $ constructTermsDynamic actor utxo
+      mTxIn <- findTestNFT <$> actorTipUtxo
+      case mTxIn of
+        Just txIn -> do
+          dynamic <- liftIO $ constructTermsDynamic actor txIn
           liftIO $ writeAuctionTermsDynamic auctionName dynamic
           -- FIXME: proper error printing
           Just config <- liftIO $ readAuctionTermsConfig auctionName
