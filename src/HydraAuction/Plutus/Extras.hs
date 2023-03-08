@@ -2,8 +2,9 @@
 module HydraAuction.Plutus.Extras (module X, validatorAddress, scriptCurrencySymbol) where
 
 -- Prelude imports
-import Hydra.Prelude hiding (fromMaybe)
+
 import PlutusTx.Prelude (toBuiltin)
+import Prelude
 
 -- Plutus imports
 import Plutus.V1.Ledger.Address (Address, scriptHashAddress)

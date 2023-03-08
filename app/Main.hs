@@ -6,14 +6,20 @@ module Main (main) where
 import Prelude
 
 -- Haskell imports
-import Control.Concurrent.Async (async)
-import Control.Exception (SomeException, displayException, try)
+import Control.Concurrent.Async (withAsync)
 import Control.Monad (void, when)
+import Control.Monad.Catch (try)
+import Control.Monad.Trans.Class (lift)
+import System.Console.Haskeline (
+  InputT,
+  defaultSettings,
+  getInputLine,
+  runInputT,
+ )
 
 -- Hydra imports
-
 import Hydra.Logging (Verbosity (Quiet, Verbose))
-import Hydra.Prelude (contramap, liftIO)
+import Hydra.Prelude (SomeException, ask, contramap, liftIO)
 
 -- Hydra auction imports
 
@@ -35,7 +41,7 @@ import CardanoNode (
  )
 
 -- Hydra auction CLI imports
-import CLI.Actions (handleCliAction)
+import CLI.Actions (CliAction, handleCliAction)
 import CLI.CardanoNode (getCardanoNode, runCardanoNode)
 import CLI.Parsers (
   CliInput (..),
@@ -50,20 +56,9 @@ main = do
   let hydraVerbosity = if cliVerbosity then Verbose "hydra-auction" else Quiet
   tracer <- stdoutOrNullTracer hydraVerbosity
 
-  -- FIXME: We need to pass in the cardano-node as a parameter to the CLI
-  -- This way multiple CLI instances can share the same cardano node.
-  -- At the moment, only Alice will start the node, other users will assume the
-  -- node is present.
-  -- when (cliActor == Alice) $ do
-  --   void $ async $ runCardanoNode (contramap FromHydra tracer)
-
-  putStrLn ("Starting CLI for " <> show cliActor)
-
   let node = RunningNode {nodeSocket = cliNodeSocket, networkId = cliNetworkId}
-  -- node <- getCardanoNode
-  print cliNodeSocket
-  print cliNetworkId
-  let runnerContext =
+
+      runnerContext =
         MkExecutionContext
           { tracer = tracer
           , node = node
@@ -74,16 +69,30 @@ main = do
 
 loopCLI :: Runner ()
 loopCLI = do
-  result <- liftIO $ try @SomeException getLine
-  case result of
-    Left ex -> do
-      liftIO $ putStrLn $ "input error: " <> displayException ex
-      pure ()
-    Right command -> do
-      case parseCliAction $ words command of
-        Left e -> do
-          liftIO $ putStrLn e
-          loopCLI
-        Right cmd -> do
-          handleCliAction cmd
-          loopCLI
+  ctx <- ask
+  let promtString = show (actor ctx) <> "> "
+  let loop :: InputT Runner ()
+      loop = do
+        minput <- getInputLine promtString
+        case minput of
+          Nothing -> pure ()
+          Just "quit" -> pure ()
+          Just input -> do
+            lift $ handleInput input
+            liftIO $ putStrLn ""
+            loop
+  runInputT defaultSettings loop
+  where
+    handleInput :: String -> Runner ()
+    handleInput input = case parseCliAction $ words input of
+      Left e -> liftIO $ putStrLn e
+      Right cmd -> handleCliAction' cmd
+    handleCliAction' :: CliAction -> Runner ()
+    handleCliAction' cmd = do
+      result <- try $ handleCliAction cmd
+      case result of
+        Right _ -> pure ()
+        Left (actionError :: SomeException) ->
+          liftIO $
+            putStrLn $
+              "Error during CLI action handling: \n\n" <> show actionError

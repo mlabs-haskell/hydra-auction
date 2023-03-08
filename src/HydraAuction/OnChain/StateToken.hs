@@ -12,9 +12,14 @@ import Plutus.V2.Ledger.Api (TokenName (..))
 import Plutus.V2.Ledger.Contexts (ScriptContext, TxInfo, ownCurrencySymbol, scriptContextTxInfo, txInInfoOutRef, txInfoInputs, txInfoMint, txInfoOutputs, txInfoValidRange, txOutAddress)
 
 -- Hydra auction imports
-import HydraAuction.Addresses
-import HydraAuction.OnChain.Common
-import HydraAuction.Types
+import HydraAuction.Addresses (EscrowAddress (..), VoucherCS (..))
+import HydraAuction.OnChain.Common (decodeOutputDatum, validAuctionTerms)
+import HydraAuction.Types (
+  AuctionEscrowDatum (..),
+  AuctionState (..),
+  AuctionTerms (..),
+  VoucherForgingRedeemer (..),
+ )
 
 data StateTokenKind = Voucher
 

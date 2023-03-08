@@ -28,6 +28,49 @@ nix build .
 
 Will build the CLI application and link it to `./result/bin/hydra-auction`.
 
+## CLI usage
+
+Different terms for auction are stored in JSON and auctions named with string.
+Static part of params like stages timing and minmal bid/bid increment,
+are stored in `examples/auction-config`.
+Dynamic part of params is calculated and stored on `auction-announced` command.
+If you run it again for different lot dynamic part will be rewritten.
+
+### Bidder wins case
+
+1. Start repl for different actors in different terminals.
+   You need at least one bidder (Alice in our example),
+   and one bidder (Bob in our example).
+   To start REPL run:
+   `cabal run hydra-auction -- -a alice`
+2. Run `prepare-for-demo -a alice` on Alice REPL
+3. Run show-utxos to see which UTxO got Test NFT
+4. Run `announce-auction` with this utxo, on Alice REPL, like
+   `announce-auction -n foo -u f8ececf5a3589b316ecf8a2f72b1295d6319f36857708f1b0a904e03a5a709a6#0`
+   From this time auction stages do begin.
+5. Wait for `BiddingStartedStage`.
+   When do `start-bidding -n foo` on Alice REPL.
+6. Bidding started you can place bids, matching auction terms.
+   They should be bigger than configStartingBid for first bid.
+   They should be bigger than previous bid + configMinimumBidIncrement for
+   all next bids.
+   For example place first bid from Bob REPL:
+   `new-bid -n foo -b 8000000`
+7. (a) bidder-buys
+   Run `bidder-buys -n foo` in Bob REPL.
+   Bob gets his winning lot.
+8. UTxOs can be cleaned up by seller in `VoucherExpiryStage`
+   Run `cleanup -n foo`.
+
+### Seller reclaims case
+
+
+Same for all steps except 7.
+
+7. (b) In case that winner does not take his lot, in `VoucherExpiryStage`,
+   it can be reclaimed back by seller.
+   Run `seller-reclaims -n foo` in Alice REPL.
+
 ## Development
 
 You can enter the development shell with:
@@ -48,9 +91,20 @@ To run app with GHC warnings present you can use:
 cabal run --ghc-option='-Wwarn'
 ```
 
-## Specification
+## Documentation
 
-The full specification can be read [here](/doc/spec.md).
+This project's documentation is organized (in the [doc](doc)) as follows:
+
+- [domain_logic.md](doc/domain_logic.md) describes the terminology and models
+for the Hydra Auction.
+- [on_chain_spec.md](doc/on_chain_spec.md) describes the on-chain scripts.
+- [off_chain_spec.md](doc/off_chain_spec.md) describes the architecture of off-chain components
+and the APIs that they use to communicate with each other
+and users.
+- the [adr](doc/adr) folder contains [Architecture Decision Records](https://adr.github.io/) made so far in the project.
+
+
+The full specification can be read here: [on on-chain](/doc/on_chain_spec.md) and [on off-chain](/doc/off_chain_spec.md).
 
 ## Licensing
 

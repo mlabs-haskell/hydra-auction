@@ -11,10 +11,33 @@ import Plutus.V2.Ledger.Api (Address, TxInfo, TxOut, scriptContextTxInfo, txInIn
 import Plutus.V2.Ledger.Contexts (ScriptContext, ownHash, txSignedBy)
 
 -- Hydra auction imports
-import HydraAuction.Addresses
-import HydraAuction.OnChain.Common
-import HydraAuction.OnChain.StateToken (StateTokenKind (..), stateTokenKindToTokenName)
-import HydraAuction.Types
+import HydraAuction.Addresses (
+  FeeEscrowAddress (..),
+  StandingBidAddress (..),
+  VoucherCS (..),
+ )
+import HydraAuction.OnChain.Common (
+  byAddress,
+  decodeOutputDatum,
+  lovelaceOfOutput,
+  nothingForged,
+ )
+import HydraAuction.OnChain.StateToken (
+  StateTokenKind (..),
+  stateTokenKindToTokenName,
+ )
+import HydraAuction.Types (
+  AuctionEscrowDatum (..),
+  AuctionState (..),
+  AuctionTerms (..),
+  BidTerms (..),
+  EscrowRedeemer (..),
+  StandingBidDatum (..),
+  StandingBidState (..),
+  calculateTotalFee,
+  isStarted,
+  naturalToInt,
+ )
 
 {-# INLINEABLE mkEscrowValidator #-}
 mkEscrowValidator :: (StandingBidAddress, FeeEscrowAddress, AuctionTerms) -> AuctionEscrowDatum -> EscrowRedeemer -> ScriptContext -> Bool

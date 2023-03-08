@@ -26,7 +26,7 @@ import Hydra.Cardano.Api (TxIn, toPlutusKeyHash, toPlutusTxOutRef, verificationK
 
 -- Hydra auction imports
 import HydraAuction.Fixture (Actor, keysFor)
-import HydraAuction.OnChain.TestNFT
+import HydraAuction.OnChain.TestNFT (testNftAssetClass)
 import HydraAuction.Plutus.Orphans ()
 import HydraAuction.Tx.Common (currentTimeSeconds)
 import HydraAuction.Types (AuctionTerms (..), Natural)

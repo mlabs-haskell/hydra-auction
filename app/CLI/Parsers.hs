@@ -22,7 +22,6 @@ import Options.Applicative (
   info,
   long,
   metavar,
-  option,
   prefs,
   progDesc,
   renderFailure,
@@ -35,7 +34,7 @@ import Options.Applicative (
  )
 
 -- Cardano node imports
-import Cardano.Api (NetworkMagic (..), TxIn, fromNetworkMagic)
+import Cardano.Api (NetworkMagic (..), fromNetworkMagic)
 
 -- Hydra auction imports
 import HydraAuction.Fixture (Actor (..))
@@ -45,7 +44,6 @@ import HydraAuction.Types (Natural, intToNatural)
 -- Hydra auction CLI imports
 import CLI.Actions (CliAction (..), CliInput (..), seedAmount)
 import CLI.Config (AuctionName (..))
-import CLI.Parsers.TxIn (parseTxIn)
 
 parseCliAction :: [String] -> Either String CliAction
 parseCliAction s = case execParserPure preferences options s of
@@ -77,7 +75,7 @@ cliActionParser =
         <> command "seed" (info (pure Seed) (progDesc $ "Provides " <> show seedAmount <> " Lovelace for the given actor"))
         <> command "prepare-for-demo" (info (Prepare <$> actor) (progDesc $ "Provides " <> show seedAmount <> " Lovelace for every actor and 1 Test NFT for given actor"))
         <> command "mint-test-nft" (info (pure MintTestNFT) (progDesc "Mints an NFT that can be used as auction lot"))
-        <> command "announce-auction" (info (AuctionAnounce <$> auctionName <*> utxo) (progDesc "Create an auction. Requires TxIn which identifies the auction lot"))
+        <> command "announce-auction" (info (AuctionAnounce <$> auctionName) (progDesc "Create an auction"))
         <> command "start-bidding" (info (StartBidding <$> auctionName) (progDesc "Open an auction for bidding"))
         <> command "new-bid" (info (NewBid <$> auctionName <*> bidAmount) (progDesc "Actor places new bid after bidding is started"))
         <> command "bidder-buys" (info (BidderBuys <$> auctionName) (progDesc "Pay and recieve a lot after auction end"))
@@ -112,18 +110,9 @@ script =
           <> help "Script to check. One of: escrow, standing-bid, fee-escrow"
       )
 
-utxo :: Parser TxIn
-utxo =
-  option
-    parseTxIn
-    ( short 'u'
-        <> metavar "UTXO"
-        <> help "Utxo with test NFT for AuctionTerms"
-    )
-
 bidAmount :: Parser Natural
 bidAmount =
-  parseNatural
+  parseAda
     <$> strOption
       ( short 'b'
           <> metavar "BID_AMOUNT"
@@ -165,8 +154,8 @@ parseScript "standing-bid" = StandingBid
 parseScript "fee-escrow" = FeeEscrow
 parseScript _ = error "Escrow parsing error"
 
-parseNatural :: String -> Natural
-parseNatural = fromJust . intToNatural . read
+parseAda :: String -> Natural
+parseAda = fromJust . intToNatural . (* 1_000_000) . read
 
 parseNetworkMagic :: String -> NetworkMagic
 parseNetworkMagic s = NetworkMagic $ read s

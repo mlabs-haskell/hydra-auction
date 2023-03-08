@@ -1,23 +1,61 @@
 module HydraAuction.Tx.StandingBid (newBid, cleanupTx) where
 
 -- Prelude imports
-import Hydra.Prelude hiding (Natural)
+
+import Hydra.Prelude (void)
+import Prelude
 
 -- Plutus imports
 import Plutus.V1.Ledger.Value (assetClassValue)
 import Plutus.V2.Ledger.Api (getValidator)
 
 -- Hydra imports
-import Hydra.Cardano.Api hiding (txOutValue)
+import Hydra.Cardano.Api (
+  PlutusScriptV2,
+  fromPlutusScript,
+  fromPlutusValue,
+  lovelaceToValue,
+  toPlutusKeyHash,
+  verificationKeyHash,
+  pattern ReferenceScriptNone,
+  pattern ShelleyAddressInEra,
+  pattern TxMintValueNone,
+  pattern TxOut,
+ )
 
 -- Hydra auction imports
-import HydraAuction.Addresses
-import HydraAuction.OnChain hiding (standingBidAddress)
-import HydraAuction.Plutus.Extras
-import HydraAuction.Runner
-import HydraAuction.Tx.Common
+import HydraAuction.Addresses (VoucherCS (..))
+import HydraAuction.OnChain (
+  AuctionScript (StandingBid),
+  policy,
+  standingBidValidator,
+  voucherAssetClass,
+ )
+import HydraAuction.Plutus.Extras (scriptCurrencySymbol)
+import HydraAuction.Runner (Runner, logMsg)
+import HydraAuction.Tx.Common (
+  AutoCreateParams (..),
+  actorTipUtxo,
+  addressAndKeys,
+  autoSubmitAndAwaitTx,
+  filterAdaOnlyUtxo,
+  minLovelace,
+  mkInlineDatum,
+  mkInlinedDatumScriptWitness,
+  scriptAddress,
+  scriptPlutusScript,
+  scriptUtxos,
+ )
 import HydraAuction.Tx.Escrow (toForgeStateToken)
-import HydraAuction.Types
+import HydraAuction.Types (
+  AuctionTerms (..),
+  BidTerms (..),
+  Natural,
+  StandingBidDatum (..),
+  StandingBidRedeemer (Cleanup, NewBid),
+  StandingBidState (Bid),
+  VoucherForgingRedeemer (BurnVoucher),
+ )
 
 newBid :: AuctionTerms -> Natural -> Runner ()
 newBid terms bidAmount = do

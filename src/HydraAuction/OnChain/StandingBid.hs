@@ -11,10 +11,20 @@ import Plutus.V2.Ledger.Api (TxInfo, scriptContextTxInfo, txInInfoResolved, txIn
 import Plutus.V2.Ledger.Contexts (ScriptContext, ownHash)
 
 -- Hydra auction imports
-import HydraAuction.Addresses
-import HydraAuction.OnChain.Common
+import HydraAuction.Addresses (VoucherCS (..))
+import HydraAuction.OnChain.Common (
+  byAddress,
+  decodeOutputDatum,
+  nothingForged,
+ )
 import HydraAuction.OnChain.StateToken (StateTokenKind (..), stateTokenKindToTokenName)
-import HydraAuction.Types
+import HydraAuction.Types (
+  AuctionTerms (..),
+  BidTerms (..),
+  StandingBidDatum (..),
+  StandingBidRedeemer (..),
+  StandingBidState (..),
+ )
 
 {-# INLINEABLE mkStandingBidValidator #-}
 mkStandingBidValidator :: AuctionTerms -> StandingBidDatum -> StandingBidRedeemer -> ScriptContext -> Bool
@@ -44,23 +54,27 @@ mkStandingBidValidator terms datum redeemer context =
     info = scriptContextTxInfo context
     validNewBid :: StandingBidState -> StandingBidState -> Bool
     validNewBid oldBid (Bid newBidTerms) =
-      case oldBid of
-        Bid oldBidTerms ->
-          traceIfFalse "Bid increment is not greater than minimumBidIncrement" $
-            bidAmount oldBidTerms + minimumBidIncrement terms <= bidAmount newBidTerms
-        NoBid ->
-          traceIfFalse "Bid is not greater than startingBid" $
-            startingBid terms <= bidAmount newBidTerms
+      -- FIXME: can be removed when we will have approved bidder functionality
+      traceIfFalse
+        "Seller cannot place a bid"
+        (seller terms /= bidBidder newBidTerms)
+        && case oldBid of
+          Bid oldBidTerms ->
+            traceIfFalse "Bid increment is not greater than minimumBidIncrement" $
+              bidAmount oldBidTerms + minimumBidIncrement terms <= bidAmount newBidTerms
+          NoBid ->
+            traceIfFalse "Bid is not greater than startingBid" $
+              startingBid terms <= bidAmount newBidTerms
     validNewBid _ NoBid = False
     checkCorrectNewBidOutput inputOut = case byAddress (scriptHashAddress $ ownHash context) $ txInfoOutputs info of
       [out] ->
         -- FIXME: Check bidder has right to make a bid
         traceIfFalse "Output is not into standing bid" $
           txOutAddress out == scriptHashAddress (ownHash context)
-            && checkValidtNewBid out
+            && checkValidNewBid out
       _ -> traceError "Not exactly one ouput"
       where
-        checkValidtNewBid out =
+        checkValidNewBid out =
           let inBid = standingBidState <$> decodeOutputDatum info inputOut
               outBid = standingBidState <$> decodeOutputDatum info out
            in case validNewBid <$> inBid <*> outBid of

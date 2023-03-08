@@ -1,7 +1,9 @@
 module HydraAuction.OnChain (feeEscrowValidator, voucherAssetClass, scriptValidatorForTerms, AuctionScript (..), policy, standingBidValidator, escrowValidator, voucherCurrencySymbol, mkEscrowValidator, escrowAddress, standingBidAddress) where
 
 -- Prelude imports
+
 import PlutusTx.Prelude
+import Prelude qualified
 
 -- Plutus imports
 import Plutus.V1.Ledger.Value (AssetClass (..))
@@ -9,16 +11,30 @@ import Plutus.V2.Ledger.Api (CurrencySymbol, MintingPolicy, ScriptContext, Valid
 import PlutusTx qualified
 
 -- Hydra auction imports
-import HydraAuction.Addresses
-import HydraAuction.OnChain.Escrow
-import HydraAuction.OnChain.StandingBid
-import HydraAuction.OnChain.StateToken
-import HydraAuction.Plutus.Extras
-import HydraAuction.Types
+import HydraAuction.Addresses (
+  EscrowAddress (..),
+  FeeEscrowAddress (..),
+  StandingBidAddress (..),
+ )
+import HydraAuction.OnChain.Escrow (mkEscrowValidator)
+import HydraAuction.OnChain.StandingBid (mkStandingBidValidator)
+import HydraAuction.OnChain.StateToken (
+  StateTokenKind (..),
+  mkPolicy,
+  stateTokenKindToTokenName,
+ )
+import HydraAuction.Plutus.Extras (
+  scriptCurrencySymbol,
+  validatorAddress,
+  wrapMintingPolicy,
+  wrapValidator,
+ )
+import HydraAuction.Types (AuctionTerms (..))
 
 -- Addresses
 
 data AuctionScript = Escrow | StandingBid | FeeEscrow
+  deriving stock (Prelude.Show)
 
 scriptValidatorForTerms :: AuctionScript -> AuctionTerms -> Validator
 scriptValidatorForTerms Escrow = escrowValidator
