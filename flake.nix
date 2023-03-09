@@ -40,7 +40,7 @@
   };
 
   outputs =
-    inputs@{ self
+    { self
     , hydra
     , haskellNix
     , pre-commit-hooks
@@ -52,6 +52,11 @@
     , ...
     }:
     let
+      # nix flake (show|check) --allow-import-from-derivation --impure
+      systems =
+        if builtins.hasAttr "currentSystem" builtins
+        then [ builtins.currentSystem ]
+        else nixpkgs.lib.systems.flakeExposed;
       overlays = [
         haskellNix.overlay
         iohk-nix.overlays.crypto
@@ -99,7 +104,7 @@
         })
       ];
     in
-    flake-utils.lib.eachDefaultSystem
+    flake-utils.lib.eachSystem systems
       (system:
       let
         pkgs = import nixpkgs {
@@ -107,37 +112,6 @@
           inherit (haskellNix) config;
         };
         haskellNixFlake = pkgs.hydraProject.flake { };
-
-        formatCheck = pkgs.runCommand "format-checks"
-          {
-            nativeBuildInputs = with pkgs; [
-              fd
-              nixpkgs-fmt
-              haskellPackages.cabal-fmt
-              haskellPackages.hlint
-            ];
-          }
-          ''
-            mkdir $out && cd $out
-            cp ${self}/format.sh .
-            sh format.sh check
-            touch $out
-          '';
-
-        lintCheck = pkgs.runCommand "lint-checks"
-          {
-            nativeBuildInputs = with pkgs; [
-              fd
-              haskellPackages.hlint
-            ];
-          }
-          ''
-            mkdir $out && cd $out
-            cp ${self}/lint.sh .
-            cp ${self}/hlint.yaml .
-            sh lint.sh check
-            touch $out
-          '';
 
         preCommitHook = pre-commit-hooks.lib.${system}.run
           {
@@ -147,6 +121,8 @@
 
             hooks = {
               nixpkgs-fmt.enable = true;
+              statix.enable = true;
+              deadnix.enable = true;
               fourmolu-format = {
                 enable = true;
                 name = "fourmolu format";
@@ -173,17 +149,41 @@
             };
           };
 
-        hydraChecks = builtins.mapAttrs
-          (_: test: test.overrideAttrs (old: {
-            nativeBuildInputs = old.nativeBuildInputs ++ [
+        wrapTest = test: pkgs.runCommand "${test.name}-wrapped"
+          {
+            nativeBuildInputs = [
               cardano-node.packages.${system}.cardano-node
               cardano-node.packages.${system}.cardano-cli
               hydra.packages.${system}.hydra-node
             ];
-          }))
-          haskellNixFlake.checks;
+          }
+          ''
+            mkdir -p $out/log
+            exec &> >(tee $out/log/test.log)
+            ${pkgs.bubblewrap}/bin/bwrap \
+              --share-net \
+              --ro-bind /nix/store /nix/store \
+              --bind /build /build \
+              --uid 1000 \
+              --gid 1000 \
+              --proc /proc \
+              --dir /tmp \
+              --dev /dev \
+              --setenv TMPDIR /tmp \
+              --setenv XDG_RUNTIME_DIR /tmp \
+              --bind . /data \
+              --chdir /data  \
+              --ro-bind ${pkgs.tzdata}/share/zoneinfo /usr/share/zoneinfo \
+              -- ${test}/bin/${test.exeName} >&2
+          '';
+
+        hydraChecks = {
+          # NOTE: mind that we use `packages` here, not checks
+          hydra-test = wrapTest haskellNixFlake.packages."hydra-auction:test:hydra-auction-test";
+        };
       in
       {
+        inherit haskellNixFlake;
         packages = {
           default = haskellNixFlake.packages."hydra-auction:exe:hydra-auction";
           check = pkgs.runCommand "combined-test"
@@ -199,7 +199,7 @@
           haskellNixFlake.devShells;
 
         checks = hydraChecks // {
-          inherit formatCheck lintCheck;
+          formatting = preCommitHook;
         };
 
       }) // {
