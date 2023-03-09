@@ -112,6 +112,59 @@ newBid terms bidAmount = do
         , validityBound = (Just $ biddingStart terms, Just $ biddingEnd terms)
         }
 
+newBidL2Tx terms bidAmount standingBidUtxo = do
+  logMsg "Doing new bid"
+
+  standingBidAddress <- scriptAddress StandingBid terms
+
+  let txOutStandingBid bidderVk =
+        TxOut
+          (ShelleyAddressInEra standingBidAddress)
+          valueStandingBid
+          (mkInlineDatum datum)
+          ReferenceScriptNone
+        where
+          mp = policy terms
+          voucherCS = VoucherCS $ scriptCurrencySymbol mp
+          datum =
+            StandingBidDatum
+              ( Bid $
+                  BidTerms
+                    (toPlutusKeyHash $ verificationKeyHash bidderVk)
+                    bidAmount
+              )
+              voucherCS
+          valueStandingBid =
+            fromPlutusValue (assetClassValue (voucherAssetClass terms) 1)
+              <> lovelaceToValue minLovelace
+      standingBidWitness = mkInlinedDatumScriptWitness script NewBid
+        where
+          script = scriptPlutusScript StandingBid terms
+
+  logMsg "Doing New bid"
+
+  (bidderAddress, bidderVk, bidderSk) <- addressAndKeys
+
+  bidderMoneyUtxo <- filterAdaOnlyUtxo <$> actorTipUtxo
+
+  -- FIXME: cover not proper UTxOs
+  void $
+    autoSubmitAndAwaitTx $
+      AutoCreateParams
+        { authoredUtxos =
+            [ (bidderSk, bidderMoneyUtxo)
+            ]
+        , referenceUtxo = mempty
+        , witnessedUtxos =
+            [ (standingBidWitness, standingBidUtxo)
+            ]
+        , collateral = Nothing
+        , outs = [txOutStandingBid bidderVk]
+        , toMint = TxMintValueNone
+        , changeAddress = bidderAddress
+        , validityBound = (Just $ biddingStart terms, Just $ biddingEnd terms)
+        }
+
 cleanupTx :: AuctionTerms -> Runner ()
 cleanupTx terms = do
   logMsg "Doing standing bid cleanup"
