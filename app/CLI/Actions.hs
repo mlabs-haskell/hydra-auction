@@ -13,7 +13,7 @@ import Prelude
 import Control.Monad (forM_, void)
 
 -- Cardano node imports
-import Cardano.Api (NetworkId, TxOut (..))
+import Cardano.Api (NetworkId)
 
 -- Hydra imports
 import Hydra.Cardano.Api (Lovelace)

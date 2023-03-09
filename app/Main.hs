@@ -42,7 +42,6 @@ import CardanoNode (
 
 -- Hydra auction CLI imports
 import CLI.Actions (CliAction, handleCliAction)
-import CLI.CardanoNode (getCardanoNode, runCardanoNode)
 import CLI.Parsers (
   CliInput (..),
   getCliInput,

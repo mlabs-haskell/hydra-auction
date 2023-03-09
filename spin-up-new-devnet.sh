@@ -1,18 +1,27 @@
 #!/bin/sh -e
 
-mkdir -p devnet/ipc
-docker-compose down
+echo "Stopping demo in case anything is already running"
+./stop-demo.sh
+
+echo "Prepare devnet files"
 ./reset-devnet.sh
-docker-compose up -d
+
+echo "Starting cardano node"
+docker-compose up cardano-node -d
+
 echo -n 'Waiting for the node socket ..'
-while ! [ -S devnet/ipc/node.socket ]
+while ! [ -S devnet/node.socket ]
 do
   echo -n "."
   sleep 0.1
 done
 echo '. done'
-echo 'Setting correct node socket permissions'
-sudo chown -Rv $(id -u):$(id -g) devnet/ipc
 
 echo "Setup cardano-cli env to connect to started network"
-export CARDANO_NODE_SOCKET_PATH=./devnet/ipc/node.socket
+export CARDANO_NODE_SOCKET_PATH=./devnet/node.socket
+
+echo "Seeding hydra node actors with fuel and publish reference scripts"
+./seed-devnet.sh
+
+echo "Starting hydra nodes"
+docker-compose --profile hydra-node up -d
