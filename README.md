@@ -91,7 +91,18 @@ To run app with GHC warnings present you can use:
 cabal run --ghc-option='-Wwarn'
 ```
 
-## Specification
+## Documentation
+
+This project's documentation is organized (in the [doc](doc)) as follows:
+
+- [domain_logic.md](doc/domain_logic.md) describes the terminology and models
+for the Hydra Auction.
+- [on_chain_spec.md](doc/on_chain_spec.md) describes the on-chain scripts.
+- [off_chain_spec.md](doc/off_chain_spec.md) describes the architecture of off-chain components
+and the APIs that they use to communicate with each other
+and users.
+- the [adr](doc/adr) folder contains [Architecture Decision Records](https://adr.github.io/) made so far in the project.
+
 
 The full specification can be read here: [on on-chain](/doc/on_chain_spec.md) and [on off-chain](/doc/off_chain_spec.md).
 
