@@ -182,6 +182,9 @@ library
     HydraAuction.Runner
     HydraAuction.Runner.Time
     HydraAuction.Tx.Common
+    HydraAuction.Tx.Common.Runner
+    HydraAuction.Tx.Common.Types
+    HydraAuction.Tx.Common.Utils
     HydraAuction.Tx.Escrow
     HydraAuction.Tx.StandingBid
     HydraAuction.Tx.TermsConfig
