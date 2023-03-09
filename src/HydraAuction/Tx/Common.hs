@@ -293,10 +293,10 @@ scriptUtxos script terms = do
 
 data AutoCreateParams = AutoCreateParams
   { authoredUtxos :: [(SigningKey PaymentKey, UTxO)]
-  , -- | Utxo which TxIns will be used as reference inputs
-    referenceUtxo :: UTxO
-  , -- | Nothing means collateral will be chosen automatically from given UTxOs
-    collateral :: Maybe TxIn
+  , referenceUtxo :: UTxO
+  -- ^ Utxo which TxIns will be used as reference inputs
+  , collateral :: Maybe TxIn
+  -- ^ Nothing means collateral will be chosen automatically from given UTxOs
   , witnessedUtxos ::
       [(BuildTxWith BuildTx (Witness WitCtxTxIn), UTxO)]
   , outs :: [TxOut CtxTx]

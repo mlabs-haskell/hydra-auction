@@ -141,4 +141,5 @@ cleanupTx terms = do
       where
         script =
           fromPlutusScript @PlutusScriptV2 $
-            getValidator $ standingBidValidator terms
+            getValidator $
+              standingBidValidator terms

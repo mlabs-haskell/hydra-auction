@@ -4,3 +4,4 @@
   - {name: undefined, within: []}
 - ignore: {name: Use pure}
 - ignore: {name: Use print}
+- ignore: {name: Use null}

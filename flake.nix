@@ -116,36 +116,25 @@
         preCommitHook = pre-commit-hooks.lib.${system}.run
           {
             src = ./.;
-            settings = { };
-            tools = { };
-
             hooks = {
               nixpkgs-fmt.enable = true;
               statix.enable = true;
               deadnix.enable = true;
-              fourmolu-format = {
-                enable = true;
-                name = "fourmolu format";
-                entry = "make format-check";
-
-                files = "";
-                types = [ "file" ];
-                excludes = [ ];
-                language = "system";
-                pass_filenames = false;
-              };
-
-              hlint-format = {
-                enable = true;
-                name = "hlint format";
-                entry = "make lint-check";
-
-                files = "";
-                types = [ "file" ];
-                excludes = [ ];
-                language = "system";
-                pass_filenames = false;
-              };
+              fourmolu.enable = true;
+              hlint.enable = true;
+              cabal-fmt.enable = true;
+            };
+            tools.fourmolu = pkgs.lib.mkForce pkgs.haskell.packages.ghc92.fourmolu;
+            settings = {
+              ormolu.defaultExtensions = [
+                "BangPatterns"
+                "TypeApplications"
+                "QualifiedDo"
+                "NondecreasingIndentation"
+                "PatternSynonyms"
+                "ImportQualifiedPost"
+                "TemplateHaskell"
+              ];
             };
           };
 

@@ -250,7 +250,8 @@ bidderBuys terms = do
         where
           value =
             lovelaceToValue $
-              Lovelace $ bidAmount' - calculateTotalFee terms
+              Lovelace $
+                bidAmount' - calculateTotalFee terms
           StandingBidDatum {standingBidState} = getStadingBidDatum standingBidUtxo
           bidAmount' = case standingBidState of
             (Bid (BidTerms {bidAmount})) -> naturalToInt bidAmount

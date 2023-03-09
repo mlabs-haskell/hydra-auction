@@ -94,7 +94,8 @@ doOnMatchingStage terms requiredStage action = do
     else
       liftIO $
         putStrLn
-          ( "Wrong stage for this transaction. Now: " <> show stage
+          ( "Wrong stage for this transaction. Now: "
+              <> show stage
               <> ", while required: "
               <> show requiredStage
           )

@@ -29,7 +29,8 @@ validatorAddress = scriptHashAddress . scriptValidatorHash . unValidatorScript
 {-# INLINEABLE scriptCurrencySymbol #-}
 scriptCurrencySymbol :: MintingPolicy -> CurrencySymbol
 scriptCurrencySymbol =
-  CurrencySymbol . toBuiltin
+  CurrencySymbol
+    . toBuiltin
     . serialiseToRawBytes
     . hashScript
     . PlutusScript
