@@ -141,6 +141,9 @@
         wrapTest = test: pkgs.runCommand "${test.name}-wrapped"
           {
             nativeBuildInputs = [
+              pkgs.bubblewrap
+            ];
+            buildInputs = [
               cardano-node.packages.${system}.cardano-node
               cardano-node.packages.${system}.cardano-cli
               hydra.packages.${system}.hydra-node
@@ -149,19 +152,11 @@
           ''
             mkdir -p $out/log
             exec &> >(tee $out/log/test.log)
-            ${pkgs.bubblewrap}/bin/bwrap \
-              --share-net \
+            bwrap \
               --ro-bind /nix/store /nix/store \
               --bind /build /build \
-              --uid 1000 \
-              --gid 1000 \
+              --share-net \
               --proc /proc \
-              --dir /tmp \
-              --dev /dev \
-              --setenv TMPDIR /tmp \
-              --setenv XDG_RUNTIME_DIR /tmp \
-              --bind . /data \
-              --chdir /data  \
               --ro-bind ${pkgs.tzdata}/share/zoneinfo /usr/share/zoneinfo \
               -- ${test}/bin/${test.exeName} >&2
           '';
