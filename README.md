@@ -28,6 +28,12 @@ nix build .
 
 Will build the CLI application and link it to `./result/bin/hydra-auction`.
 
+## Starting docker-compose environment
+
+To setup the environment required for the demo, we have a compose file which will start a single cardano-node and 3 hydra-nodes for the delgates.
+
+We recommend using the `spin-up-new-devnet.sh` script as it will take care of setting up the correct files for the cardano-node and seeding the actors running the hydra-nodes with enough funds to manage the head lifecycle.
+
 ## CLI usage
 
 Different terms for auction are stored in JSON and auctions named with string.
