@@ -166,18 +166,19 @@
               -- ${test}/bin/${test.exeName} >&2
           '';
 
-        hydraChecks = {
+        hydraChecks = haskellNixFlake.packages // {
           # NOTE: mind that we use `packages` here, not checks
           hydra-test = wrapTest haskellNixFlake.packages."hydra-auction:test:hydra-auction-test";
         };
       in
-      {
+      rec {
         inherit haskellNixFlake;
         packages = {
           default = haskellNixFlake.packages."hydra-auction:exe:hydra-auction";
+          # FIXME: this can probably be removed
           check = pkgs.runCommand "combined-test"
             {
-              nativeBuildInputs = builtins.attrValues self.checks.${system};
+              nativeBuildInputs = builtins.attrValues (builtins.removeAttrs self.checks.${system} [ "check" ]);
             } "touch $out";
         };
 
@@ -187,7 +188,7 @@
           }))
           haskellNixFlake.devShells;
 
-        checks = hydraChecks // {
+        checks = hydraChecks // packages // {
           formatting = preCommitHook;
         };
 
