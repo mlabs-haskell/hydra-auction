@@ -33,8 +33,8 @@ import Plutus.V2.Ledger.Api (getValidator)
 
 -- Hydra imports
 import Cardano.Api.UTxO qualified as UTxO
-import CardanoClient -- TODO
-import CardanoClient (waitForUTxO)
+-- import CardanoClient -- TODO
+import CardanoClient (waitForUTxO, buildAddress)
 import CardanoNode (
   RunningNode (
     RunningNode,
@@ -67,7 +67,7 @@ import Hydra.Cardano.Api (
   pattern WitnessPaymentKey,
  )
 import Hydra.Chain.Direct (loadChainContext)
-import Hydra.Chain.Direct.State (ChainContext (..))
+import Hydra.Chain.Direct.State (ChainContext (ChainContext))
 import Hydra.Chain.Direct.Tx (mkHeadId)
 import Hydra.Cluster.Faucet (
   Marked (Fuel, Normal),
@@ -99,7 +99,16 @@ import HydraNode (
 
 -- Hydra auction imports
 
-import Hydra.Cluster.Fixture (Actor (..))
+import Hydra.Cluster.Fixture (
+  Actor (..),
+  alice,
+  aliceSk,
+  bob,
+  bobSk,
+  carol,
+  carolSk,
+  cperiod,
+ )
 import Hydra.Cluster.Util (keysFor)
 import HydraAuction.Fixture qualified as AuctionFixture
 import HydraAuction.HydraExtras (submitAndAwaitCommitTx)
@@ -175,12 +184,14 @@ bidderBuysTest' clusterIx hydraScriptsTxId = do
   let actors@[seller, bidder1, bidder2] = [AuctionFixture.Alice, AuctionFixture.Bob, AuctionFixture.Carol]
   [sellerU, bidder1U, bidder2U] <- mapM (initWallet 20_000_000_000) actors
 
-  (_, sellerSk) <- liftIO $ AuctionFixture.keysFor seller
+  (sellerVk, sellerSk) <- liftIO $ AuctionFixture.keysFor seller
 
   ctx@MkExecutionContext {node, tracer} <- ask
   let hydraTracer = contramap FromHydra tracer
 
-  runningThreeNodesHydra node clusterIx hydraTracer hydraScriptsTxId $ \(parties, nodes, scriptRegistry) -> do
+  let sellerAddress = buildAddress sellerVk (networkId node)
+
+  runningThreeNodesHydra node clusterIx hydraTracer hydraScriptsTxId $ \(parties, nodes, chainContext) -> do
     executeRunner ctx $ do
       [n1, n2, n3] <- return nodes
 
@@ -215,12 +226,15 @@ bidderBuysTest' clusterIx hydraScriptsTxId = do
           nodes
           (sellerU, sellerSk)
           (standingBidUtxo, standingBidWitness)
-          scriptRegistry
+          chainContext
+          sellerAddress
 
       -- Get UTxO
       let standingBid = undefined
-      let newBidTx = newBidL2Tx terms 8_000_000
-      postTx newBidTx n1
+      -- let newBidTx = newBidL2Tx terms 8_000_000
+      -- postTx newBidTx n1
+
+      return ()
 
 headIdIs v = do
   guard $ v ^? key "tag" == Just "HeadIsInitializing"
@@ -235,13 +249,21 @@ fixmeInitAndCommitUsingAllNodes
   [n1, n2, n3]
   (!commitedUtxo, !commiterSk)
   (!scriptUtxo, !scriptWitness)
-  chainContext = do
+  chainContext
+  changeAddress = do
     -- TODO: why does not work if placed here?
     -- send n1 $ input "Init" []
 
     Just !headId <- waitMatch 20 n1 headIdIs
 
-    submitAndAwaitCommitTx node headId chainContext p1 (commitedUtxo, commiterSk) (scriptUtxo, scriptWitness)
+    submitAndAwaitCommitTx
+      node
+      headId
+      chainContext
+      p1
+      (commitedUtxo, commiterSk)
+      (scriptUtxo, scriptWitness)
+      changeAddress
 
     putStrLn "POSTSUBMIT"
     -- FIXME
@@ -267,22 +289,18 @@ runningThreeNodesHydra cardanoNode clusterIx hydraTracer hydraScriptsTxId cont =
       let actors@[aliceA, bobA, carolA] = [Alice, Bob, Carol]
 
       aliceKeys@(aliceCardanoVk, aliceCardanoSk) <- keysFor aliceA
-      bobKeys@(bobCardanoVk, _) <- keysFor bobA
-      carolKeys@(carolCardanoVk, _) <- keysFor carolA
+      bobKeys@(bobCardanoVk, bobCardanoSk) <- keysFor bobA
+      carolKeys@(carolCardanoVk, carolCardanoSk) <- keysFor carolA
 
-      let hydraKeys =
-            map
-              (\name -> generateSigningKey (name <> show clusterIx))
-              ["alice-", "bob-", "carol-"]
+      let hydraKeys = [aliceSk, bobSk, carolSk]
       let parties@[p1, p2, p3] = map deriveParty hydraKeys
 
       let cardanoKeys = [aliceKeys, bobKeys, carolKeys]
 
       let firstNodeId = clusterIx * 3
-      let contestationPeriod = UnsafeContestationPeriod 2
 
       -- TODO
-      chainConfig <- chainConfigFor Alice tmpDir (nodeSocket cardanoNode) [Bob, Carol] contestationPeriod
+      chainConfig <- chainConfigFor Alice tmpDir (nodeSocket cardanoNode) [Bob, Carol] cperiod
       chainContext <- loadChainContext chainConfig p1 [p2, p3] hydraScriptsTxId
 
       withHydraCluster
@@ -293,7 +311,7 @@ runningThreeNodesHydra cardanoNode clusterIx hydraTracer hydraScriptsTxId cont =
         cardanoKeys
         hydraKeys
         hydraScriptsTxId
-        contestationPeriod
+        cperiod
         $ \nodes -> do
           [n1, n2, n3] <- Prelude.return $ toList nodes
           waitForNodesConnected hydraTracer [n1, n2, n3]

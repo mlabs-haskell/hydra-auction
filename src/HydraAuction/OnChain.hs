@@ -62,8 +62,8 @@ voucherAssetClass terms = AssetClass (voucherCurrencySymbol terms, stateTokenKin
 
 -- Escrow contract
 
-myWrap f d _r p =
-  check $ f (unsafeFromBuiltinData d) MoveToHydra (unsafeFromBuiltinData p)
+-- myWrap f d _r p =
+--   check $ f (unsafeFromBuiltinData d) MoveToHydra (unsafeFromBuiltinData p)
 
 {-# INLINEABLE escrowValidator #-}
 escrowValidator :: AuctionTerms -> Validator
