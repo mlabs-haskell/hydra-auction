@@ -1,2 +1,3 @@
 #!/bin/bash
-nix develop --command $(find /nix/store -maxdepth 1 -type d -iname '*haskell-language-server-exe*' | head -n 1| xargs -I % sh -c 'find  % -type f -name "haskell-language-server"') --lsp
+cd $( dirname -- "${BASH_SOURCE[0]}")
+nix develop -c bash -c "haskell-language-server --lsp"
