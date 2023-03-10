@@ -91,6 +91,10 @@ To run app with GHC warnings present you can use:
 cabal run --ghc-option='-Wwarn'
 ```
 
+To used LSP server with this project, add path to `script/run-hls.sh`
+into your LSP-extension config as path of HLS binary. This script
+will start HLS in our Nix environment.
+
 ## Documentation
 
 This project's documentation is organized (in the [doc](doc)) as follows:
