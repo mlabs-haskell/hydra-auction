@@ -50,9 +50,6 @@ import Hydra.Party (Party, partyFromChain, partyToChain)
 
 import HydraAuction.Tx.Common (callBodyAutoBalance, submitAndAwaitTx)
 
--- TODO
-import Unsafe.Coerce (unsafeCoerce)
-
 -- | Craft a commit transaction which includes the "committed" utxo as a datum.
 commitTxBody ::
   NetworkId ->
@@ -66,13 +63,14 @@ commitTxBody ::
   -- locked by initial script
   (TxIn, TxOut CtxUTxO, Hash PaymentKey) ->
   (TxIn, TxOut CtxUTxO, BuildTxWith BuildTx (Witness WitCtxTxIn)) ->
+  (TxIn, TxOut CtxUTxO) ->
   TxBodyContent BuildTx
 -- TODO: naming TxBody
-commitTxBody networkId scriptRegistry headId party (initialInput, out, vkh) (scriptInput, scriptOutput, scriptWitness) =
+commitTxBody networkId scriptRegistry headId party (initialInput, out, vkh) (scriptInput, scriptOutput, scriptWitness) (moneyInput, moneyOutput) =
   emptyTxBody
     & addInputs [(initialInput, initialWitness), (scriptInput, scriptWitness)]
     & addReferenceInputs [initialScriptRef]
-    -- & addVkInputs (maybeToList mCommittedInput)
+    & addVkInputs [moneyInput]
     & addExtraRequiredSigners [vkh]
     & addOutputs [commitOutput]
   where
@@ -96,7 +94,8 @@ commitTxBody networkId scriptRegistry headId party (initialInput, out, vkh) (scr
     commitAddress =
       mkScriptAddress @PlutusScriptV2 networkId commitScript
     commitValue =
-      txOutValue out <> txOutValue scriptOutput
+      txOutValue out
+        <> txOutValue scriptOutput
     commitDatum =
       mkTxOutDatum $ mkCommitDatum party (Just (scriptInput, scriptOutput)) (headIdToCurrencySymbol headId)
 
@@ -105,13 +104,12 @@ submitAndAwaitCommitTx
   headId
   (!ChainContext {ownVerificationKey, scriptRegistry})
   p1
-  (!commitedUtxo, !commiterSk)
-  (!scriptUtxo, !scriptWitness) = do
-    let [(!txIn, !txOut)] = UTxO.pairs commitedUtxo
-
+  (commiterUtxo, !commiterSk)
+  (!scriptUtxo, !scriptWitness)
+  changeAddress = do
     let !headAddress =
           buildScriptAddress
-            (PlutusScript $ fromPlutusScript $ Head.validatorScript)
+            (PlutusScript $ fromPlutusScript $ Initial.validatorScript)
             networkId
 
     let initialScriptRef = fst (initialReference scriptRegistry)
@@ -119,9 +117,15 @@ submitAndAwaitCommitTx
 
     let !vkh = verificationKeyHash ownVerificationKey
     headUtxo <- queryUTxO networkId nodeSocket QueryTip [headAddress]
-    let [(!headTxIn, !headTxOut)] = UTxO.pairs headUtxo
+    -- TODO
+    let (!headTxIn, !headTxOut) : _ = (UTxO.pairs headUtxo)
+
+    putStrLn $ show headAddress
+    putStrLn $ show headTxOut
+    putStrLn $ show Initial.validatorHash
 
     let [(!scriptTxIn, !scriptTxOut)] = UTxO.pairs scriptUtxo
+    let [commiterSingleUtxo] = UTxO.pairs commiterUtxo
 
     let !preTxBody =
           commitTxBody
@@ -131,16 +135,21 @@ submitAndAwaitCommitTx
             p1
             (headTxIn, headTxOut, vkh)
             (scriptTxIn, scriptTxOut, scriptWitness)
-
-    putStrLn $ show preTxBody
+            commiterSingleUtxo
 
     -- FIXME change address
-    let utxos = headUtxo <> scriptUtxo <> initialScriptRefUtxo
-    !eTxBody <- callBodyAutoBalance node (utxos) (preTxBody) headAddress
+    let utxos = headUtxo <> scriptUtxo <> initialScriptRefUtxo <> commiterUtxo
+    !eTxBody <- callBodyAutoBalance node (utxos) (preTxBody) changeAddress
 
     !txBody <- case eTxBody of
       Left x -> (putStrLn $ show x) >> return undefined
-      Right x -> putStrLn "good" >> return undefined
+      Right x -> putStrLn "good" >> return x
 
     let !tx = makeSignedTransaction [makeShelleyKeyWitness txBody (WitnessPaymentKey commiterSk)] txBody
+    -- let !tx = makeSignedTransaction [] txBody
+
+    putStrLn $ show tx
+
     submitAndAwaitTx node tx
+
+    putStrLn "DONE"

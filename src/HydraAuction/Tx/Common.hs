@@ -365,8 +365,6 @@ callBodyAutoBalance
     eraHistory <- queryEraHistory networkId nodeSocket QueryTip
     stakePools <- queryStakePools networkId nodeSocket QueryTip
 
-    putStrLn "11"
-
     return $
       balancedTxBody
         <$> makeTransactionBodyAutoBalance
