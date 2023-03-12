@@ -85,7 +85,7 @@ import Hydra.Ledger (txId)
 import Hydra.Ledger.Cardano (genKeyPair, mkSimpleTx)
 import Hydra.Party (Party, deriveParty)
 import HydraAuction.OnChain (AuctionScript (StandingBid), standingBidValidator)
-import HydraAuction.Tx.Common (mkInlinedDatumScriptWitness, scriptUtxos, submitAndAwaitTx)
+import HydraAuction.Tx.Common (mkInlinedDatumScriptWitness, scriptUtxos, submitAndAwaitTx, actorTipUtxo)
 import HydraAuction.Tx.TestNFT (mintOneTestNFT)
 import HydraNode (
   input,
@@ -211,6 +211,8 @@ bidderBuysTest' clusterIx hydraScriptsTxId = do
 
       standingBidUtxo <- scriptUtxos StandingBid terms
 
+      moneyUtxo <- actorTipUtxo
+
       -- Move
 
       let script =
@@ -224,7 +226,7 @@ bidderBuysTest' clusterIx hydraScriptsTxId = do
           parties
           hydraTracer
           nodes
-          (sellerU, sellerSk)
+          (moneyUtxo, sellerSk)
           (standingBidUtxo, standingBidWitness)
           chainContext
           sellerAddress

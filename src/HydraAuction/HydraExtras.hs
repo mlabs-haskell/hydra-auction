@@ -12,6 +12,7 @@ import Plutus.V2.Ledger.Api (
 
 import Cardano.Api.UTxO qualified as UTxO
 import CardanoClient (
+  queryProtocolParameters,
   QueryPoint (QueryTip),
   buildScriptAddress,
   queryUTxO,
@@ -61,9 +62,10 @@ commitTxBody ::
   -- Maybe (TxIn, TxOut CtxUTxO) ->
   -- | The initial output (sent to each party) which should contain the PT and is
   -- locked by initial script
-  (TxIn, TxOut CtxUTxO, Hash PaymentKey) ->
-  (TxIn, TxOut CtxUTxO, BuildTxWith BuildTx (Witness WitCtxTxIn)) ->
   (TxIn, TxOut CtxUTxO) ->
+  (TxIn, TxOut CtxUTxO, BuildTxWith BuildTx (Witness WitCtxTxIn)) ->
+  (TxIn, TxOut CtxUTxO, Hash PaymentKey) ->
+
   TxBodyContent BuildTx
 -- TODO: naming TxBody
 commitTxBody networkId scriptRegistry headId party (initialInput, out, vkh) (scriptInput, scriptOutput, scriptWitness) (moneyInput, moneyOutput) =
@@ -120,14 +122,10 @@ submitAndAwaitCommitTx
     -- TODO
     let (!headTxIn, !headTxOut) : _ = (UTxO.pairs headUtxo)
 
-    putStrLn $ show headAddress
-    putStrLn $ show headTxOut
-    putStrLn $ show Initial.validatorHash
-
     let [(!scriptTxIn, !scriptTxOut)] = UTxO.pairs scriptUtxo
     let [commiterSingleUtxo] = UTxO.pairs commiterUtxo
 
-    let !preTxBody =
+    let !prePreTxBody =
           commitTxBody
             networkId
             scriptRegistry
@@ -136,6 +134,11 @@ submitAndAwaitCommitTx
             (headTxIn, headTxOut, vkh)
             (scriptTxIn, scriptTxOut, scriptWitness)
             commiterSingleUtxo
+
+    pparams <-
+      queryProtocolParameters networkId nodeSocket QueryTip
+    let preTxBody = prePreTxBody { txProtocolParams = (BuildTxWith $ Just pparams) }
+
 
     -- FIXME change address
     let utxos = headUtxo <> scriptUtxo <> initialScriptRefUtxo <> commiterUtxo
@@ -146,10 +149,9 @@ submitAndAwaitCommitTx
       Right x -> putStrLn "good" >> return x
 
     let !tx = makeSignedTransaction [makeShelleyKeyWitness txBody (WitnessPaymentKey commiterSk)] txBody
-    -- let !tx = makeSignedTransaction [] txBody
 
     putStrLn $ show tx
 
     submitAndAwaitTx node tx
 
-    putStrLn "DONE"
+    putStrLn "DONE SUBMIT"
