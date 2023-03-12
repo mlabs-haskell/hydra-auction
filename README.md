@@ -107,9 +107,6 @@ and the APIs that they use to communicate with each other
 and users.
 - the [adr](doc/adr) folder contains [Architecture Decision Records](https://adr.github.io/) made so far in the project.
 
-
-The full specification can be read here: [on on-chain](/doc/on_chain_spec.md) and [on off-chain](/doc/off_chain_spec.md).
-
 ## Licensing
 
 You are free to copy, modify, and distribute this software
