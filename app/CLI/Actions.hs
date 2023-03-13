@@ -15,6 +15,9 @@ import Control.Monad (forM_, void)
 -- Plutus imports
 import Plutus.V1.Ledger.Address (pubKeyHashAddress)
 
+-- Cardano node imports
+import Cardano.Api (NetworkId)
+
 -- Hydra imports
 import Hydra.Cardano.Api (Lovelace, pattern ShelleyAddressInEra)
 
@@ -84,6 +87,8 @@ data CliAction
 data CliInput = MkCliInput
   { cliActor :: Actor
   , cliVerbosity :: Bool
+  , cliNodeSocket :: String
+  , cliNetworkId :: NetworkId
   }
 
 doOnMatchingStage :: AuctionTerms -> AuctionStage -> Runner () -> Runner ()
