@@ -2,7 +2,7 @@ version: "3.9"
 
 services:
   cardano-node:
-    image: inputoutput/cardano-node:latest
+    image: inputoutput/cardano-node:1.35.4
     volumes:
       - ./devnet:/devnet
     environment:
@@ -23,9 +23,6 @@ services:
 
   hydra-node-1:
     image: ghcr.io/input-output-hk/hydra-node:0.8.1
-    build:
-      context: ../
-      target: hydra-node
     profiles:
       - hydra-node
     volumes:
@@ -59,9 +56,6 @@ services:
 
   hydra-node-2:
     image: ghcr.io/input-output-hk/hydra-node:0.8.1
-    build:
-      context: ../
-      target: hydra-node
     profiles:
       - hydra-node
     volumes:
@@ -95,9 +89,6 @@ services:
 
   hydra-node-3:
     image: ghcr.io/input-output-hk/hydra-node:0.8.1
-    build:
-      context: ../
-      target: hydra-node
     profiles:
       - hydra-node
     volumes:

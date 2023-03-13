@@ -5,7 +5,7 @@
 set -eo pipefail
 
 MARKER_DATUM_HASH="a654fb60d21c1fed48db2c320aa6df9737ec0204c0ba53b9b94a09fb40e757f3"
-SCRIPT_DIR=$(realpath $(dirname $(realpath $0)))
+SCRIPT_DIR="$(realpath $(dirname $(realpath $0)))/.."
 NETWORK_ID=42
 
 CCLI_CMD=

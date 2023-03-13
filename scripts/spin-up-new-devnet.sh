@@ -1,10 +1,12 @@
 #!/bin/sh -e
+parent_path=$( cd "$(dirname "${BASH_SOURCE[0]}")" ; pwd -P )
+cd "$parent_path/.."
 
 echo "Stopping demo in case anything is already running"
-./stop-demo.sh
+./scripts/stop-demo.sh
 
 echo "Prepare devnet files"
-./reset-devnet.sh
+./scripts/reset-devnet.sh
 
 echo "Starting cardano node"
 docker-compose up cardano-node -d
@@ -21,7 +23,7 @@ echo "Setup cardano-cli env to connect to started network"
 export CARDANO_NODE_SOCKET_PATH=./devnet/node.socket
 
 echo "Seeding hydra node actors with fuel and publish reference scripts"
-./seed-devnet.sh
+./scripts/seed-devnet.sh
 
 echo "Starting hydra nodes"
 docker-compose --profile hydra-node up -d
