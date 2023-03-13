@@ -16,7 +16,7 @@ module HydraAuction.Tx.Common (
   mkInlineDatum,
   mkInlinedDatumScriptWitness,
   autoSubmitAndAwaitTx,
-  autoCreateTx,
+  autoCreateTx',
   tokenToAsset,
   mintedTokens,
   scriptUtxos,
@@ -77,6 +77,7 @@ import CardanoClient (
 import CardanoNode (
   RunningNode (RunningNode, networkId, nodeSocket),
  )
+import Cardano.Api (createTransactionBody) -- TODO
 import Hydra.Cardano.Api (
   Address,
   AddressInEra,
@@ -143,6 +144,7 @@ import Hydra.Cardano.Api (
   pattern TxExtraKeyWitnesses,
   pattern TxFeeExplicit,
   pattern TxInsCollateral,
+  pattern TxInsCollateralNone,
   pattern TxInsReference,
   pattern TxMetadataNone,
   pattern TxMintValue,
@@ -275,6 +277,8 @@ scriptUtxos script terms = do
   scriptAddress' <- scriptAddress script terms
   liftIO $ queryUTxO networkId nodeSocket QueryTip [scriptAddress']
 
+-- data CollateralParam = SpecificCollateral TxIn | NoCollateral
+
 data AutoCreateParams = AutoCreateParams
   { authoredUtxos :: [(SigningKey PaymentKey, UTxO)]
   , -- | Utxo which TxIns will be used as reference inputs
@@ -301,7 +305,10 @@ toSlotNo ptime = do
   either (error . show) return $ slotFromUTCTime timeHandle utcTime
 
 autoCreateTx :: AutoCreateParams -> Runner Tx
-autoCreateTx (AutoCreateParams {..}) = do
+autoCreateTx =  autoCreateTx' True
+
+autoCreateTx' :: Bool -> AutoCreateParams -> Runner Tx
+autoCreateTx' doAutobalance (AutoCreateParams {..}) = do
   MkExecutionContext {node} <- ask
   let (lowerBound', upperBound') = validityBound
   lowerBound <- case lowerBound' of
@@ -314,13 +321,18 @@ autoCreateTx (AutoCreateParams {..}) = do
   liftIO $ do
     pparams <-
       queryProtocolParameters (networkId node) (nodeSocket node) QueryTip
-    body <-
+    body <- if doAutobalance then
       either (\x -> error $ "Autobalance error: " <> show x) id
         <$> callBodyAutoBalance
           node
           (allAuthoredUtxos <> allWitnessedUtxos <> referenceUtxo)
           (preBody pparams lowerBound upperBound)
           changeAddress
+      else
+        return $
+          either (\x -> error $ "Tx body validation error: " <> show x) id $
+          createTransactionBody $ preBody pparams lowerBound upperBound
+
     pure $ makeSignedTransaction (signingWitnesses body) body
   where
     allAuthoredUtxos = foldMap snd authoredUtxos
@@ -340,7 +352,7 @@ autoCreateTx (AutoCreateParams {..}) = do
     preBody pparams lowerBound upperBound =
       TxBodyContent
         ((withWitness <$> txInsToSign) <> witnessedTxIns)
-        (TxInsCollateral [txInCollateral])
+        collateral'
         (TxInsReference (toList $ UTxO.inputSet referenceUtxo))
         outs
         TxTotalCollateralNone
@@ -363,6 +375,10 @@ autoCreateTx (AutoCreateParams {..}) = do
     makeSignWitness body sk = makeShelleyKeyWitness body (WitnessPaymentKey sk)
     signingWitnesses :: TxBody -> [KeyWitness]
     signingWitnesses body = fmap (makeSignWitness body . fst) authoredUtxos
+    collateral' =
+        if doAutobalance
+        then TxInsCollateral [txInCollateral]
+        else TxInsCollateralNone
 
 callBodyAutoBalance ::
   RunningNode ->

@@ -5,7 +5,7 @@ import PlutusTx.Prelude
 
 -- Plutus imports
 import Plutus.V1.Ledger.Address (pubKeyHashAddress, scriptHashAddress)
-import Plutus.V1.Ledger.Interval (contains, interval)
+import Plutus.V1.Ledger.Interval (contains, to)
 import Plutus.V1.Ledger.Value (assetClass, assetClassValueOf)
 import Plutus.V2.Ledger.Api (TxInfo, scriptContextTxInfo, txInInfoResolved, txInfoInputs, txInfoMint, txInfoOutputs, txInfoValidRange, txOutAddress)
 import Plutus.V2.Ledger.Contexts (ScriptContext, ownHash)
@@ -42,7 +42,7 @@ mkStandingBidValidator terms datum redeemer context =
           && nothingForged info
           && traceIfFalse
             "Wrong interval for NewBid"
-            (contains (interval 0 (biddingEnd terms)) (txInfoValidRange info))
+            (contains (to (biddingEnd terms)) (txInfoValidRange info))
       Cleanup ->
         -- XXX: interval is checked on burning
         checkExactlyOneVoucherBurned

@@ -49,6 +49,8 @@ import Hydra.Ledger.Cardano.Builder (
  )
 import Hydra.Party (Party, partyFromChain, partyToChain)
 
+import Data.ByteString (putStr)
+import Hydra.Cardano.Api (TxInsCollateral)
 import HydraAuction.Tx.Common (callBodyAutoBalance, submitAndAwaitTx)
 
 -- | Craft a commit transaction which includes the "committed" utxo as a datum.
@@ -65,41 +67,52 @@ commitTxBody ::
   (TxIn, TxOut CtxUTxO) ->
   (TxIn, TxOut CtxUTxO, BuildTxWith BuildTx (Witness WitCtxTxIn)) ->
   (TxIn, TxOut CtxUTxO, Hash PaymentKey) ->
-
+  [TxIn] ->
   TxBodyContent BuildTx
 -- TODO: naming TxBody
-commitTxBody networkId scriptRegistry headId party (initialInput, out, vkh) (scriptInput, scriptOutput, scriptWitness) (moneyInput, moneyOutput) =
-  emptyTxBody
-    & addInputs [(initialInput, initialWitness), (scriptInput, scriptWitness)]
-    & addReferenceInputs [initialScriptRef]
-    & addVkInputs [moneyInput]
-    & addExtraRequiredSigners [vkh]
-    & addOutputs [commitOutput]
-  where
-    initialWitness =
-      BuildTxWith $
-        ScriptWitness scriptWitnessCtx $
-          mkScriptReference initialScriptRef initialScript initialDatum initialRedeemer
-    initialScript =
-      fromPlutusScript @PlutusScriptV2 Initial.validatorScript
-    initialScriptRef =
-      fst (initialReference scriptRegistry)
-    initialDatum =
-      mkScriptDatum $ Initial.datum (headIdToCurrencySymbol headId)
-    initialRedeemer =
-      toScriptData . Initial.redeemer $
-        Initial.ViaCommit (Just $ toPlutusTxOutRef scriptInput)
-    commitOutput =
-      TxOut commitAddress commitValue commitDatum ReferenceScriptNone
-    commitScript =
-      fromPlutusScript Commit.validatorScript
-    commitAddress =
-      mkScriptAddress @PlutusScriptV2 networkId commitScript
-    commitValue =
-      txOutValue out
-        <> txOutValue scriptOutput
-    commitDatum =
-      mkTxOutDatum $ mkCommitDatum party (Just (scriptInput, scriptOutput)) (headIdToCurrencySymbol headId)
+commitTxBody
+  networkId
+  scriptRegistry
+  headId
+  party
+  (initialInput, out)
+  (scriptInput, scriptOutput, scriptWitness)
+  (moneyInput, moneyOutput, vkh)
+  collaterals =
+    ( emptyTxBody
+        & addInputs [(initialInput, initialWitness), (scriptInput, scriptWitness)]
+        & addReferenceInputs [initialScriptRef]
+        & addVkInputs [moneyInput]
+        & addExtraRequiredSigners [vkh]
+        & addOutputs [commitOutput]
+    )
+      { txInsCollateral = TxInsCollateral collaterals
+      }
+    where
+      initialWitness =
+        BuildTxWith $
+          ScriptWitness scriptWitnessCtx $
+            mkScriptReference initialScriptRef initialScript initialDatum initialRedeemer
+      initialScript =
+        fromPlutusScript @PlutusScriptV2 Initial.validatorScript
+      initialScriptRef =
+        fst (initialReference scriptRegistry)
+      initialDatum =
+        mkScriptDatum $ Initial.datum (headIdToCurrencySymbol headId)
+      initialRedeemer =
+        toScriptData . Initial.redeemer $
+          Initial.ViaCommit (Just $ toPlutusTxOutRef scriptInput)
+      commitOutput =
+        TxOut commitAddress commitValue commitDatum ReferenceScriptNone
+      commitScript =
+        fromPlutusScript Commit.validatorScript
+      commitAddress =
+        mkScriptAddress @PlutusScriptV2 networkId commitScript
+      commitValue =
+        txOutValue out
+          <> txOutValue scriptOutput
+      commitDatum =
+        mkTxOutDatum $ mkCommitDatum party (Just (scriptInput, scriptOutput)) (headIdToCurrencySymbol headId)
 
 submitAndAwaitCommitTx
   node@RunningNode {networkId, nodeSocket}
@@ -123,7 +136,10 @@ submitAndAwaitCommitTx
     let (!headTxIn, !headTxOut) : _ = (UTxO.pairs headUtxo)
 
     let [(!scriptTxIn, !scriptTxOut)] = UTxO.pairs scriptUtxo
-    let [commiterSingleUtxo] = UTxO.pairs commiterUtxo
+    let [(commiterTxIn, commiterTxOut)] = UTxO.pairs commiterUtxo
+
+    putStrLn $ "Money UTXO: " <> show scriptTxIn
+    putStrLn $ "Script UTXO: " <> show commiterTxIn
 
     let !prePreTxBody =
           commitTxBody
@@ -131,9 +147,10 @@ submitAndAwaitCommitTx
             scriptRegistry
             headId
             p1
-            (headTxIn, headTxOut, vkh)
+            (headTxIn, headTxOut)
             (scriptTxIn, scriptTxOut, scriptWitness)
-            commiterSingleUtxo
+            (commiterTxIn, commiterTxOut, vkh)
+            [commiterTxIn]
 
     pparams <-
       queryProtocolParameters networkId nodeSocket QueryTip

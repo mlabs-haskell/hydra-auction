@@ -171,7 +171,6 @@ initAndClose clusterIx hydraScriptsTxId = do
             output
               "HeadIsInitializing"
               ["parties" .= Set.fromList [alice, bob, carol]]
-          putStrLn "START3"
 
           -- Get some UTXOs to commit to a head
           committedUTxOByAlice <-

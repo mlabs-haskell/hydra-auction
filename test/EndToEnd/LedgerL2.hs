@@ -33,8 +33,9 @@ import Plutus.V2.Ledger.Api (getValidator)
 
 -- Hydra imports
 import Cardano.Api.UTxO qualified as UTxO
+
 -- import CardanoClient -- TODO
-import CardanoClient (waitForUTxO, buildAddress)
+import CardanoClient (buildAddress, waitForUTxO)
 import CardanoNode (
   RunningNode (
     RunningNode,
@@ -51,6 +52,8 @@ import Hydra.Cardano.Api (
   PlutusScriptV2,
   TxId,
   TxIn (..),
+  TxOut,
+  CtxUTxO,
   VerificationKey,
   fromPlutusScript,
   lovelaceToValue,
@@ -85,8 +88,15 @@ import Hydra.Ledger (txId)
 import Hydra.Ledger.Cardano (genKeyPair, mkSimpleTx)
 import Hydra.Party (Party, deriveParty)
 import HydraAuction.OnChain (AuctionScript (StandingBid), standingBidValidator)
-import HydraAuction.Tx.Common (mkInlinedDatumScriptWitness, scriptUtxos, submitAndAwaitTx, actorTipUtxo)
+import HydraAuction.Tx.Common (
+  actorTipUtxo,
+  mkInlinedDatumScriptWitness,
+  queryUTxOByTxInInRunner,
+  scriptUtxos,
+  submitAndAwaitTx,
+ )
 import HydraAuction.Tx.TestNFT (mintOneTestNFT)
+import HydraAuction.Tx.StandingBid (newBidTx)
 import HydraNode (
   input,
   output,
@@ -130,7 +140,7 @@ import HydraAuction.Tx.Escrow (
   sellerReclaims,
   startBidding,
  )
-import HydraAuction.Tx.StandingBid (cleanupTx, newBid)
+import HydraAuction.Tx.StandingBid (cleanupTx)
 import HydraAuction.Tx.TermsConfig (
   AuctionTermsConfig (
     AuctionTermsConfig,
@@ -211,14 +221,18 @@ bidderBuysTest' clusterIx hydraScriptsTxId = do
 
       standingBidUtxo <- scriptUtxos StandingBid terms
 
-      moneyUtxo <- actorTipUtxo
-
       -- Move
+
+      moneyUtxo <- actorTipUtxo
 
       let script =
             fromPlutusScript @PlutusScriptV2 $
               getValidator $ standingBidValidator terms
           standingBidWitness = mkInlinedDatumScriptWitness script MoveToHydra
+
+      actorUtxo <- actorTipUtxo
+      putStrLn $ "UTXO2: " <> show actorUtxo
+      let moneyUtxo = UTxO.fromPairs [Prelude.head (UTxO.pairs actorUtxo)]
 
       liftIO $
         fixmeInitAndCommitUsingAllNodes
@@ -231,17 +245,38 @@ bidderBuysTest' clusterIx hydraScriptsTxId = do
           chainContext
           sellerAddress
 
-      -- Get UTxO
-      let standingBid = undefined
-      -- let newBidTx = newBidL2Tx terms 8_000_000
-      -- postTx newBidTx n1
+      -- New bid
+      l2Utxo <- liftIO $ do
+        send n1 $ input "GetUTxO" []
+        waitMatch 10 n1 $ \v -> do
+          guard $ v ^? key "tag" == Just "GetUTxOResponse"
+          v ^? key "utxo"
 
-      return ()
+      let standingBid = UTxO.fromPairs $ Map.toList $ fromJust $
+           (parseMaybe parseJSON l2Utxo :: Maybe (Map.Map TxIn (TxOut CtxUTxO)))
+
+      putStrLn $ "UTXO STANDING BID: " <> show standingBid
+      withActor bidder1 $ do
+        newBidTx <- newBidTx terms (startingBid terms) standingBid
+        liftIO $ postTx hydraTracer n1 newBidTx
+
+      putStrLn $ "DONE NEWW"
+
+      -- Close Head
+      liftIO $ do
+        send n1 $ input "Close" []
+        waitMatch 3 n1 $ \v -> do
+          guard $ v ^? key "tag" == Just "HeadIsClosed"
+          return ()
 
 headIdIs v = do
   guard $ v ^? key "tag" == Just "HeadIsInitializing"
   headId <- v ^? key "headId"
   parseMaybe parseJSON headId
+
+headOpen v = do
+  guard $ v ^? key "tag" == Just "HeadIsOpen"
+  return ()
 
 -- fixmeInitAndCommitUsingAllNodes :: _ -> [Party] -> _ -> _ -> _ -> _ -> IO _
 fixmeInitAndCommitUsingAllNodes
@@ -249,7 +284,7 @@ fixmeInitAndCommitUsingAllNodes
   parties@[p1, p2, p3]
   hydraTracer
   [n1, n2, n3]
-  (!commitedUtxo, !commiterSk)
+  (!moneyUtxo, !moneySk)
   (!scriptUtxo, !scriptWitness)
   chainContext
   changeAddress = do
@@ -263,7 +298,7 @@ fixmeInitAndCommitUsingAllNodes
       headId
       chainContext
       p1
-      (commitedUtxo, commiterSk)
+      (moneyUtxo, moneySk)
       (scriptUtxo, scriptWitness)
       changeAddress
 
@@ -272,10 +307,7 @@ fixmeInitAndCommitUsingAllNodes
     send n2 $ input "Commit" ["utxo" .= Object mempty]
     send n3 $ input "Commit" ["utxo" .= Object mempty]
 
-    waitFor hydraTracer 20 [n1, n2, n3] $
-      output
-        "HeadIsOpen"
-        ["utxo" .= (commitedUtxo)]
+    waitMatch 20 n1 headOpen
 
 -- FIXME: do not check parties, cuz hydra-node already check that
 -- Wait for ReadyToCommit
@@ -320,15 +352,16 @@ runningThreeNodesHydra cardanoNode clusterIx hydraTracer hydraScriptsTxId cont =
 
           -- Funds to be used as fuel by Hydra protocol transactions
           let faucetTracer = contramap FromFaucet hydraTracer
-          seedFromFaucet_ cardanoNode aliceCardanoVk 100_000_000 Fuel faucetTracer
-          seedFromFaucet_ cardanoNode bobCardanoVk 100_000_000 Fuel faucetTracer
-          seedFromFaucet_ cardanoNode carolCardanoVk 100_000_000 Fuel faucetTracer
+          seedFromFaucet_ cardanoNode aliceCardanoVk 200_000_000 Fuel faucetTracer
+          seedFromFaucet_ cardanoNode bobCardanoVk 200_000_000 Fuel faucetTracer
+          seedFromFaucet_ cardanoNode carolCardanoVk 200_000_000 Fuel faucetTracer
 
+          -- TODO remove
           send n1 $ input "Init" []
 
           -- TODO remove
-          seedFromFaucet_ cardanoNode aliceCardanoVk 100_000_000 Normal faucetTracer
-          seedFromFaucet_ cardanoNode bobCardanoVk 100_000_000 Normal faucetTracer
-          seedFromFaucet_ cardanoNode carolCardanoVk 100_000_000 Normal faucetTracer
+          seedFromFaucet_ cardanoNode aliceCardanoVk 200_000_000 Normal faucetTracer
+          seedFromFaucet_ cardanoNode bobCardanoVk 200_000_000 Normal faucetTracer
+          seedFromFaucet_ cardanoNode carolCardanoVk 200_000_000 Normal faucetTracer
 
           cont (parties, [n1, n2, n3], chainContext)

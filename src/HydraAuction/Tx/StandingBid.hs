@@ -1,4 +1,4 @@
-module HydraAuction.Tx.StandingBid (newBid, cleanupTx) where
+module HydraAuction.Tx.StandingBid (newBid, cleanupTx, newBidTx) where
 
 -- Prelude imports
 
@@ -21,7 +21,12 @@ import Hydra.Cardano.Api (
   pattern ShelleyAddressInEra,
   pattern TxMintValueNone,
   pattern TxOut,
+  Tx,
+  UTxO,
  )
+
+-- TODO
+import Cardano.Api.UTxO qualified as UTxO
 
 -- Hydra auction imports
 import HydraAuction.Addresses (VoucherCS (..))
@@ -29,7 +34,7 @@ import HydraAuction.OnChain (
   AuctionScript (StandingBid),
   policy,
   standingBidValidator,
-  voucherAssetClass,
+  voucherAssetClass, standingBidAddress,
  )
 import HydraAuction.Plutus.Extras (scriptCurrencySymbol)
 import HydraAuction.Runner (Runner, logMsg)
@@ -45,6 +50,7 @@ import HydraAuction.Tx.Common (
   scriptAddress,
   scriptPlutusScript,
   scriptUtxos,
+  autoCreateTx',
  )
 import HydraAuction.Tx.Escrow (toForgeStateToken)
 import HydraAuction.Types (
@@ -112,7 +118,8 @@ newBid terms bidAmount = do
         , validityBound = (Just $ biddingStart terms, Just $ biddingEnd terms)
         }
 
-newBidL2Tx terms bidAmount standingBidUtxo = do
+newBidTx :: AuctionTerms -> Natural -> UTxO -> Runner Tx
+newBidTx terms bidAmount standingBidUtxo = do
   logMsg "Doing new bid"
 
   standingBidAddress <- scriptAddress StandingBid terms
@@ -141,29 +148,29 @@ newBidL2Tx terms bidAmount standingBidUtxo = do
         where
           script = scriptPlutusScript StandingBid terms
 
-  logMsg "Doing New bid"
-
   (bidderAddress, bidderVk, bidderSk) <- addressAndKeys
 
   bidderMoneyUtxo <- filterAdaOnlyUtxo <$> actorTipUtxo
 
+  let [(standingBidTxIn, _)] = UTxO.pairs $ standingBidUtxo
+
   -- FIXME: cover not proper UTxOs
-  void $
-    autoSubmitAndAwaitTx $
-      AutoCreateParams
-        { authoredUtxos =
-            [ (bidderSk, bidderMoneyUtxo)
-            ]
-        , referenceUtxo = mempty
-        , witnessedUtxos =
-            [ (standingBidWitness, standingBidUtxo)
-            ]
-        , collateral = Nothing
-        , outs = [txOutStandingBid bidderVk]
-        , toMint = TxMintValueNone
-        , changeAddress = bidderAddress
-        , validityBound = (Just $ biddingStart terms, Just $ biddingEnd terms)
-        }
+  autoCreateTx' False $
+    AutoCreateParams
+      { authoredUtxos = []
+          -- [ (bidderSk, bidderMoneyUtxo)
+          -- ]
+      , referenceUtxo = mempty
+      , witnessedUtxos =
+          [ (standingBidWitness, standingBidUtxo)
+          ]
+      , collateral = Just standingBidTxIn
+      , outs = [txOutStandingBid bidderVk]
+      , toMint = TxMintValueNone
+      , changeAddress = bidderAddress
+      , validityBound = (Nothing, Just $ biddingEnd terms)
+      -- , validityBound = (Just 0, Just 0)
+      }
 
 cleanupTx :: AuctionTerms -> Runner ()
 cleanupTx terms = do

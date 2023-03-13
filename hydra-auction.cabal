@@ -67,6 +67,7 @@ common common-lang
     , record-hasfield
     , stm
     , text
+    , cardano-api                     >=1.36
     , time
     , transformers
     , websockets
@@ -135,9 +136,8 @@ executable hydra-auction
     , bech32
     , bech32-th
     , bytestring
-    , cardano-api                     >=1.35.4
     , cardano-binary                  ==1.5.0
-    , cardano-crypto-class            ==2.0.0
+    , cardano-crypto-class
     , cardano-ledger-alonzo
     , cardano-ledger-alonzo-test
     , cardano-ledger-babbage
@@ -149,7 +149,6 @@ executable hydra-auction
     , cardano-ledger-shelley-ma-test
     , cardano-ledger-shelley-test
     , cardano-prelude
-    , cardano-slotting                ==0.1.0.0
     , cborg
     , containers
     , data-default
@@ -161,13 +160,12 @@ executable hydra-auction
     , hydra-test-utils
     , natural-numbers
     , optparse-applicative
-    , ouroboros-network               ==0.1.0.1
     , parsec
-    , plutus-ledger-api               ==1.0.0.0
+    , plutus-ledger-api
     , plutus-tx
     , QuickCheck
     , serialise
-    , strict-containers               ==0.1.0.0
+    , strict-containers
     , text
 
   hs-source-dirs: app
