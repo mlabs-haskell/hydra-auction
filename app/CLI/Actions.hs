@@ -12,11 +12,14 @@ import Prelude
 -- Haskell imports
 import Control.Monad (forM_, void)
 
+-- Cardano node imports
+import Cardano.Api (NetworkId)
+
 -- Plutus imports
 import Plutus.V1.Ledger.Address (pubKeyHashAddress)
 
 -- Hydra imports
-import Hydra.Cardano.Api (Lovelace, TxIn, pattern ShelleyAddressInEra)
+import Hydra.Cardano.Api (Lovelace, pattern ShelleyAddressInEra)
 
 -- Hydra auction imports
 import HydraAuction.Fixture (Actor (..))
@@ -43,7 +46,7 @@ import HydraAuction.Tx.Escrow (
  )
 import HydraAuction.Tx.StandingBid (cleanupTx, newBid)
 import HydraAuction.Tx.TermsConfig (constructTermsDynamic)
-import HydraAuction.Tx.TestNFT (mintOneTestNFT)
+import HydraAuction.Tx.TestNFT (findTestNFT, mintOneTestNFT)
 import HydraAuction.Types (AuctionStage (..), AuctionTerms, Natural, naturalToInt)
 
 -- Hydra auction CLI imports
@@ -73,7 +76,7 @@ data CliAction
   | Seed
   | Prepare !Actor
   | MintTestNFT
-  | AuctionAnounce !AuctionName !TxIn
+  | AuctionAnounce !AuctionName
   | StartBidding !AuctionName
   | NewBid !AuctionName !Natural
   | BidderBuys !AuctionName
@@ -84,6 +87,8 @@ data CliAction
 data CliInput = MkCliInput
   { cliActor :: Actor
   , cliVerbosity :: Bool
+  , cliNodeSocket :: String
+  , cliNetworkId :: NetworkId
   }
 
 doOnMatchingStage :: AuctionTerms -> AuctionStage -> Runner () -> Runner ()
@@ -163,18 +168,22 @@ handleCliAction userAction = do
           <> show actor
           <> "."
       void mintOneTestNFT
-    AuctionAnounce auctionName utxo -> do
-      dynamic <- liftIO $ constructTermsDynamic actor utxo
-      liftIO $ writeAuctionTermsDynamic auctionName dynamic
-      -- FIXME: proper error printing
-      Just config <- liftIO $ readAuctionTermsConfig auctionName
-      terms <- liftIO $ configToAuctionTerms config dynamic
-      liftIO . putStrLn $
-        show actor
-          <> " announces auction called "
-          <> show auctionName
-          <> "."
-      announceAuction terms
+    AuctionAnounce auctionName -> do
+      mTxIn <- findTestNFT <$> actorTipUtxo
+      case mTxIn of
+        Just txIn -> do
+          dynamic <- liftIO $ constructTermsDynamic actor txIn
+          liftIO $ writeAuctionTermsDynamic auctionName dynamic
+          -- FIXME: proper error printing
+          Just config <- liftIO $ readAuctionTermsConfig auctionName
+          terms <- liftIO $ configToAuctionTerms config dynamic
+          liftIO . putStrLn $
+            show actor
+              <> " announces auction called "
+              <> show auctionName
+              <> "."
+          announceAuction terms
+        Nothing -> liftIO . putStrLn $ "User doesn't have the \"Mona Lisa\" token.\nThis demo is configured to use this token as the auction lot."
     StartBidding auctionName -> do
       -- FIXME: proper error printing
       Just terms <- liftIO $ readAuctionTerms auctionName

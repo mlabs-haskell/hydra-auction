@@ -200,10 +200,13 @@ Request parameters: none.
 
 </td></tr><tr></tr><tr><td>
 
-**announceAuction.** Construct `AuctionTerms`
-using the request parameters provided
+**announceAuction.** Used by sellers.
+
+Construct `AuctionTerms` using the request parameters provided
 (seller implicitly set to the request submitter),
 and submit an L1 transaction to the Cardano node.
+
+From this moment timing of stages begins.
 
 Request parameters:
 
@@ -214,7 +217,27 @@ Request parameters:
 
 </td></tr><tr></tr><tr><td>
 
-**startBiddingL2.** Execute a sequence of actions to allow bidding to start on L2.
+**createBidDeposit.** Used by bidders to place deposits for auctions,
+before the bidding start time.
+
+Request parameters:
+
+- Auction ID
+- Deposit amount
+
+This request will return an error if the deposit amount is smaller than
+the `minDepositAmount` defined in the auction's terms.
+
+Approved bidders at bidding start time will be selected
+from bidders that created sufficient deposits.
+
+</td></tr><tr></tr><tr><td>
+
+**startBiddingL2.** Used by sellers.
+
+Performed after BiddingStart and before BiddingEnd.
+
+Execute a sequence of actions to allow bidding to start on L2.
 
 Request parameters:
 
@@ -226,7 +249,11 @@ calling startBiddingL1 and then calling moveStandingBidToL2.
 
 </td></tr><tr></tr><tr><td>
 
-**startBiddingL1.** If the request submitter is the seller
+**startBiddingL1.** Used by sellers.
+
+Performed after BiddingStart and before BiddingEnd.
+
+If the request submitter is the seller
 corresponding to the `AuctionTerms` of the Auction ID,
 then submit an L1 transaction to the Cardano node
 to start the bidding for the auction.
@@ -235,9 +262,15 @@ Request parameters:
 
 - Auction ID
 
+The list of approved bidders is automatically determined here
+via an L1 off-chain query that selects
+all bidders who created sufficient deposits for the auction.
+
 </td></tr><tr></tr><tr><td>
 
-**moveStandingBidToL2.** Commit the standing bid to the Hydra Head
+**moveStandingBidToL2.** Used by sellers.
+
+Commit the standing bid to the Hydra Head
 and coordinate the opening of the Hydra Head.
 
 Request parameters:
@@ -253,6 +286,8 @@ to commit the standing bid utxo to the Hydra Head.
 </td></tr><tr></tr><tr><td>
 
 **newBidL1.** Submit a new bid as an L1 transaction to the Cardano node.
+
+Performed after BiddingStart and before BiddingEnd.
 
 This request is needed for the fallback scenario when
 the standing bid is not on L2 because either
@@ -271,6 +306,8 @@ Request parameters:
 **newBidL2.** Send a request to a given delegate server (chosen by the bidder)
 to submit a new bid as an L2 transaction to the Hydra Head.
 
+Performed after BiddingStart and before BiddingEnd.
+
 Request parameters:
 
 - Auction ID
@@ -287,6 +324,58 @@ which he can submit start from (biddingEnd - contestationPeriodDuration).
 Cache this post-dated transaction for the bidder.
 
 </td></tr><tr></tr><tr><td>
+
+**bidderBuys.** Used by the winning bidder.
+
+Peformed after BiddingEnd and before VoucherExpiry.
+
+Submits a transaction that:
+- spends the auction escrow utxo with the `BidderBuys` redeemer
+- spends (if available) the bidder's deposit with the `WinningBidder` redeemer
+- spends an input from the bidder to provide ADA for the outputs and transaction fees
+- sends the bid payment to the seller
+- sends the auction lot to the bidder
+- sends the total auction fees for delegates to the fee escrow script
+- sends the ADA change to the bidder
+
+Request parameters:
+
+- Auction ID
+
+</td></tr><tr></tr><tr><td>
+
+**sellerReclaims.** Used by the seller.
+
+Performed after VoucherExpiry.
+
+Submits a transaction that:
+- spends the auction escrow utxo with the `SellerReclaims` redeemer
+- spends (if available) the bidder's deposit with the `SellerClaimsDeposit` redeemer
+- spends an input from the seller to provide ADA for transaction fees
+- sends the auction lot to the seller
+- sends the total auction fees for delegates to the fee escrow script
+- sends the ADA change to the seller
+
+Request parameters:
+
+- Auction ID
+
+</td></tr><tr></tr><tr><td>
+
+**refundDeposit.** Used by losing bidders.
+
+Peformed after BiddingEnd.
+
+Submits a transaction that:
+- spends the bidder's deposit
+- sends ADA to the bidder
+
+Request parameters:
+
+- Auction ID
+
+</td></tr><tr></tr><tr><td>
+
 
 **closeHeadByBidder.** Submit the cached post-dated L1 closing transaction
 to the Cardano node.
@@ -314,28 +403,41 @@ Normally, that should happen automatically.
 
 No request parameters are required.
 
+</td></tr><tr></tr><tr><td>
+
+**cleanupStandingBid.** Used by the seller.
+
+Performed after an auction's cleanup time.
+
+Spend the standing bid utxo with the `Cleanup` redeemer
+and recover the min 2 ADA that was put into it.
+
+Request parameters:
+
+- Auction ID
+
 </td></tr></table>
 
 ### Delegate server
 
 Things which should be done automatically:
 
-* When a delegate server starts,
-  its corresponding Hydra node should start
-  and request the initialization of the Hydra Head.
+* Delegate server should be started when Hydra node already running.
+  After start it asks for the initialization of the Hydra Head.
 * When one of the delegates makes a commit
   (via Hydra node) with the standing bid UTxO,
   all of the other delegates should make empty commits.
   They should be able to do this by monitoring
   the commit messages on L2.
-* The Hydra Head should be opened automatically
+* The Hydra Head is opened by Hydra node automatically
   as soon as all Hydra nodes commit.
 * If the Hydra Head isn't opened before the bidding end time,
-  it should be aborted.
-* By the bidding end time, the Hydra Head should be closed
-  and all contestation requests should be exhausted.
+  it should be aborted by Delegate server.
+* Delegate server closes the Hydra Head at the bidding end time.
   Otherwise, bidders would be able to submit new bids on L2
   past the bidding end time.
+* Delegate server submits fee distribution transaction,
+  if after voucher expiry fee escrow is present.
 * `Fanout` should be triggered when the contestation
   period ends.
 

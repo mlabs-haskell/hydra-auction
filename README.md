@@ -28,6 +28,15 @@ nix build .
 
 Will build the CLI application and link it to `./result/bin/hydra-auction`.
 
+## Starting docker-compose environment
+
+To setup the environment required for the demo, we have a compose file
+which will start a single cardano-node and 3 hydra-nodes for the delgates.
+
+We recommend using the `spin-up-new-devnet.sh` script
+as it will take care of setting up the correct files for the cardano-node
+and seeding the actors running the hydra-nodes with enough funds to manage the head lifecycle.
+
 ## CLI usage
 
 Different terms for auction are stored in JSON and auctions named with string.
@@ -35,6 +44,16 @@ Static part of params like stages timing and minmal bid/bid increment,
 are stored in `examples/auction-config`.
 Dynamic part of params is calculated and stored on `auction-announced` command.
 If you run it again for different lot dynamic part will be rewritten.
+
+### Note on Actors
+
+We have a set of known keys that we use for demo purposes.
+The Cardano keys for these actors can be found under `data/credentials`.
+
+We also have some hydra keys generated for the delegates, these are under `data/hydra-keys`.
+
+In our demo Oscar, Patricia and Rupert are the delegates running hydra nodes,
+all other actors are meant to be either sellers or bidders.
 
 ### Bidder wins case
 
@@ -91,9 +110,24 @@ To run app with GHC warnings present you can use:
 cabal run --ghc-option='-Wwarn'
 ```
 
-## Specification
+If you are having trouble using hls with this project, you can use following
+way. Add path to `script/run-hls.sh` into your LSP-extension config,
+as path of HLS binary. This script will start HLS in our Nix environment.
 
-The full specification can be read here: [on on-chain](/doc/on_chain_spec.md) and [on off-chain](/doc/off_chain_spec.md).
+Also you may found other solutions here:
+https://plutus.readthedocs.io/en/latest/troubleshooting.html#wrong-version
+
+## Documentation
+
+This project's documentation is organized (in the [doc](doc)) as follows:
+
+- [domain_logic.md](doc/domain_logic.md) describes the terminology and models
+for the Hydra Auction.
+- [on_chain_spec.md](doc/on_chain_spec.md) describes the on-chain scripts.
+- [off_chain_spec.md](doc/off_chain_spec.md) describes the architecture of off-chain components
+and the APIs that they use to communicate with each other
+and users.
+- the [adr](doc/adr) folder contains [Architecture Decision Records](https://adr.github.io/) made so far in the project.
 
 ## Licensing
 

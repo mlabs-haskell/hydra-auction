@@ -22,7 +22,6 @@ import Options.Applicative (
   info,
   long,
   metavar,
-  option,
   prefs,
   progDesc,
   renderFailure,
@@ -35,7 +34,7 @@ import Options.Applicative (
  )
 
 -- Cardano node imports
-import Cardano.Api (TxIn)
+import Cardano.Api (NetworkMagic (..), fromNetworkMagic)
 
 -- Hydra auction imports
 import HydraAuction.Fixture (Actor (..))
@@ -45,7 +44,6 @@ import HydraAuction.Types (Natural, intToNatural)
 -- Hydra auction CLI imports
 import CLI.Actions (CliAction (..), CliInput (..), seedAmount)
 import CLI.Config (AuctionName (..))
-import CLI.Parsers.TxIn (parseTxIn)
 
 parseCliAction :: [String] -> Either String CliAction
 parseCliAction s = case execParserPure preferences options s of
@@ -72,7 +70,7 @@ cliActionParser :: Parser CliAction
 cliActionParser =
   hsubparser
     ( command "show-script-utxos" (info (ShowScriptUtxos <$> auctionName <*> script) (progDesc "Show utxos at a given script. Requires the seller and auction lot for the given script"))
-        <> command "show-utxos" (info (pure ShowUtxos) (progDesc "Shows utxos for a given actor"))
+        <> command "show-utxos" (info (pure ShowUtxos) (progDesc "Shows utxos for current actor"))
         <> command
           "show-current-stage"
           ( info
@@ -81,10 +79,10 @@ cliActionParser =
           )
         <> command "show-all-utxos" (info (pure ShowAllUtxos) (progDesc "Shows utxos for all actors"))
         <> command "show-current-winner-bidder" (info (ShowCurrentWinningBidder <$> auctionName) (progDesc "Show current winning bidder for auction"))
-        <> command "seed" (info (pure Seed) (progDesc $ "Provides " <> show seedAmount <> " Lovelace for the given actor"))
+        <> command "seed" (info (pure Seed) (progDesc $ "Provides " <> show seedAmount <> " Lovelace for current actor"))
         <> command "prepare-for-demo" (info (Prepare <$> actor) (progDesc $ "Provides " <> show seedAmount <> " Lovelace for every actor and 1 Test NFT for given actor"))
         <> command "mint-test-nft" (info (pure MintTestNFT) (progDesc "Mints an NFT that can be used as auction lot"))
-        <> command "announce-auction" (info (AuctionAnounce <$> auctionName <*> utxo) (progDesc "Create an auction. Requires TxIn which identifies the auction lot"))
+        <> command "announce-auction" (info (AuctionAnounce <$> auctionName) (progDesc "Create an auction"))
         <> command "start-bidding" (info (StartBidding <$> auctionName) (progDesc "Open an auction for bidding"))
         <> command "new-bid" (info (NewBid <$> auctionName <*> bidAmount) (progDesc "Actor places new bid after bidding is started"))
         <> command "bidder-buys" (info (BidderBuys <$> auctionName) (progDesc "Pay and recieve a lot after auction end"))
@@ -119,15 +117,6 @@ script =
           <> help "Script to check. One of: escrow, standing-bid, fee-escrow"
       )
 
-utxo :: Parser TxIn
-utxo =
-  option
-    parseTxIn
-    ( short 'u'
-        <> metavar "UTXO"
-        <> help "Utxo with test NFT for AuctionTerms"
-    )
-
 bidAmount :: Parser Natural
 bidAmount =
   parseAda
@@ -135,6 +124,23 @@ bidAmount =
       ( short 'b'
           <> metavar "BID_AMOUNT"
           <> help "Bid amount"
+      )
+
+socketDir :: Parser String
+socketDir =
+  strOption
+    ( long "cardano-node-socket"
+        <> metavar "CARDANO_NODE_SOCKET"
+        <> help "Absolute path to the cardano node socket"
+    )
+
+networkMagic :: Parser NetworkMagic
+networkMagic =
+  parseNetworkMagic
+    <$> strOption
+      ( long "network-magic"
+          <> metavar "NETWORK_MAGIC"
+          <> help "Network magic for cardano"
       )
 
 parseActor :: String -> Actor
@@ -158,8 +164,11 @@ parseScript _ = error "Escrow parsing error"
 parseAda :: String -> Natural
 parseAda = fromJust . intToNatural . (* 1_000_000) . read
 
+parseNetworkMagic :: String -> NetworkMagic
+parseNetworkMagic s = NetworkMagic $ read s
+
 verboseParser :: Parser Bool
 verboseParser = switch (long "verbose" <> short 'v')
 
 cliInputParser :: Parser CliInput
-cliInputParser = MkCliInput <$> actor <*> verboseParser
+cliInputParser = MkCliInput <$> actor <*> verboseParser <*> socketDir <*> (fromNetworkMagic <$> networkMagic)

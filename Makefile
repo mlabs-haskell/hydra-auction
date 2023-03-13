@@ -34,6 +34,9 @@ lint-check: requires_nix_shell
 lint: requires_nix_shell
 	@sh lint.sh
 
+docker:
+	./scripts/spin-up-new-devnet.sh
+
 BUILD_PATH = "dist-newstyle"
 NODE_STATE_PATH = "node-state"
 clean:
