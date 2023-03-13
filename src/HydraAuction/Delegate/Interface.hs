@@ -6,6 +6,9 @@ module HydraAuction.Delegate.Interface (
   FrontendRequest (..),
 ) where
 
+-- Prelude imports
+import Prelude
+
 -- Cardano imports
 import Cardano.Api.UTxO (UTxO)
 
@@ -25,4 +28,6 @@ data DelegateError
   | WrongClientSignature
   | WrongClientKind
   | HydraRequestError
+
 data DelegateResponse = Okay | ClosingPreparedTransaction
+  deriving stock (Show)
