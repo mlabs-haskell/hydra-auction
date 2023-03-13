@@ -6,6 +6,7 @@ module HydraAuction.OnChain.Common (
   validAuctionTerms,
   decodeOutputDatum,
   byAddress,
+  checkVoucherExpiredOrLater,
   lovelaceOfOutput,
   nothingForged,
   checkInterval,
@@ -52,6 +53,12 @@ checkInterval :: AuctionTerms -> AuctionStage -> TxInfo -> Bool
 checkInterval terms stage info =
   traceIfFalse "Wrong interval for transaction" $
     contains (stageToInterval terms stage) (txInfoValidRange info)
+
+{-# INLINEABLE checkVoucherExpiredOrLater #-}
+checkVoucherExpiredOrLater :: AuctionTerms -> TxInfo -> Bool
+checkVoucherExpiredOrLater terms info =
+  traceIfFalse "Wrong interval for transaction" $
+    contains (from (voucherExpiry terms)) (txInfoValidRange info)
 
 {-# INLINEABLE validAuctionTerms #-}
 validAuctionTerms :: AuctionTerms -> Bool

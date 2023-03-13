@@ -18,6 +18,7 @@ import HydraAuction.Addresses (
 import HydraAuction.OnChain.Common (
   byAddress,
   checkInterval,
+  checkVoucherExpiredOrLater,
   decodeOutputDatum,
   lovelaceOfOutput,
   nothingForged,
@@ -52,7 +53,7 @@ mkEscrowValidator (StandingBidAddress standingBidAddressLocal, FeeEscrowAddress 
               && checkInterval terms BiddingStartedStage info
               && checkStartBiddingOutputs
           SellerReclaims ->
-            checkInterval terms VoucherExpiredStage info
+            checkVoucherExpiredOrLater terms info
               && checkSellerReclaimsOutputs
           BidderBuys ->
             checkAuctionState isStarted escrowInputOutput

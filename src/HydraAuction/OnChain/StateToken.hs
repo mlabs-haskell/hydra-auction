@@ -14,6 +14,7 @@ import Plutus.V2.Ledger.Contexts (ScriptContext, TxInfo, ownCurrencySymbol, scri
 import HydraAuction.Addresses (EscrowAddress (..), VoucherCS (..))
 import HydraAuction.OnChain.Common (
   checkInterval,
+  checkVoucherExpiredOrLater,
   decodeOutputDatum,
   validAuctionTerms,
  )
@@ -43,7 +44,7 @@ mkPolicy (EscrowAddress escrowAddressLocal, terms) redeemer ctx =
         && exactlyOneOutputToEscrow
     BurnVoucher ->
       traceIfFalse "Not exactly one Voucher burned" (txInfoMint info == voucherOnlyValue (-1))
-        && (checkInterval terms VoucherExpiredStage info || checkInterval terms CleanupStage info)
+        && checkInterval terms CleanupStage info
   where
     voucherOnlyValue :: Integer -> Value
     voucherOnlyValue = singleton (ownCurrencySymbol ctx) (stateTokenKindToTokenName Voucher)
