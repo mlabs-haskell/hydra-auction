@@ -372,5 +372,5 @@ sellerReclaims terms = do
             ]
         , toMint = TxMintValueNone
         , changeAddress = sellerAddress
-        , validityBound = (Just $ voucherExpiry terms, Nothing)
+        , validityBound = (Just $ voucherExpiry terms, Just $ cleanup terms)
         }

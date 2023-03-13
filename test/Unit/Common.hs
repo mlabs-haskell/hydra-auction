@@ -69,6 +69,7 @@ testCurrentAuctionStage = do
   assertStageAtTime terms (1 `minutes` later) BiddingStartedStage
   assertStageAtTime terms (2 `minutes` later) BiddingEndedStage
   assertStageAtTime terms (3 `minutes` later) VoucherExpiredStage
+  assertStageAtTime terms (4 `minutes` later) CleanupStage
   where
     assertStageAtTime terms timeDiff expectedStage = do
       _ <- travelTo timeDiff $ currentAuctionStage terms

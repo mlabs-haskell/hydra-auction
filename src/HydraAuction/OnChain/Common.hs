@@ -44,7 +44,8 @@ stageToInterval terms stage = case stage of
   AnnouncedStage -> to (biddingStart terms)
   BiddingStartedStage -> interval (biddingStart terms) (biddingEnd terms)
   BiddingEndedStage -> interval (biddingEnd terms) (voucherExpiry terms)
-  VoucherExpiredStage -> from (voucherExpiry terms)
+  VoucherExpiredStage -> interval (voucherExpiry terms) (cleanup terms)
+  CleanupStage -> from (cleanup terms)
 
 {-# INLINEABLE checkInterval #-}
 checkInterval :: AuctionTerms -> AuctionStage -> TxInfo -> Bool

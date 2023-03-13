@@ -43,7 +43,7 @@ mkPolicy (EscrowAddress escrowAddressLocal, terms) redeemer ctx =
         && exactlyOneOutputToEscrow
     BurnVoucher ->
       traceIfFalse "Not exactly one Voucher burned" (txInfoMint info == voucherOnlyValue (-1))
-        && checkInterval terms VoucherExpiredStage info
+        && (checkInterval terms VoucherExpiredStage info || checkInterval terms CleanupStage info)
   where
     voucherOnlyValue :: Integer -> Value
     voucherOnlyValue = singleton (ownCurrencySymbol ctx) (stateTokenKindToTokenName Voucher)

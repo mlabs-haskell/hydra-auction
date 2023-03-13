@@ -253,5 +253,5 @@ handleCliAction userAction = do
         "Cleaning up all remaining script utxos for auction "
           <> show auctionName
           <> "."
-      doOnMatchingStage terms VoucherExpiredStage $
+      doOnMatchingStage terms CleanupStage $
         cleanupTx terms

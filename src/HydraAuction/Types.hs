@@ -98,6 +98,7 @@ data AuctionStage
   | BiddingStartedStage
   | BiddingEndedStage
   | VoucherExpiredStage
+  | CleanupStage
   deriving stock
     (Prelude.Eq, Prelude.Ord, Prelude.Bounded, Prelude.Enum, Prelude.Show)
 
@@ -107,6 +108,7 @@ PlutusTx.makeIsDataIndexed
   , ('BiddingStartedStage, 1)
   , ('BiddingEndedStage, 2)
   , ('VoucherExpiredStage, 3)
+  , ('CleanupStage, 4)
   ]
 PlutusTx.makeLift ''AuctionStage
 
