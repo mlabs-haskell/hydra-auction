@@ -1,0 +1,130 @@
+version: "3.9"
+
+services:
+  cardano-node:
+    image: inputoutput/cardano-node:1.35.4
+    volumes:
+      - ./devnet:/devnet
+    environment:
+      - CARDANO_BLOCK_PRODUCER=true
+      - CARDANO_SOCKET_PATH=/devnet/node.socket # used by cardano-node
+      - CARDANO_NODE_SOCKET_PATH=/devnet/node.socket # used by cardano-cli
+    command:
+      [ "run"
+      , "--config", "/devnet/cardano-node.json"
+      , "--topology", "/devnet/topology.json"
+      , "--database-path", "/devnet/db"
+      , "--shelley-kes-key", "/devnet/kes.skey"
+      , "--shelley-vrf-key", "/devnet/vrf.skey"
+      , "--shelley-operational-certificate", "/devnet/opcert.cert"
+      , "--byron-delegation-certificate", "/devnet/byron-delegation.cert"
+      , "--byron-signing-key", "/devnet/byron-delegate.key"
+      ]
+
+  hydra-node-1:
+    image: ghcr.io/input-output-hk/hydra-node:0.8.1
+    profiles:
+      - hydra-node
+    volumes:
+      - ./data/hydra-keys:/keys:ro
+      - ./devnet:/devnet
+    ports:
+      - "4001:4001"
+    command:
+      [ "--node-id", "1"
+      , "--api-host", "0.0.0.0"
+      , "--host", "172.16.238.10"
+      , "--monitoring-port", "6001"
+      , "--peer", "hydra-node-2:5001"
+      , "--peer", "hydra-node-3:5001"
+      , "--hydra-scripts-tx-id", "${HYDRA_SCRIPTS_TX_ID}"
+      , "--hydra-signing-key", "/keys/oscar.sk"
+      , "--hydra-verification-key", "/keys/patricia.vk"
+      , "--hydra-verification-key", "/keys/rupert.vk"
+      , "--cardano-signing-key", "/devnet/credentials/oscar.sk"
+      , "--cardano-verification-key", "/devnet/credentials/patricia.vk"
+      , "--cardano-verification-key", "/devnet/credentials/rupert.vk"
+      , "--ledger-genesis", "/devnet/genesis-shelley.json"
+      , "--ledger-protocol-parameters", "/devnet/protocol-parameters.json"
+      , "--network-id", "42"
+      , "--node-socket", "/devnet/node.socket"
+      ]
+    networks:
+      hydra_net:
+        ipv4_address: 172.16.238.10
+    restart: always
+
+  hydra-node-2:
+    image: ghcr.io/input-output-hk/hydra-node:0.8.1
+    profiles:
+      - hydra-node
+    volumes:
+      - ./data/hydra-keys:/keys:ro
+      - ./devnet:/devnet
+    ports:
+      - "4002:4001"
+    command:
+      [ "--node-id", "2"
+      , "--api-host", "0.0.0.0"
+      , "--host", "172.16.238.20"
+      , "--monitoring-port", "6001"
+      , "--peer", "hydra-node-1:5001"
+      , "--peer", "hydra-node-3:5001"
+      , "--hydra-scripts-tx-id", "${HYDRA_SCRIPTS_TX_ID}"
+      , "--hydra-signing-key", "/keys/patricia.sk"
+      , "--hydra-verification-key", "/keys/oscar.vk"
+      , "--hydra-verification-key", "/keys/rupert.vk"
+      , "--cardano-signing-key", "/devnet/credentials/patricia.sk"
+      , "--cardano-verification-key", "/devnet/credentials/oscar.vk"
+      , "--cardano-verification-key", "/devnet/credentials/rupert.vk"
+      , "--ledger-genesis", "/devnet/genesis-shelley.json"
+      , "--ledger-protocol-parameters", "/devnet/protocol-parameters.json"
+      , "--network-id", "42"
+      , "--node-socket", "/devnet/node.socket"
+      ]
+    networks:
+      hydra_net:
+        ipv4_address: 172.16.238.20
+    restart: always
+
+  hydra-node-3:
+    image: ghcr.io/input-output-hk/hydra-node:0.8.1
+    profiles:
+      - hydra-node
+    volumes:
+      - ./data/hydra-keys:/keys:ro
+      - ./devnet:/devnet
+    ports:
+      - "4003:4001"
+    command:
+      [ "--node-id", "3"
+      , "--api-host", "0.0.0.0"
+      , "--host", "172.16.238.30"
+      , "--monitoring-port", "6001"
+      , "--peer", "hydra-node-1:5001"
+      , "--peer", "hydra-node-2:5001"
+      , "--hydra-scripts-tx-id", "${HYDRA_SCRIPTS_TX_ID}"
+      , "--hydra-signing-key", "/keys/rupert.sk"
+      , "--hydra-verification-key", "/keys/oscar.vk"
+      , "--hydra-verification-key", "/keys/patricia.vk"
+      , "--cardano-signing-key", "/devnet/credentials/rupert.sk"
+      , "--cardano-verification-key", "/devnet/credentials/oscar.vk"
+      , "--cardano-verification-key", "/devnet/credentials/patricia.vk"
+      , "--ledger-genesis", "/devnet/genesis-shelley.json"
+      , "--ledger-protocol-parameters", "/devnet/protocol-parameters.json"
+      , "--network-id", "42"
+      , "--node-socket", "/devnet/node.socket"
+      ]
+    networks:
+      hydra_net:
+        ipv4_address: 172.16.238.30
+    restart: always
+
+networks:
+  hydra_net:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.16.238.0/24
+          gateway: 172.16.238.1

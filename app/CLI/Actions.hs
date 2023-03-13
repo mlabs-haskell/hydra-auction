@@ -12,6 +12,9 @@ import Prelude
 -- Haskell imports
 import Control.Monad (forM_, void)
 
+-- Cardano node imports
+import Cardano.Api (NetworkId)
+
 -- Hydra imports
 import Hydra.Cardano.Api (Lovelace)
 
@@ -72,6 +75,8 @@ data CliAction
 data CliInput = MkCliInput
   { cliActor :: Actor
   , cliVerbosity :: Bool
+  , cliNodeSocket :: String
+  , cliNetworkId :: NetworkId
   }
 
 handleCliAction :: CliAction -> Runner ()
