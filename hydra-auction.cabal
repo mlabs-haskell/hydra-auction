@@ -59,6 +59,7 @@ common common-lang
     , hydra-cluster
     , hydra-node
     , hydra-prelude
+    , monad-control
     , mtl
     , plutus-tx-plugin
     , prettyprinter
@@ -104,6 +105,7 @@ common common-lang
     TemplateHaskell
     TupleSections
     TypeApplications
+    TypeFamilies
     TypeOperators
     TypeSynonymInstances
     UndecidableInstances
