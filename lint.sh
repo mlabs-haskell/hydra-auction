@@ -17,15 +17,4 @@ then
       mode="+"
 fi
 
-# Using null breaks Plutus Tx
-find . -type f -name '*.hs' ! -path '*/dist-newstyle/*' -exec \
-	hlint \
-      -XBangPatterns \
-      -XTypeApplications \
-      -XNondecreasingIndentation \
-      -XPatternSynonyms \
-      -XQualifiedDo \
-      ${refactor:+"--refactor"} \
-      ${refactor:+"--refactor-options=-i"} \
-      -i "Use null" \
-      --hint=hlint.yaml {} $mode
+pre-commit run hlint

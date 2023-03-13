@@ -67,6 +67,7 @@ common common-lang
     , stm
     , text
     , time
+    , time-machine
     , transformers
     , websockets
 
@@ -223,6 +224,7 @@ test-suite hydra-auction-test
     EndToEnd.Hydra
     EndToEnd.Ledger
     EndToEnd.Utils
+    Unit.Common
 
   build-depends:
     , aeson

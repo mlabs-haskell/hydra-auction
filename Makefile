@@ -1,4 +1,5 @@
 .PHONY:
+	check
 	hoogle
 	build
 	test
@@ -9,6 +10,9 @@
 	lint
 	clean
 	requires_nix_shell
+
+check:
+	@nix flake check -Lv --impure --allow-import-from-derivation 
 
 hoogle: requires_nix_shell
 	@hoogle server --local --port=8070 > /dev/null &

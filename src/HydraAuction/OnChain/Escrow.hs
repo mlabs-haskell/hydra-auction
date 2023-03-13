@@ -5,9 +5,8 @@ import PlutusTx.Prelude
 
 -- Plutus imports
 import Plutus.V1.Ledger.Address (pubKeyHashAddress, scriptHashAddress)
-import Plutus.V1.Ledger.Interval (contains, from, interval)
 import Plutus.V1.Ledger.Value (assetClass, assetClassValueOf, getValue)
-import Plutus.V2.Ledger.Api (Address, TxInfo, TxOut, scriptContextTxInfo, txInInfoResolved, txInfoInputs, txInfoOutputs, txInfoReferenceInputs, txInfoValidRange, txOutValue)
+import Plutus.V2.Ledger.Api (Address, TxInfo, TxOut, scriptContextTxInfo, txInInfoResolved, txInfoInputs, txInfoOutputs, txInfoReferenceInputs, txOutValue)
 import Plutus.V2.Ledger.Contexts (ScriptContext, ownHash, txSignedBy)
 
 -- Hydra auction imports
@@ -18,6 +17,8 @@ import HydraAuction.Addresses (
  )
 import HydraAuction.OnChain.Common (
   byAddress,
+  checkInterval,
+  checkVoucherExpiredOrLater,
   decodeOutputDatum,
   lovelaceOfOutput,
   nothingForged,
@@ -28,6 +29,7 @@ import HydraAuction.OnChain.StateToken (
  )
 import HydraAuction.Types (
   AuctionEscrowDatum (..),
+  AuctionStage (..),
   AuctionState (..),
   AuctionTerms (..),
   BidTerms (..),
@@ -48,20 +50,14 @@ mkEscrowValidator (StandingBidAddress standingBidAddressLocal, FeeEscrowAddress 
           StartBidding ->
             checkAuctionState (== Announced) escrowInputOutput
               && traceIfFalse "Seller not signed" (txSignedBy info (seller terms))
-              && traceIfFalse
-                "Wrong valid range"
-                (contains (interval (biddingStart terms) (biddingEnd terms)) (txInfoValidRange info))
+              && checkInterval terms BiddingStartedStage info
               && checkStartBiddingOutputs
           SellerReclaims ->
-            traceIfFalse
-              "Wrong interval for SellerReclaims"
-              (contains (from (voucherExpiry terms)) (txInfoValidRange info))
+            checkVoucherExpiredOrLater terms info
               && checkSellerReclaimsOutputs
           BidderBuys ->
             checkAuctionState isStarted escrowInputOutput
-              && traceIfFalse
-                "Wrong interval for BidderBuys"
-                (contains (interval (biddingEnd terms) (voucherExpiry terms)) (txInfoValidRange info))
+              && checkInterval terms BiddingEndedStage info
               && checkBidderBuys escrowInputOutput
       )
   where
