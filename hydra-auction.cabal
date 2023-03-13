@@ -183,6 +183,7 @@ executable hydra-auction-delegate
   main-is:        Main.hs
   hs-source-dirs: delegate-app
   ghc-options:    -threaded -rtsopts
+  build-depends:  hydra-auction
 
 library
   import:          common-lang
