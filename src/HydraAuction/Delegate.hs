@@ -3,17 +3,18 @@ module HydraAuction.Delegate (
   DelegateEvent (..),
   DelegateInput (..),
   DelegateRunnerT (..),
+  execDelegateRunnerT,
 ) where
 
 -- Prelude imports
 import Prelude
 
 -- Haskell imports
-
 import Control.Monad.Except (MonadError (throwError))
-import Control.Monad.State (MonadState, StateT (..), get, put)
+import Control.Monad.IO.Class (MonadIO)
+import Control.Monad.State (MonadState, StateT (..), evalStateT, get, put)
 import Control.Monad.Trans (MonadTrans (lift))
-import Control.Monad.Trans.Except (ExceptT (..))
+import Control.Monad.Trans.Except (ExceptT (..), runExceptT)
 
 -- HydraAuction imports
 import HydraAuction.Delegate.Interface (
@@ -32,10 +33,14 @@ data DelegateEvent
   = Start
   | AuctionStageStarted AuctionStage
   | HydraEvent HydraEvent
+
 data DelegateInput
   = DelegateEvent DelegateEvent
   | FrontendRequest FrontendRequest
 data DelegateState = NoClient | HasClient FrontendKind AuctionTerms
+
+initialState :: DelegateState
+initialState = NoClient
 
 newtype DelegateRunnerT m x
   = MkDelegateRunner (StateT DelegateState (ExceptT DelegateError m) x)
@@ -45,7 +50,12 @@ newtype DelegateRunnerT m x
     , Monad
     , MonadState DelegateState
     , MonadError DelegateError
+    , MonadIO
     )
+
+execDelegateRunnerT :: Monad m => DelegateRunnerT m x -> m (Either DelegateError x)
+execDelegateRunnerT (MkDelegateRunner action) =
+  runExceptT $ evalStateT action initialState
 
 instance MonadTrans DelegateRunnerT where
   lift = MkDelegateRunner . lift . lift
