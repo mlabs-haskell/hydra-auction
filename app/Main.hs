@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -w #-}
+
 module Main (main) where
 
 -- Prelude imports
@@ -30,42 +32,39 @@ import HydraAuction.Runner (
   stdoutOrNullTracer,
  )
 
+import CardanoNode (
+  RunningNode (
+    RunningNode,
+    networkId,
+    nodeSocket
+  ),
+ )
+
 -- Hydra auction CLI imports
 import CLI.Actions (CliAction, handleCliAction)
-import CLI.CardanoNode (getCardanoNode, runCardanoNode)
 import CLI.Parsers (
-  CliInput (MkCliInput, cliActor, cliVerbosity),
+  CliInput (..),
   getCliInput,
   parseCliAction,
  )
 
 main :: IO ()
 main = do
-  MkCliInput {cliVerbosity, cliActor} <- getCliInput
+  MkCliInput {cliVerbosity, cliActor, cliNodeSocket, cliNetworkId} <- getCliInput
 
   let hydraVerbosity = if cliVerbosity then Verbose "hydra-auction" else Quiet
   tracer <- stdoutOrNullTracer hydraVerbosity
 
-  -- FIXME: We need to pass in the cardano-node as a parameter to the CLI
-  -- This way multiple CLI instances can share the same cardano node.
-  -- At the moment, only Alice will start the node, other users will assume the
-  -- node is present.
-  let cardanoNodeRunner =
-        when (cliActor == Alice) $ do
-          putStrLn "Running cardano-node in background"
-          void $ runCardanoNode (contramap FromHydra tracer)
+  let node = RunningNode {nodeSocket = cliNodeSocket, networkId = cliNetworkId}
 
-  withAsync cardanoNodeRunner $ \_ -> do
-    node <- getCardanoNode
+      runnerContext =
+        MkExecutionContext
+          { tracer = tracer
+          , node = node
+          , actor = cliActor
+          }
 
-    let runnerContext =
-          MkExecutionContext
-            { tracer = tracer
-            , node = node
-            , actor = cliActor
-            }
-
-    executeRunner runnerContext loopCLI
+  executeRunner runnerContext loopCLI
 
 loopCLI :: Runner ()
 loopCLI = do
