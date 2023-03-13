@@ -30,9 +30,12 @@ Will build the CLI application and link it to `./result/bin/hydra-auction`.
 
 ## Starting docker-compose environment
 
-To setup the environment required for the demo, we have a compose file which will start a single cardano-node and 3 hydra-nodes for the delgates.
+To setup the environment required for the demo, we have a compose file
+which will start a single cardano-node and 3 hydra-nodes for the delgates.
 
-We recommend using the `spin-up-new-devnet.sh` script as it will take care of setting up the correct files for the cardano-node and seeding the actors running the hydra-nodes with enough funds to manage the head lifecycle.
+We recommend using the `spin-up-new-devnet.sh` script
+as it will take care of setting up the correct files for the cardano-node
+and seeding the actors running the hydra-nodes with enough funds to manage the head lifecycle.
 
 ## CLI usage
 
@@ -41,6 +44,16 @@ Static part of params like stages timing and minmal bid/bid increment,
 are stored in `examples/auction-config`.
 Dynamic part of params is calculated and stored on `auction-announced` command.
 If you run it again for different lot dynamic part will be rewritten.
+
+### Note on Actors
+
+We have a set of known keys that we use for demo purposes.
+The Cardano keys for these actors can be found under `data/credentials`.
+
+We also have some hydra keys generated for the delegates, these are under `data/hydra-keys`.
+
+In our demo Oscar, Patricia and Rupert are the delegates running hydra nodes,
+all other actors are meant to be either sellers or bidders.
 
 ### Bidder wins case
 
