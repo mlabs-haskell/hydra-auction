@@ -110,6 +110,13 @@ To run app with GHC warnings present you can use:
 cabal run --ghc-option='-Wwarn'
 ```
 
+If you are having trouble using hls with this project, you can use following
+way. Add path to `script/run-hls.sh` into your LSP-extension config,
+as path of HLS binary. This script will start HLS in our Nix environment.
+
+Also you may found other solutions here:
+https://plutus.readthedocs.io/en/latest/troubleshooting.html#wrong-version
+
 ## Documentation
 
 This project's documentation is organized (in the [doc](doc)) as follows:
@@ -121,9 +128,6 @@ for the Hydra Auction.
 and the APIs that they use to communicate with each other
 and users.
 - the [adr](doc/adr) folder contains [Architecture Decision Records](https://adr.github.io/) made so far in the project.
-
-
-The full specification can be read here: [on on-chain](/doc/on_chain_spec.md) and [on off-chain](/doc/off_chain_spec.md).
 
 ## Licensing
 
