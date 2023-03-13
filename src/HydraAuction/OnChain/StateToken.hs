@@ -14,7 +14,6 @@ import Plutus.V2.Ledger.Contexts (ScriptContext, TxInfo, ownCurrencySymbol, scri
 import HydraAuction.Addresses (EscrowAddress (..), VoucherCS (..))
 import HydraAuction.OnChain.Common (
   checkInterval,
-  checkVoucherExpiredOrLater,
   decodeOutputDatum,
   validAuctionTerms,
  )
