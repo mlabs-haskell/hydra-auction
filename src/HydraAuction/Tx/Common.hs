@@ -118,6 +118,7 @@ import Hydra.Cardano.Api (
   hashScript,
   makeShelleyKeyWitness,
   makeSignedTransaction,
+  makeTransactionBody,
   makeTransactionBodyAutoBalance,
   mkScriptWitness,
   scriptWitnessCtx,
@@ -143,6 +144,7 @@ import Hydra.Cardano.Api (
   pattern TxExtraKeyWitnesses,
   pattern TxFeeExplicit,
   pattern TxInsCollateral,
+  pattern TxInsCollateralNone,
   pattern TxInsReference,
   pattern TxMetadataNone,
   pattern TxMintValue,
@@ -300,8 +302,8 @@ toSlotNo ptime = do
       utcTime = posixSecondsToUTCTime ndtime
   either (error . show) return $ slotFromUTCTime timeHandle utcTime
 
-autoCreateTx :: AutoCreateParams -> Runner Tx
-autoCreateTx (AutoCreateParams {..}) = do
+autoCreateTx :: Bool -> AutoCreateParams -> Runner Tx
+autoCreateTx forL1Transaction (AutoCreateParams {..}) = do
   MkExecutionContext {node} <- ask
   let (lowerBound', upperBound') = validityBound
   lowerBound <- case lowerBound' of
@@ -315,12 +317,20 @@ autoCreateTx (AutoCreateParams {..}) = do
     pparams <-
       queryProtocolParameters (networkId node) (nodeSocket node) QueryTip
     body <-
-      either (\x -> error $ "Autobalance error: " <> show x) id
-        <$> callBodyAutoBalance
-          node
-          (allAuthoredUtxos <> allWitnessedUtxos <> referenceUtxo)
-          (preBody pparams lowerBound upperBound)
-          changeAddress
+      if forL1Transaction
+        then
+          either (\x -> error $ "Autobalance error: " <> show x) id
+            <$> callBodyAutoBalance
+              node
+              (allAuthoredUtxos <> allWitnessedUtxos <> referenceUtxo)
+              (preBody pparams lowerBound upperBound)
+              changeAddress
+        else
+          return $
+            either (\x -> error $ "Tx body validation error: " <> show x) id $
+              -- FIXME: use createTransactionBody
+              makeTransactionBody $ preBody pparams lowerBound upperBound
+
     pure $ makeSignedTransaction (signingWitnesses body) body
   where
     allAuthoredUtxos = foldMap snd authoredUtxos
@@ -337,10 +347,14 @@ autoCreateTx (AutoCreateParams {..}) = do
         Nothing -> fst $ case UTxO.pairs $ filterAdaOnlyUtxo allAuthoredUtxos of
           x : _ -> x
           [] -> error "Cannot select collateral, cuz no money utxo was provided"
+    collateral' =
+      if forL1Transaction
+        then TxInsCollateral [txInCollateral]
+        else TxInsCollateralNone
     preBody pparams lowerBound upperBound =
       TxBodyContent
         ((withWitness <$> txInsToSign) <> witnessedTxIns)
-        (TxInsCollateral [txInCollateral])
+        collateral'
         (TxInsReference (toList $ UTxO.inputSet referenceUtxo))
         outs
         TxTotalCollateralNone
@@ -393,6 +407,7 @@ callBodyAutoBalance
           (ShelleyAddressInEra changeAddress)
           Nothing
 
+submitAndAwaitTx :: RunningNode -> Tx -> IO ()
 submitAndAwaitTx RunningNode {networkId, nodeSocket} tx = do
   submitTransaction
     networkId
@@ -410,7 +425,7 @@ autoSubmitAndAwaitTx params = do
   let networkId' = networkId node
       nodeSocket' = nodeSocket node
 
-  tx <- autoCreateTx params
+  tx <- autoCreateTx True params
   logMsg "Signed"
 
   liftIO $
