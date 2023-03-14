@@ -178,8 +178,12 @@
         };
 
         devShells = builtins.mapAttrs
-          (_: test: test.overrideAttrs (old: {
+          (_: shell: shell.overrideAttrs (old: {
             shellHook = old.shellHook + preCommitHook.shellHook;
+            buildInputs = old.buildInputs ++ [
+              pkgs.docker-compose
+              pkgs.jq
+            ];
           }))
           haskellNixFlake.devShells;
 
