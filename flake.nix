@@ -17,7 +17,7 @@
     # when you upgrade `hydra` input remember to also upgrade revs under
     # `source-repository-package`s in `cabal.project`
     hydra = {
-      url = "ssh://git@github.com/input-output-hk/hydra?ref=ad3dd93ae3fcfee1be158a7042157d33d0ccd2ef";
+      url = "ssh://git@github.com/uhbif19/hydra?ref=1d22aab540679e27fb8dff06714709417f81ea43";
       type = "git";
       submodules = true;
     };
@@ -69,7 +69,7 @@
               shell.tools = {
                 cabal = "3.8.1.0";
                 fourmolu = "0.4.0.0";
-                haskell-language-server = "latest";
+                # haskell-language-server = "latest";
               };
               shell.buildInputs = with final; [
                 nixpkgs-fmt
