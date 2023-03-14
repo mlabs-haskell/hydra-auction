@@ -1,6 +1,8 @@
 module HydraAuction.Tx.TestNFT (mintOneTestNFT, findTestNFT) where
 
 -- Prelude imports
+
+import Hydra.Prelude (liftIO)
 import Prelude
 
 -- Haskell imports
@@ -32,7 +34,7 @@ import HydraAuction.OnChain.TestNFT (
   testNftPolicy,
   testNftTokenName,
  )
-import HydraAuction.Runner (Runner)
+import HydraAuction.Runner (Runner, logMsg)
 import HydraAuction.Tx.Common (
   AutoCreateParams (..),
   actorTipUtxo,
@@ -55,9 +57,9 @@ findTestNFT (UTxO.UTxO m) = Map.foldrWithKey isTestNFT Nothing m
 
 mintOneTestNFT :: Runner Tx
 mintOneTestNFT = do
-  (actorAddress, _, actorSk) <- addressAndKeys
+  logMsg "Doing Minting Test NFT"
 
-  actorMoneyUtxo <- filterAdaOnlyUtxo <$> actorTipUtxo
+  (actorAddress, _, actorSk) <- addressAndKeys
 
   let valueOut =
         fromPlutusValue (assetClassValue testNftAssetClass 1)
@@ -75,6 +77,11 @@ mintOneTestNFT = do
           (fromPlutusScript $ getMintingPolicy testNftPolicy)
           ()
           [(tokenToAsset testNftTokenName, 1)]
+
+  actorMoneyUtxo <- filterAdaOnlyUtxo <$> actorTipUtxo
+  -- let actorMoneyUtxo = UTxO.fromPairs [head (UTxO.pairs actorMoneyUtxo')]
+
+  liftIO $ putStrLn $ show actorMoneyUtxo
 
   autoSubmitAndAwaitTx $
     AutoCreateParams
