@@ -21,6 +21,7 @@ module HydraAuction.Tx.Common (
   scriptAddress,
   scriptPlutusScript,
   currentTimeSeconds,
+  currentAuctionStage,
 ) where
 
 -- Prelude imports
@@ -29,6 +30,7 @@ import PlutusTx.Prelude (emptyByteString)
 import Prelude
 
 -- Haskell imports
+import Control.Monad.TimeMachine (MonadTime (getCurrentTime))
 import Data.List (sort)
 import Data.Map qualified as Map
 import Data.Time (secondsToNominalDiffTime)
@@ -41,6 +43,7 @@ import Cardano.Ledger.BaseTypes qualified as Cardano
 
 -- Plutus imports
 import Plutus.V1.Ledger.Address qualified as PlutusAddress
+import Plutus.V1.Ledger.Interval (member)
 import Plutus.V1.Ledger.Value (
   CurrencySymbol (..),
   TokenName (..),
@@ -161,8 +164,9 @@ import Hydra.Chain.Direct.TimeHandle (queryTimeHandle, slotFromUTCTime)
 -- Hydra auction imports
 import HydraAuction.Fixture (keysFor)
 import HydraAuction.OnChain (AuctionScript, scriptValidatorForTerms)
+import HydraAuction.OnChain.Common (stageToInterval)
 import HydraAuction.Runner (ExecutionContext (..), Runner, logMsg)
-import HydraAuction.Types (AuctionTerms)
+import HydraAuction.Types (AuctionStage, AuctionTerms, auctionStages)
 
 networkIdToNetwork :: NetworkId -> Cardano.Network
 networkIdToNetwork (Testnet _) = Cardano.Testnet
@@ -171,8 +175,22 @@ networkIdToNetwork Mainnet = Cardano.Mainnet
 minLovelace :: Lovelace
 minLovelace = 2_000_000
 
-currentTimeSeconds :: IO Integer
-currentTimeSeconds = round `fmap` POSIXTime.getPOSIXTime
+currentTimeSeconds :: MonadTime timedMonad => timedMonad Integer
+currentTimeSeconds =
+  round . POSIXTime.utcTimeToPOSIXSeconds <$> getCurrentTime
+
+currentTimeMilliseconds :: MonadTime timedMonad => timedMonad Integer
+currentTimeMilliseconds =
+  round . (* 1000) . POSIXTime.utcTimeToPOSIXSeconds <$> getCurrentTime
+
+currentAuctionStage ::
+  (MonadTime timedMonad) => AuctionTerms -> timedMonad AuctionStage
+currentAuctionStage terms = do
+  currentTime <- POSIXTime <$> currentTimeMilliseconds
+  let matchingStages = filter (member currentTime . stageToInterval terms) auctionStages
+  return $ case matchingStages of
+    [stage] -> stage
+    _ -> error "Impossible happend: more than one matching stage"
 
 tokenToAsset :: TokenName -> AssetName
 tokenToAsset (TokenName t) = AssetName $ fromBuiltin t
@@ -275,10 +293,10 @@ scriptUtxos script terms = do
 
 data AutoCreateParams = AutoCreateParams
   { authoredUtxos :: [(SigningKey PaymentKey, UTxO)]
-  , -- | Utxo which TxIns will be used as reference inputs
-    referenceUtxo :: UTxO
-  , -- | Nothing means collateral will be chosen automatically from given UTxOs
-    collateral :: Maybe TxIn
+  , referenceUtxo :: UTxO
+  -- ^ Utxo which TxIns will be used as reference inputs
+  , collateral :: Maybe TxIn
+  -- ^ Nothing means collateral will be chosen automatically from given UTxOs
   , witnessedUtxos ::
       [(BuildTxWith BuildTx (Witness WitCtxTxIn), UTxO)]
   , outs :: [TxOut CtxTx]

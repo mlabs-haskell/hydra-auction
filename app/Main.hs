@@ -1,11 +1,11 @@
+{-# LANGUAGE RecordWildCards #-}
+
 module Main (main) where
 
 -- Prelude imports
 import Prelude
 
 -- Haskell imports
-import Control.Concurrent.Async (withAsync)
-import Control.Monad (void, when)
 import Control.Monad.Catch (try)
 import Control.Monad.Trans.Class (lift)
 import System.Console.Haskeline (
@@ -17,25 +17,29 @@ import System.Console.Haskeline (
 
 -- Hydra imports
 import Hydra.Logging (Verbosity (Quiet, Verbose))
-import Hydra.Prelude (SomeException, ask, contramap, liftIO)
+import Hydra.Prelude (SomeException, ask, liftIO)
 
 -- Hydra auction imports
-
-import HydraAuction.Fixture (Actor (..))
 import HydraAuction.Runner (
   ExecutionContext (..),
-  HydraAuctionLog (FromHydra),
   Runner,
   executeRunner,
   stdoutOrNullTracer,
  )
 
+import CardanoNode (
+  RunningNode (
+    RunningNode,
+    networkId,
+    nodeSocket
+  ),
+ )
+
 -- Hydra auction CLI imports
 import CLI.Actions (CliAction, handleCliAction)
-import CLI.CardanoNode (getCardanoNode, runCardanoNode)
 import CLI.Parsers (
   CliInput (InteractivePrompt, Watch),
-  PromptOptions (MkPromptOptions, cliActor, cliVerbosity),
+  PromptOptions (..),
   getCliInput,
   parseCliAction,
  )
@@ -50,30 +54,20 @@ main = do
 
 handleCliInput :: CliInput -> IO ()
 handleCliInput (Watch auctionName) = watchAuction auctionName
-handleCliInput (InteractivePrompt MkPromptOptions {cliVerbosity, cliActor}) = do
+handleCliInput (InteractivePrompt MkPromptOptions {..}) = do
   let hydraVerbosity = if cliVerbosity then Verbose "hydra-auction" else Quiet
   tracer <- stdoutOrNullTracer hydraVerbosity
 
-  -- FIXME: We need to pass in the cardano-node as a parameter to the CLI
-  -- This way multiple CLI instances can share the same cardano node.
-  -- At the moment, only Alice will start the node, other users will assume the
-  -- node is present.
-  let cardanoNodeRunner =
-        when (cliActor == Alice) $ do
-          putStrLn "Running cardano-node in background"
-          void $ runCardanoNode (contramap FromHydra tracer)
+  let node = RunningNode {nodeSocket = cliNodeSocket, networkId = cliNetworkId}
 
-  withAsync cardanoNodeRunner $ \_ -> do
-    node <- getCardanoNode
+      runnerContext =
+        MkExecutionContext
+          { tracer = tracer
+          , node = node
+          , actor = cliActor
+          }
 
-    let runnerContext =
-          MkExecutionContext
-            { tracer = tracer
-            , node = node
-            , actor = cliActor
-            }
-
-    executeRunner runnerContext loopCLI
+  executeRunner runnerContext loopCLI
 
 loopCLI :: Runner ()
 loopCLI = do

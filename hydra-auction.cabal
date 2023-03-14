@@ -67,6 +67,7 @@ common common-lang
     , stm
     , text
     , time
+    , time-machine
     , transformers
     , websockets
 
@@ -121,7 +122,6 @@ executable hydra-auction
   main-is:        Main.hs
   other-modules:
     CLI.Actions
-    CLI.CardanoNode
     CLI.Config
     CLI.Parsers
     CLI.Parsers.TxIn
@@ -226,6 +226,7 @@ test-suite hydra-auction-test
     EndToEnd.Hydra
     EndToEnd.Ledger
     EndToEnd.Utils
+    Unit.Common
 
   build-depends:
     , aeson

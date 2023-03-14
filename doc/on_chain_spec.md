@@ -1,107 +1,4 @@
-# M1 Technical specification and architecture
-
-## Background
-
-### Cardano terminology
-
-In this document, we use L1 and L2 as follows:
-
-- **Layer 1 (L1):** the Cardano main network (mainnet) and ledger.
-- **Layer 2 (L2):** the network and ledger within a single Hydra Head.
-
-### Auction terminology
-
-**Assets:**
-
-- **Auction lot:** the NFT asset being sold in the auction.
-- **Voucher:** the NFT asset that the winning bidder can use
-to buy the auction lot for the standing bid’s price.
-
-**Bidding:**
-
-- **Minimum bid increment:** a new bid can replace the standing bid
-only if it exceeds it by at least this minimum increment.
-- **Starting bid:** the smallest bid that can be accepted by the auction.
-- **Standing bid:** the highest of the bids
-that have been submitted on or before a given time.
-
-**Deposits:**
-
-- **Bidder deposit:** a fixed deposit that each bidder must provide
-(i.e. lock into the auction’s bidder deposit smart contract)
-to be eligible to participate in the auction.
-A bidder’s deposit can be claimed by the seller
-if the bidder wins the auction
-but does not buy the auction lot by the voucher expiry time.
-
-**Fees:**
-
-- **Auction fees**: fees paid to the delegates as compensation for
-hosting the bidding process of the auction on L2.
-These fees must be paid when the winning bidder buys
-or the seller reclaims the auction lot,
-and they must be distributed equally to the delegates.
-If the winning bidder buys the auction lot,
-then the auction fees are deducted from his payment to the seller.
-
-**Roles:**
-
-- **Bidders:** a group of people seeking to place bids to buy the auction lot.
-- **Delegates:** a group of people trusted to collectively witness new bids
-and track the standing bid over time.
-- **Seller:** the person seeking to sell the auction lot.
-- **Winning bidder:** the bidder whose bid is the standing bid
-at the bidding end time for the auction.
-
-### Auction lifecycle
-
-The auction lifecycle is defined by state transitions at the following times,
-in chronological order:
-
-- **Auction announcement:** at this time, the seller announces the auction.
-The seller does this via an L1 blockchain transaction that locks the auction lot
-into the auction escrow validator and specifies the terms of the auction.
-Bidders can provide their deposits after the auction is announced.
-- **Bidding start time:** after this time,
-the seller may declare the list of approved bidders for the auction,
-which allows these bidders to startg placing bids in the auction.
-Only approved bidders may make bids in the auction.
-- **Bidding end time:** after this time,
-bidders are no longer allowed to make bids in the auction,
-the winning bidder is allowed to buy the auction lot,
-and losing bidders can reclaim their deposits after this time.
-- **Voucher expiry time:** after this time,
-the voucher can no longer be used to buy the auction lot,
-and the seller can reclaim the auction lot after this time.
-If the winning bidder did not buy the auction lot before this time, then
-the seller can also claim the winning bidder's deposit.
-- **Cleanup:** after this time,
-the seller can no longer claim any bidder deposits,
-all bidders can reclaim their deposits unconditionally,
-and the the voucher token can be burned.
-
-```mermaid
-flowchart LR
-    n1[Auction announcement] --> n2
-    n2[Bidding start] --> n3
-    n3[Bidding end] --> n4
-    n4[Voucher expiry] --> n5
-    n5[Cleanup]
-
-  classDef default font-size:90%, overflow:visible;
-```
-
-Each of these times is defined (as L1 POSIX times)
-by the seller when the auction is announced.
-The auction’s state transitions at these times
-are managed by on-chain logic evaluated on L1.
-
-The bidding end transition requires special care:
-the auction interactions must migrate from L2 to L1 at this time,
-but L2 does not track time.
-See [Handling time on L2](#handling-time-on-l2) for more details.
-
-## On-chain scripts
+# On-chain scripts
 
 We use one minting policy for the voucher token and four validator scripts for
 the auction escrow, standing bid, bidder deposit, and fee escrow.
@@ -127,7 +24,7 @@ The validator scripts do not need to depend
 on the voucher minting policy at compile time,
 because their datums mention the voucher’s currency symbol.
 
-### Parameters and state
+## Parameters and state
 
 An auction is uniquely parametrized by its **auction terms**,
 which are fixed when it is announced.
@@ -162,8 +59,18 @@ data AuctionTerms = AuctionTerms
   , utxoNonce :: UtxoRef
   -- ^ The seller consumed this utxo input in the auction announcement
   -- transaction that provided the auction lot to the auction.
+  , minDepositAmount :: Natural
+  -- ^ Minimal amount of ADA that a bidder must deposit in a
+  -- bid deposit utxo for the auction, to be included in the
+  -- list of approved bidders. This is only checked off-chain.
   }
 ```
+
+Each of the auction lifecycle times is defined as L1 POSIX times.
+The bidding end transition requires special care:
+the auction interactions must migrate from L2 to L1 at this time,
+but L2 does not track time.
+See [ADR 2: Handling time on L2](adr/2022-12-26_002-handling_time_on_L2.md) for more details.
 
 The `utxoNonce` in the auction terms ensures
 that the voucher’s currency symbol is unique
@@ -225,7 +132,7 @@ When the seller fixes the list of approved bidders,
 the corresponding hash is fixed in the L1 auction state,
 to allow the detection of any tampering with the list on L2.
 
-### Script datums
+## Script datums
 
 The auction terms track the immutable information known at auction announcement,
 while the script datums track information that is either
@@ -254,7 +161,7 @@ data BidDepositDatum = BidDepositDatum
 type AuctionFeeEscrowDatum = ()
 ```
 
-### Voucher minting policy
+## Voucher minting policy
 
 The voucher token is an NFT
 that acts as the state token for the standing bid of the auction.
@@ -357,7 +264,7 @@ flowchart LR
   classDef reference stroke-dasharray: 5 5;
 ```
 
-### Auction escrow validator
+## Auction escrow validator
 
 This validator holds the auction lot after the auction announcement,
 until either the winning bidder buys it or the seller reclaims it.
@@ -494,7 +401,7 @@ validBuyer AuctionTerms{..} aState StandingBidState{..} buyer
 validStandingBidState _ _ _ _ = False
 ```
 
-### Standing bid validator
+## Standing bid validator
 
 The standing bid validator is primarily responsible for
 the transitions in the standing bid state
@@ -597,7 +504,7 @@ flowchart LR
   classDef reference stroke-dasharray: 5 5;
 ```
 
-### Bid deposit validator
+## Bid deposit validator
 
 The bid deposit is responsible for ensuring
 that bidders can recover their bid deposits,
@@ -702,7 +609,7 @@ flowchart LR
   classDef reference stroke-dasharray: 5 5;
 ```
 
-### Fee escrow validator
+## Fee escrow validator
 
 This validator is responsible distributing the total auction fees
 evenly to the delegates, after deducting the transaction fee.
