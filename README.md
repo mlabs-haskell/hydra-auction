@@ -23,7 +23,14 @@ and cheaper transaction fees.
 This project can be built using nix.
 
 ```bash
-nix build .
+# while in a local checkout
+nix build
+
+# build it directly from git repo
+nix build github:mlabs-haskell/hydra-auction/master
+
+# run it immediately
+nix run github:mlabs-haskell/hydra-auction/master -- -h
 ```
 
 Will build the CLI application and link it to `./result/bin/hydra-auction`.
@@ -40,10 +47,10 @@ and seeding the actors running the hydra-nodes with enough funds to manage the h
 ## CLI usage
 
 Different terms for auction are stored in JSON and auctions named with string.
-Static part of params like stages timing and minmal bid/bid increment,
-are stored in `examples/auction-config`.
-Dynamic part of params is calculated and stored on `auction-announced` command.
-If you run it again for different lot dynamic part will be rewritten.
+The static parts of parameters like the timing of stages and minimal bid as well as
+bid increment, are stored in `examples/auction-config`.
+The dynamic part of the parameters are calculated and stored on `auction-announced`
+command. If you run it again for a different lot, the dynamic part will be rewritten.
 
 ### Note on Actors
 
@@ -52,69 +59,68 @@ The Cardano keys for these actors can be found under `data/credentials`.
 
 We also have some hydra keys generated for the delegates, these are under `data/hydra-keys`.
 
-In our demo Oscar, Patricia and Rupert are the delegates running hydra nodes,
+In our demo, Oscar, Patricia and Rupert are the delegates running hydra nodes,
 all other actors are meant to be either sellers or bidders.
 
 ### Bidder wins case
 
-1. Start repl for different actors in different terminals.
-   You need at least one bidder (Alice in our example),
+1. Start a REPL for different actors in different terminals.
+   You need at least one seller (Alice in our example),
    and one bidder (Bob in our example).
    To start REPL run:
-   `cabal run hydra-auction -- -a alice`
-2. Run `prepare-for-demo -a alice` on Alice REPL
-3. Run show-utxos to see which UTxO got Test NFT
-4. Run `announce-auction` with this utxo, on Alice REPL, like
-   `announce-auction -n foo -u f8ececf5a3589b316ecf8a2f72b1295d6319f36857708f1b0a904e03a5a709a6#0`
-   From this time auction stages do begin.
-5. Wait for `BiddingStartedStage`.
-   When do `start-bidding -n foo` on Alice REPL.
-6. Bidding started you can place bids, matching auction terms.
-   They should be bigger than configStartingBid for first bid.
-   They should be bigger than previous bid + configMinimumBidIncrement for
-   all next bids.
-   For example place first bid from Bob REPL:
-   `new-bid -n foo -b 8000000`
-7. (a) bidder-buys
-   Run `bidder-buys -n foo` in Bob REPL.
-   Bob gets his winning lot.
-8. UTxOs can be cleaned up by seller in `VoucherExpiryStage`
-   Run `cleanup -n foo`.
+   `cabal run hydra-auction -- -a alice --cardano-node-socket ./devnet/node.socket --network-magic 42`
+2. Run `prepare-for-demo -a alice` on Alice's REPL
+3. Run `show-utxos` to see which UTxO got Test NFT
+4. Run `announce-auction` with this UTxO, on Alice's REPL, like
+   `announce-auction -n some-auction` (for our demo, we use an auction called `demo` that is stored in
+   `./example/auction-config/demo.json`)
+   Now the auction time stages begin.
+5. Wait for `BiddingStartedStage` by running `show-current-stage -n some-auction`
+   After that, run `start-bidding -n some-auction` on Alice's REPL.
+6. After bidding has started, you can place bids, as long as they match the auction terms, which are:
+   - the first bid should be higher than `configStartingBid`
+   - the next bid should always be higher than the previous bid + `configMinimumBidIncrement`
+   For example place first bid from Bob's REPL:
+   `new-bid -n foo -b 8000`, where the number in `b` is in ADA
+7. (a) After the `BiddingEndedStage` has started, Bob can run`bidder-buys -n foo` in his REPL and receives
+   his winning lot.
+8. After the `VoucherExpiryStage` has started, Alice can get back their `UTxO`s by running `cleanup -n foo`.
 
 ### Seller reclaims case
 
-
 Same for all steps except 7.
 
-7. (b) In case that winner does not take his lot, in `VoucherExpiryStage`,
-   it can be reclaimed back by seller.
-   Run `seller-reclaims -n foo` in Alice REPL.
+7. (b) In case of the winner not taking their lot, in the `VoucherExpiryStage`,
+   it can be reclaimed back by its seller.
+   Run `seller-reclaims -n foo` in Alice's REPL.
 
 ## Development
 
 You can enter the development shell with:
 
 ```bash
-nix develop .
+nix develop
 ```
 
 You can run tests for the entire application by running:
 
 ```bash
-nix build -L .#checks
+nix build -Lv .#checks
 ```
+or
 
-To run app with GHC warnings present you can use:
+`nix flake check -Lv --impure --allow-import-from-derivation`
 
+To run the projects without errors on warnings, pass the `-Wwarn` flag as such:
 ```bash
 cabal run --ghc-option='-Wwarn'
 ```
 
-If you are having trouble using hls with this project, you can use following
+If you are having trouble using HLS with this project, you can use following
 way. Add path to `script/run-hls.sh` into your LSP-extension config,
 as path of HLS binary. This script will start HLS in our Nix environment.
 
-Also you may found other solutions here:
+You may also find other solutions here:
 https://plutus.readthedocs.io/en/latest/troubleshooting.html#wrong-version
 
 ## Documentation
