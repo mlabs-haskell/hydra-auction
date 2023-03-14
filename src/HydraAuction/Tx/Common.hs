@@ -21,6 +21,7 @@ module HydraAuction.Tx.Common (
   scriptAddress,
   scriptPlutusScript,
   currentTimeSeconds,
+  currentTimeMilliseconds,
   currentAuctionStage,
 ) where
 
