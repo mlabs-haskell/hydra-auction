@@ -335,7 +335,7 @@ autoCreateTx forL1Transaction (AutoCreateParams {..}) = do
     collateral' =
       if forL1Transaction
         then TxInsCollateral [txInCollateral]
-        else TxInsCollateralNone
+        else TxInsCollateral []
     preBody pparams lowerBound upperBound =
       TxBodyContent
         ((withWitness <$> txInsToSign) <> witnessedTxIns)

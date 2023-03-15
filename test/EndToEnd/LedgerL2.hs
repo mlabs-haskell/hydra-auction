@@ -37,7 +37,9 @@ import HydraAuction.Hydra (
   fixmeInitAndCommitUsingAllNodes,
   sendCommandAndWait,
   waitForNewEvent,
+  postTx,
  )
+import HydraAuction.Tx.StandingBid (newBidTx)
 import HydraAuction.Hydra.Interface (HydraCommand (..), HydraEvent (..))
 import HydraAuction.OnChain (AuctionScript (StandingBid), standingBidValidator)
 import HydraAuction.Runner (
@@ -102,7 +104,7 @@ config =
 
 bidderBuysTest :: Assertion
 bidderBuysTest = mkAssertion $ do
-  actors@[seller, _, _] <-
+  actors@[seller, bidder1, _] <-
     return
       [ AuctionFixture.Dave
       , AuctionFixture.Eve
@@ -167,14 +169,14 @@ bidderBuysTest = mkAssertion $ do
               sellerAddress
 
           -- New bid
-          _standingBid <- liftIO $ do
+          standingBid <- liftIO $ do
             GetUTxOResponse utxo <- sendCommandAndWait n1 GetUTxO
             return utxo
 
           -- FIXME: not working due to cardano-api isse
-          -- withActor bidder1 $ do
-          --   newBidTx <- newBidTx terms (startingBid terms) standingBid
-          --   liftIO $ postTx hydraTracer n1 newBidTx
+          withActor bidder1 $ do
+            newBidTx <- newBidTx terms (startingBid terms) standingBid
+            liftIO $ postTx hydraTracer n1 newBidTx
 
           -- Close Head
           liftIO $ do
