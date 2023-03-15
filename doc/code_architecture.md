@@ -12,8 +12,10 @@ Utilities:
 
 Library code:
 
-* `HydraAuction.Types` domain types used by scripts.
-   haskell-language-server-wrapperAnd our `Natural` implementation, lol.
+* `HydraAuction.Types` domain types used by scripts
+   as well as  our own `Natural` implementation,
+   because we cannot add the dependency on `plutus-apps`
+   that `plutus-numeric` would require. 
 * `HydraAuction.Addresses` - newtypes over our script addresses
 * `HydraAuction.(Tx|Onchain).Common` contains both common domain code
    and utilities we use (to be fixed),
