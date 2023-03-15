@@ -5,8 +5,14 @@ on:
     types: [opened, labeled]
   pull_request:
     types: [opened, labeled]
+
+permissions:
+  issues: read
+  pull-requests: read
+  repository-projects: write
+
 env:
-  MY_GITHUB_TOKEN: ${{ secrets.TOKEN_FOR_PROJECT_ACTIONS }}
+  MY_GITHUB_TOKEN: ${{ env.GITHUB_TOKEN }}
 
 jobs:
   assign_one_project:
