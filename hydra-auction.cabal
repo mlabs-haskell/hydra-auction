@@ -28,13 +28,26 @@ source-repository head
   type:     git
   location: https://github.com/mlabs-haskell/hydra-auction
 
+flag dev
+  description:
+    Defer errors from the PlutusTx plugin, which break HLS and Haddock. Also disable Werror.
+
+  default:     True
+  manual:      False
+
 common common-lang
   -- Options from MLabs styleguide
 
   ghc-options:
     -Wall -Wcompat -Wincomplete-record-updates
     -Wincomplete-uni-patterns -Wredundant-constraints
-    -Wmissing-export-lists -Wmissing-deriving-strategies -Werror
+    -Wmissing-export-lists -Wmissing-deriving-strategies
+
+  if !flag(dev)
+    ghc-options: -Werror
+
+  if flag(dev)
+    ghc-options: -fplugin-opt PlutusTx.Plugin:defer-errors
 
   -- Options for Plutus Tx compilations
   -- (some are enabled additionaly in individual modules)
@@ -109,13 +122,6 @@ common common-lang
     UndecidableInstances
 
   default-language:   Haskell2010
-
-flag defer-plugin-errors
-  description:
-    Defer errors from the PlutusTx plugin, which break HLS and Haddock.
-
-  default:     False
-  manual:      True
 
 executable hydra-auction
   import:         common-lang
@@ -212,9 +218,6 @@ library
     , time
 
   hs-source-dirs:  src
-
-  if flag(defer-plugin-errors)
-    ghc-options: -fplugin-opt PlutusTx.Plugin:defer-errors
 
 test-suite hydra-auction-test
   import:         common-lang
