@@ -5,13 +5,17 @@ on:
     types:
       - opened
 
+permissions:
+  issues: read
+  pull-requests: read
+  projects: write
+
 jobs:
   add-to-project:
     name: Add issue to project
     runs-on: ubuntu-latest
-    environment: Action env
     steps:
       - uses: actions/add-to-project@v0.4.1
         with:
           project-url: https://github.com/orgs/mlabs-haskell/projects/37
-          github-token: ${{ secrets.TOKEN_FOR_PROJECT_ACTIONS }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
