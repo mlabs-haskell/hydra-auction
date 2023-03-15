@@ -32,7 +32,7 @@ Exec code:
 * `CLI.Actions` contains REPL actions
 * `CLI.Config` contains work with dynamic and static config,
    which are JSON files parametrised by auction name.
-    * Static config should be written before starting to wor
+    * Static config should be written before starting to work
      with auction.
     * Dynamic config is created by our REPL, when user does
       `announce-auction` REPL action.
