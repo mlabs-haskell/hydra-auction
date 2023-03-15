@@ -34,6 +34,6 @@ Exec code:
      with auction.
     * Dynamic config is created by our REPL, when user does
       `announce-auction` REPL action.
-    * They together do determine `AuctionTerms` which
+    * Together, they determine `AuctionTerms` which fully define an auction
       define auction.
 * `CLI.(Parsers|Prettyprinting)` do as their name says
