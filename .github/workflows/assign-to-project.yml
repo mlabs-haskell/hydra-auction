@@ -2,21 +2,16 @@ name: Auto Assign to Project
 
 on:
   issues:
-    types: [opened, labeled]
-  pull_request:
-    types: [opened, labeled]
-env:
-  GITHUB_TOKEN: ${{ secrets.TOKEN_FOR_PROJECT_ACTIONS }}
+    types:
+      - opened
 
 jobs:
-  assign_one_project:
+  add-to-project:
+    name: Add issue to project
     runs-on: ubuntu-latest
-    name: Assign to One Project
-    environemnt: Action env
+    environment: Action env
     steps:
-    - name: Assign NEW issues and NEW pull requests to project
-      uses: srggrs/assign-one-project-github-action@1.2.1
-      if: github.event.action == 'opened'
-      with:
-        project: 'https://github.com/orgs/mlabs-haskell/projects/37'
-
+      - uses: actions/add-to-project@v0.4.1
+        with:
+          project-url: https://github.com/orgs/mlabs-haskell/projects/37
+          github-token: ${{ secrets.TOKEN_FOR_PROJECT_ACTIONS }}
