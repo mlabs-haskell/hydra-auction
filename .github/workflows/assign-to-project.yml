@@ -12,7 +12,7 @@ jobs:
   assign_one_project:
     runs-on: ubuntu-latest
     name: Assign to One Project
-    environemnt: Action env
+    environment: Action env
     steps:
     - name: Assign NEW issues and NEW pull requests to project
       uses: srggrs/assign-one-project-github-action@1.2.1
