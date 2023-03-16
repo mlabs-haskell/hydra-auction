@@ -51,12 +51,15 @@ testCurrentAuctionStage = do
   -- Using actual time, cuz TimeMachine does not support nesting mocks
   -- Could just use absolute time mocks instead
 
+  -- Since TimeMachine gives us only second granularity,
+  -- we define each stage to be 1 minute long, with
+  -- bidding starting 30 seconds after the auction announcement
   let config =
         AuctionTermsConfig
-          { configDiffBiddingStart = 1 * 60 - 2
-          , configDiffBiddingEnd = 2 * 60 - 2
-          , configDiffVoucherExpiry = 3 * 60 - 2
-          , configDiffCleanup = 4 * 60 - 2
+          { configDiffBiddingStart = 30
+          , configDiffBiddingEnd = 90
+          , configDiffVoucherExpiry = 150
+          , configDiffCleanup = 210
           , configAuctionFeePerDelegate = fromJust $ intToNatural 4_000_000
           , configStartingBid = fromJust $ intToNatural 8_000_000
           , configMinimumBidIncrement = fromJust $ intToNatural 8_000_000
