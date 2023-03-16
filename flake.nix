@@ -1,13 +1,8 @@
 {
   description = "Hydra Auction";
   nixConfig = {
-    extra-substituters = [
-      "https://cache.iog.io"
-    ];
-
-    extra-trusted-public-keys = [
-      "hydra.iohk.io:f/Ea+s+dFdN+3Y/G+FDgSq+a5NEWhJGzdjvKNGv0/EQ="
-    ];
+    extra-substituters = [ "https://cache.iog.io" ];
+    extra-trusted-public-keys = [ "hydra.iohk.io:f/Ea+s+dFdN+3Y/G+FDgSq+a5NEWhJGzdjvKNGv0/EQ=" ];
 
     allow-import-from-derivation = true;
     bash-prompt = "\\[\\e[0m\\][\\[\\e[0;2m\\]nix-develop \\[\\e[0;1m\\]hydra-auction \\[\\e[0;93m\\]\\w\\[\\e[0m\\]]\\[\\e[0m\\]$ \\[\\e[0m\\]";
@@ -67,13 +62,13 @@
                 src = ./.;
                 name = "hydra-auction";
               };
-              inputMap = {
-                "https://input-output-hk.github.io/cardano-haskell-packages" = CHaP;
-              };
+              inputMap."https://input-output-hk.github.io/cardano-haskell-packages" = CHaP;
+
               compiler-nix-name = "ghc8107";
+
               shell.tools = {
                 cabal = "3.8.1.0";
-                fourmolu = "0.4.0.0";
+                fourmolu = "0.9.0.0";
                 haskell-language-server = "latest";
               };
               shell.buildInputs = with final; [
@@ -94,9 +89,12 @@
                   {
                     packages.cardano-crypto-class.components.library.pkgconfig =
                       lib.mkForce [ [ pkgs.libsodium-vrf pkgs.secp256k1 ] ];
-
                     packages.cardano-crypto-praos.components.library.pkgconfig =
                       lib.mkForce [ [ pkgs.libsodium-vrf ] ];
+
+                    # disable the dev flag in the nix code, s.t. warnings are becoming errors
+                    # the dev flag implies PlutusTx defer plugin error and disabling -Werror
+                    packages.hydra-auction.allComponent.configureFlags = [ "-f-dev" ];
                   }
                 )
               ];
@@ -173,17 +171,21 @@
           # FIXME: this can probably be removed
           check = pkgs.runCommand "combined-test"
             {
-              nativeBuildInputs = builtins.attrValues (builtins.removeAttrs self.checks.${system} [ "check" ]);
+              nativeBuildInputs = builtins.attrValues self.checks.${system};
             } "touch $out";
         };
 
         devShells = builtins.mapAttrs
-          (_: test: test.overrideAttrs (old: {
+          (_: shell: shell.overrideAttrs (old: {
             shellHook = old.shellHook + preCommitHook.shellHook;
+            buildInputs = old.buildInputs ++ [
+              pkgs.docker-compose
+              pkgs.jq
+            ];
           }))
           haskellNixFlake.devShells;
 
-        checks = hydraChecks // packages // {
+        checks = hydraChecks // {
           formatting = preCommitHook;
         };
 
