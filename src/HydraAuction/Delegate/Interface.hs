@@ -23,11 +23,13 @@ data KnownFrontendRequest
 data FrontendRequest
   = FrontendConnect AuctionTerms FrontendKind
   | KnownFrontendRequest KnownFrontendRequest
+
 data DelegateError
   = NoClientYet
   | WrongClientSignature
   | WrongClientKind
   | HydraRequestError
+  deriving stock (Show)
 
 data DelegateResponse = Okay | ClosingPreparedTransaction
   deriving stock (Show)
