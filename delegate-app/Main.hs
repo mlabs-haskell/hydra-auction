@@ -15,17 +15,17 @@ import HydraAuction.Delegate (
   DelegateInput (DelegateEvent),
   DelegateRunnerT,
   delegateStep,
-  execDelegateRunner,
+  execDelegateRunnerT,
  )
 
 timedEventsProducer :: MVar DelegateInput -> IO ()
-timedEventsProducer eventChannel = do
+timedEventsProducer eventChannel =
   putMVar eventChannel $ DelegateEvent Start
 
 consumer :: MVar DelegateInput -> IO ()
 consumer eventChannel =
   -- Either ignored, because infinite loop cannot actually return
-  void $ execDelegateRunner go
+  void $ execDelegateRunnerT go
   where
     go :: DelegateRunnerT IO ()
     go = do
