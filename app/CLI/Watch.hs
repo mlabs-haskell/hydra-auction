@@ -11,17 +11,13 @@ import Data.Time.Clock (getCurrentTime)
 import Data.Time.Format (defaultTimeLocale, formatTime)
 import System.Console.ANSI
 
--- Plutus imports
-import Plutus.V1.Ledger.Interval (Extended (..), Interval (..), UpperBound (..))
-import Plutus.V1.Ledger.Time (POSIXTime (..))
-
 -- Hydra auction
 import CLI.Config (
   AuctionName (..),
   CliEnhancedAuctionTerms (..),
   readCliEnhancedAuctionTerms,
  )
-import HydraAuction.OnChain.Common (stageToInterval)
+import HydraAuction.OnChain.Common (secondsLeftInInterval, stageToInterval)
 import HydraAuction.Tx.Common (currentAuctionStage, currentTimeMilliseconds)
 
 watchAuction :: AuctionName -> IO ()
@@ -34,15 +30,15 @@ watchAuction auctionName = do
   case mEnhancedTerms of
     Nothing ->
       putStrLn $ "Auction " <> show auctionName <> " does not exist."
-    Just eTerms -> do
+    Just CliEnhancedAuctionTerms {sellerActor, terms} -> do
       currentTime <- getCurrentTime
       currentTimeMs <- currentTimeMilliseconds
-      currentStage <- currentAuctionStage (terms eTerms)
+      currentStage <- currentAuctionStage terms
       let showTime = formatTime defaultTimeLocale "%Y-%m-%d %H:%M:%S"
-          mSecsLeft = secondsLeftInInterval currentTimeMs (stageToInterval (terms eTerms) currentStage)
+          mSecsLeft = secondsLeftInInterval currentTimeMs (stageToInterval terms currentStage)
       putStrLn $ showTime currentTime
       putStrLn $ "Auction: " <> show auctionName
-      putStrLn $ "Seller: " <> show (sellerActor eTerms)
+      putStrLn $ "Seller: " <> show sellerActor
       putStrLn $
         "Current stage: "
           <> show currentStage
@@ -52,7 +48,3 @@ watchAuction auctionName = do
 
   threadDelay 0.2
   watchAuction auctionName
-
-secondsLeftInInterval :: Integer -> Interval POSIXTime -> Maybe Integer
-secondsLeftInInterval now (Interval _ (UpperBound (Finite (POSIXTime t)) inclusive)) = Just $ (t - now - if inclusive then 0 else 1) `div` 1000
-secondsLeftInInterval _ _ = Nothing

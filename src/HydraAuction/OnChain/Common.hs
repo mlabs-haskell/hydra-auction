@@ -10,15 +10,17 @@ module HydraAuction.OnChain.Common (
   lovelaceOfOutput,
   nothingForged,
   checkInterval,
+  secondsLeftInInterval,
   stageToInterval,
 ) where
 
 -- Prelude imports
 import PlutusTx.Prelude
+import Prelude (div)
 
 -- Plutus imports
-import Plutus.V1.Ledger.Interval (Interval, contains, from, interval, to)
-import Plutus.V1.Ledger.Time (POSIXTime)
+import Plutus.V1.Ledger.Interval (Extended (..), Interval (..), UpperBound (..), contains, from, interval, to)
+import Plutus.V1.Ledger.Time (POSIXTime (..))
 import Plutus.V1.Ledger.Value (assetClass, assetClassValueOf, isZero)
 import Plutus.V2.Ledger.Api (
   Address,
@@ -59,6 +61,11 @@ checkVoucherExpiredOrLater :: AuctionTerms -> TxInfo -> Bool
 checkVoucherExpiredOrLater terms info =
   traceIfFalse "Wrong interval for transaction" $
     contains (from (voucherExpiry terms)) (txInfoValidRange info)
+
+-- This function is not used on-chain
+secondsLeftInInterval :: Integer -> Interval POSIXTime -> Maybe Integer
+secondsLeftInInterval now (Interval _ (UpperBound (Finite (POSIXTime t)) inclusive)) = Just $ (t - now - if inclusive then 0 else 1) `div` 1000
+secondsLeftInInterval _ _ = Nothing
 
 {-# INLINEABLE validAuctionTerms #-}
 validAuctionTerms :: AuctionTerms -> Bool
