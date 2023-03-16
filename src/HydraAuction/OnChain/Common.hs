@@ -62,7 +62,11 @@ checkVoucherExpiredOrLater terms info =
   traceIfFalse "Wrong interval for transaction" $
     contains (from (voucherExpiry terms)) (txInfoValidRange info)
 
--- This function is not used on-chain
+-- | Given a time in Milliseconds, and an 'Interval' this function computes 
+--   the truncated difference in seconds to the 'UpperBound' of the passed 'Interval'.  
+--   If the Interval does not have a finite `UpperBound` the function will return Nothing.
+--  This function also assumes that the given time in Milliseconds is smaller than the `UpperBound` of the interval (if that exists, and is finite)
+--   Note that this function is not and should not be used on-chain
 secondsLeftInInterval :: Integer -> Interval POSIXTime -> Maybe Integer
 secondsLeftInInterval now (Interval _ (UpperBound (Finite (POSIXTime t)) inclusive)) = Just $ (t - now - if inclusive then 0 else 1) `div` 1000
 secondsLeftInInterval _ _ = Nothing
