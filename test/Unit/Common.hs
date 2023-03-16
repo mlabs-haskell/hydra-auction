@@ -88,7 +88,9 @@ testSecondsLeftInterval = do
       interval1 = to 5000
       interval2 = interval 5000 15000
       interval3 = from 15000
+      interval4 = interval 0 100
 
   secondsLeftInInterval now interval1 @?= Just 4
   secondsLeftInInterval now interval2 @?= Just 14
   secondsLeftInInterval now interval3 @?= Nothing
+  secondsLeftInInterval now interval4 @?= Nothing
