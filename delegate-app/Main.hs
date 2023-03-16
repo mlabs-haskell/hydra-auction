@@ -4,9 +4,8 @@ module Main (main) where
 import Prelude
 
 -- Haskell imports
-import Control.Concurrent.Async (withAsync)
-import Control.Concurrent.MVar (MVar, newEmptyMVar, putMVar, takeMVar)
-import Control.Monad (void)
+
+import Control.Concurrent (threadDelay)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 
 -- HydraAuction imports
@@ -18,27 +17,31 @@ import HydraAuction.Delegate (
   execDelegateRunnerT,
  )
 
-timedEventsProducer :: MVar DelegateInput -> IO ()
-timedEventsProducer eventChannel =
-  putMVar eventChannel $ DelegateEvent Start
+eventsProducer :: Bool -> DelegateRunnerT IO (Maybe DelegateEvent)
+eventsProducer thisIsFirstRun =
+  if thisIsFirstRun
+    then return $ Just Start
+    else return Nothing
 
-consumer :: MVar DelegateInput -> IO ()
-consumer eventChannel =
-  -- Either ignored, because infinite loop cannot actually return
-  void $ execDelegateRunnerT go
-  where
-    go :: DelegateRunnerT IO ()
-    go = do
-      event <- liftIO $ takeMVar eventChannel
-      delegateResponse <- delegateStep event
+consumer :: Maybe DelegateInput -> DelegateRunnerT IO ()
+consumer mInput = case mInput of
+  Just input -> do
+    delegateResponse <- delegateStep input
+    -- FIXME: send response to client
+    liftIO $ putStrLn $ show delegateResponse
+  Nothing -> return ()
 
-      -- FIXME: send response to client
-      liftIO $ putStrLn $ show delegateResponse
-      go
+delegateTick :: Int
+delegateTick = 1_000
 
 main :: IO ()
 main = do
-  eventChannel <- newEmptyMVar
-
-  withAsync (timedEventsProducer eventChannel) $ \_ -> do
-    consumer eventChannel
+  -- FIXME: cover either case. It probably should not be transformer.
+  _ <- execDelegateRunnerT $ go True
+  return ()
+  where
+    go thisIsFirstRun = do
+      mEvent <- eventsProducer thisIsFirstRun
+      consumer (DelegateEvent <$> mEvent)
+      liftIO $ threadDelay delegateTick
+      go False
