@@ -152,7 +152,6 @@ parseActor "eve" = Eve
 parseActor "frank" = Frank
 parseActor "grace" = Grace
 parseActor "hans" = Hans
-parseActor "faucet" = error "Unsupported actor"
 parseActor _ = error "Actor parsing error"
 
 parseScript :: String -> AuctionScript
