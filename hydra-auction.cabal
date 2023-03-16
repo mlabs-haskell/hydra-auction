@@ -190,7 +190,9 @@ library
   exposed-modules:
     HydraAuction.Addresses
     HydraAuction.Delegate
+    HydraAuction.Delegate.Interface
     HydraAuction.Fixture
+    HydraAuction.Hydra.Interface
     HydraAuction.OnChain
     HydraAuction.OnChain.TestNFT
     HydraAuction.Plutus.Orphans
@@ -205,8 +207,6 @@ library
     Paths_hydra_auction
 
   other-modules:
-    HydraAuction.Hydra.Interface
-    HydraAuction.Delegate.Interface
     HydraAuction.OnChain.Common
     HydraAuction.OnChain.Escrow
     HydraAuction.OnChain.StandingBid
