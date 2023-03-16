@@ -32,7 +32,7 @@ watchAuction auctionName = do
       putStrLn $ "Auction " <> show auctionName <> " does not exist."
     Just CliEnhancedAuctionTerms {sellerActor, terms} -> do
       currentTime <- getCurrentTime
-      currentTimeMs <- currentTimeMilliseconds
+      currentTimeMs <- POSIXTime <$> currentTimeMilliseconds
       currentStage <- currentAuctionStage terms
       let showTime = formatTime defaultTimeLocale "%Y-%m-%d %H:%M:%S"
           mSecsLeft = secondsLeftInInterval currentTimeMs (stageToInterval terms currentStage)
