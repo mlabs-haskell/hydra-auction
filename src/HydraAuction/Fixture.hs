@@ -36,7 +36,6 @@ data Actor
   | Frank
   | Grace
   | Hans
-  | Faucet
   deriving stock (Eq, Show, Enum, Bounded, Generic)
 
 instance Aeson.FromJSON Actor
@@ -73,4 +72,3 @@ actorName = \case
   Frank -> "frank"
   Grace -> "grace"
   Hans -> "hans"
-  Faucet -> "faucet"
