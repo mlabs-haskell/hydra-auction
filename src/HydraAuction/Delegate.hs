@@ -14,7 +14,7 @@ import Control.Monad.Except (MonadError (throwError))
 import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.State (MonadState, StateT (..), evalStateT, get, put)
 import Control.Monad.Trans (MonadTrans (lift))
-import Control.Monad.Trans.Except (ExceptT (..), runExceptT)
+import Control.Monad.Trans.Except (runExceptT)
 
 -- HydraAuction imports
 
@@ -43,27 +43,29 @@ data DelegateState = NoClient | HasClient FrontendKind AuctionTerms
 initialState :: DelegateState
 initialState = NoClient
 
-newtype DelegateRunnerT m x
-  = MkDelegateRunner (StateT DelegateState (ExceptT DelegateError m) x)
+newtype DelegateRunnerT m x = MkDelegateRunner
+  { unDelegateRunner :: StateT DelegateState m x
+  }
   deriving newtype
     ( Functor
     , Applicative
     , Monad
     , MonadState DelegateState
-    , MonadError DelegateError
     , MonadIO
     )
 
-execDelegateRunnerT :: Monad m => DelegateRunnerT m x -> m (Either DelegateError x)
-execDelegateRunnerT (MkDelegateRunner action) =
-  runExceptT $ evalStateT action initialState
+execDelegateRunnerT :: Monad m => DelegateRunnerT m x -> m x
+execDelegateRunnerT (MkDelegateRunner action) = evalStateT action initialState
 
 instance MonadTrans DelegateRunnerT where
-  lift = MkDelegateRunner . lift . lift
+  lift = MkDelegateRunner . lift
 
 delegateStep ::
-  forall m. Monad m => DelegateInput -> DelegateRunnerT m DelegateResponse
-delegateStep input = case input of
+  forall m.
+  Monad m =>
+  DelegateInput ->
+  DelegateRunnerT m (Either DelegateError DelegateResponse)
+delegateStep input = runExceptT $ case input of
   DelegateEvent Start -> return Okay -- FIXME: initialize Hydra
   -- FIXME: close Hydra node
   DelegateEvent (AuctionStageStarted BiddingEndedStage) -> return Okay
@@ -83,7 +85,7 @@ delegateStep input = case input of
     put $ HasClient clientKind terms
     return result
 
-  -- FIXME: validate stanging bid utxo and move it to hydra
+  -- FIXME: validate standing bid utxo and move it to hydra
   FrontendRequest (KnownFrontendRequest request) -> do
     state <- get
     case state of

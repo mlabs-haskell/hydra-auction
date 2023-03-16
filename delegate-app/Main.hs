@@ -28,7 +28,9 @@ consumer mInput = case mInput of
   Just input -> do
     delegateResponse <- delegateStep input
     -- FIXME: send response to client
-    liftIO $ putStrLn $ show delegateResponse
+    case delegateResponse of
+      Left resp -> liftIO $ putStrLn $ "Error: " <> show resp
+      Right resp -> liftIO $ putStrLn $ "Correct response: " <> show resp
   Nothing -> return ()
 
 delegateTick :: Int
