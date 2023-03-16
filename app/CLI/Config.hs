@@ -17,12 +17,17 @@ import Hydra.Prelude (liftIO)
 import Prelude
 
 -- Haskell imports
+import Control.Monad (guard)
 import Control.Monad.Trans.Maybe (MaybeT (..), runMaybeT)
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Aeson qualified as Aeson
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as LBS
-import System.Directory (createDirectoryIfMissing, getCurrentDirectory)
+import System.Directory (
+  createDirectoryIfMissing,
+  doesFileExist,
+  getCurrentDirectory,
+ )
 import System.FilePath ((<.>), (</>))
 
 -- Hydra auction imports
@@ -66,9 +71,11 @@ toJsonFileName dirKind (AuctionName auctionName) = do
   return $ directory </> auctionName <.> "json"
 
 readJsonFromPath :: (FromJSON a) => DirectoryKind -> AuctionName -> IO (Maybe a)
-readJsonFromPath dirKind auctionName = do
-  filename <- toJsonFileName dirKind auctionName
-  Aeson.decode . LBS.fromStrict <$> BS.readFile filename
+readJsonFromPath dirKind auctionName = runMaybeT $ do
+  filename <- liftIO $ toJsonFileName dirKind auctionName
+  guard =<< liftIO (doesFileExist filename)
+  fileContents <- liftIO $ BS.readFile filename
+  MaybeT . pure . Aeson.decode . LBS.fromStrict $ fileContents
 
 writeJsonToPath :: (ToJSON a) => DirectoryKind -> AuctionName -> a -> IO ()
 writeJsonToPath dirKind auctionName config = do

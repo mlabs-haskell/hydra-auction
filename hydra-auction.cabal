@@ -132,9 +132,11 @@ executable hydra-auction
     CLI.Parsers
     CLI.Parsers.TxIn
     CLI.Prettyprinter
+    CLI.Watch
 
   build-depends:
     , aeson
+    , ansi-terminal
     , array
     , base
     , bech32
@@ -184,6 +186,7 @@ library
     HydraAuction.Addresses
     HydraAuction.Fixture
     HydraAuction.OnChain
+    HydraAuction.OnChain.Common
     HydraAuction.OnChain.TestNFT
     HydraAuction.Plutus.Orphans
     HydraAuction.Runner
@@ -197,7 +200,6 @@ library
     Paths_hydra_auction
 
   other-modules:
-    HydraAuction.OnChain.Common
     HydraAuction.OnChain.Escrow
     HydraAuction.OnChain.StandingBid
     HydraAuction.OnChain.StateToken

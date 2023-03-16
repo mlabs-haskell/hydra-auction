@@ -2,6 +2,7 @@ module CLI.Parsers (
   getCliInput,
   parseCliAction,
   CliInput (..),
+  PromptOptions (..),
 ) where
 
 -- Prelude imports
@@ -34,7 +35,7 @@ import Options.Applicative (
  )
 
 -- Cardano node imports
-import Cardano.Api (NetworkMagic (..), fromNetworkMagic)
+import Cardano.Api (NetworkId, NetworkMagic (..), fromNetworkMagic)
 
 -- Hydra auction imports
 import HydraAuction.Fixture (Actor (..))
@@ -42,8 +43,37 @@ import HydraAuction.OnChain (AuctionScript (..))
 import HydraAuction.Types (Natural, intToNatural)
 
 -- Hydra auction CLI imports
-import CLI.Actions (CliAction (..), CliInput (..), seedAmount)
+import CLI.Actions (CliAction (..), seedAmount)
 import CLI.Config (AuctionName (..))
+import Cardano.Prelude (asum)
+
+data CliInput
+  = Watch !AuctionName
+  | InteractivePrompt !PromptOptions
+
+data PromptOptions = MkPromptOptions
+  { cliActor :: !Actor
+  , cliVerbosity :: !Bool
+  , cliNodeSocket :: !String
+  , cliNetworkId :: !NetworkId
+  }
+
+getCliInput :: IO CliInput
+getCliInput = customExecParser preferences options
+  where
+    options =
+      info
+        (cliInputParser <**> helper)
+        fullDesc
+    preferences = prefs (showHelpOnEmpty <> showHelpOnError)
+
+cliInputParser :: Parser CliInput
+cliInputParser =
+  asum
+    [ Watch <$> watchAuction
+    , InteractivePrompt
+        <$> (MkPromptOptions <$> actor <*> verboseParser <*> socketDir <*> (fromNetworkMagic <$> networkMagic))
+    ]
 
 parseCliAction :: [String] -> Either String CliAction
 parseCliAction s = case execParserPure preferences options s of
@@ -54,15 +84,6 @@ parseCliAction s = case execParserPure preferences options s of
     options =
       info
         (cliActionParser <**> helper)
-        fullDesc
-    preferences = prefs (showHelpOnEmpty <> showHelpOnError)
-
-getCliInput :: IO CliInput
-getCliInput = customExecParser preferences options
-  where
-    options =
-      info
-        (cliInputParser <**> helper)
         fullDesc
     preferences = prefs (showHelpOnEmpty <> showHelpOnError)
 
@@ -126,6 +147,16 @@ bidAmount =
           <> help "Bid amount"
       )
 
+watchAuction :: Parser AuctionName
+watchAuction =
+  AuctionName
+    <$> strOption
+      ( short 'w'
+          <> long "watch-auction"
+          <> metavar "AUCTION"
+          <> help "Watch the status of the given auction"
+      )
+
 socketDir :: Parser String
 socketDir =
   strOption
@@ -168,6 +199,3 @@ parseNetworkMagic s = NetworkMagic $ read s
 
 verboseParser :: Parser Bool
 verboseParser = switch (long "verbose" <> short 'v')
-
-cliInputParser :: Parser CliInput
-cliInputParser = MkCliInput <$> actor <*> verboseParser <*> socketDir <*> (fromNetworkMagic <$> networkMagic)

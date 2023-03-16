@@ -1,4 +1,4 @@
-{-# OPTIONS_GHC -w #-}
+{-# LANGUAGE RecordWildCards #-}
 
 module Main (main) where
 
@@ -6,8 +6,6 @@ module Main (main) where
 import Prelude
 
 -- Haskell imports
-import Control.Concurrent.Async (withAsync)
-import Control.Monad (void, when)
 import Control.Monad.Catch (try)
 import Control.Monad.Trans.Class (lift)
 import System.Console.Haskeline (
@@ -19,14 +17,11 @@ import System.Console.Haskeline (
 
 -- Hydra imports
 import Hydra.Logging (Verbosity (Quiet, Verbose))
-import Hydra.Prelude (SomeException, ask, contramap, liftIO)
+import Hydra.Prelude (SomeException, ask, liftIO)
 
 -- Hydra auction imports
-
-import HydraAuction.Fixture (Actor (..))
 import HydraAuction.Runner (
   ExecutionContext (..),
-  HydraAuctionLog (FromHydra),
   Runner,
   executeRunner,
   stdoutOrNullTracer,
@@ -43,15 +38,23 @@ import CardanoNode (
 -- Hydra auction CLI imports
 import CLI.Actions (CliAction, handleCliAction)
 import CLI.Parsers (
-  CliInput (..),
+  CliInput (InteractivePrompt, Watch),
+  PromptOptions (..),
   getCliInput,
   parseCliAction,
+ )
+import CLI.Watch (
+  watchAuction,
  )
 
 main :: IO ()
 main = do
-  MkCliInput {cliVerbosity, cliActor, cliNodeSocket, cliNetworkId} <- getCliInput
+  ci <- getCliInput
+  handleCliInput ci
 
+handleCliInput :: CliInput -> IO ()
+handleCliInput (Watch auctionName) = watchAuction auctionName
+handleCliInput (InteractivePrompt MkPromptOptions {..}) = do
   let hydraVerbosity = if cliVerbosity then Verbose "hydra-auction" else Quiet
   tracer <- stdoutOrNullTracer hydraVerbosity
 

@@ -17,16 +17,18 @@ import Data.Maybe (fromJust)
 import Test.QuickCheck (arbitrary)
 import Test.QuickCheck.Gen (generate)
 import Test.Tasty (TestTree, testGroup)
-import Test.Tasty.HUnit (Assertion, testCase, (@=?))
+import Test.Tasty.HUnit (Assertion, testCase, (@?=))
 
 -- Hydra
 import Hydra.Cardano.Api (TxIn)
 import Hydra.Ledger.Cardano ()
 
--- Arbitrary instances
+-- Plutus imports
+import Plutus.V1.Ledger.Interval (from, interval, to)
 
 -- Hydra auction imports
 import HydraAuction.Fixture (Actor (..))
+import HydraAuction.OnChain.Common (secondsLeftInInterval)
 import HydraAuction.Tx.Common (currentAuctionStage)
 import HydraAuction.Tx.TermsConfig (
   AuctionTermsConfig (..),
@@ -39,7 +41,9 @@ testSuite :: TestTree
 testSuite =
   testGroup
     "Unit-Common"
-    [testCase "current-auction-stage" testCurrentAuctionStage]
+    [ testCase "current-auction-stage" testCurrentAuctionStage
+    , testCase "seconds-left-interval" testSecondsLeftInterval
+    ]
 
 testCurrentAuctionStage :: Assertion
 testCurrentAuctionStage = do
@@ -47,12 +51,15 @@ testCurrentAuctionStage = do
   -- Using actual time, cuz TimeMachine does not support nesting mocks
   -- Could just use absolute time mocks instead
 
+  -- Since TimeMachine gives us only second granularity,
+  -- we define each stage to be 1 minute long, with
+  -- bidding starting 30 seconds after the auction announcement
   let config =
         AuctionTermsConfig
-          { configDiffBiddingStart = 1 * 60 - 1
-          , configDiffBiddingEnd = 2 * 60 - 1
-          , configDiffVoucherExpiry = 3 * 60 - 1
-          , configDiffCleanup = 4 * 60 - 1
+          { configDiffBiddingStart = 30
+          , configDiffBiddingEnd = 90
+          , configDiffVoucherExpiry = 150
+          , configDiffCleanup = 210
           , configAuctionFeePerDelegate = fromJust $ intToNatural 4_000_000
           , configStartingBid = fromJust $ intToNatural 8_000_000
           , configMinimumBidIncrement = fromJust $ intToNatural 8_000_000
@@ -72,5 +79,18 @@ testCurrentAuctionStage = do
   assertStageAtTime terms (4 `minutes` later) CleanupStage
   where
     assertStageAtTime terms timeDiff expectedStage = do
-      _ <- travelTo timeDiff $ currentAuctionStage terms
-      liftIO $ expectedStage @=? expectedStage
+      stage <- travelTo timeDiff $ currentAuctionStage terms
+      liftIO $ stage @?= expectedStage
+
+testSecondsLeftInterval :: Assertion
+testSecondsLeftInterval = do
+  let now = 1000
+      interval1 = to 5000
+      interval2 = interval 5000 15000
+      interval3 = from 15000
+      interval4 = interval 0 100
+
+  secondsLeftInInterval now interval1 @?= Just 4
+  secondsLeftInInterval now interval2 @?= Just 14
+  secondsLeftInInterval now interval3 @?= Nothing
+  secondsLeftInInterval now interval4 @?= Nothing
