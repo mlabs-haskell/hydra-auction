@@ -436,6 +436,15 @@ Request parameters:
 
 ### Delegate server
 
+How Delegate server API works:
+
+* Delegate server may have multiple clients which it does not authenticate,
+  because all permissions are already enforced on-chain.
+* Delegate server works in async event-driven way, the same as Hydra Node.
+  Clients could push inputs and receive Delegate server outputs,
+  in async way.
+  Delegate server do broadcast all Hydra events which could be interesting for its clients.
+
 Things which should be done automatically:
 
 * Delegate server should be started when Hydra node already running.
@@ -458,6 +467,8 @@ Things which should be done automatically:
   period ends.
 
 <table><tr><td>
+
+Frontend Inputs:
 
 **commitStandingBid.** Used by `moveStandingBidToL2` in Frontend CLI.
 
@@ -484,8 +495,7 @@ how this feature will be implemented in Hydra.
 based on the information provided in the request parameters.
 
 Request parameters:
-- Auction ID
-- Bid amount
+- Bid datum (including bidder signature)
 
 This request is sent by the Frontend CLI when it receives
 a `newBidL2` request from a bidder.
