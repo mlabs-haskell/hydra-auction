@@ -45,6 +45,7 @@ and the request types that people can submit to those systems.
   (with fixed keys laying in `data/credentials`).
   This is only to simplify demonstration,
   no real limitation for that in scripts exists.
+* Hardcoded auction lot asset class is used.
 * All Hydra nodes know each others' IPs before starting a node
   (this is a current limitation of Hydra).
 * Multiple delegates cannot share a single Hydra node,
@@ -55,9 +56,17 @@ and the request types that people can submit to those systems.
   * Later, when Hydra will support incremental commits and decommits
     (see Hydra spec for details), same Hydra Head and set of delegates
     can be reused for multiple Auctions.
+
+## Decisions
+
 * Anyone can place auction into Hydra Head.
     * At the same time any Auction has its Hydra Head Id recorded on-chain
     and cannot be placed on any other Hydra Head.
+
+## To be decided
+
+* Should Delegate server validate transactions before posting them to L2
+  or only Hydra Ledger and Frontend should do that.
 
 ## Off-chain workflow
 
