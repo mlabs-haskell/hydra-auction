@@ -65,6 +65,7 @@ testSuite =
     [ testCase "bidder-buys" bidderBuysTest
     , testCase "seller-reclaims" sellerReclaimsTest
     , testCase "seller-bids" sellerBidsTest
+    , testCase "unauthorised-bidder" unauthorisedBidderTest
     ]
 
 assertNFTNumEquals :: Actor -> Integer -> Runner ()
@@ -177,3 +178,35 @@ sellerBidsTest = mkAssertion $ do
   case result of
     Left (_ :: SomeException) -> return ()
     Right _ -> fail "New bid should fail"
+
+unauthorisedBidderTest :: Assertion
+unauthorisedBidderTest = mkAssertion $ do
+  let seller = Alice
+      buyer1 = Bob
+      buyer2 = Carol
+
+  mapM_ (initWallet 100_000_000) [seller, buyer1, buyer2]
+
+  nftTx <- mintOneTestNFT
+  let utxoRef = mkTxIn nftTx 0
+
+  terms <- liftIO $ do
+    dynamicState <- constructTermsDynamic seller utxoRef
+    configToAuctionTerms config dynamicState
+
+  assertNFTNumEquals seller 1
+
+  announceAuction terms
+
+  waitUntil $ biddingStart terms
+  actorsPkh <- liftIO $ getActorsPubKey [buyer1]
+  startBidding terms (ApprovedBidders actorsPkh)
+
+  assertNFTNumEquals seller 0
+
+  withActor buyer1 $ newBid terms $ startingBid terms
+  result <- try $ withActor buyer2 $ newBid terms $ startingBid terms + minimumBidIncrement terms
+
+  case result of
+    Left (_ :: SomeException) -> return ()
+    Right _ -> fail "New bid should fail, actor is not authorised"
