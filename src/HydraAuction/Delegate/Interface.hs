@@ -1,7 +1,4 @@
 module HydraAuction.Delegate.Interface (
-  FrontendKind (..),
-  KnownFrontendRequest (..),
-  DelegateError (..),
   DelegateResponse (..),
   FrontendRequest (..),
 ) where
@@ -15,21 +12,17 @@ import Cardano.Api.UTxO (UTxO)
 -- HydraAuction imports
 import HydraAuction.Types (AuctionTerms (..), Natural)
 
-data FrontendKind = Seller | Bidder
-data KnownFrontendRequest
-  = CommitStandingBid UTxO
-  | NewBid Natural
-
 data FrontendRequest
-  = FrontendConnect AuctionTerms FrontendKind
-  | KnownFrontendRequest KnownFrontendRequest
+  = CommitStandingBid
+      { auctionTerms :: AuctionTerms
+      , utxoToCommit :: UTxO
+      }
+  | -- FIXME: commit full datum
+    NewBid {bidAmount :: Natural}
 
-data DelegateError
-  = NoClientYet
-  | WrongClientSignature
-  | WrongClientKind
+data DelegateResponse
+  = ClosingTxTemplate
   | HydraRequestError
-  deriving stock (Show)
-
-data DelegateResponse = Okay | ClosingPreparedTransaction
+  | AlreadyHasAuction
+  | HasNoAuction
   deriving stock (Show)
