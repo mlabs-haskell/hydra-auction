@@ -327,7 +327,7 @@ Cache this post-dated transaction for the bidder.
 
 **bidderBuys.** Used by the winning bidder.
 
-Peformed after BiddingEnd and before VoucherExpiry.
+Performed after BiddingEnd and before VoucherExpiry.
 
 Submits a transaction that:
 - spends the auction escrow utxo with the `BidderBuys` redeemer
@@ -364,7 +364,7 @@ Request parameters:
 
 **refundDeposit.** Used by losing bidders.
 
-Peformed after BiddingEnd.
+Performed after BiddingEnd.
 
 Submits a transaction that:
 - spends the bidder's deposit
