@@ -23,6 +23,9 @@ module HydraAuction.Tx.Common (
   currentTimeSeconds,
   currentTimeMilliseconds,
   currentAuctionStage,
+  getStadingBidDatum,
+  currentWinningBidder,
+  getApprovedBidders,
 ) where
 
 -- Prelude imports
@@ -52,8 +55,10 @@ import Plutus.V1.Ledger.Value (
  )
 import Plutus.V2.Ledger.Api (
   POSIXTime (..),
+  PubKeyHash,
   ToData,
   fromBuiltin,
+  fromData,
   getValidator,
   toBuiltinData,
   toData,
@@ -123,9 +128,11 @@ import Hydra.Cardano.Api (
   makeTransactionBodyAutoBalance,
   mkScriptWitness,
   scriptWitnessCtx,
+  toPlutusData,
   toPlutusTxOut,
   toScriptData,
   txBody,
+  txOutDatum,
   valueFromList,
   verificationKeyHash,
   withWitness,
@@ -164,10 +171,10 @@ import Hydra.Chain.Direct.TimeHandle (queryTimeHandle, slotFromUTCTime)
 
 -- Hydra auction imports
 import HydraAuction.Fixture (keysFor)
-import HydraAuction.OnChain (AuctionScript, scriptValidatorForTerms)
+import HydraAuction.OnChain (AuctionScript (..), scriptValidatorForTerms)
 import HydraAuction.OnChain.Common (stageToInterval)
 import HydraAuction.Runner (ExecutionContext (..), Runner, logMsg)
-import HydraAuction.Types (AuctionStage, AuctionTerms, auctionStages)
+import HydraAuction.Types (ApprovedBidders (..), AuctionStage, AuctionTerms, BidTerms (..), StandingBidDatum (..), StandingBidState (..), auctionStages)
 
 networkIdToNetwork :: NetworkId -> Cardano.Network
 networkIdToNetwork (Testnet _) = Cardano.Testnet
@@ -291,6 +298,32 @@ scriptUtxos script terms = do
   let RunningNode {networkId, nodeSocket} = node
   scriptAddress' <- scriptAddress script terms
   liftIO $ queryUTxO networkId nodeSocket QueryTip [scriptAddress']
+
+getStadingBidDatum :: UTxO.UTxO -> StandingBidDatum
+getStadingBidDatum standingBidUtxo =
+  case UTxO.pairs standingBidUtxo of
+    [(_, out)] -> case txOutDatum out of
+      TxOutDatumInline scriptData ->
+        case fromData $ toPlutusData scriptData of
+          Just standingBidDatum -> standingBidDatum
+          Nothing ->
+            error "Impossible happened: Cannot decode standing bid datum"
+      _ -> error "Impossible happened: No inline data for standing bid"
+    _ -> error "Wrong number of standing bid UTxOs found"
+
+currentWinningBidder :: AuctionTerms -> Runner (Maybe PubKeyHash)
+currentWinningBidder terms = do
+  standingBidUtxo <- scriptUtxos StandingBid terms
+  let StandingBidDatum {standingBidState} = getStadingBidDatum standingBidUtxo
+  return $ case standingBid standingBidState of
+    (Just (BidTerms {bidBidder})) -> Just bidBidder
+    Nothing -> Nothing
+
+getApprovedBidders :: AuctionTerms -> Runner ApprovedBidders
+getApprovedBidders terms = do
+  standingBidUtxo <- scriptUtxos StandingBid terms
+  let StandingBidDatum {standingBidState} = getStadingBidDatum standingBidUtxo
+  pure $ approvedBidders standingBidState
 
 data AutoCreateParams = AutoCreateParams
   { authoredUtxos :: [(SigningKey PaymentKey, UTxO)]

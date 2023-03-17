@@ -22,7 +22,7 @@ import Plutus.V1.Ledger.Value (assetClassValueOf)
 import Hydra.Cardano.Api (mkTxIn, toPlutusValue, txOutValue)
 
 -- Hydra auction imports
-import HydraAuction.Fixture (Actor (..))
+import HydraAuction.Fixture (Actor (..), getActorsPubKey)
 import HydraAuction.OnChain.TestNFT (testNftAssetClass)
 import HydraAuction.Runner (
   Runner,
@@ -53,7 +53,7 @@ import HydraAuction.Tx.TermsConfig (
   constructTermsDynamic,
  )
 import HydraAuction.Tx.TestNFT (mintOneTestNFT)
-import HydraAuction.Types (AuctionTerms (..), intToNatural)
+import HydraAuction.Types (ApprovedBidders (..), AuctionTerms (..), intToNatural)
 
 -- Hydra auction test imports
 import EndToEnd.Utils (mkAssertion)
@@ -106,7 +106,8 @@ bidderBuysTest = mkAssertion $ do
   announceAuction terms
 
   waitUntil $ biddingStart terms
-  startBidding terms
+  actorsPkh <- liftIO $ getActorsPubKey [buyer1, buyer2]
+  startBidding terms (ApprovedBidders actorsPkh)
 
   assertNFTNumEquals seller 0
 
@@ -140,7 +141,7 @@ sellerReclaimsTest = mkAssertion $ do
   announceAuction terms
 
   waitUntil $ biddingStart terms
-  startBidding terms
+  startBidding terms (ApprovedBidders [])
   assertNFTNumEquals seller 0
 
   waitUntil $ voucherExpiry terms
@@ -168,7 +169,7 @@ sellerBidsTest = mkAssertion $ do
   announceAuction terms
 
   waitUntil $ biddingStart terms
-  startBidding terms
+  startBidding terms (ApprovedBidders [])
   assertNFTNumEquals seller 0
 
   result <- try $ newBid terms $ startingBid terms

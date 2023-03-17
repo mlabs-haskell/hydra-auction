@@ -1,6 +1,5 @@
 module HydraAuction.Tx.Escrow (
   toForgeStateToken,
-  currentWinningBidder,
   announceAuction,
   startBidding,
   bidderBuys,
@@ -17,19 +16,16 @@ import Control.Monad (void)
 
 -- Plutus imports
 import Plutus.V1.Ledger.Address (pubKeyHashAddress)
-import Plutus.V1.Ledger.Crypto (PubKeyHash)
 import Plutus.V1.Ledger.Value (
   CurrencySymbol (..),
   assetClassValue,
   unAssetClass,
  )
 import Plutus.V2.Ledger.Api (
-  fromData,
   getMintingPolicy,
  )
 
 -- Hydra imports
-import Cardano.Api.UTxO qualified as UTxO
 import Hydra.Cardano.Api (
   BuildTx,
   Lovelace (..),
@@ -38,13 +34,10 @@ import Hydra.Cardano.Api (
   fromPlutusTxOutRef,
   fromPlutusValue,
   lovelaceToValue,
-  toPlutusData,
-  txOutDatum,
   pattern ReferenceScriptNone,
   pattern ShelleyAddressInEra,
   pattern TxMintValueNone,
   pattern TxOut,
-  pattern TxOutDatumInline,
   pattern TxOutDatumNone,
  )
 
@@ -65,6 +58,7 @@ import HydraAuction.Tx.Common (
   filterAdaOnlyUtxo,
   filterUtxoByCurrencySymbols,
   fromPlutusAddressInRunner,
+  getStadingBidDatum,
   minLovelace,
   mintedTokens,
   mkInlineDatum,
@@ -76,6 +70,7 @@ import HydraAuction.Tx.Common (
   tokenToAsset,
  )
 import HydraAuction.Types (
+  ApprovedBidders (..),
   ApprovedBiddersHash (..),
   AuctionEscrowDatum (..),
   AuctionState (..),
@@ -83,7 +78,7 @@ import HydraAuction.Types (
   BidTerms (..),
   EscrowRedeemer (..),
   StandingBidDatum (..),
-  StandingBidState (Bid, NoBid),
+  StandingBidState (..),
   VoucherForgingRedeemer (BurnVoucher, MintVoucher),
   calculateTotalFee,
   naturalToInt,
@@ -145,8 +140,8 @@ announceAuction terms = do
         , validityBound = (Nothing, Just $ biddingStart terms)
         }
 
-startBidding :: AuctionTerms -> Runner ()
-startBidding terms = do
+startBidding :: AuctionTerms -> ApprovedBidders -> Runner ()
+startBidding terms approvedBidders = do
   logMsg "Doing start bidding"
 
   let escrowScript = scriptPlutusScript Escrow terms
@@ -175,7 +170,7 @@ startBidding terms = do
           valueOutStanding
           (mkInlineDatum standingBidDatum)
           ReferenceScriptNone
-      standingBidDatum = StandingBidDatum NoBid voucherCS
+      standingBidDatum = StandingBidDatum (StandingBidState approvedBidders Nothing) voucherCS
       valueOutStanding =
         fromPlutusValue (assetClassValue (voucherAssetClass terms) 1)
           <> lovelaceToValue minLovelace
@@ -216,26 +211,6 @@ startBidding terms = do
         , validityBound = (Just $ biddingStart terms, Just $ biddingEnd terms)
         }
 
-getStadingBidDatum :: UTxO.UTxO -> StandingBidDatum
-getStadingBidDatum standingBidUtxo =
-  case UTxO.pairs standingBidUtxo of
-    [(_, out)] -> case txOutDatum out of
-      TxOutDatumInline scriptData ->
-        case fromData $ toPlutusData scriptData of
-          Just standingBidDatum -> standingBidDatum
-          Nothing ->
-            error "Impossible happened: Cannot decode standing bid datum"
-      _ -> error "Impossible happened: No inline data for standing bid"
-    _ -> error "Wrong number of standing bid UTxOs found"
-
-currentWinningBidder :: AuctionTerms -> Runner (Maybe PubKeyHash)
-currentWinningBidder terms = do
-  standingBidUtxo <- scriptUtxos StandingBid terms
-  let StandingBidDatum {standingBidState} = getStadingBidDatum standingBidUtxo
-  return $ case standingBidState of
-    (Bid (BidTerms {bidBidder})) -> Just bidBidder
-    NoBid -> Nothing
-
 bidderBuys :: AuctionTerms -> Runner ()
 bidderBuys terms = do
   feeEscrowAddress <- scriptAddress FeeEscrow terms
@@ -253,9 +228,9 @@ bidderBuys terms = do
               Lovelace $
                 bidAmount' - calculateTotalFee terms
           StandingBidDatum {standingBidState} = getStadingBidDatum standingBidUtxo
-          bidAmount' = case standingBidState of
-            (Bid (BidTerms {bidAmount})) -> naturalToInt bidAmount
-            NoBid -> error "Standing bid UTxO has no bid"
+          bidAmount' = case standingBid standingBidState of
+            (Just (BidTerms {bidAmount})) -> naturalToInt bidAmount
+            Nothing -> error "Standing bid UTxO has no bid"
       txOutBidderGotLot bidderAddress =
         TxOut
           (ShelleyAddressInEra bidderAddress)

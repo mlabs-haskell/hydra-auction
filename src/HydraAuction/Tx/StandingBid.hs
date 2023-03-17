@@ -39,6 +39,7 @@ import HydraAuction.Tx.Common (
   addressAndKeys,
   autoSubmitAndAwaitTx,
   filterAdaOnlyUtxo,
+  getApprovedBidders,
   minLovelace,
   mkInlineDatum,
   mkInlinedDatumScriptWitness,
@@ -53,15 +54,16 @@ import HydraAuction.Types (
   Natural,
   StandingBidDatum (..),
   StandingBidRedeemer (Cleanup, NewBid),
-  StandingBidState (Bid),
+  StandingBidState (..),
   VoucherForgingRedeemer (BurnVoucher),
  )
 
 newBid :: AuctionTerms -> Natural -> Runner ()
 newBid terms bidAmount = do
-  logMsg "Doing new bid"
+  logMsg "Doing New bid"
 
   standingBidAddress <- scriptAddress StandingBid terms
+  approvedBidders <- getApprovedBidders terms
 
   let txOutStandingBid bidderVk =
         TxOut
@@ -74,10 +76,14 @@ newBid terms bidAmount = do
           voucherCS = VoucherCS $ scriptCurrencySymbol mp
           datum =
             StandingBidDatum
-              ( Bid $
-                  BidTerms
-                    (toPlutusKeyHash $ verificationKeyHash bidderVk)
-                    bidAmount
+              ( StandingBidState
+                  { standingBid =
+                      Just $
+                        BidTerms
+                          (toPlutusKeyHash $ verificationKeyHash bidderVk)
+                          bidAmount
+                  , approvedBidders = approvedBidders
+                  }
               )
               voucherCS
           valueStandingBid =
@@ -86,8 +92,6 @@ newBid terms bidAmount = do
       standingBidWitness = mkInlinedDatumScriptWitness script NewBid
         where
           script = scriptPlutusScript StandingBid terms
-
-  logMsg "Doing New bid"
 
   (bidderAddress, bidderVk, bidderSk) <- addressAndKeys
 

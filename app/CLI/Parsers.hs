@@ -22,6 +22,7 @@ import Options.Applicative (
   hsubparser,
   info,
   long,
+  many,
   metavar,
   prefs,
   progDesc,
@@ -104,7 +105,7 @@ cliActionParser =
         <> command "prepare-for-demo" (info (Prepare <$> actor) (progDesc $ "Provides " <> show seedAmount <> " Lovelace for every actor and 1 Test NFT for given actor"))
         <> command "mint-test-nft" (info (pure MintTestNFT) (progDesc "Mints an NFT that can be used as auction lot"))
         <> command "announce-auction" (info (AuctionAnounce <$> auctionName) (progDesc "Create an auction"))
-        <> command "start-bidding" (info (StartBidding <$> auctionName) (progDesc "Open an auction for bidding"))
+        <> command "start-bidding" (info (StartBidding <$> auctionName <*> many actor) (progDesc "Open an auction for bidding"))
         <> command "new-bid" (info (NewBid <$> auctionName <*> bidAmount) (progDesc "Actor places new bid after bidding is started"))
         <> command "bidder-buys" (info (BidderBuys <$> auctionName) (progDesc "Pay and recieve a lot after auction end"))
         <> command "seller-reclaims" (info (SellerReclaims <$> auctionName) (progDesc "Seller reclaims lot after voucher end time"))
