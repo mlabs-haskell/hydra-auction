@@ -1,3 +1,5 @@
+{-# LANGUAGE StrictData #-}
+
 module HydraAuction.Delegate.Interface (
   DelegateResponse (..),
   FrontendRequest (..),
