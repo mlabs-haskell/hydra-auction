@@ -441,8 +441,10 @@ How Delegate server API works:
 * Delegate server may have multiple clients which it does not authenticate,
   because all permissions are already enforced on-chain.
 * Delegate server works in async event-driven way, the same as Hydra Node.
-  Clients could push inputs and receive Delegate server outputs,
+  Clients could push requests and receive Delegate server responses,
   in async way.
+  We name them Requests/Responses, not Inputs/Outputs like Hydra.
+  That is because Delegate may have inputs other than Frontend requests.
   Delegate server do broadcast all Hydra events which could be interesting for its clients.
 
 Things which should be done automatically:
@@ -468,7 +470,7 @@ Things which should be done automatically:
 
 <table><tr><td>
 
-Frontend Inputs:
+Frontend Requests:
 
 **commitStandingBid.** Used by `moveStandingBidToL2` in Frontend CLI.
 
