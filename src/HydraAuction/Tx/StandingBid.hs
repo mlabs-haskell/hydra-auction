@@ -1,4 +1,10 @@
-module HydraAuction.Tx.StandingBid (newBid, cleanupTx) where
+module HydraAuction.Tx.StandingBid (
+  newBid,
+  cleanupTx,
+  getStadingBidDatum,
+  currentWinningBidder,
+  getApprovedBidders,
+) where
 
 -- Prelude imports
 
@@ -7,20 +13,24 @@ import Prelude
 
 -- Plutus imports
 import Plutus.V1.Ledger.Value (assetClassValue)
-import Plutus.V2.Ledger.Api (getValidator)
+import Plutus.V2.Ledger.Api (PubKeyHash, fromData, getValidator)
 
 -- Hydra imports
+import Cardano.Api.UTxO qualified as UTxO
 import Hydra.Cardano.Api (
   PlutusScriptV2,
   fromPlutusScript,
   fromPlutusValue,
   lovelaceToValue,
+  toPlutusData,
   toPlutusKeyHash,
+  txOutDatum,
   verificationKeyHash,
   pattern ReferenceScriptNone,
   pattern ShelleyAddressInEra,
   pattern TxMintValueNone,
   pattern TxOut,
+  pattern TxOutDatumInline,
  )
 
 -- Hydra auction imports
@@ -39,16 +49,16 @@ import HydraAuction.Tx.Common (
   addressAndKeys,
   autoSubmitAndAwaitTx,
   filterAdaOnlyUtxo,
-  getApprovedBidders,
   minLovelace,
   mkInlineDatum,
   mkInlinedDatumScriptWitness,
   scriptAddress,
   scriptPlutusScript,
   scriptUtxos,
+  toForgeStateToken,
  )
-import HydraAuction.Tx.Escrow (toForgeStateToken)
 import HydraAuction.Types (
+  ApprovedBidders,
   AuctionTerms (..),
   BidTerms (..),
   Natural,
@@ -57,6 +67,32 @@ import HydraAuction.Types (
   StandingBidState (..),
   VoucherForgingRedeemer (BurnVoucher),
  )
+
+getStadingBidDatum :: UTxO.UTxO -> StandingBidDatum
+getStadingBidDatum standingBidUtxo =
+  case UTxO.pairs standingBidUtxo of
+    [(_, out)] -> case txOutDatum out of
+      TxOutDatumInline scriptData ->
+        case fromData $ toPlutusData scriptData of
+          Just standingBidDatum -> standingBidDatum
+          Nothing ->
+            error "Impossible happened: Cannot decode standing bid datum"
+      _ -> error "Impossible happened: No inline data for standing bid"
+    _ -> error "Wrong number of standing bid UTxOs found"
+
+currentWinningBidder :: AuctionTerms -> Runner (Maybe PubKeyHash)
+currentWinningBidder terms = do
+  standingBidUtxo <- scriptUtxos StandingBid terms
+  let StandingBidDatum {standingBidState} = getStadingBidDatum standingBidUtxo
+  return $ case standingBid standingBidState of
+    (Just (BidTerms {bidBidder})) -> Just bidBidder
+    Nothing -> Nothing
+
+getApprovedBidders :: AuctionTerms -> Runner ApprovedBidders
+getApprovedBidders terms = do
+  standingBidUtxo <- scriptUtxos StandingBid terms
+  let StandingBidDatum {standingBidState} = getStadingBidDatum standingBidUtxo
+  pure $ approvedBidders standingBidState
 
 newBid :: AuctionTerms -> Natural -> Runner ()
 newBid terms bidAmount = do

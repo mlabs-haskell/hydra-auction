@@ -21,16 +21,10 @@ import Plutus.V1.Ledger.Value (
   assetClassValue,
   unAssetClass,
  )
-import Plutus.V2.Ledger.Api (
-  getMintingPolicy,
- )
 
 -- Hydra imports
 import Hydra.Cardano.Api (
-  BuildTx,
   Lovelace (..),
-  TxMintValue,
-  fromPlutusScript,
   fromPlutusTxOutRef,
   fromPlutusValue,
   lovelaceToValue,
@@ -44,10 +38,6 @@ import Hydra.Cardano.Api (
 -- Hydra auction imports
 import HydraAuction.Addresses (VoucherCS (..))
 import HydraAuction.OnChain (AuctionScript (..), policy, voucherAssetClass)
-import HydraAuction.OnChain.StateToken (
-  StateTokenKind (..),
-  stateTokenKindToTokenName,
- )
 import HydraAuction.Plutus.Extras (scriptCurrencySymbol)
 import HydraAuction.Runner (Runner, logMsg)
 import HydraAuction.Tx.Common (
@@ -58,17 +48,16 @@ import HydraAuction.Tx.Common (
   filterAdaOnlyUtxo,
   filterUtxoByCurrencySymbols,
   fromPlutusAddressInRunner,
-  getStadingBidDatum,
   minLovelace,
-  mintedTokens,
   mkInlineDatum,
   mkInlinedDatumScriptWitness,
   queryUTxOByTxInInRunner,
   scriptAddress,
   scriptPlutusScript,
   scriptUtxos,
-  tokenToAsset,
+  toForgeStateToken,
  )
+import HydraAuction.Tx.StandingBid (getStadingBidDatum)
 import HydraAuction.Types (
   ApprovedBidders (..),
   ApprovedBiddersHash (..),
@@ -79,21 +68,10 @@ import HydraAuction.Types (
   EscrowRedeemer (..),
   StandingBidDatum (..),
   StandingBidState (..),
-  VoucherForgingRedeemer (BurnVoucher, MintVoucher),
+  VoucherForgingRedeemer (MintVoucher),
   calculateTotalFee,
   naturalToInt,
  )
-
-toForgeStateToken :: AuctionTerms -> VoucherForgingRedeemer -> TxMintValue BuildTx
-toForgeStateToken terms redeemer =
-  mintedTokens
-    (fromPlutusScript $ getMintingPolicy $ policy terms)
-    redeemer
-    [(tokenToAsset $ stateTokenKindToTokenName Voucher, num)]
-  where
-    num = case redeemer of
-      MintVoucher -> 1
-      BurnVoucher -> -1
 
 announceAuction :: AuctionTerms -> Runner ()
 announceAuction terms = do
