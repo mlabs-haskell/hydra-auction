@@ -30,7 +30,6 @@ import HydraAuction.Tx.Common (
   actorTipUtxo,
   addressAndKeys,
   currentAuctionStage,
-  currentWinningBidder,
   fromPlutusAddressInRunner,
   scriptUtxos,
  )
@@ -40,7 +39,7 @@ import HydraAuction.Tx.Escrow (
   sellerReclaims,
   startBidding,
  )
-import HydraAuction.Tx.StandingBid (cleanupTx, newBid)
+import HydraAuction.Tx.StandingBid (cleanupTx, currentWinningBidder, newBid)
 import HydraAuction.Tx.TermsConfig (constructTermsDynamic)
 import HydraAuction.Tx.TestNFT (findTestNFT, mintOneTestNFT)
 import HydraAuction.Types (ApprovedBidders (..), AuctionStage (..), AuctionTerms, Natural, naturalToInt)
