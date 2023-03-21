@@ -10,7 +10,7 @@ import Plutus.V1.Ledger.Address (pubKeyHashAddress, scriptHashAddress)
 import Plutus.V1.Ledger.Interval (contains, interval)
 import Plutus.V1.Ledger.Value (assetClass, assetClassValueOf)
 import Plutus.V2.Ledger.Api (TxInfo, scriptContextTxInfo, txInInfoResolved, txInfoInputs, txInfoMint, txInfoOutputs, txInfoValidRange, txOutAddress)
-import Plutus.V2.Ledger.Contexts (ScriptContext, ownHash)
+import Plutus.V2.Ledger.Contexts (ScriptContext, ownHash, txSignedBy)
 
 -- Hydra auction imports
 import HydraAuction.Addresses (VoucherCS (..))
@@ -57,9 +57,10 @@ mkStandingBidValidator terms datum redeemer context =
     info = scriptContextTxInfo context
     validNewBid :: StandingBidState -> StandingBidState -> Bool
     validNewBid (StandingBidState oldApprovedBidders oldBid) (StandingBidState newApprovedBidders (Just newBidTerms)) =
-      traceIfFalse
-        "Bidder is not approved"
-        (bidBidder newBidTerms `elem` bidders oldApprovedBidders)
+      traceIfFalse "Bidder not signed" (txSignedBy info (bidBidder newBidTerms))
+        && traceIfFalse
+          "Bidder is not approved"
+          (bidBidder newBidTerms `elem` bidders oldApprovedBidders)
         && traceIfFalse
           "Approved Bidders can not be modified"
           (oldApprovedBidders == newApprovedBidders)
