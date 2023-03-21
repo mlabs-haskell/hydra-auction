@@ -173,6 +173,14 @@
             {
               nativeBuildInputs = builtins.attrValues self.checks.${system};
             } "touch $out";
+          cliImage = pkgs.dockerTools.streamLayeredImage
+            {
+              name = "hydra-auction-cli";
+              contents = [ haskellNixFlake.packages."hydra-auction:exe:hydra-auction" ];
+              config = {
+                Cmd = [ "hydra-auction" ];
+              };
+            };
         };
 
         devShells = builtins.mapAttrs
