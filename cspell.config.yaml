@@ -1,0 +1,20 @@
+version: "0.2"
+ignorePaths: []
+dictionaryDefinitions: []
+dictionaries: []
+words:
+  - Autobalance
+  - commited
+  - contramap
+  - decommit
+  - decommits
+  - Devnet
+  - devnets
+  - Fanout
+  - minput
+  - ndtime
+  - pparams
+  - promt
+  - utxo
+ignoreWords: []
+import: []
