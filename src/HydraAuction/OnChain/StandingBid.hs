@@ -70,7 +70,7 @@ mkStandingBidValidator terms datum redeemer context =
           Nothing ->
             traceIfFalse "Bid is not greater than startingBid" $
               startingBid terms <= bidAmount newBidTerms
-    validNewBid _ _ = False
+    validNewBid _ (StandingBidState _ Nothing) = False
     checkCorrectNewBidOutput inputOut = case byAddress (scriptHashAddress $ ownHash context) $ txInfoOutputs info of
       [out] ->
         traceIfFalse "Output is not into standing bid" $

@@ -170,14 +170,12 @@ sellerBidsTest = mkAssertion $ do
   announceAuction terms
 
   waitUntil $ biddingStart terms
-  startBidding terms (ApprovedBidders [])
-  assertNFTNumEquals seller 0
-
-  result <- try $ newBid terms $ startingBid terms
+  sellerPkh <- liftIO $ getActorsPubKey [seller]
+  result <- try $ startBidding terms (ApprovedBidders sellerPkh)
 
   case result of
     Left (_ :: SomeException) -> return ()
-    Right _ -> fail "New bid should fail"
+    Right _ -> fail "Start bidding should fail"
 
 unauthorisedBidderTest :: Assertion
 unauthorisedBidderTest = mkAssertion $ do

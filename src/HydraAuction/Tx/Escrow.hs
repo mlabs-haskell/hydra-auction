@@ -12,7 +12,7 @@ import PlutusTx.Prelude (emptyByteString)
 import Prelude
 
 -- Haskell imports
-import Control.Monad (void)
+import Control.Monad (void, when)
 
 -- Plutus imports
 import Plutus.V1.Ledger.Address (pubKeyHashAddress)
@@ -143,6 +143,9 @@ announceAuction terms = do
 startBidding :: AuctionTerms -> ApprovedBidders -> Runner ()
 startBidding terms approvedBidders = do
   logMsg "Doing start bidding"
+
+  when (seller terms `elem` bidders approvedBidders) $ do
+    fail "Seller can not be in approved bidders"
 
   let escrowScript = scriptPlutusScript Escrow terms
 
