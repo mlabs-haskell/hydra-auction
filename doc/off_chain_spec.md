@@ -39,18 +39,34 @@ In the rest of this document,
 we will describe each of these systems
 and the request types that people can submit to those systems.
 
-## Limitations of the current approach
+## Limitations and assumptions of the current approach
 
 * All auction users are from a predefined list of actors
   (with fixed keys laying in `data/credentials`).
   This is only to simplify demonstration,
   no real limitation for that in scripts exists.
+* Hardcoded auction lot asset class is used.
 * All Hydra nodes know each others' IPs before starting a node
   (this is a current limitation of Hydra).
 * Multiple delegates cannot share a single Hydra node,
   due to the Hydra API allowing any actions from any client.
+  So we have one Hydra node to one Delegate server correspondence for now.
 * An auction can only be hosted on a single Hydra Head
   and a Hydra Head can only host one auction.
+  * Later, when Hydra will support incremental commits and decommits
+    (see Hydra spec for details), same Hydra Head and set of delegates
+    can be reused for multiple Auctions.
+
+## Decisions
+
+* Anyone can place auction into Hydra Head.
+    * At the same time any Auction has its Hydra Head Id recorded on-chain
+    and cannot be placed on any other Hydra Head.
+
+## To be decided
+
+* Should Delegate server validate transactions before posting them to L2
+  or only Hydra Ledger and Frontend should do that.
 
 ## Off-chain workflow
 
@@ -420,6 +436,17 @@ Request parameters:
 
 ### Delegate server
 
+How Delegate server API works:
+
+* Delegate server may have multiple clients which it does not authenticate,
+  because all permissions are already enforced on-chain.
+* Delegate server works in async event-driven way, the same as Hydra Node.
+  Clients could push requests and receive Delegate server responses,
+  in async way.
+  We name them Requests/Responses, not Inputs/Outputs like Hydra.
+  That is because Delegate may have inputs other than Frontend requests.
+  Delegate server do broadcast all Hydra events which could be interesting for its clients.
+
 Things which should be done automatically:
 
 * Delegate server should be started when Hydra node already running.
@@ -442,6 +469,8 @@ Things which should be done automatically:
   period ends.
 
 <table><tr><td>
+
+Frontend Requests:
 
 **commitStandingBid.** Used by `moveStandingBidToL2` in Frontend CLI.
 
@@ -468,8 +497,7 @@ how this feature will be implemented in Hydra.
 based on the information provided in the request parameters.
 
 Request parameters:
-- Auction ID
-- Bid amount
+- Bid datum (including bidder signature)
 
 This request is sent by the Frontend CLI when it receives
 a `newBidL2` request from a bidder.
