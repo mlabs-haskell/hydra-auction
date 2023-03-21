@@ -83,14 +83,14 @@
               modules = [
                 # Set libsodium-vrf on cardano-crypto-{praos,class}. Otherwise
                 # they depend on libsodium, which lacks the vrf functionality.
-                ({ pkgs, lib, ... }:
+                ({ lib, ... }:
                   # Override libsodium with local 'pkgs' to make sure it's using
                   # overriden 'pkgs', e.g. musl64 packages
                   {
                     packages.cardano-crypto-class.components.library.pkgconfig =
-                      lib.mkForce [ [ pkgs.libsodium-vrf pkgs.secp256k1 ] ];
+                      lib.mkForce [ [ prev.libsodium-vrf final.secp256k1 ] ];
                     packages.cardano-crypto-praos.components.library.pkgconfig =
-                      lib.mkForce [ [ pkgs.libsodium-vrf ] ];
+                      lib.mkForce [ [ prev.libsodium-vrf ] ];
 
                     # disable the dev flag in the nix code, s.t. warnings are becoming errors
                     # the dev flag implies PlutusTx defer plugin error and disabling -Werror
@@ -110,6 +110,17 @@
           inherit (haskellNix) config;
         };
         haskellNixFlake = pkgs.hydraProject.flake { };
+
+        flakeCross =
+          let
+            pkgsC = import nixpkgs {
+              crossSystem = nixpkgs.lib.systems.examples.musl64;
+              inherit (haskellNix) config;
+              inherit system overlays;
+            };
+
+          in
+          pkgsC.hydraProject.flake { };
 
         preCommitHook = pre-commit-hooks.lib.${system}.run
           {
@@ -165,7 +176,7 @@
         };
       in
       rec {
-        inherit haskellNixFlake;
+        inherit haskellNixFlake flakeCross pkgs;
         packages = {
           default = haskellNixFlake.packages."hydra-auction:exe:hydra-auction";
           # FIXME: this can probably be removed
@@ -176,7 +187,7 @@
           cliImage = pkgs.dockerTools.streamLayeredImage
             {
               name = "hydra-auction-cli";
-              contents = [ haskellNixFlake.packages."hydra-auction:exe:hydra-auction" ];
+              contents = [ flakeCross.packages."hydra-auction:exe:hydra-auction" ];
               config = {
                 Cmd = [ "hydra-auction" ];
               };
