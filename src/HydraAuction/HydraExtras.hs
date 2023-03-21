@@ -43,17 +43,17 @@ import Hydra.Ledger.Cardano.Builder (
   addInputs,
   addOutputs,
   addVkInputs,
-  burnTokens,
   emptyTxBody,
   mintTokens,
   setValidityLowerBound,
   setValidityUpperBound,
   unsafeBuildTransaction,
  )
-import Hydra.Party (Party, partyFromChain, partyToChain)
+import Hydra.Party (Party, partyFromChain)
 
 import HydraAuction.Fixture (Actor (Alice), keysFor)
 import HydraAuction.Tx.Common (callBodyAutoBalance, submitAndAwaitTx)
+import HydraAuction.Runner (Runner)
 
 -- | Craft a commit transaction which includes the "committed" utxo as a datum.
 commitTxBody ::
@@ -114,6 +114,16 @@ commitTxBody
       commitDatum =
         mkTxOutDatum $ mkCommitDatum party (Just (scriptInput, scriptOutput)) (headIdToCurrencySymbol headId)
 
+submitAndAwaitCommitTx ::
+  RunningNode
+  -> HeadId
+  -> ChainContext
+  -> Party
+  -> (UTxO' (TxOut CtxUTxO), SigningKey PaymentKey)
+  -> (UTxO' (TxOut CtxUTxO),
+      BuildTxWith BuildTx (Witness WitCtxTxIn))
+  -> Address ShelleyAddr
+  -> Runner ()
 submitAndAwaitCommitTx
   node@RunningNode {networkId, nodeSocket}
   headId
@@ -128,10 +138,10 @@ submitAndAwaitCommitTx
             networkId
 
     let initialScriptRef = fst (initialReference scriptRegistry)
-    initialScriptRefUtxo <- queryUTxOByTxIn networkId nodeSocket QueryTip [initialScriptRef]
+    initialScriptRefUtxo <- liftIO $ queryUTxOByTxIn networkId nodeSocket QueryTip [initialScriptRef]
 
     let !vkh = verificationKeyHash ownVerificationKey
-    headUtxo <- queryUTxO networkId nodeSocket QueryTip [headAddress]
+    headUtxo <- liftIO $ queryUTxO networkId nodeSocket QueryTip [headAddress]
     let (!headTxIn, !headTxOut) : _ = (UTxO.pairs headUtxo)
 
     let [(!scriptTxIn, !scriptTxOut)] = UTxO.pairs scriptUtxo
@@ -150,18 +160,18 @@ submitAndAwaitCommitTx
             [commiterMoneyTxIn]
 
     pparams <-
-      queryProtocolParameters networkId nodeSocket QueryTip
+      liftIO $ queryProtocolParameters networkId nodeSocket QueryTip
     let preTxBody = prePreTxBody {txProtocolParams = (BuildTxWith $ Just pparams)}
 
     -- FIXME change address
     let utxos = headUtxo <> scriptUtxo <> initialScriptRefUtxo <> commiterUtxo
-    !eTxBody <- callBodyAutoBalance node (utxos) (preTxBody) changeAddress
+    !eTxBody <- liftIO $ callBodyAutoBalance node (utxos) (preTxBody) changeAddress
 
     !txBody <- case eTxBody of
       Left x -> return $ error $ show x
       Right x -> return x
 
-    (_, aliceSk) <- keysFor Alice
+    (_, aliceSk) <- liftIO $ keysFor Alice
 
     let keyWitnesses =
           [ makeShelleyKeyWitness txBody (WitnessPaymentKey commiterSk)
@@ -170,4 +180,4 @@ submitAndAwaitCommitTx
           ]
         !tx = makeSignedTransaction keyWitnesses txBody
 
-    submitAndAwaitTx node tx
+    submitAndAwaitTx tx

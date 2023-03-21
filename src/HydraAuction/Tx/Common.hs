@@ -129,7 +129,6 @@ import Hydra.Cardano.Api (
   pattern TxExtraKeyWitnesses,
   pattern TxFeeExplicit,
   pattern TxInsCollateral,
-  pattern TxInsCollateralNone,
   pattern TxInsReference,
   pattern TxMetadataNone,
   pattern TxMintValue,
@@ -392,17 +391,24 @@ callBodyAutoBalance
           (ShelleyAddressInEra changeAddress)
           Nothing
 
-submitAndAwaitTx :: RunningNode -> Tx -> IO ()
-submitAndAwaitTx RunningNode {networkId, nodeSocket} tx = do
-  submitTransaction
+submitAndAwaitTx :: Tx -> Runner ()
+submitAndAwaitTx tx = do
+  MkExecutionContext {node} <- ask
+  let RunningNode {networkId, nodeSocket} = node
+
+  liftIO $ submitTransaction
     networkId
     nodeSocket
     tx
-  void $
+  logMsg "Submited"
+
+  liftIO $ void $
     awaitTransaction
       networkId
       nodeSocket
       tx
+  logMsg $ "Created Tx id: " <> show (getTxId $ txBody tx)
+
 
 autoSubmitAndAwaitTx :: AutoCreateParams -> Runner Tx
 autoSubmitAndAwaitTx params = do

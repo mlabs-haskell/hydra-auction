@@ -58,7 +58,7 @@ import CardanoNode (
  )
 -- Hydra imports
 import Hydra.Cardano.Api (Lovelace, NetworkId, Tx, TxIn, UTxO)
-import Hydra.Cluster.Faucet (Marked (Normal), seedFromFaucet_)
+import Hydra.Cluster.Faucet (Marked (Normal), seedFromFaucet)
 import Hydra.Logging (Tracer)
 import HydraNode (EndToEndLog (FromCardanoNode, FromFaucet))
 
@@ -67,7 +67,6 @@ import HydraAuction.Runner.Tracer (
   HydraAuctionLog (..),
   StateDirectory (..),
   fileTracer,
-  showLogsOnFailure,
   stdoutOrNullTracer,
  )
 import HydraAuctionUtils.Fixture (Actor (..), keysFor)

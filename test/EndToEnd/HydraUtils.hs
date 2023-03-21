@@ -88,12 +88,9 @@ runningThreeNodesHydra cardanoNode hydraTracer cont =
           seedFromFaucet_ cardanoNode bobCardanoVk 200_000_000 Fuel faucetTracer
           seedFromFaucet_ cardanoNode carolCardanoVk 200_000_000 Fuel faucetTracer
 
-          -- TODO remove
-          seedFromFaucet_ cardanoNode aliceCardanoVk 200_000_000 Normal faucetTracer
-          seedFromFaucet_ cardanoNode bobCardanoVk 200_000_000 Normal faucetTracer
-          seedFromFaucet_ cardanoNode carolCardanoVk 200_000_000 Normal faucetTracer
-
-          -- TODO remove
-          -- send n1 $ input "Init" []
+          -- -- TODO remove
+          -- seedFromFaucet_ cardanoNode aliceCardanoVk 200_000_000 Normal faucetTracer
+          -- seedFromFaucet_ cardanoNode bobCardanoVk 200_000_000 Normal faucetTracer
+          -- seedFromFaucet_ cardanoNode carolCardanoVk 200_000_000 Normal faucetTracer
 
           cont (parties, [n1, n2, n3], chainContext)

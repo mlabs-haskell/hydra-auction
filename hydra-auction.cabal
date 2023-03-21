@@ -199,7 +199,6 @@ library
     HydraAuction.Addresses
     HydraAuction.Delegate
     HydraAuction.Delegate.Interface
-    HydraAuction.Fixture
     HydraAuction.Hydra
     HydraAuction.Hydra.Interface
     HydraAuction.HydraExtras
@@ -215,12 +214,15 @@ library
     HydraAuction.Tx.TestNFT
     HydraAuction.Types
     Paths_hydra_auction
+    HydraAuction.Hydra.Runner
 
   other-modules:
     HydraAuction.OnChain.Escrow
     HydraAuction.OnChain.StandingBid
     HydraAuction.OnChain.StateToken
     HydraAuction.Runner.Tracer
+    HydraAuction.Hydra.Monad
+
 
   build-depends:
     , directory

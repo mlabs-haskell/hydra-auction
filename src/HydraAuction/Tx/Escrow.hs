@@ -91,6 +91,7 @@ import HydraAuctionUtils.Monads (
   fromPlutusAddressInMonad,
   logMsg,
  )
+import Control.Monad.IO.Class (MonadIO(liftIO))
 
 toForgeStateToken :: AuctionTerms -> VoucherForgingRedeemer -> TxMintValue BuildTx
 toForgeStateToken terms redeemer =
@@ -134,6 +135,8 @@ announceAuction terms = do
     0 -> fail "Utxo with Lot was consumed or not created"
     1 -> pure ()
     _ -> fail "Impossible happened: multiple utxoRef Utxos"
+
+  -- FIXME: print error in case of seller does not owning lot UTxO
 
   void $
     autoSubmitAndAwaitTx $

@@ -34,13 +34,12 @@ import Hydra.Cardano.Api (
 
 import HydraAuction.Fixture qualified as AuctionFixture
 import HydraAuction.Hydra (
-  fixmeInitAndCommitUsingAllNodes,
   sendCommandAndWait,
+  sendCommand,
   waitForNewEvent,
-  postTx,
  )
-import HydraAuction.Tx.StandingBid (newBidTx)
 import HydraAuction.Hydra.Interface (HydraCommand (..), HydraEvent (..))
+import HydraAuction.Hydra.Runner (executeRunnerInTest)
 import HydraAuction.OnChain (AuctionScript (StandingBid), standingBidValidator)
 import HydraAuction.Runner (
   ExecutionContext (MkExecutionContext, node, tracer),
@@ -59,6 +58,7 @@ import HydraAuction.Tx.Escrow (
   announceAuction,
   startBidding,
  )
+import HydraAuction.Tx.StandingBid (newBidTx)
 import HydraAuction.Tx.TermsConfig (
   AuctionTermsConfig (
     AuctionTermsConfig,
@@ -79,6 +79,7 @@ import HydraAuction.Types (
   StandingBidRedeemer (MoveToHydra),
   intToNatural,
  )
+import HydraAuction.HydraExtras (submitAndAwaitCommitTx)
 
 -- Hydra auction test imports
 import EndToEnd.HydraUtils (runningThreeNodesHydra)
@@ -123,64 +124,73 @@ bidderBuysTest = mkAssertion $ do
     node
     hydraTracer
     $ \(parties, hydraNodes, chainContext) -> do
-      -- FIXME: more proper solution, like MonadTransControl or something
-      executeRunner ctx $
-        withActor AuctionFixture.Dave $ do
-          [n1, _, _] <- return hydraNodes
+      [n1, n2, n3] <- return hydraNodes
 
-          -- Create
+      -- Create
 
-          liftIO $ threadDelay 3
+      utxoRef <- executeRunner ctx $ withActor AuctionFixture.Dave $ do
+          -- liftIO $ threadDelay 3
 
           nftTx <- mintOneTestNFT
-          let utxoRef = mkTxIn nftTx 0
+          return $ mkTxIn nftTx 0
 
-          terms <- liftIO $ do
-            dynamicState <- constructTermsDynamic seller utxoRef
-            configToAuctionTerms config dynamicState
+      terms <- do
+        dynamicState <- constructTermsDynamic seller utxoRef
+        configToAuctionTerms config dynamicState
 
+      standingBidUtxo <-
+        executeRunner ctx $ withActor AuctionFixture.Dave $ do
           announceAuction terms
 
           waitUntil $ biddingStart terms
           startBidding terms
 
-          standingBidUtxo <- scriptUtxos StandingBid terms
+          scriptUtxos StandingBid terms
 
-          -- Move
+      -- Move
 
-          let script =
-                fromPlutusScript @PlutusScriptV2 $
-                  getValidator $ standingBidValidator terms
-              standingBidWitness = mkInlinedDatumScriptWitness script MoveToHydra
+      let script =
+            fromPlutusScript @PlutusScriptV2 $
+              getValidator $ standingBidValidator terms
+          standingBidWitness = mkInlinedDatumScriptWitness script MoveToHydra
 
-          actorUtxo <- actorTipUtxo
-          let moneyUtxo = UTxO.fromPairs [Prelude.head (UTxO.pairs actorUtxo)]
+      actorUtxo <- executeRunner ctx $ withActor AuctionFixture.Dave $ actorTipUtxo
+      let moneyUtxo = UTxO.fromPairs [Prelude.head (UTxO.pairs actorUtxo)]
 
-          p1 : _ <- return parties
+      p1 : _ <- return parties
 
-          liftIO $
-            fixmeInitAndCommitUsingAllNodes
-              node
-              p1
-              hydraNodes
-              (moneyUtxo, sellerSk)
-              (standingBidUtxo, standingBidWitness)
-              chainContext
-              sellerAddress
+      HeadIsInitializing headId <- executeRunnerInTest n1 $
+        sendCommandAndWait Init
 
-          -- New bid
-          standingBid <- liftIO $ do
-            GetUTxOResponse utxo <- sendCommandAndWait n1 GetUTxO
-            return utxo
+      _ <- executeRunner ctx $
+        submitAndAwaitCommitTx
+          node
+          headId
+          chainContext
+          p1
+          (moneyUtxo, sellerSk)
+          (standingBidUtxo, standingBidWitness)
+          sellerAddress
 
-          -- FIXME: not working due to cardano-api isse
-          withActor bidder1 $ do
-            newBidTx <- newBidTx terms (startingBid terms) standingBid
-            liftIO $ postTx hydraTracer n1 newBidTx
+      executeRunnerInTest n2 $ sendCommand $ Commit mempty
+      executeRunnerInTest n3 $ sendCommand $ Commit mempty
 
-          -- Close Head
-          liftIO $ do
-            HeadIsClosed <- sendCommandAndWait n1 Close
-            ReadyToFanout <- waitForNewEvent n1 25
-            HeadIsFinalized <- sendCommandAndWait n1 Fanout
-            return ()
+      HeadIsOpen <- executeRunnerInTest n1 $ waitForNewEvent 10
+
+      -- New bid
+      standingBid <- liftIO $ executeRunnerInTest n1 $ do
+        GetUTxOResponse utxo <- sendCommandAndWait GetUTxO
+        return utxo
+
+      -- FIXME: not working due to cardano-api isse
+      -- withActor bidder1 $ do
+      --   newBidTx <- newBidTx terms (startingBid terms) standingBid
+      --   liftIO $ executeRunnerInTest n1 $
+      --      TxSeen _ <- sendCommandAndWait $ NewTx newBidTx
+
+      -- Close Head
+      liftIO $ executeRunnerInTest n1 $ do
+        HeadIsClosed <- sendCommandAndWait Close
+        ReadyToFanout <- waitForNewEvent 25
+        HeadIsFinalized <- sendCommandAndWait Fanout
+        return ()
