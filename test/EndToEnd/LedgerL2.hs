@@ -3,7 +3,7 @@
 module EndToEnd.LedgerL2 (testSuite) where
 
 -- Prelude imports
-import Hydra.Prelude (ask, contramap, liftIO, threadDelay)
+import Hydra.Prelude (ask, contramap, liftIO)
 import Prelude
 
 -- Haskell imports
@@ -33,12 +33,11 @@ import Hydra.Cardano.Api (
 -- Hydra auction imports
 
 import HydraAuction.Fixture qualified as AuctionFixture
-import HydraAuction.Hydra (
-  sendCommandAndWait,
-  sendCommand,
-  waitForNewEvent,
+import HydraAuction.Hydra.Monad (
+  AwaitedHydraEvent (..),
+  sendCommandAndWaitFor, waitForHydraEvent,
  )
-import HydraAuction.Hydra.Interface (HydraCommand (..), HydraEvent (..))
+import HydraAuction.Hydra.Interface (HydraCommand (..), HydraEvent (..), HydraEventKind (..))
 import HydraAuction.Hydra.Runner (executeRunnerInTest)
 import HydraAuction.OnChain (AuctionScript (StandingBid), standingBidValidator)
 import HydraAuction.Runner (
@@ -82,7 +81,8 @@ import HydraAuction.Types (
 import HydraAuction.HydraExtras (submitAndAwaitCommitTx)
 
 -- Hydra auction test imports
-import EndToEnd.HydraUtils (runningThreeNodesHydra)
+import EndToEnd.HydraUtils (
+  runningThreeNodesHydra, commitWithCollateralAdaFor)
 import EndToEnd.Utils (mkAssertion)
 
 testSuite :: TestTree
@@ -123,12 +123,11 @@ bidderBuysTest = mkAssertion $ do
   runningThreeNodesHydra
     node
     hydraTracer
-    $ \(parties, hydraNodes, chainContext) -> do
-      [n1, n2, n3] <- return hydraNodes
-
+    $ \(hydraNodesStuff, chainContext) -> do
+      [(p1, n1, _n1Actor), (p2, n2, n2Actor), (p3, n3, n3Actor)] <- return hydraNodesStuff
       -- Create
 
-      utxoRef <- executeRunner ctx $ withActor AuctionFixture.Dave $ do
+      utxoRef <- executeRunner ctx $ withActor seller $ do
           -- liftIO $ threadDelay 3
 
           nftTx <- mintOneTestNFT
@@ -139,7 +138,7 @@ bidderBuysTest = mkAssertion $ do
         configToAuctionTerms config dynamicState
 
       standingBidUtxo <-
-        executeRunner ctx $ withActor AuctionFixture.Dave $ do
+        executeRunner ctx $ withActor seller $ do
           announceAuction terms
 
           waitUntil $ biddingStart terms
@@ -154,13 +153,11 @@ bidderBuysTest = mkAssertion $ do
               getValidator $ standingBidValidator terms
           standingBidWitness = mkInlinedDatumScriptWitness script MoveToHydra
 
-      actorUtxo <- executeRunner ctx $ withActor AuctionFixture.Dave $ actorTipUtxo
+      actorUtxo <- executeRunner ctx $ withActor seller $ actorTipUtxo
       let moneyUtxo = UTxO.fromPairs [Prelude.head (UTxO.pairs actorUtxo)]
 
-      p1 : _ <- return parties
-
       HeadIsInitializing headId <- executeRunnerInTest n1 $
-        sendCommandAndWait Init
+        sendCommandAndWaitFor Any Init
 
       _ <- executeRunner ctx $
         submitAndAwaitCommitTx
@@ -172,25 +169,32 @@ bidderBuysTest = mkAssertion $ do
           (standingBidUtxo, standingBidWitness)
           sellerAddress
 
-      executeRunnerInTest n2 $ sendCommand $ Commit mempty
-      executeRunnerInTest n3 $ sendCommand $ Commit mempty
+      executeRunnerInTest n2 $
+        commitWithCollateralAdaFor node n2Actor
+      executeRunnerInTest n3 $
+        commitWithCollateralAdaFor node n3Actor
 
-      HeadIsOpen <- executeRunnerInTest n1 $ waitForNewEvent 10
+      HeadIsOpen <- executeRunnerInTest n1 $
+        waitForHydraEvent (SpecificKind HeadIsOpenKind)
 
       -- New bid
-      standingBid <- liftIO $ executeRunnerInTest n1 $ do
-        GetUTxOResponse utxo <- sendCommandAndWait GetUTxO
+      headUtxo <- liftIO $ executeRunnerInTest n1 $ do
+        GetUTxOResponse utxo <-
+          sendCommandAndWaitFor (SpecificKind GetUTxOResponseKind) GetUTxO
         return utxo
+      let standingBid = headUtxo
 
       -- FIXME: not working due to cardano-api isse
-      -- withActor bidder1 $ do
-      --   newBidTx <- newBidTx terms (startingBid terms) standingBid
-      --   liftIO $ executeRunnerInTest n1 $
-      --      TxSeen _ <- sendCommandAndWait $ NewTx newBidTx
+      executeRunner ctx $ withActor bidder1 $ do
+        newBidTx' <- newBidTx terms (startingBid terms) standingBid
+        liftIO $ executeRunnerInTest n1 $ do
+           TxSeen _ <-
+            sendCommandAndWaitFor (SpecificKind TxSeenKind) (NewTx newBidTx')
+           return ()
 
       -- Close Head
       liftIO $ executeRunnerInTest n1 $ do
-        HeadIsClosed <- sendCommandAndWait Close
-        ReadyToFanout <- waitForNewEvent 25
-        HeadIsFinalized <- sendCommandAndWait Fanout
+        HeadIsClosed <- sendCommandAndWaitFor Any Close
+        ReadyToFanout <- waitForHydraEvent Any
+        HeadIsFinalized <- sendCommandAndWaitFor Any Fanout
         return ()
