@@ -294,6 +294,8 @@ scriptUtxos script terms = do
 
 data AutoCreateParams = AutoCreateParams
   { authoredUtxos :: [(SigningKey PaymentKey, UTxO)]
+  , signers :: [SigningKey PaymentKey]
+  -- ^ List of keys that will sign the tx
   , referenceUtxo :: UTxO
   -- ^ Utxo which TxIns will be used as reference inputs
   , collateral :: Maybe TxIn
@@ -318,7 +320,18 @@ toSlotNo ptime = do
   either (error . show) return $ slotFromUTCTime timeHandle utcTime
 
 autoCreateTx :: AutoCreateParams -> Runner Tx
-autoCreateTx (AutoCreateParams {..}) = do
+autoCreateTx params = do
+  body <- autoCreateTxBody params
+  pure $ signTx (signers params) body
+
+signTx :: [SigningKey PaymentKey] -> TxBody -> Tx
+signTx signers body = makeSignedTransaction signingWitnesses body
+  where
+    signingWitnesses :: [KeyWitness]
+    signingWitnesses = makeShelleyKeyWitness body . WitnessPaymentKey <$> signers
+
+autoCreateTxBody :: AutoCreateParams -> Runner TxBody
+autoCreateTxBody (AutoCreateParams {..}) = do
   MkExecutionContext {node} <- ask
   let (lowerBound', upperBound') = validityBound
   lowerBound <- case lowerBound' of
@@ -331,14 +344,12 @@ autoCreateTx (AutoCreateParams {..}) = do
   liftIO $ do
     pparams <-
       queryProtocolParameters (networkId node) (nodeSocket node) QueryTip
-    body <-
-      either (\x -> error $ "Autobalance error: " <> show x) id
-        <$> callBodyAutoBalance
-          node
-          (allAuthoredUtxos <> allWitnessedUtxos <> referenceUtxo)
-          (preBody pparams lowerBound upperBound)
-          changeAddress
-    pure $ makeSignedTransaction (signingWitnesses body) body
+    either (\x -> error $ "Autobalance error: " <> show x) id
+      <$> callBodyAutoBalance
+        node
+        (allAuthoredUtxos <> allWitnessedUtxos <> referenceUtxo)
+        (preBody pparams lowerBound upperBound)
+        changeAddress
   where
     allAuthoredUtxos = foldMap snd authoredUtxos
     allWitnessedUtxos = foldMap snd witnessedUtxos
@@ -377,9 +388,6 @@ autoCreateTx (AutoCreateParams {..}) = do
         TxUpdateProposalNone
         toMint
         TxScriptValidityNone
-    makeSignWitness body sk = makeShelleyKeyWitness body (WitnessPaymentKey sk)
-    signingWitnesses :: TxBody -> [KeyWitness]
-    signingWitnesses body = fmap (makeSignWitness body . fst) authoredUtxos
 
 callBodyAutoBalance ::
   RunningNode ->
