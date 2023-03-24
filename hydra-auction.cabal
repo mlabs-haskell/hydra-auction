@@ -73,6 +73,7 @@ common common-lang
     , hydra-node
     , hydra-prelude
     , mtl
+    , plutus-ledger-api
     , plutus-tx-plugin
     , prettyprinter
     , record-dot-preprocessor
@@ -170,7 +171,6 @@ executable hydra-auction
     , optparse-applicative
     , ouroboros-network               ==0.1.0.1
     , parsec
-    , plutus-ledger-api               ==1.0.0.0
     , plutus-tx
     , QuickCheck
     , serialise
@@ -225,7 +225,6 @@ library
     , hydra-prelude
     , hydra-test-utils
     , natural-numbers
-    , plutus-ledger-api
     , plutus-tx
     , time
 
