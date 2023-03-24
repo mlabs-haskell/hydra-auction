@@ -118,6 +118,8 @@ common common-lang
     TemplateHaskell
     TupleSections
     TypeApplications
+    TypeFamilies
+    TypeFamilyDependencies
     TypeOperators
     TypeSynonymInstances
     UndecidableInstances
@@ -235,6 +237,7 @@ library hydra-auction-utils
   hs-source-dirs:  src-utils
   exposed-modules:
     HydraAuctionUtils.Fixture
+    HydraAuctionUtils.Monads
     Paths_hydra_auction
 
 test-suite hydra-auction-test

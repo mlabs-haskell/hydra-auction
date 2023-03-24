@@ -31,13 +31,13 @@ import System.Directory (
 import System.FilePath ((<.>), (</>))
 
 -- Hydra auction imports
-import HydraAuction.Fixture (Actor (..))
 import HydraAuction.Tx.TermsConfig (
   AuctionTermsConfig,
   AuctionTermsDynamic (..),
   configToAuctionTerms,
  )
 import HydraAuction.Types (AuctionTerms)
+import HydraAuctionUtils.Fixture (Actor (..))
 
 -- =============================================================================
 -- Auction config and state directories

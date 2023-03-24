@@ -39,9 +39,9 @@ import Options.Applicative (
 import Cardano.Api (NetworkId, NetworkMagic (..), fromNetworkMagic)
 
 -- Hydra auction imports
-import HydraAuction.Fixture (Actor (..))
 import HydraAuction.OnChain (AuctionScript (..))
 import HydraAuction.Types (Natural, intToNatural)
+import HydraAuctionUtils.Fixture (Actor (..))
 
 -- Hydra auction CLI imports
 import CLI.Actions (CliAction (..), seedAmount)
