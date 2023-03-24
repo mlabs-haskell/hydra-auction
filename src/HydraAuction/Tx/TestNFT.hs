@@ -34,7 +34,6 @@ import HydraAuction.OnChain.TestNFT (
   testNftPolicy,
   testNftTokenName,
  )
-import HydraAuctionUtils.Monads (logMsg)
 import HydraAuction.Runner (Runner)
 import HydraAuction.Tx.Common (
   AutoCreateParams (..),
@@ -46,6 +45,7 @@ import HydraAuction.Tx.Common (
   mintedTokens,
   tokenToAsset,
  )
+import HydraAuctionUtils.Monads (logMsg)
 
 findTestNFT :: UTxO.UTxO -> Maybe TxIn
 findTestNFT (UTxO.UTxO m) = Map.foldrWithKey isTestNFT Nothing m

@@ -199,8 +199,9 @@ library
     HydraAuction.Addresses
     HydraAuction.Delegate
     HydraAuction.Delegate.Interface
-    HydraAuction.Hydra.Monad
     HydraAuction.Hydra.Interface
+    HydraAuction.Hydra.Monad
+    HydraAuction.Hydra.Runner
     HydraAuction.HydraExtras
     HydraAuction.OnChain
     HydraAuction.OnChain.Common
@@ -213,7 +214,6 @@ library
     HydraAuction.Tx.TermsConfig
     HydraAuction.Tx.TestNFT
     HydraAuction.Types
-    HydraAuction.Hydra.Runner
 
   other-modules:
     HydraAuction.OnChain.Escrow
@@ -250,6 +250,7 @@ library hydra-auction-utils
   build-depends:
     , hydra-plutus
     , plutus-tx
+
 test-suite hydra-auction-test
   import:         common-lang
   type:           exitcode-stdio-1.0

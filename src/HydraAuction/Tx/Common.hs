@@ -312,7 +312,8 @@ autoCreateTx forL1Transaction (AutoCreateParams {..}) = do
           return $
             either (\x -> error $ "Tx body validation error: " <> show x) id $
               -- FIXME: use createTransactionBody
-              makeTransactionBody $ preBody pparams lowerBound upperBound
+              makeTransactionBody $
+                preBody pparams lowerBound upperBound
 
     pure $ makeSignedTransaction (signingWitnesses body) body
   where

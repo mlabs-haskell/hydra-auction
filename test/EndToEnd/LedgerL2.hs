@@ -32,13 +32,14 @@ import Hydra.Cardano.Api (
 
 -- Hydra auction imports
 
-import HydraAuctionUtils.Fixture qualified as AuctionFixture
+import HydraAuction.Hydra.Interface (HydraCommand (..), HydraEvent (..), HydraEventKind (..))
 import HydraAuction.Hydra.Monad (
   AwaitedHydraEvent (..),
-  sendCommandAndWaitFor, waitForHydraEvent,
+  sendCommandAndWaitFor,
+  waitForHydraEvent,
  )
-import HydraAuction.Hydra.Interface (HydraCommand (..), HydraEvent (..), HydraEventKind (..))
 import HydraAuction.Hydra.Runner (executeRunnerInTest)
+import HydraAuction.HydraExtras (submitAndAwaitCommitTx)
 import HydraAuction.OnChain (AuctionScript (StandingBid), standingBidValidator)
 import HydraAuction.Runner (
   ExecutionContext (MkExecutionContext, node, tracer),
@@ -78,11 +79,13 @@ import HydraAuction.Types (
   StandingBidRedeemer (MoveToHydra),
   intToNatural,
  )
-import HydraAuction.HydraExtras (submitAndAwaitCommitTx)
+import HydraAuctionUtils.Fixture qualified as AuctionFixture
 
 -- Hydra auction test imports
 import EndToEnd.HydraUtils (
-  runningThreeNodesHydra, commitWithCollateralAdaFor)
+  commitWithCollateralAdaFor,
+  runningThreeNodesHydra,
+ )
 import EndToEnd.Utils (mkAssertion)
 
 testSuite :: TestTree
@@ -128,10 +131,10 @@ bidderBuysTest = mkAssertion $ do
       -- Create
 
       utxoRef <- executeRunner ctx $ withActor seller $ do
-          -- liftIO $ threadDelay 3
+        -- liftIO $ threadDelay 3
 
-          nftTx <- mintOneTestNFT
-          return $ mkTxIn nftTx 0
+        nftTx <- mintOneTestNFT
+        return $ mkTxIn nftTx 0
 
       terms <- do
         dynamicState <- constructTermsDynamic seller utxoRef
@@ -150,32 +153,36 @@ bidderBuysTest = mkAssertion $ do
 
       let script =
             fromPlutusScript @PlutusScriptV2 $
-              getValidator $ standingBidValidator terms
+              getValidator $
+                standingBidValidator terms
           standingBidWitness = mkInlinedDatumScriptWitness script MoveToHydra
 
       actorUtxo <- executeRunner ctx $ withActor seller $ actorTipUtxo
       let moneyUtxo = UTxO.fromPairs [Prelude.head (UTxO.pairs actorUtxo)]
 
-      HeadIsInitializing headId <- executeRunnerInTest n1 $
-        sendCommandAndWaitFor Any Init
+      HeadIsInitializing headId <-
+        executeRunnerInTest n1 $
+          sendCommandAndWaitFor Any Init
 
-      _ <- executeRunner ctx $
-        submitAndAwaitCommitTx
-          node
-          headId
-          chainContext
-          p1
-          (moneyUtxo, sellerSk)
-          (standingBidUtxo, standingBidWitness)
-          sellerAddress
+      _ <-
+        executeRunner ctx $
+          submitAndAwaitCommitTx
+            node
+            headId
+            chainContext
+            p1
+            (moneyUtxo, sellerSk)
+            (standingBidUtxo, standingBidWitness)
+            sellerAddress
 
       executeRunnerInTest n2 $
         commitWithCollateralAdaFor node n2Actor
       executeRunnerInTest n3 $
         commitWithCollateralAdaFor node n3Actor
 
-      HeadIsOpen <- executeRunnerInTest n1 $
-        waitForHydraEvent (SpecificKind HeadIsOpenKind)
+      HeadIsOpen <-
+        executeRunnerInTest n1 $
+          waitForHydraEvent (SpecificKind HeadIsOpenKind)
 
       -- New bid
       headUtxo <- liftIO $ executeRunnerInTest n1 $ do
@@ -184,13 +191,11 @@ bidderBuysTest = mkAssertion $ do
         return utxo
       let standingBid = headUtxo
 
-      -- FIXME: not working due to cardano-api isse
-      executeRunner ctx $ withActor bidder1 $ do
-        newBidTx' <- newBidTx terms (startingBid terms) standingBid
-        liftIO $ executeRunnerInTest n1 $ do
-           TxSeen _ <-
-            sendCommandAndWaitFor (SpecificKind TxSeenKind) (NewTx newBidTx')
-           return ()
+      -- FIXME: not working due to cardano-api issue
+      newBidTx' <- executeRunner ctx $ withActor bidder1 $ do
+         newBidTx terms (startingBid terms) standingBid
+      liftIO $ executeRunnerInTest n1 $
+          submitAndAwaitTx newBidTx'
 
       -- Close Head
       liftIO $ executeRunnerInTest n1 $ do

@@ -51,10 +51,10 @@ import Hydra.Ledger.Cardano.Builder (
  )
 import Hydra.Party (Party, partyFromChain)
 
-import HydraAuctionUtils.Monads (submitAndAwaitTx)
-import HydraAuctionUtils.Fixture (Actor (Alice), keysFor)
-import HydraAuction.Tx.Common (callBodyAutoBalance)
 import HydraAuction.Runner (Runner)
+import HydraAuction.Tx.Common (callBodyAutoBalance)
+import HydraAuctionUtils.Fixture (Actor (Alice), keysFor)
+import HydraAuctionUtils.Monads (submitAndAwaitTx)
 
 -- | Craft a commit transaction which includes the "committed" utxo as a datum.
 commitTxBody ::
@@ -76,7 +76,7 @@ commitTxBody
   party
   (initialInput, out)
   (scriptInput, scriptOutput, scriptWitness)
-  (moneyInput, moneyOutput)
+  (moneyInput, _moneyOutput)
   vkh
   collaterals =
     ( emptyTxBody
@@ -116,15 +116,16 @@ commitTxBody
         mkTxOutDatum $ mkCommitDatum party (Just (scriptInput, scriptOutput)) (headIdToCurrencySymbol headId)
 
 submitAndAwaitCommitTx ::
-  RunningNode
-  -> HeadId
-  -> ChainContext
-  -> Party
-  -> (UTxO' (TxOut CtxUTxO), SigningKey PaymentKey)
-  -> (UTxO' (TxOut CtxUTxO),
-      BuildTxWith BuildTx (Witness WitCtxTxIn))
-  -> Address ShelleyAddr
-  -> Runner ()
+  RunningNode ->
+  HeadId ->
+  ChainContext ->
+  Party ->
+  (UTxO' (TxOut CtxUTxO), SigningKey PaymentKey) ->
+  ( UTxO' (TxOut CtxUTxO)
+  , BuildTxWith BuildTx (Witness WitCtxTxIn)
+  ) ->
+  Address ShelleyAddr ->
+  Runner ()
 submitAndAwaitCommitTx
   node@RunningNode {networkId, nodeSocket}
   headId

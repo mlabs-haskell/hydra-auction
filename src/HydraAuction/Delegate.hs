@@ -75,7 +75,7 @@ delegateStep input = case input of
   DelegateEvent (HydraEvent NodeCommitted) -> return []
   -- FIXME: fanout Hydra node
   DelegateEvent (HydraEvent ReadyToFanout) -> return []
-  DelegateEvent (HydraEvent _) -> return []  -- FIXME: validate standing bid utxo and move it to hydra
+  DelegateEvent (HydraEvent _) -> return [] -- FIXME: validate standing bid utxo and move it to hydra
   FrontendRequest (CommitStandingBid {auctionTerms}) -> do
     state <- get
     case state of
