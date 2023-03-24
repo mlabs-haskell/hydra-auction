@@ -1,6 +1,6 @@
 module HydraAuctionUtils.Extras.CardanoApi (
-    networkIdToNetwork
-    ) where
+  networkIdToNetwork,
+) where
 
 -- Cardano ledger imports
 import Cardano.Ledger.BaseTypes qualified as Cardano

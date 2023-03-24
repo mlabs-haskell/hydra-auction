@@ -155,7 +155,11 @@ import HydraAuction.OnChain.StateToken (
  )
 import HydraAuction.Runner (ExecutionContext (..), Runner)
 import HydraAuction.Types (
-  AuctionStage, AuctionTerms, VoucherForgingRedeemer (..), auctionStages)
+  AuctionStage,
+  AuctionTerms,
+  VoucherForgingRedeemer (..),
+  auctionStages,
+ )
 import HydraAuctionUtils.Fixture (keysFor)
 import HydraAuctionUtils.Monads (
   MonadNetworkId (..),
