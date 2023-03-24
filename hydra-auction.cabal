@@ -193,7 +193,6 @@ library
     HydraAuction.Addresses
     HydraAuction.Delegate
     HydraAuction.Delegate.Interface
-    HydraAuction.Fixture
     HydraAuction.Hydra.Interface
     HydraAuction.OnChain
     HydraAuction.OnChain.Common
@@ -218,6 +217,7 @@ library
 
   build-depends:
     , directory
+    , hydra-auction-utils
     , hydra-cardano-api
     , hydra-cluster
     , hydra-node
@@ -229,6 +229,13 @@ library
     , time
 
   hs-source-dirs:  src
+
+library hydra-auction-utils
+  import:          common-lang
+  hs-source-dirs:  src-utils
+  exposed-modules:
+    HydraAuctionUtils.Fixture
+    Paths_hydra_auction
 
 test-suite hydra-auction-test
   import:         common-lang
@@ -247,6 +254,7 @@ test-suite hydra-auction-test
     , containers
     , directory
     , hydra-auction
+    , hydra-auction-utils
     , hydra-cardano-api
     , hydra-cluster
     , hydra-node
