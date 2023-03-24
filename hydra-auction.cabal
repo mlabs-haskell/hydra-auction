@@ -199,7 +199,6 @@ library
     HydraAuction.OnChain
     HydraAuction.OnChain.Common
     HydraAuction.OnChain.TestNFT
-    HydraAuction.Plutus.Orphans
     HydraAuction.Runner
     HydraAuction.Runner.Time
     HydraAuction.Tx.Common
@@ -214,7 +213,6 @@ library
     HydraAuction.OnChain.Escrow
     HydraAuction.OnChain.StandingBid
     HydraAuction.OnChain.StateToken
-    HydraAuction.Plutus.Extras
     HydraAuction.Runner.Tracer
 
   build-depends:
@@ -237,9 +235,15 @@ library hydra-auction-utils
   hs-source-dirs:  src-utils
   exposed-modules:
     HydraAuctionUtils.Extras.CardanoApi
+    HydraAuctionUtils.Extras.Plutus
+    HydraAuctionUtils.Extras.PlutusOrphans
     HydraAuctionUtils.Fixture
     HydraAuctionUtils.Monads
     Paths_hydra_auction
+
+  build-depends:
+    , hydra-plutus
+    , plutus-tx
 
 test-suite hydra-auction-test
   import:         common-lang

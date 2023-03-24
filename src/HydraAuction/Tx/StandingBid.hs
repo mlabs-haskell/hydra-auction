@@ -31,7 +31,6 @@ import HydraAuction.OnChain (
   standingBidValidator,
   voucherAssetClass,
  )
-import HydraAuction.Plutus.Extras (scriptCurrencySymbol)
 import HydraAuction.Runner (Runner)
 import HydraAuction.Tx.Common (
   AutoCreateParams (..),
@@ -56,6 +55,7 @@ import HydraAuction.Types (
   StandingBidState (Bid),
   VoucherForgingRedeemer (BurnVoucher),
  )
+import HydraAuctionUtils.Extras.Plutus (scriptCurrencySymbol)
 import HydraAuctionUtils.Monads (logMsg)
 
 newBid :: AuctionTerms -> Natural -> Runner ()

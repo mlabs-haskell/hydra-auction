@@ -54,7 +54,6 @@ import HydraAuction.OnChain.StateToken (
   StateTokenKind (..),
   stateTokenKindToTokenName,
  )
-import HydraAuction.Plutus.Extras (scriptCurrencySymbol)
 import HydraAuction.Runner (Runner)
 import HydraAuction.Tx.Common (
   AutoCreateParams (..),
@@ -85,6 +84,7 @@ import HydraAuction.Types (
   calculateTotalFee,
   naturalToInt,
  )
+import HydraAuctionUtils.Extras.Plutus (scriptCurrencySymbol)
 import HydraAuctionUtils.Monads (
   MonadQueryUtxo (queryUtxo),
   UtxoQuery (ByTxIns),
