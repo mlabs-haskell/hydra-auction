@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -fno-specialise #-}
 {-# OPTIONS_GHC -fno-unbox-small-strict-fields #-}
 {-# OPTIONS_GHC -fno-unbox-strict-fields #-}
 
@@ -13,6 +14,7 @@ module HydraAuction.Types (
   StandingBidDatum (..),
   AuctionTerms (..),
   AuctionState (..),
+  ApprovedBidders (..),
   AuctionEscrowDatum (..),
   EscrowRedeemer (..),
   StandingBidRedeemer (..),
@@ -181,14 +183,15 @@ deriving newtype instance (FromData ApprovedBidders)
 
 PlutusTx.makeLift ''ApprovedBidders
 
-data StandingBidState = NoBid | Bid !BidTerms
+data StandingBidState = StandingBidState
+  { approvedBidders :: ApprovedBidders
+  , standingBid :: Maybe BidTerms
+  }
   deriving stock (Generic, Prelude.Show, Prelude.Eq)
 
 instance Eq StandingBidState where
   {-# INLINEABLE (==) #-}
-  NoBid == NoBid = True
-  (Bid x) == (Bid y) = x == y
-  _ == _ = False
+  x == y = approvedBidders x == approvedBidders y && standingBid x == standingBid y
 
 data BidTerms = BidTerms
   { bidBidder :: !PubKeyHash
@@ -202,7 +205,7 @@ instance Eq BidTerms where
   {-# INLINEABLE (==) #-}
   x == y = (bidBidder x == bidBidder y) && (bidAmount x == bidAmount y)
 
-PlutusTx.makeIsDataIndexed ''StandingBidState [('NoBid, 0), ('Bid, 1)]
+PlutusTx.makeIsDataIndexed ''StandingBidState [('StandingBidState, 0)]
 PlutusTx.makeLift ''StandingBidState
 PlutusTx.makeIsDataIndexed ''BidTerms [('BidTerms, 0)]
 PlutusTx.makeLift ''BidTerms

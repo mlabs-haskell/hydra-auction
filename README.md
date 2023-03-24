@@ -37,8 +37,8 @@ Will build the CLI application and link it to `./result/bin/hydra-auction`.
 
 ## Starting docker-compose environment
 
-To setup the environment required for the demo, we have a compose file
-which will start a single cardano-node and 3 hydra-nodes for the delgates.
+To set up the environment required for the demo, we have a compose file
+that will start a single cardano-node and 3 hydra-nodes for the delegates.
 
 We recommend using the `spin-up-new-devnet.sh` script
 as it will take care of setting up the correct files for the cardano-node
@@ -46,10 +46,10 @@ and seeding the actors running the hydra-nodes with enough funds to manage the h
 
 ## CLI usage
 
-Different terms for auction are stored in JSON and auctions named with string.
-The static parts of parameters like the timing of stages and minimal bid as well as
+Different terms for auction are stored in JSON and auctions are named with string.
+The static parts of parameters: like the timing of stages and minimal bid, as well as
 bid increment, are stored in `examples/auction-config`.
-The dynamic part of the parameters are calculated and stored on `auction-announced`
+The dynamic part of the parameters is calculated and stored on `auction-announced`
 command. If you run it again for a different lot, the dynamic part will be rewritten.
 
 ### Note on Actors
@@ -76,13 +76,14 @@ all other actors are meant to be either sellers or bidders.
    `./example/auction-config/demo.json`)
    Now the auction time stages begin.
 5. Wait for `BiddingStartedStage` by running `show-current-stage -n some-auction`
-   After that, run `start-bidding -n some-auction` on Alice's REPL.
+   After that, run `start-bidding -n some-auction -a bob -a carol` on Alice's REPL.
+   This will create an auction where Bob and Carol are authorised to place bets.
 6. After bidding has started, you can place bids, as long as they match the auction terms, which are:
    - the first bid should be higher than `configStartingBid`
    - the next bid should always be higher than the previous bid + `configMinimumBidIncrement`
-   For example place first bid from Bob's REPL:
+   For example place the first bid from Bob's REPL:
    `new-bid -n foo -b 8000`, where the number in `b` is in ADA
-7. (a) After the `BiddingEndedStage` has started, Bob can run`bidder-buys -n foo` in his REPL and receives
+7. (a) After the `BiddingEndedStage` has started, Bob can run `bidder-buys -n foo` in his REPL and receives
    his winning lot.
 8. After the `VoucherExpiryStage` has started, Alice can get back their `UTxO`s by running `cleanup -n foo`.
 
@@ -116,9 +117,10 @@ To run the projects without errors on warnings, pass the `-Wwarn` flag as such:
 cabal run --ghc-option='-Wwarn'
 ```
 
-If you are having trouble using HLS with this project, you can use following
-way. Add path to `script/run-hls.sh` into your LSP-extension config,
-as path of HLS binary. This script will start HLS in our Nix environment.
+If you are having trouble using HLS with this project, you can
+add the path to `script/run-hls.sh` into your LSP-extension config
+as the path of the HLS binary.
+This script will start HLS in our Nix environment.
 
 You may also find other solutions here:
 https://plutus.readthedocs.io/en/latest/troubleshooting.html#wrong-version

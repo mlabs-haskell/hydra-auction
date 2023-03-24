@@ -22,7 +22,7 @@ import Plutus.V1.Ledger.Value (assetClassValueOf)
 import Hydra.Cardano.Api (mkTxIn, toPlutusValue, txOutValue)
 
 -- Hydra auction imports
-import HydraAuction.Fixture (Actor (..))
+import HydraAuction.Fixture (Actor (..), getActorsPubKey)
 import HydraAuction.OnChain.TestNFT (testNftAssetClass)
 import HydraAuction.Runner (
   Runner,
@@ -53,7 +53,7 @@ import HydraAuction.Tx.TermsConfig (
   constructTermsDynamic,
  )
 import HydraAuction.Tx.TestNFT (mintOneTestNFT)
-import HydraAuction.Types (AuctionTerms (..), intToNatural)
+import HydraAuction.Types (ApprovedBidders (..), AuctionTerms (..), intToNatural)
 
 -- Hydra auction test imports
 import EndToEnd.Utils (mkAssertion)
@@ -65,6 +65,7 @@ testSuite =
     [ testCase "bidder-buys" bidderBuysTest
     , testCase "seller-reclaims" sellerReclaimsTest
     , testCase "seller-bids" sellerBidsTest
+    , testCase "unauthorised-bidder" unauthorisedBidderTest
     ]
 
 assertNFTNumEquals :: Actor -> Integer -> Runner ()
@@ -106,7 +107,8 @@ bidderBuysTest = mkAssertion $ do
   announceAuction terms
 
   waitUntil $ biddingStart terms
-  startBidding terms
+  actorsPkh <- liftIO $ getActorsPubKey [buyer1, buyer2]
+  startBidding terms (ApprovedBidders actorsPkh)
 
   assertNFTNumEquals seller 0
 
@@ -140,7 +142,7 @@ sellerReclaimsTest = mkAssertion $ do
   announceAuction terms
 
   waitUntil $ biddingStart terms
-  startBidding terms
+  startBidding terms (ApprovedBidders [])
   assertNFTNumEquals seller 0
 
   waitUntil $ voucherExpiry terms
@@ -168,11 +170,41 @@ sellerBidsTest = mkAssertion $ do
   announceAuction terms
 
   waitUntil $ biddingStart terms
-  startBidding terms
-  assertNFTNumEquals seller 0
-
-  result <- try $ newBid terms $ startingBid terms
+  sellerPkh <- liftIO $ getActorsPubKey [seller]
+  result <- try $ startBidding terms (ApprovedBidders sellerPkh)
 
   case result of
     Left (_ :: SomeException) -> return ()
-    Right _ -> fail "New bid should fail"
+    Right _ -> fail "Start bidding should fail"
+
+unauthorisedBidderTest :: Assertion
+unauthorisedBidderTest = mkAssertion $ do
+  let seller = Alice
+      buyer1 = Bob
+      buyer2 = Carol
+
+  mapM_ (initWallet 100_000_000) [seller, buyer1, buyer2]
+
+  nftTx <- mintOneTestNFT
+  let utxoRef = mkTxIn nftTx 0
+
+  terms <- liftIO $ do
+    dynamicState <- constructTermsDynamic seller utxoRef
+    configToAuctionTerms config dynamicState
+
+  assertNFTNumEquals seller 1
+
+  announceAuction terms
+
+  waitUntil $ biddingStart terms
+  actorsPkh <- liftIO $ getActorsPubKey [buyer1]
+  startBidding terms (ApprovedBidders actorsPkh)
+
+  assertNFTNumEquals seller 0
+
+  withActor buyer1 $ newBid terms $ startingBid terms
+  result <- try $ withActor buyer2 $ newBid terms $ startingBid terms + minimumBidIncrement terms
+
+  case result of
+    Left (_ :: SomeException) -> return ()
+    Right _ -> fail "New bid should fail, actor is not authorised"

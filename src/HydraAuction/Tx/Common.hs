@@ -23,6 +23,7 @@ module HydraAuction.Tx.Common (
   currentTimeSeconds,
   currentTimeMilliseconds,
   currentAuctionStage,
+  toForgeStateToken,
 ) where
 
 -- Prelude imports
@@ -54,6 +55,7 @@ import Plutus.V2.Ledger.Api (
   POSIXTime (..),
   ToData,
   fromBuiltin,
+  getMintingPolicy,
   getValidator,
   toBuiltinData,
   toData,
@@ -164,10 +166,14 @@ import Hydra.Chain.Direct.TimeHandle (queryTimeHandle, slotFromUTCTime)
 
 -- Hydra auction imports
 import HydraAuction.Fixture (keysFor)
-import HydraAuction.OnChain (AuctionScript, scriptValidatorForTerms)
+import HydraAuction.OnChain (AuctionScript (..), policy, scriptValidatorForTerms)
 import HydraAuction.OnChain.Common (stageToInterval)
+import HydraAuction.OnChain.StateToken (
+  StateTokenKind (..),
+  stateTokenKindToTokenName,
+ )
 import HydraAuction.Runner (ExecutionContext (..), Runner, logMsg)
-import HydraAuction.Types (AuctionStage, AuctionTerms, auctionStages)
+import HydraAuction.Types (AuctionStage, AuctionTerms, VoucherForgingRedeemer (..), auctionStages)
 
 networkIdToNetwork :: NetworkId -> Cardano.Network
 networkIdToNetwork (Testnet _) = Cardano.Testnet
@@ -195,6 +201,17 @@ currentAuctionStage terms = do
 
 tokenToAsset :: TokenName -> AssetName
 tokenToAsset (TokenName t) = AssetName $ fromBuiltin t
+
+toForgeStateToken :: AuctionTerms -> VoucherForgingRedeemer -> TxMintValue BuildTx
+toForgeStateToken terms redeemer =
+  mintedTokens
+    (fromPlutusScript $ getMintingPolicy $ policy terms)
+    redeemer
+    [(tokenToAsset $ stateTokenKindToTokenName Voucher, num)]
+  where
+    num = case redeemer of
+      MintVoucher -> 1
+      BurnVoucher -> -1
 
 mintedTokens ::
   ToScriptData redeemer =>

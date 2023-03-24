@@ -18,7 +18,7 @@ import Plutus.V1.Ledger.Address (pubKeyHashAddress)
 import Hydra.Cardano.Api (Lovelace, pattern ShelleyAddressInEra)
 
 -- Hydra auction imports
-import HydraAuction.Fixture (Actor (..))
+import HydraAuction.Fixture (Actor (..), getActorsPubKey)
 import HydraAuction.OnChain (AuctionScript)
 import HydraAuction.Runner (
   ExecutionContext (..),
@@ -36,14 +36,13 @@ import HydraAuction.Tx.Common (
 import HydraAuction.Tx.Escrow (
   announceAuction,
   bidderBuys,
-  currentWinningBidder,
   sellerReclaims,
   startBidding,
  )
-import HydraAuction.Tx.StandingBid (cleanupTx, newBid)
+import HydraAuction.Tx.StandingBid (cleanupTx, currentWinningBidder, newBid)
 import HydraAuction.Tx.TermsConfig (constructTermsDynamic)
 import HydraAuction.Tx.TestNFT (findTestNFT, mintOneTestNFT)
-import HydraAuction.Types (AuctionStage (..), AuctionTerms, Natural, naturalToInt)
+import HydraAuction.Types (ApprovedBidders (..), AuctionStage (..), AuctionTerms, Natural, naturalToInt)
 
 -- Hydra auction CLI imports
 import CLI.Config (
@@ -73,7 +72,7 @@ data CliAction
   | Prepare !Actor
   | MintTestNFT
   | AuctionAnounce !AuctionName
-  | StartBidding !AuctionName
+  | StartBidding !AuctionName ![Actor]
   | NewBid !AuctionName !Natural
   | BidderBuys !AuctionName
   | SellerReclaims !AuctionName
@@ -174,15 +173,16 @@ handleCliAction userAction = do
               <> "."
           announceAuction terms
         Nothing -> liftIO . putStrLn $ "User doesn't have the \"Mona Lisa\" token.\nThis demo is configured to use this token as the auction lot."
-    StartBidding auctionName -> do
+    StartBidding auctionName actors -> do
       -- FIXME: proper error printing
       Just terms <- liftIO $ readAuctionTerms auctionName
+      actorsPkh <- liftIO $ getActorsPubKey actors
       liftIO . putStrLn $
         show actor
           <> " starts the bidding phase of auction "
           <> show auctionName
           <> "."
-      startBidding terms
+      startBidding terms (ApprovedBidders actorsPkh)
     NewBid auctionName bidAmount -> do
       -- FIXME: proper error printing
       Just CliEnhancedAuctionTerms {terms, sellerActor} <- liftIO $ readCliEnhancedAuctionTerms auctionName

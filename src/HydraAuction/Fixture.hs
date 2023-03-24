@@ -1,6 +1,8 @@
 module HydraAuction.Fixture (
   Actor (..),
   keysFor,
+  getActorsPubKey,
+  getActorVkHash,
 ) where
 
 -- Prelude imports
@@ -15,10 +17,14 @@ import Hydra.Cardano.Api (
   SigningKey,
   TextEnvelopeError (TextEnvelopeAesonDecodeError),
   deserialiseFromTextEnvelope,
+  toPlutusKeyHash,
+  verificationKeyHash,
  )
 
--- Haskell imports
+-- Plutus imports
+import Plutus.V1.Ledger.Crypto (PubKeyHash)
 
+-- Haskell imports
 import Data.Aeson qualified as Aeson
 import Data.Bifunctor (first)
 import Data.ByteString qualified as BS
@@ -61,6 +67,14 @@ readConfigFile :: FilePath -> IO BS.ByteString
 readConfigFile source = do
   filename <- Pkg.getDataFileName ("data" </> source)
   BS.readFile filename
+
+getActorVkHash :: Actor -> IO PubKeyHash
+getActorVkHash actor = do
+  (actorVk, _) <- keysFor actor
+  return $ toPlutusKeyHash $ verificationKeyHash actorVk
+
+getActorsPubKey :: [Actor] -> IO [PubKeyHash]
+getActorsPubKey actors = sequence $ getActorVkHash <$> actors
 
 actorName :: Actor -> String
 actorName = \case
