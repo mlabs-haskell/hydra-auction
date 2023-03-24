@@ -18,7 +18,6 @@ import Plutus.V1.Ledger.Address (pubKeyHashAddress)
 import Hydra.Cardano.Api (Lovelace, pattern ShelleyAddressInEra)
 
 -- Hydra auction imports
-import HydraAuction.Fixture (Actor (..))
 import HydraAuction.OnChain (AuctionScript)
 import HydraAuction.Runner (
   ExecutionContext (..),
@@ -44,6 +43,7 @@ import HydraAuction.Tx.StandingBid (cleanupTx, newBid)
 import HydraAuction.Tx.TermsConfig (constructTermsDynamic)
 import HydraAuction.Tx.TestNFT (findTestNFT, mintOneTestNFT)
 import HydraAuction.Types (AuctionStage (..), AuctionTerms, Natural, naturalToInt)
+import HydraAuctionUtils.Fixture (Actor (..))
 
 -- Hydra auction CLI imports
 import CLI.Config (

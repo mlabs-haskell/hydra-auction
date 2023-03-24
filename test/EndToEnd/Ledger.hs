@@ -22,7 +22,6 @@ import Plutus.V1.Ledger.Value (assetClassValueOf)
 import Hydra.Cardano.Api (mkTxIn, toPlutusValue, txOutValue)
 
 -- Hydra auction imports
-import HydraAuction.Fixture (Actor (..))
 import HydraAuction.OnChain.TestNFT (testNftAssetClass)
 import HydraAuction.Runner (
   Runner,
@@ -54,6 +53,7 @@ import HydraAuction.Tx.TermsConfig (
  )
 import HydraAuction.Tx.TestNFT (mintOneTestNFT)
 import HydraAuction.Types (AuctionTerms (..), intToNatural)
+import HydraAuctionUtils.Fixture (Actor (..))
 
 -- Hydra auction test imports
 import EndToEnd.Utils (mkAssertion)

@@ -3,7 +3,6 @@
 module HydraAuction.Tx.Common (
   AutoCreateParams (..),
   filterAdaOnlyUtxo,
-  queryUTxOByTxInInRunner,
   fromPlutusAddressInRunner,
   actorTipUtxo,
   toSlotNo,
@@ -26,7 +25,7 @@ module HydraAuction.Tx.Common (
 ) where
 
 -- Prelude imports
-import Hydra.Prelude (ask, liftIO, toList, void)
+import Hydra.Prelude (ask, liftIO, toList)
 import PlutusTx.Prelude (emptyByteString)
 import Prelude
 
@@ -64,17 +63,12 @@ import Plutus.V2.Ledger.Api (
 import Cardano.Api.UTxO qualified as UTxO
 import CardanoClient (
   QueryPoint (QueryTip),
-  awaitTransaction,
   buildAddress,
   buildScriptAddress,
   queryEraHistory,
   queryProtocolParameters,
   queryStakePools,
   querySystemStart,
-  queryUTxO,
-  queryUTxOByTxIn,
-  queryUTxOFor,
-  submitTransaction,
  )
 import CardanoNode (
   RunningNode (RunningNode, networkId, nodeSocket),
@@ -115,7 +109,6 @@ import Hydra.Cardano.Api (
   fromPlutusAddress,
   fromPlutusData,
   fromPlutusScript,
-  getTxId,
   getVerificationKey,
   hashScript,
   makeShelleyKeyWitness,
@@ -125,7 +118,6 @@ import Hydra.Cardano.Api (
   scriptWitnessCtx,
   toPlutusTxOut,
   toScriptData,
-  txBody,
   valueFromList,
   verificationKeyHash,
   withWitness,
@@ -163,11 +155,18 @@ import Hydra.Cardano.Api (
 import Hydra.Chain.Direct.TimeHandle (queryTimeHandle, slotFromUTCTime)
 
 -- Hydra auction imports
-import HydraAuction.Fixture (keysFor)
 import HydraAuction.OnChain (AuctionScript, scriptValidatorForTerms)
 import HydraAuction.OnChain.Common (stageToInterval)
-import HydraAuction.Runner (ExecutionContext (..), Runner, logMsg)
+import HydraAuction.Runner (ExecutionContext (..), Runner)
 import HydraAuction.Types (AuctionStage, AuctionTerms, auctionStages)
+import HydraAuctionUtils.Fixture (keysFor)
+import HydraAuctionUtils.Monads (
+  MonadNetworkId (..),
+  MonadQueryUtxo (..),
+  UtxoQuery (..),
+  logMsg,
+  submitAndAwaitTx,
+ )
 
 networkIdToNetwork :: NetworkId -> Cardano.Network
 networkIdToNetwork (Testnet _) = Cardano.Testnet
@@ -234,8 +233,8 @@ addressAndKeys ::
     , SigningKey PaymentKey
     )
 addressAndKeys = do
-  MkExecutionContext {..} <- ask
-  let networkId' = networkId node
+  MkExecutionContext {actor} <- ask
+  networkId' <- askNetworkId
 
   (actorVk, actorSk) <- liftIO $ keysFor actor
   let actorAddress = buildAddress actorVk networkId'
@@ -257,40 +256,29 @@ filterAdaOnlyUtxo = filterUtxoByCurrencySymbols [CurrencySymbol emptyByteString]
 
 actorTipUtxo :: Runner UTxO.UTxO
 actorTipUtxo = do
-  MkExecutionContext {node, actor} <- ask
-  (vk, _) <- liftIO $ keysFor actor
-  liftIO $ queryUTxOFor (networkId node) (nodeSocket node) QueryTip vk
+  MkExecutionContext {actor} <- ask
+  queryUtxo (ByActor actor)
 
-fromPlutusAddressInRunner :: PlutusAddress.Address -> Runner AddressInEra
+fromPlutusAddressInRunner :: MonadNetworkId m => PlutusAddress.Address -> m AddressInEra
 fromPlutusAddressInRunner address' = do
-  MkExecutionContext {node} <- ask
-  let network = networkIdToNetwork (networkId node)
+  networkId <- askNetworkId
+  let network = networkIdToNetwork networkId
   return $
     fromPlutusAddress network address'
-
-queryUTxOByTxInInRunner :: [TxIn] -> Runner UTxO.UTxO
-queryUTxOByTxInInRunner txIns = do
-  MkExecutionContext {node} <- ask
-  liftIO $
-    queryUTxOByTxIn (networkId node) (nodeSocket node) QueryTip txIns
 
 scriptPlutusScript :: AuctionScript -> AuctionTerms -> PlutusScript
 scriptPlutusScript script terms = fromPlutusScript $ getValidator $ scriptValidatorForTerms script terms
 
-scriptAddress :: AuctionScript -> AuctionTerms -> Runner (Address ShelleyAddr)
-scriptAddress script terms = do
-  MkExecutionContext {node} <- ask
-  return $
-    buildScriptAddress
-      (PlutusScript $ scriptPlutusScript script terms)
-      (networkId node)
+scriptAddress :: MonadNetworkId m => AuctionScript -> AuctionTerms -> m (Address ShelleyAddr)
+scriptAddress script terms =
+  buildScriptAddress
+    (PlutusScript $ scriptPlutusScript script terms)
+    <$> askNetworkId
 
 scriptUtxos :: AuctionScript -> AuctionTerms -> Runner UTxO.UTxO
 scriptUtxos script terms = do
-  MkExecutionContext {node} <- ask
-  let RunningNode {networkId, nodeSocket} = node
   scriptAddress' <- scriptAddress script terms
-  liftIO $ queryUTxO networkId nodeSocket QueryTip [scriptAddress']
+  queryUtxo (ByAddress scriptAddress')
 
 data AutoCreateParams = AutoCreateParams
   { authoredUtxos :: [(SigningKey PaymentKey, UTxO)]
@@ -412,27 +400,9 @@ callBodyAutoBalance
 
 autoSubmitAndAwaitTx :: AutoCreateParams -> Runner Tx
 autoSubmitAndAwaitTx params = do
-  MkExecutionContext {node} <- ask
-  let networkId' = networkId node
-      nodeSocket' = nodeSocket node
-
   tx <- autoCreateTx params
   logMsg "Signed"
 
-  liftIO $
-    submitTransaction
-      networkId'
-      nodeSocket'
-      tx
+  submitAndAwaitTx tx
 
-  logMsg "Submited"
-
-  void $
-    liftIO $
-      awaitTransaction
-        networkId'
-        nodeSocket'
-        tx
-
-  logMsg $ "Created Tx id: " <> show (getTxId $ txBody tx)
-  pure tx
+  return tx

@@ -8,7 +8,6 @@ module HydraAuction.Tx.Escrow (
 ) where
 
 -- Prelude imports
-
 import PlutusTx.Prelude (emptyByteString)
 import Prelude
 
@@ -56,7 +55,7 @@ import HydraAuction.OnChain.StateToken (
   stateTokenKindToTokenName,
  )
 import HydraAuction.Plutus.Extras (scriptCurrencySymbol)
-import HydraAuction.Runner (Runner, logMsg)
+import HydraAuction.Runner (Runner)
 import HydraAuction.Tx.Common (
   AutoCreateParams (..),
   actorTipUtxo,
@@ -69,7 +68,6 @@ import HydraAuction.Tx.Common (
   mintedTokens,
   mkInlineDatum,
   mkInlinedDatumScriptWitness,
-  queryUTxOByTxInInRunner,
   scriptAddress,
   scriptPlutusScript,
   scriptUtxos,
@@ -88,6 +86,7 @@ import HydraAuction.Types (
   calculateTotalFee,
   naturalToInt,
  )
+import HydraAuctionUtils.Monads (MonadQueryUtxo (queryUtxo), UtxoQuery (ByTxIns), logMsg)
 
 toForgeStateToken :: AuctionTerms -> VoucherForgingRedeemer -> TxMintValue BuildTx
 toForgeStateToken terms redeemer =
@@ -123,7 +122,7 @@ announceAuction terms = do
   (sellerAddress, _, sellerSk) <- addressAndKeys
 
   utxoWithLotNFT <-
-    queryUTxOByTxInInRunner [fromPlutusTxOutRef $ utxoNonce terms]
+    queryUtxo (ByTxIns [fromPlutusTxOutRef $ utxoNonce terms])
 
   sellerMoneyUtxo <- filterAdaOnlyUtxo <$> actorTipUtxo
 

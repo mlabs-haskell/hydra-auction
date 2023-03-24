@@ -32,7 +32,7 @@ import HydraAuction.OnChain (
   voucherAssetClass,
  )
 import HydraAuction.Plutus.Extras (scriptCurrencySymbol)
-import HydraAuction.Runner (Runner, logMsg)
+import HydraAuction.Runner (Runner)
 import HydraAuction.Tx.Common (
   AutoCreateParams (..),
   actorTipUtxo,
@@ -56,6 +56,7 @@ import HydraAuction.Types (
   StandingBidState (Bid),
   VoucherForgingRedeemer (BurnVoucher),
  )
+import HydraAuctionUtils.Monads (logMsg)
 
 newBid :: AuctionTerms -> Natural -> Runner ()
 newBid terms bidAmount = do

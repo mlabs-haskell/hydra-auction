@@ -28,11 +28,11 @@ import Plutus.V2.Ledger.Contexts (TxOutRef)
 import Hydra.Cardano.Api (TxIn, toPlutusKeyHash, toPlutusTxOutRef, verificationKeyHash)
 
 -- Hydra auction imports
-import HydraAuction.Fixture (Actor, keysFor)
 import HydraAuction.OnChain.TestNFT (testNftAssetClass)
 import HydraAuction.Plutus.Orphans ()
 import HydraAuction.Tx.Common (currentTimeSeconds)
 import HydraAuction.Types (AuctionTerms (..), Natural)
+import HydraAuctionUtils.Fixture (Actor, keysFor)
 
 data AuctionTermsConfig = AuctionTermsConfig
   { configDiffBiddingStart :: !Integer
