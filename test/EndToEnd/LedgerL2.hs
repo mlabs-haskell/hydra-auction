@@ -32,7 +32,7 @@ import Hydra.Cardano.Api (
 
 -- Hydra auction imports
 
-import HydraAuction.Fixture qualified as AuctionFixture
+import HydraAuctionUtils.Fixture qualified as AuctionFixture
 import HydraAuction.Hydra.Monad (
   AwaitedHydraEvent (..),
   sendCommandAndWaitFor, waitForHydraEvent,

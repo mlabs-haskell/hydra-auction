@@ -197,13 +197,9 @@ library
   import:          common-lang
   exposed-modules:
     HydraAuction.Addresses
-<<<<<<< HEAD
     HydraAuction.Delegate
     HydraAuction.Delegate.Interface
-    HydraAuction.Hydra
-=======
     HydraAuction.Hydra.Monad
->>>>>>> 22b78e8 (Move .Fixture into HydraAuctionUtils)
     HydraAuction.Hydra.Interface
     HydraAuction.HydraExtras
     HydraAuction.OnChain

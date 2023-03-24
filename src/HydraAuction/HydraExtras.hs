@@ -51,8 +51,9 @@ import Hydra.Ledger.Cardano.Builder (
  )
 import Hydra.Party (Party, partyFromChain)
 
-import HydraAuction.Fixture (Actor (Alice), keysFor)
-import HydraAuction.Tx.Common (callBodyAutoBalance, submitAndAwaitTx)
+import HydraAuctionUtils.Monads (submitAndAwaitTx)
+import HydraAuctionUtils.Fixture (Actor (Alice), keysFor)
+import HydraAuction.Tx.Common (callBodyAutoBalance)
 import HydraAuction.Runner (Runner)
 
 -- | Craft a commit transaction which includes the "committed" utxo as a datum.

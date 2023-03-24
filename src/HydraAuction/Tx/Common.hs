@@ -2,7 +2,6 @@
 
 module HydraAuction.Tx.Common (
   callBodyAutoBalance,
-  submitAndAwaitTx,
   AutoCreateParams (..),
   filterAdaOnlyUtxo,
   actorTipUtxo,
@@ -390,25 +389,6 @@ callBodyAutoBalance
           preBody
           (ShelleyAddressInEra changeAddress)
           Nothing
-
-submitAndAwaitTx :: Tx -> Runner ()
-submitAndAwaitTx tx = do
-  MkExecutionContext {node} <- ask
-  let RunningNode {networkId, nodeSocket} = node
-
-  liftIO $ submitTransaction
-    networkId
-    nodeSocket
-    tx
-  logMsg "Submited"
-
-  liftIO $ void $
-    awaitTransaction
-      networkId
-      nodeSocket
-      tx
-  logMsg $ "Created Tx id: " <> show (getTxId $ txBody tx)
-
 
 autoSubmitAndAwaitTx :: AutoCreateParams -> Runner Tx
 autoSubmitAndAwaitTx params = do
