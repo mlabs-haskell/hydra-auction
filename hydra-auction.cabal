@@ -197,9 +197,13 @@ library
   import:          common-lang
   exposed-modules:
     HydraAuction.Addresses
+<<<<<<< HEAD
     HydraAuction.Delegate
     HydraAuction.Delegate.Interface
     HydraAuction.Hydra
+=======
+    HydraAuction.Hydra.Monad
+>>>>>>> 22b78e8 (Move .Fixture into HydraAuctionUtils)
     HydraAuction.Hydra.Interface
     HydraAuction.HydraExtras
     HydraAuction.OnChain
@@ -213,7 +217,6 @@ library
     HydraAuction.Tx.TermsConfig
     HydraAuction.Tx.TestNFT
     HydraAuction.Types
-    Paths_hydra_auction
     HydraAuction.Hydra.Runner
 
   other-modules:
@@ -221,8 +224,6 @@ library
     HydraAuction.OnChain.StandingBid
     HydraAuction.OnChain.StateToken
     HydraAuction.Runner.Tracer
-    HydraAuction.Hydra.Monad
-
 
   build-depends:
     , directory
@@ -253,7 +254,6 @@ library hydra-auction-utils
   build-depends:
     , hydra-plutus
     , plutus-tx
-
 test-suite hydra-auction-test
   import:         common-lang
   type:           exitcode-stdio-1.0
