@@ -63,7 +63,6 @@ import HydraAuction.Tx.Common (
   autoSubmitAndAwaitTx,
   filterAdaOnlyUtxo,
   filterUtxoByCurrencySymbols,
-  fromPlutusAddressInRunner,
   minLovelace,
   mintedTokens,
   mkInlineDatum,
@@ -86,7 +85,12 @@ import HydraAuction.Types (
   calculateTotalFee,
   naturalToInt,
  )
-import HydraAuctionUtils.Monads (MonadQueryUtxo (queryUtxo), UtxoQuery (ByTxIns), logMsg)
+import HydraAuctionUtils.Monads (
+  MonadQueryUtxo (queryUtxo),
+  UtxoQuery (ByTxIns),
+  fromPlutusAddressInMonad,
+  logMsg,
+ )
 
 toForgeStateToken :: AuctionTerms -> VoucherForgingRedeemer -> TxMintValue BuildTx
 toForgeStateToken terms redeemer =
@@ -238,7 +242,10 @@ currentWinningBidder terms = do
 bidderBuys :: AuctionTerms -> Runner ()
 bidderBuys terms = do
   feeEscrowAddress <- scriptAddress FeeEscrow terms
-  sellerAddress <- fromPlutusAddressInRunner $ pubKeyHashAddress $ seller terms
+  sellerAddress <-
+    fromPlutusAddressInMonad $
+      pubKeyHashAddress $
+        seller terms
 
   let txOutSellerGotBid standingBidUtxo =
         TxOut
