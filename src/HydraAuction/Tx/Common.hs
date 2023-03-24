@@ -3,11 +3,9 @@
 module HydraAuction.Tx.Common (
   AutoCreateParams (..),
   filterAdaOnlyUtxo,
-  fromPlutusAddressInRunner,
   actorTipUtxo,
   toSlotNo,
   addressAndKeys,
-  networkIdToNetwork,
   filterUtxoByCurrencySymbols,
   minLovelace,
   mkInlineDatum,
@@ -39,11 +37,7 @@ import Data.Time.Clock.POSIX (posixSecondsToUTCTime)
 import Data.Time.Clock.POSIX qualified as POSIXTime
 import Data.Tuple.Extra (first)
 
--- Cardano ledger imports
-import Cardano.Ledger.BaseTypes qualified as Cardano
-
 -- Plutus imports
-import Plutus.V1.Ledger.Address qualified as PlutusAddress
 import Plutus.V1.Ledger.Interval (member)
 import Plutus.V1.Ledger.Value (
   CurrencySymbol (..),
@@ -77,14 +71,12 @@ import CardanoNode (
  )
 import Hydra.Cardano.Api (
   Address,
-  AddressInEra,
   AssetName,
   BuildTx,
   BuildTxWith,
   CtxTx,
   KeyWitness,
   Lovelace (..),
-  NetworkId,
   PaymentKey,
   PlutusScript,
   Quantity,
@@ -108,7 +100,6 @@ import Hydra.Cardano.Api (
   WitCtxTxIn,
   Witness,
   balancedTxBody,
-  fromPlutusAddress,
   fromPlutusData,
   fromPlutusScript,
   getVerificationKey,
@@ -127,12 +118,10 @@ import Hydra.Cardano.Api (
   pattern AssetName,
   pattern BabbageEraInCardanoMode,
   pattern BuildTxWith,
-  pattern Mainnet,
   pattern PlutusScript,
   pattern PolicyId,
   pattern ScriptWitness,
   pattern ShelleyAddressInEra,
-  pattern Testnet,
   pattern TxAuxScriptsNone,
   pattern TxBodyContent,
   pattern TxCertificatesNone,
@@ -175,10 +164,6 @@ import HydraAuctionUtils.Monads (
   logMsg,
   submitAndAwaitTx,
  )
-
-networkIdToNetwork :: NetworkId -> Cardano.Network
-networkIdToNetwork (Testnet _) = Cardano.Testnet
-networkIdToNetwork Mainnet = Cardano.Mainnet
 
 minLovelace :: Lovelace
 minLovelace = 2_000_000
@@ -277,13 +262,6 @@ actorTipUtxo :: Runner UTxO.UTxO
 actorTipUtxo = do
   MkExecutionContext {actor} <- ask
   queryUtxo (ByActor actor)
-
-fromPlutusAddressInRunner :: MonadNetworkId m => PlutusAddress.Address -> m AddressInEra
-fromPlutusAddressInRunner address' = do
-  networkId <- askNetworkId
-  let network = networkIdToNetwork networkId
-  return $
-    fromPlutusAddress network address'
 
 scriptPlutusScript :: AuctionScript -> AuctionTerms -> PlutusScript
 scriptPlutusScript script terms = fromPlutusScript $ getValidator $ scriptValidatorForTerms script terms

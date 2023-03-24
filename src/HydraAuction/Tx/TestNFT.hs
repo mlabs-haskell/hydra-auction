@@ -43,7 +43,6 @@ import HydraAuction.Tx.Common (
   mintedTokens,
   tokenToAsset,
  )
-import HydraAuctionUtils.Monads (logMsg)
 
 findTestNFT :: UTxO.UTxO -> Maybe TxIn
 findTestNFT (UTxO.UTxO m) = Map.foldrWithKey isTestNFT Nothing m
