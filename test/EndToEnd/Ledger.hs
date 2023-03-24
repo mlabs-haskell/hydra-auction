@@ -53,7 +53,7 @@ import HydraAuction.Tx.TermsConfig (
  )
 import HydraAuction.Tx.TestNFT (mintOneTestNFT)
 import HydraAuction.Types (ApprovedBidders (..), AuctionTerms (..), intToNatural)
-import HydraAuctionUtils.Fixture (Actor (..))
+import HydraAuctionUtils.Fixture (Actor (..), getActorsPubKey)
 
 -- Hydra auction test imports
 import EndToEnd.Utils (mkAssertion)

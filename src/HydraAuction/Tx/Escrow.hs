@@ -37,7 +37,6 @@ import Hydra.Cardano.Api (
 -- Hydra auction imports
 import HydraAuction.Addresses (VoucherCS (..))
 import HydraAuction.OnChain (AuctionScript (..), policy, voucherAssetClass)
-import HydraAuction.Plutus.Extras (scriptCurrencySymbol)
 import HydraAuction.Runner (Runner)
 import HydraAuction.Tx.Common (
   AutoCreateParams (..),
@@ -69,6 +68,7 @@ import HydraAuction.Types (
   calculateTotalFee,
   naturalToInt,
  )
+import HydraAuctionUtils.Extras.Plutus (scriptCurrencySymbol)
 import HydraAuctionUtils.Monads (
   MonadQueryUtxo (queryUtxo),
   UtxoQuery (ByTxIns),
