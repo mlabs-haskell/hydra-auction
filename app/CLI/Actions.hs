@@ -29,7 +29,6 @@ import HydraAuction.Tx.Common (
   actorTipUtxo,
   addressAndKeys,
   currentAuctionStage,
-  fromPlutusAddressInRunner,
   scriptUtxos,
  )
 import HydraAuction.Tx.Escrow (
@@ -43,6 +42,7 @@ import HydraAuction.Tx.TermsConfig (constructTermsDynamic)
 import HydraAuction.Tx.TestNFT (findTestNFT, mintOneTestNFT)
 import HydraAuction.Types (ApprovedBidders (..), AuctionStage (..), AuctionTerms, Natural, naturalToInt)
 import HydraAuctionUtils.Fixture (Actor (..), getActorsPubKey)
+import HydraAuctionUtils.Monads (fromPlutusAddressInMonad)
 
 -- Hydra auction CLI imports
 import CLI.Config (
@@ -210,7 +210,7 @@ handleCliAction userAction = do
         case mWinningBidderPk of
           Just winningBidderPk -> do
             winningBidderAddress <-
-              fromPlutusAddressInRunner $
+              fromPlutusAddressInMonad $
                 pubKeyHashAddress winningBidderPk
             if winningBidderAddress == ShelleyAddressInEra currentActorAddress
               then do
