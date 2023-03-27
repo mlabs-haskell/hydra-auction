@@ -29,8 +29,10 @@ import PlutusTx.Prelude
 import Prelude qualified
 
 -- Haskell imports
+
+import Control.Monad ((<=<))
 import Control.Monad.Fail (fail)
-import Data.Aeson (FromJSON (..), ToJSON)
+import Data.Aeson (FromJSON (parseJSON), ToJSON)
 import GHC.Generics (Generic)
 
 -- Plutus imports
@@ -43,6 +45,7 @@ import PlutusTx.IsData.Class (FromData (fromBuiltinData), ToData (toBuiltinData)
 
 -- Hydra auction imports
 import HydraAuction.Addresses (VoucherCS)
+import HydraAuction.Plutus.Orphans ()
 
 -- Custom Natural
 
@@ -85,11 +88,7 @@ naturalToInt (Natural i) = i
 PlutusTx.makeLift ''Natural
 
 instance FromJSON Natural where
-  parseJSON x = do
-    int <- parseJSON x
-    case intToNatural int of
-      Just nat -> return nat
-      Nothing -> fail "Integer is not natural"
+  parseJSON = maybe (fail "Integer is not natural") return . intToNatural <=< parseJSON
 
 -- Base datatypes
 
@@ -142,6 +141,7 @@ data AuctionTerms = AuctionTerms
   -- announced this auction, to provide the auction lot to the auction.
   }
   deriving stock (Generic, Prelude.Show, Prelude.Eq)
+  deriving anyclass (ToJSON, FromJSON)
 
 PlutusTx.makeIsDataIndexed ''AuctionTerms [('AuctionTerms, 0)]
 PlutusTx.makeLift ''AuctionTerms
