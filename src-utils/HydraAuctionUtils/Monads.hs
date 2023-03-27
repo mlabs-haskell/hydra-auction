@@ -106,5 +106,5 @@ submitAndAwaitTx tx = do
    For example we could provide QueryUtxo but not SubmitTx
    for Delegate server clients.
 -}
-type MonadCardanoClient m =
-  (MonadQueryUtxo m, MonadNetworkId m, MonadSubmitTx m)
+class (MonadQueryUtxo m, MonadNetworkId m, MonadSubmitTx m) => MonadCardanoClient m
+instance (MonadQueryUtxo m, MonadNetworkId m, MonadSubmitTx m) => MonadCardanoClient m
