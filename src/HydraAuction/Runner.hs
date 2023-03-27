@@ -28,6 +28,7 @@ import Hydra.Prelude (
   liftIO,
   local,
   runReaderT,
+  show,
   ($),
   (.),
  )
@@ -38,7 +39,7 @@ import Prelude (return)
 
 import Control.Monad (void)
 import Control.Monad.Catch (MonadCatch, MonadMask, MonadThrow)
-import Control.Tracer (traceWith)
+import Control.Tracer (stdoutTracer, traceWith)
 import System.FilePath (FilePath)
 
 -- Cardano imports
@@ -57,8 +58,8 @@ import CardanoNode (
  )
 
 -- Hydra imports
-import Hydra.Cardano.Api (Lovelace, NetworkId, Tx)
-import Hydra.Cluster.Faucet (Marked (Normal), seedFromFaucet_)
+import Hydra.Cardano.Api (Lovelace, NetworkId, Tx, TxIn, UTxO)
+import Hydra.Cluster.Faucet (Marked (Normal), seedFromFaucet)
 import Hydra.Logging (Tracer)
 import HydraNode (EndToEndLog (FromCardanoNode, FromFaucet))
 
@@ -67,7 +68,6 @@ import HydraAuction.Runner.Tracer (
   HydraAuctionLog (..),
   StateDirectory (..),
   fileTracer,
-  showLogsOnFailure,
   stdoutOrNullTracer,
  )
 import HydraAuctionUtils.Fixture (Actor (..), keysFor)
@@ -115,9 +115,6 @@ instance MonadQueryUtxo Runner where
         queryUTxOByTxIn networkId nodeSocket QueryTip txIns
       ByAddress address ->
         queryUTxO networkId nodeSocket QueryTip [address]
-      ByActor actor -> do
-        (vk, _) <- keysFor actor
-        queryUTxOFor networkId nodeSocket QueryTip vk
 
 instance MonadNetworkId Runner where
   askNetworkId = do
@@ -166,10 +163,11 @@ executeTestRunner runner = do
   withTempDir "test-hydra-auction" $ \tmpDir -> do
     let stateDirectory = MkStateDirectory tmpDir
     tracerForCardanoNode <- fileTracer stateDirectory
+    let tracer = contramap show stdoutTracer
     withCardanoNodeDevnet
       (contramap (FromHydra . FromCardanoNode) tracerForCardanoNode)
       tmpDir
-      $ \node -> showLogsOnFailure $ \tracer ->
+      $ \node ->
         executeRunner
           (MkExecutionContext {tracer = tracer, node = node, actor = Alice})
           runner
@@ -179,12 +177,12 @@ executeTestRunner runner = do
 {- | Initiates the actor's wallet using the prescribed amount of faucet
  @Lovelace@.
 -}
-initWallet :: Lovelace -> Actor -> Runner ()
+initWallet :: Lovelace -> Actor -> Runner UTxO
 initWallet amount actor = do
   MkExecutionContext {tracer, node} <- ask
   liftIO $ do
     (vk, _) <- keysFor actor
-    seedFromFaucet_
+    seedFromFaucet
       node
       vk
       amount

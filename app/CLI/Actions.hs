@@ -106,7 +106,7 @@ handleCliAction userAction = do
     Seed -> do
       liftIO . putStrLn $
         "Seeding all wallets with 10,000 ADA."
-      initWallet seedAmount actor
+      void $ initWallet seedAmount actor
     Prepare sellerActor -> do
       liftIO . putStrLn $
         "Seeding all wallets with 10,000 ADA and minting the test NFT for "

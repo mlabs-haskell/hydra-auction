@@ -59,7 +59,6 @@ import Plutus.V2.Ledger.Api (
 import Cardano.Api.UTxO qualified as UTxO
 import CardanoClient (
   QueryPoint (QueryTip),
-  buildAddress,
   buildScriptAddress,
   queryEraHistory,
   queryProtocolParameters,
@@ -160,11 +159,11 @@ import HydraAuction.Types (
   VoucherForgingRedeemer (..),
   auctionStages,
  )
-import HydraAuctionUtils.Fixture (keysFor)
 import HydraAuctionUtils.Monads (
   MonadNetworkId (..),
   MonadQueryUtxo (..),
   UtxoQuery (..),
+  addressAndKeysForActor,
   logMsg,
   submitAndAwaitTx,
  )
@@ -242,15 +241,7 @@ addressAndKeys ::
     )
 addressAndKeys = do
   MkExecutionContext {actor} <- ask
-  networkId' <- askNetworkId
-
-  (actorVk, actorSk) <- liftIO $ keysFor actor
-  let actorAddress = buildAddress actorVk networkId'
-
-  logMsg $
-    "Using actor: " <> show actor <> " with address: " <> show actorAddress
-
-  pure (actorAddress, actorVk, actorSk)
+  addressAndKeysForActor actor
 
 filterUtxoByCurrencySymbols :: [CurrencySymbol] -> UTxO -> UTxO
 filterUtxoByCurrencySymbols symbolsToMatch = UTxO.filter hasExactlySymbols
@@ -264,8 +255,8 @@ filterAdaOnlyUtxo = filterUtxoByCurrencySymbols [CurrencySymbol emptyByteString]
 
 actorTipUtxo :: Runner UTxO.UTxO
 actorTipUtxo = do
-  MkExecutionContext {actor} <- ask
-  queryUtxo (ByActor actor)
+  (address, _, _) <- addressAndKeys
+  queryUtxo (ByAddress address)
 
 scriptPlutusScript :: AuctionScript -> AuctionTerms -> PlutusScript
 scriptPlutusScript script terms = fromPlutusScript $ getValidator $ scriptValidatorForTerms script terms
@@ -276,7 +267,7 @@ scriptAddress script terms =
     (PlutusScript $ scriptPlutusScript script terms)
     <$> askNetworkId
 
-scriptUtxos :: AuctionScript -> AuctionTerms -> Runner UTxO.UTxO
+scriptUtxos :: (MonadNetworkId m, MonadQueryUtxo m) => AuctionScript -> AuctionTerms -> m UTxO.UTxO
 scriptUtxos script terms = do
   scriptAddress' <- scriptAddress script terms
   queryUtxo (ByAddress scriptAddress')
