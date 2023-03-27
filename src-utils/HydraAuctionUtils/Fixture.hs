@@ -1,4 +1,4 @@
-module HydraAuction.Fixture (
+module HydraAuctionUtils.Fixture (
   Actor (..),
   keysFor,
   getActorsPubKey,

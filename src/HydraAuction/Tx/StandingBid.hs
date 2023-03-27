@@ -41,8 +41,7 @@ import HydraAuction.OnChain (
   standingBidValidator,
   voucherAssetClass,
  )
-import HydraAuction.Plutus.Extras (scriptCurrencySymbol)
-import HydraAuction.Runner (Runner, logMsg)
+import HydraAuction.Runner (Runner)
 import HydraAuction.Tx.Common (
   AutoCreateParams (..),
   actorTipUtxo,
@@ -67,6 +66,8 @@ import HydraAuction.Types (
   StandingBidState (..),
   VoucherForgingRedeemer (BurnVoucher),
  )
+import HydraAuctionUtils.Extras.Plutus (scriptCurrencySymbol)
+import HydraAuctionUtils.Monads (logMsg)
 
 getStadingBidDatum :: UTxO.UTxO -> StandingBidDatum
 getStadingBidDatum standingBidUtxo =

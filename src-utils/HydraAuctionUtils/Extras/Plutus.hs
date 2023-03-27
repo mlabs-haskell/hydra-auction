@@ -1,5 +1,5 @@
 -- | More Extras for Plutus.Extras
-module HydraAuction.Plutus.Extras (module X, validatorAddress, scriptCurrencySymbol) where
+module HydraAuctionUtils.Extras.Plutus (module X, validatorAddress, scriptCurrencySymbol) where
 
 -- Prelude imports
 

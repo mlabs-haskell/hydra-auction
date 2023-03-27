@@ -7,7 +7,6 @@ module HydraAuction.Tx.Escrow (
 ) where
 
 -- Prelude imports
-
 import PlutusTx.Prelude (emptyByteString)
 import Prelude
 
@@ -38,8 +37,7 @@ import Hydra.Cardano.Api (
 -- Hydra auction imports
 import HydraAuction.Addresses (VoucherCS (..))
 import HydraAuction.OnChain (AuctionScript (..), policy, voucherAssetClass)
-import HydraAuction.Plutus.Extras (scriptCurrencySymbol)
-import HydraAuction.Runner (Runner, logMsg)
+import HydraAuction.Runner (Runner)
 import HydraAuction.Tx.Common (
   AutoCreateParams (..),
   actorTipUtxo,
@@ -47,11 +45,9 @@ import HydraAuction.Tx.Common (
   autoSubmitAndAwaitTx,
   filterAdaOnlyUtxo,
   filterUtxoByCurrencySymbols,
-  fromPlutusAddressInRunner,
   minLovelace,
   mkInlineDatum,
   mkInlinedDatumScriptWitness,
-  queryUTxOByTxInInRunner,
   scriptAddress,
   scriptPlutusScript,
   scriptUtxos,
@@ -71,6 +67,13 @@ import HydraAuction.Types (
   VoucherForgingRedeemer (MintVoucher),
   calculateTotalFee,
   naturalToInt,
+ )
+import HydraAuctionUtils.Extras.Plutus (scriptCurrencySymbol)
+import HydraAuctionUtils.Monads (
+  MonadQueryUtxo (queryUtxo),
+  UtxoQuery (ByTxIns),
+  fromPlutusAddressInMonad,
+  logMsg,
  )
 
 announceAuction :: AuctionTerms -> Runner ()
@@ -96,7 +99,7 @@ announceAuction terms = do
   (sellerAddress, _, sellerSk) <- addressAndKeys
 
   utxoWithLotNFT <-
-    queryUTxOByTxInInRunner [fromPlutusTxOutRef $ utxoNonce terms]
+    queryUtxo (ByTxIns [fromPlutusTxOutRef $ utxoNonce terms])
 
   sellerMoneyUtxo <- filterAdaOnlyUtxo <$> actorTipUtxo
 
@@ -195,7 +198,10 @@ startBidding terms approvedBidders = do
 bidderBuys :: AuctionTerms -> Runner ()
 bidderBuys terms = do
   feeEscrowAddress <- scriptAddress FeeEscrow terms
-  sellerAddress <- fromPlutusAddressInRunner $ pubKeyHashAddress $ seller terms
+  sellerAddress <-
+    fromPlutusAddressInMonad $
+      pubKeyHashAddress $
+        seller terms
 
   let txOutSellerGotBid standingBidUtxo =
         TxOut
