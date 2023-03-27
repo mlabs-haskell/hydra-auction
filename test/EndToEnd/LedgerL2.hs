@@ -1,5 +1,3 @@
-{-# LANGUAGE PartialTypeSignatures #-}
-
 module EndToEnd.LedgerL2 (testSuite) where
 
 -- Prelude imports
@@ -28,6 +26,8 @@ import Hydra.Cardano.Api (
   PlutusScriptV2,
   fromPlutusScript,
   mkTxIn,
+  mkVkAddress,
+  pattern ShelleyAddressInEra,
  )
 
 -- Hydra auction imports
@@ -38,6 +38,7 @@ import HydraAuction.Hydra.Monad (
   sendCommandAndWaitFor,
   waitForHydraEvent,
  )
+import HydraAuctionUtils.Monads (submitAndAwaitTx, UtxoQuery (..), queryUtxo, addressAndKeysForActor)
 import HydraAuction.Hydra.Runner (executeRunnerInTest)
 import HydraAuction.HydraExtras (submitAndAwaitCommitTx)
 import HydraAuction.OnChain (AuctionScript (StandingBid), standingBidValidator)
@@ -87,6 +88,8 @@ import EndToEnd.HydraUtils (
   runningThreeNodesHydra,
  )
 import EndToEnd.Utils (mkAssertion)
+import HydraAuctionUtils.Fixture
+    ( keysFor, Actor(Frank, Dave, Eve) )
 
 testSuite :: TestTree
 testSuite =
@@ -110,13 +113,13 @@ bidderBuysTest :: Assertion
 bidderBuysTest = mkAssertion $ do
   actors@[seller, bidder1, _] <-
     return
-      [ AuctionFixture.Dave
-      , AuctionFixture.Eve
-      , AuctionFixture.Frank
+      [ Dave
+      , Eve
+      , Frank
       ]
   _ <- mapM (initWallet 200_000_000_000) actors
 
-  (sellerVk, sellerSk) <- liftIO $ AuctionFixture.keysFor seller
+  (sellerVk, sellerSk) <- liftIO $ keysFor seller
 
   ctx@MkExecutionContext {node, tracer} <- ask
   let hydraTracer = contramap FromHydra tracer
@@ -128,11 +131,10 @@ bidderBuysTest = mkAssertion $ do
     hydraTracer
     $ \(hydraNodesStuff, chainContext) -> do
       [(p1, n1, _n1Actor), (p2, n2, n2Actor), (p3, n3, n3Actor)] <- return hydraNodesStuff
+
       -- Create
 
       utxoRef <- executeRunner ctx $ withActor seller $ do
-        -- liftIO $ threadDelay 3
-
         nftTx <- mintOneTestNFT
         return $ mkTxIn nftTx 0
 
@@ -184,18 +186,17 @@ bidderBuysTest = mkAssertion $ do
         executeRunnerInTest n1 $
           waitForHydraEvent (SpecificKind HeadIsOpenKind)
 
-      -- New bid
-      headUtxo <- liftIO $ executeRunnerInTest n1 $ do
-        GetUTxOResponse utxo <-
-          sendCommandAndWaitFor (SpecificKind GetUTxOResponseKind) GetUTxO
-        return utxo
-      let standingBid = headUtxo
+      -- New bid though delegate number 2
+      delegateAddress <- liftIO $ do
+        (delegateVk, _) <- keysFor n2Actor
+        return $ buildAddress delegateVk (networkId node)
+      delegateUtxo <- liftIO $ executeRunnerInTest n2 $
+        queryUtxo (ByAddress delegateAddress)
 
-      -- FIXME: not working due to cardano-api issue
-      newBidTx' <- executeRunner ctx $ withActor bidder1 $ do
-         newBidTx terms (startingBid terms) standingBid
-      liftIO $ executeRunnerInTest n1 $
-          submitAndAwaitTx newBidTx'
+      -- Signing bid by delegate using its collateral
+      newBidTx' <- executeRunner ctx $ withActor n2Actor $ do
+         newBidTx terms (startingBid terms) standingBidUtxo delegateUtxo
+      executeRunnerInTest n2 $ submitAndAwaitTx newBidTx'
 
       -- Close Head
       liftIO $ executeRunnerInTest n1 $ do

@@ -167,7 +167,7 @@ submitAndAwaitCommitTx
 
     -- FIXME change address
     let utxos = headUtxo <> scriptUtxo <> initialScriptRefUtxo <> commiterUtxo
-    !eTxBody <- liftIO $ callBodyAutoBalance node (utxos) (preTxBody) changeAddress
+    !eTxBody <- liftIO $ callBodyAutoBalance True pparams node (utxos) (preTxBody) changeAddress
 
     !txBody <- case eTxBody of
       Left x -> return $ error $ show x

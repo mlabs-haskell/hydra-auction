@@ -10,6 +10,7 @@ import Plutus.V1.Ledger.Value (assetClassValue)
 import Plutus.V2.Ledger.Api (getValidator)
 
 -- Hydra imports
+-- Hydra imports
 import Hydra.Cardano.Api (
   PlutusScriptV2,
   Tx,
@@ -22,11 +23,10 @@ import Hydra.Cardano.Api (
   pattern ReferenceScriptNone,
   pattern ShelleyAddressInEra,
   pattern TxMintValueNone,
-  pattern TxOut,
+  pattern TxOut, TxIn,
  )
 
 -- TODO
-import Cardano.Api.UTxO qualified as UTxO
 
 -- Hydra auction imports
 import HydraAuction.Addresses (VoucherCS (..))
@@ -63,6 +63,7 @@ import HydraAuction.Types (
  )
 import HydraAuctionUtils.Extras.Plutus (scriptCurrencySymbol)
 import HydraAuctionUtils.Monads (logMsg)
+import Control.Monad (when)
 
 newBid :: AuctionTerms -> Natural -> Runner ()
 newBid terms bidAmount = do
@@ -119,8 +120,17 @@ newBid terms bidAmount = do
         , validityBound = (Just $ biddingStart terms, Just $ biddingEnd terms)
         }
 
-newBidTx :: AuctionTerms -> Natural -> UTxO -> Runner Tx
-newBidTx terms bidAmount standingBidUtxo = do
+validateHasSingleUtxo :: MonadFail m => UTxO -> String -> m ()
+validateHasSingleUtxo utxo utxoName =
+   when (length utxo /= 1) $
+    fail $ utxoName <> " UTxO has not exactly one TxIn"
+
+newBidTx :: AuctionTerms -> Natural -> UTxO -> UTxO -> Runner Tx
+newBidTx terms bidAmount standingBidUtxo bidderMoneyUtxo = do
+  validateHasSingleUtxo standingBidUtxo "standingBidUtxo"
+  validateHasSingleUtxo bidderMoneyUtxo "bidderMoneyUtxo"
+
+  -- TODO: actor is not neccesary bidder
   logMsg "Doing new bid"
 
   standingBidAddress <- scriptAddress StandingBid terms
@@ -149,19 +159,17 @@ newBidTx terms bidAmount standingBidUtxo = do
         where
           script = scriptPlutusScript StandingBid terms
 
-  (bidderAddress, bidderVk, _) <- addressAndKeys
-
-  [(standingBidTxIn, _)] <- return $ UTxO.pairs $ standingBidUtxo
+  (bidderAddress, bidderVk, bidderSk) <- addressAndKeys
 
   -- FIXME: cover not proper UTxOs
   autoCreateTx False $
     AutoCreateParams
-      { authoredUtxos = []
+      { authoredUtxos = [(bidderSk, bidderMoneyUtxo)]
       , referenceUtxo = mempty
       , witnessedUtxos =
           [ (standingBidWitness, standingBidUtxo)
           ]
-      , collateral = Just standingBidTxIn
+      , collateral = Nothing
       , outs = [txOutStandingBid bidderVk]
       , toMint = TxMintValueNone
       , changeAddress = bidderAddress

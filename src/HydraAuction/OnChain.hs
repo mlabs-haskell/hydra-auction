@@ -30,11 +30,6 @@ import HydraAuctionUtils.Extras.Plutus (
   wrapMintingPolicy,
   wrapValidator,
  )
-import HydraAuction.Types (
-  AuctionTerms (..),
-  StandingBidRedeemer (MoveToHydra),
- )
-import PlutusTx (unsafeFromBuiltinData)
 
 -- Addresses
 

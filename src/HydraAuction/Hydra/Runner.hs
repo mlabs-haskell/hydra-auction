@@ -12,6 +12,7 @@ import Control.Monad.Trans (MonadIO (liftIO))
 import Data.Aeson (
   parseJSON,
   (.=),
+  Value,
  )
 import Data.Aeson.Lens (key)
 import Data.Aeson.Types (parseMaybe)
@@ -28,6 +29,8 @@ import HydraNode (
   send,
   waitMatch,
  )
+import Cardano.Api (NetworkId(Testnet))
+import Hydra.Cardano.Api (NetworkMagic(NetworkMagic))
 
 -- HydraAuction imports
 
@@ -39,6 +42,7 @@ import HydraAuction.Hydra.Interface (
   getHydraEventKind,
  )
 import HydraAuction.Hydra.Monad (AwaitedHydraEvent (..), MonadHydra (..))
+import HydraAuctionUtils.Monads (MonadNetworkId (askNetworkId), MonadTrace (..))
 
 data HydraExecutionContext = MkHydraExecutionContext {node :: !HydraClient}
 
@@ -78,15 +82,25 @@ instance MonadHydra HydraRunner where
         case awaitedSpec of
           Any -> return ()
           SpecificKind expectedKind -> guard $ getHydraEventKind event == expectedKind
+          SpecificEvent expectedEvent -> guard $ event == expectedEvent
         return event
 
+instance MonadNetworkId HydraRunner where
+  askNetworkId = return $ Testnet $ NetworkMagic 42
+
+instance MonadTrace HydraRunner where
+  type TracerMessage HydraRunner = ()
+  stringToMessage = undefined
+  traceMessage _message = return ()
+
+matchingHydraEvent :: Value -> Maybe HydraEvent
 matchingHydraEvent value =
   case value ^? key "tag" of
     Just "GetUTxOResponse" -> getUtxoValueHandler value
     Just "HeadIsInitializing" ->
       HeadIsInitializing <$> retrieveField "headId" value
     Just "TxSeen" -> TxSeen <$> retrieveField "tx" value
-    Just "Committed" -> Just Committed
+    Just "Committed" -> Committed <$> retrieveField "utxo" value
     Just "HeadIsOpen" -> Just HeadIsOpen
     Just "HeadIsClosed" -> Just HeadIsClosed
     Just "ReadyToFanout" -> Just ReadyToFanout

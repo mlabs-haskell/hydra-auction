@@ -8,6 +8,7 @@ module HydraAuctionUtils.Monads (
   logMsg,
   submitAndAwaitTx,
   fromPlutusAddressInMonad,
+  addressAndKeysForActor,
 ) where
 
 -- Prelude imports
@@ -16,6 +17,9 @@ import Prelude
 -- Cardano imports
 import Cardano.Api.UTxO qualified as UTxO
 import Hydra.Cardano.Api (
+  SigningKey,
+  PaymentKey,
+  VerificationKey,
   Address,
   AddressInEra,
   NetworkId,
@@ -32,13 +36,14 @@ import Plutus.V1.Ledger.Address qualified as PlutusAddress
 
 -- HydraAuction imports
 import HydraAuctionUtils.Extras.CardanoApi (networkIdToNetwork)
-import HydraAuctionUtils.Fixture (Actor)
+import HydraAuctionUtils.Fixture (Actor, keysFor)
+import Control.Monad.IO.Class (MonadIO(liftIO))
+import CardanoClient (buildAddress)
 
 -- MonadQueryUtxo
 
-data UtxoQuery
-  = ByActor Actor
-  | ByAddress (Address ShelleyAddr)
+data UtxoQuery =
+  ByAddress (Address ShelleyAddr)
   | ByTxIns [TxIn]
 
 class Monad m => MonadQueryUtxo m where
@@ -56,6 +61,20 @@ fromPlutusAddressInMonad address = do
   let network = networkIdToNetwork networkId
   return $
     fromPlutusAddress network address
+
+addressAndKeysForActor ::
+  (MonadNetworkId m, MonadIO m) =>
+  Actor ->
+  m
+    ( Address ShelleyAddr
+    , VerificationKey PaymentKey
+    , SigningKey PaymentKey
+    )
+addressAndKeysForActor actor = do
+  networkId' <- askNetworkId
+  (actorVk, actorSk) <- liftIO $ keysFor actor
+  let actorAddress = buildAddress actorVk networkId'
+  pure (actorAddress, actorVk, actorSk)
 
 -- MonadTrace
 

@@ -24,29 +24,42 @@ import CardanoClient (queryUTxOFor, QueryPoint(QueryTip))
 
 import Hydra.Chain.Direct (loadChainContext)
 import Hydra.Cluster.Faucet (
-  Marked (Fuel),
+  Marked (Fuel, Normal),
   publishHydraScriptsAs,
   seedFromFaucet_,
  )
 import Hydra.Cluster.Fixture (
-  Actor (..),
+  Actor (Faucet),
   aliceSk,
   bobSk,
   carolSk,
-  cperiod,
+  cperiod
  )
-import Hydra.Cluster.Util (chainConfigFor, keysFor)
 import Hydra.Party (deriveParty)
+import Hydra.Chain.Direct.Util (isMarkedOutput)
 import HydraNode (
   EndToEndLog (FromFaucet),
   waitForNodesConnected,
   withHydraCluster,
  )
+
 import HydraAuction.Hydra.Monad (
   MonadHydra(sendCommand), sendCommandAndWaitFor, AwaitedHydraEvent(..))
 import HydraAuction.Hydra.Interface (
-  HydraCommand(..), HydraEventKind (..), HydraEvent (..))
+  HydraCommand(..), HydraEvent (..))
+import qualified Cardano.Api.UTxO as UTxO
+import HydraAuctionUtils.Fixture as HAFixture (
+  Actor(..), keysFor, chainConfigFor)
 
+import Hydra.Cardano.Api (pattern UTxO)
+import qualified Data.Map as Map
+
+-- runningThreeNodesHydra ::
+--   MonadIO m =>
+--   RunningNode
+--   -> Tracer IO EndToEndLog
+--   -> (([(Hydra.Party.Party, HydraNode.HydraClient, Actor)], Hydra.Chain.Direct.State.ChainContext) -> IO ())
+--   -> m ()
 runningThreeNodesHydra cardanoNode hydraTracer cont =
   liftIO $
     withTempDir "hydra-test-node-dir" $ \tmpDir -> do
@@ -61,7 +74,7 @@ runningThreeNodesHydra cardanoNode hydraTracer cont =
       hydraCardanoKeys <- mapM keysFor hydraCardanoActors
 
       chainConfig <-
-        chainConfigFor aliceA tmpDir (nodeSocket cardanoNode) [bobA, carolA] cperiod
+        chainConfigFor aliceA tmpDir (nodeSocket cardanoNode) [bobA, carolA]
       chainContext <-
         loadChainContext chainConfig p1 [p2, p3] hydraScriptsTxId
 
@@ -78,11 +91,12 @@ runningThreeNodesHydra cardanoNode hydraTracer cont =
           [n1, n2, n3] <- return $ toList nodes
           waitForNodesConnected hydraTracer [n1, n2, n3]
 
-          -- Funds to be used as fuel by Hydra protocol transactions
+          -- Funds to be used as fuel and collaterals by Hydra protocol transactions
           let
             faucetTracer = contramap FromFaucet hydraTracer
-            fundActorByVk actorVk =
+            fundActorByVk actorVk = do
               seedFromFaucet_ cardanoNode actorVk 200_000_000 Fuel faucetTracer
+              seedFromFaucet_ cardanoNode actorVk 200_000_000 Normal faucetTracer
 
           mapM_ fundActorByVk (map fst hydraCardanoKeys)
 
@@ -91,11 +105,12 @@ runningThreeNodesHydra cardanoNode hydraTracer cont =
             chainContext)
 
 commitWithCollateralAdaFor ::
-  (MonadHydra m, MonadIO m) => RunningNode -> Actor -> m ()
+  (MonadHydra m, MonadIO m) => RunningNode -> HAFixture.Actor -> m ()
 commitWithCollateralAdaFor node hydraActor = do
-  tx <- liftIO $ do
+  utxo <- liftIO $ do
     (vk, _) <- liftIO $ keysFor hydraActor
     queryUTxOFor (networkId node) (nodeSocket node) QueryTip vk
-  liftIO $ putStrLn $ "TX Is: " <> show tx
-  _ <- sendCommandAndWaitFor (SpecificKind CommittedKind) (Commit tx)
+  -- TODO: monadic query and ensure single utxo
+  let tx = UTxO . snd  . Map.partition isMarkedOutput . UTxO.toMap $ utxo
+  _ <- sendCommandAndWaitFor (SpecificEvent $ Committed tx) (Commit tx)
   return ()

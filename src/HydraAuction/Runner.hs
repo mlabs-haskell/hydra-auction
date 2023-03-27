@@ -114,9 +114,6 @@ instance MonadQueryUtxo Runner where
         queryUTxOByTxIn networkId nodeSocket QueryTip txIns
       ByAddress address ->
         queryUTxO networkId nodeSocket QueryTip [address]
-      ByActor actor -> do
-        (vk, _) <- keysFor actor
-        queryUTxOFor networkId nodeSocket QueryTip vk
 
 instance MonadNetworkId Runner where
   askNetworkId = do

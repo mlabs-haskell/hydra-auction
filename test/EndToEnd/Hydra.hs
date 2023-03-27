@@ -156,7 +156,6 @@ initAndClose clusterIx hydraScriptsTxId = do
           putStrLn "START"
           [n1, n2, n3] <- Prelude.return $ toList nodes
           waitForNodesConnected hydraTracer [n1, n2, n3]
-          putStrLn "START0"
 
           -- Funds to be used as fuel by Hydra protocol transactions
           let faucetTracer = contramap FromFaucet hydraTracer
@@ -165,7 +164,6 @@ initAndClose clusterIx hydraScriptsTxId = do
           seedFromFaucet_ node carolCardanoVk 100_000_000 Fuel faucetTracer
 
           send n1 $ input "Init" []
-          putStrLn "START2"
 
           waitFor hydraTracer 30 [n1, n2, n3] $
             output

@@ -18,16 +18,16 @@ import GHC.Natural (Natural)
 -- HydraAuction imports
 -- HydraAuction imports
 import HydraAuction.Hydra.Interface (
-  HydraCommand,
+  HydraCommand(NewTx, GetUTxO),
   HydraEvent (GetUTxOResponse, TxSeen),
-  HydraEventKind,
- )
-import HydraAuction.Hydra.Interface (
-  HydraCommand(NewTx), HydraEvent (GetUTxOResponse),
-  HydraEventKind (GetUTxOResponseKind))
+  HydraEventKind (GetUTxOResponseKind)
+  )
 import HydraAuctionUtils.Monads (MonadSubmitTx (..), MonadQueryUtxo (..), UtxoQuery (..))
 import Hydra.Cardano.Api (Tx)
 import qualified Cardano.Api.UTxO as UTxO
+import Hydra.Cardano.Api.Prelude (TxOut(..))
+import Cardano.Api (AddressInEra(..))
+import Unsafe.Coerce (unsafeCoerce)
 
 data AwaitedHydraEvent =
   Any | SpecificEvent HydraEvent | SpecificKind HydraEventKind
@@ -53,13 +53,16 @@ instance (Monad m, MonadHydra m) => MonadSubmitTx m where
   awaitTx :: Tx -> m ()
   awaitTx = void . waitForHydraEvent . SpecificEvent . TxSeen
 
-instance (Monad m, MonadHydra m) => MonadQueryUtxo m where
+instance {-# OVERLAPPABLE #-} (Monad m, MonadHydra m) =>  MonadQueryUtxo m where
   queryUtxo query = do
-    GetUTxOResponse utxo <-
-      sendCommandAndWaitFor (SpecificKind GetUTxOResponseKind) GetUTxOResponseGetUTxO
+    response <-
+      sendCommandAndWaitFor (SpecificKind GetUTxOResponseKind) GetUTxO
+    let utxo = case response of
+          GetUTxOResponse utxo' -> utxo'
+          _ -> error "Impossible happened: incorrect response type awaited"
     return $ UTxO.fromPairs $ filter predicate $ UTxO.pairs utxo
     where
-      predicate (txIn, txOut) = case query of
-        ByActor ac -> undefined
-        ByAddress ad -> undefined
+      predicate (txIn, TxOut (AddressInEra _ txOutAddress) _ _ _) = case query of
+        -- TODO
+        ByAddress address -> (txOutAddress) == unsafeCoerce address
         ByTxIns txIns -> txIn `elem` txIns

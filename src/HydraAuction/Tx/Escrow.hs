@@ -91,7 +91,6 @@ import HydraAuctionUtils.Monads (
   fromPlutusAddressInMonad,
   logMsg,
  )
-import Control.Monad.IO.Class (MonadIO(liftIO))
 
 toForgeStateToken :: AuctionTerms -> VoucherForgingRedeemer -> TxMintValue BuildTx
 toForgeStateToken terms redeemer =

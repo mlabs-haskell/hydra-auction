@@ -58,7 +58,6 @@ import Plutus.V2.Ledger.Api (
 import Cardano.Api.UTxO qualified as UTxO
 import CardanoClient (
   QueryPoint (QueryTip),
-  buildAddress,
   buildScriptAddress,
   queryEraHistory,
   queryProtocolParameters,
@@ -141,7 +140,7 @@ import Hydra.Cardano.Api (
   pattern TxValidityNoUpperBound,
   pattern TxValidityUpperBound,
   pattern TxWithdrawalsNone,
-  pattern WitnessPaymentKey,
+  pattern WitnessPaymentKey, ProtocolParameters,
  )
 import Hydra.Chain.Direct.TimeHandle (queryTimeHandle, slotFromUTCTime)
 
@@ -150,14 +149,17 @@ import HydraAuction.OnChain (AuctionScript, scriptValidatorForTerms)
 import HydraAuction.OnChain.Common (stageToInterval)
 import HydraAuction.Runner (ExecutionContext (..), Runner)
 import HydraAuction.Types (AuctionStage, AuctionTerms, auctionStages)
-import HydraAuctionUtils.Fixture (keysFor)
 import HydraAuctionUtils.Monads (
   MonadNetworkId (..),
   MonadQueryUtxo (..),
   UtxoQuery (..),
   logMsg,
   submitAndAwaitTx,
+  addressAndKeysForActor,
  )
+import HydraAuctionUtils.Fixture (readProtocolParams)
+import Cardano.Api.Protocol.Types (Protocol)
+import qualified Data.Set as Set
 
 minLovelace :: Lovelace
 minLovelace = 2_000_000
@@ -221,15 +223,7 @@ addressAndKeys ::
     )
 addressAndKeys = do
   MkExecutionContext {actor} <- ask
-  networkId' <- askNetworkId
-
-  (actorVk, actorSk) <- liftIO $ keysFor actor
-  let actorAddress = buildAddress actorVk networkId'
-
-  logMsg $
-    "Using actor: " <> show actor <> " with address: " <> show actorAddress
-
-  pure (actorAddress, actorVk, actorSk)
+  addressAndKeysForActor actor
 
 filterUtxoByCurrencySymbols :: [CurrencySymbol] -> UTxO -> UTxO
 filterUtxoByCurrencySymbols symbolsToMatch = UTxO.filter hasExactlySymbols
@@ -243,8 +237,8 @@ filterAdaOnlyUtxo = filterUtxoByCurrencySymbols [CurrencySymbol emptyByteString]
 
 actorTipUtxo :: Runner UTxO.UTxO
 actorTipUtxo = do
-  MkExecutionContext {actor} <- ask
-  queryUtxo (ByActor actor)
+  (address, _, _) <- addressAndKeys
+  queryUtxo (ByAddress address)
 
 scriptPlutusScript :: AuctionScript -> AuctionTerms -> PlutusScript
 scriptPlutusScript script terms = fromPlutusScript $ getValidator $ scriptValidatorForTerms script terms
@@ -255,7 +249,7 @@ scriptAddress script terms =
     (PlutusScript $ scriptPlutusScript script terms)
     <$> askNetworkId
 
-scriptUtxos :: AuctionScript -> AuctionTerms -> Runner UTxO.UTxO
+scriptUtxos :: (MonadNetworkId  m, MonadQueryUtxo m) => AuctionScript -> AuctionTerms -> m UTxO.UTxO
 scriptUtxos script terms = do
   scriptAddress' <- scriptAddress script terms
   queryUtxo (ByAddress scriptAddress')
@@ -285,6 +279,8 @@ toSlotNo ptime = do
       utcTime = posixSecondsToUTCTime ndtime
   either (error . show) return $ slotFromUTCTime timeHandle utcTime
 
+-- FIXME: document behaviour and L2 differences
+-- FIXME: MonadAutoCreateTx
 autoCreateTx :: Bool -> AutoCreateParams -> Runner Tx
 autoCreateTx forL1Transaction (AutoCreateParams {..}) = do
   MkExecutionContext {node} <- ask
@@ -296,26 +292,30 @@ autoCreateTx forL1Transaction (AutoCreateParams {..}) = do
     Nothing -> pure TxValidityNoUpperBound
     Just x -> TxValidityUpperBound <$> toSlotNo x
 
-  liftIO $ do
-    pparams <-
+  pparams <- liftIO $ if forL1Transaction
+    then
       queryProtocolParameters (networkId node) (nodeSocket node) QueryTip
-    body <-
-      if forL1Transaction
-        then
-          either (\x -> error $ "Autobalance error: " <> show x) id
-            <$> callBodyAutoBalance
-              node
-              (allAuthoredUtxos <> allWitnessedUtxos <> referenceUtxo)
-              (preBody pparams lowerBound upperBound)
-              changeAddress
-        else
-          return $
-            either (\x -> error $ "Tx body validation error: " <> show x) id $
-              -- FIXME: use createTransactionBody
-              makeTransactionBody $
-                preBody pparams lowerBound upperBound
+    else
+      readProtocolParams
 
-    pure $ makeSignedTransaction (signingWitnesses body) body
+  body <- liftIO $
+    either (\x -> error $ "Autobalance error: " <> show x) id
+      <$> callBodyAutoBalance
+          forL1Transaction
+          pparams
+          node
+          (allAuthoredUtxos <> allWitnessedUtxos <> referenceUtxo)
+          (preBody pparams lowerBound upperBound)
+          changeAddress
+      -- else
+      --   return $
+      --     either (\x -> error $ "Tx body validation error: " <> show x) id $
+      --       -- FIXME: use createTransactionBody
+      --       makeTransactionBody $
+      --         preBody pparams lowerBound upperBound
+
+  pure $ makeSignedTransaction (signingWitnesses body) body
+
   where
     allAuthoredUtxos = foldMap snd authoredUtxos
     allWitnessedUtxos = foldMap snd witnessedUtxos
@@ -331,14 +331,10 @@ autoCreateTx forL1Transaction (AutoCreateParams {..}) = do
         Nothing -> fst $ case UTxO.pairs $ filterAdaOnlyUtxo allAuthoredUtxos of
           x : _ -> x
           [] -> error "Cannot select collateral, cuz no money utxo was provided"
-    collateral' =
-      if forL1Transaction
-        then TxInsCollateral [txInCollateral]
-        else TxInsCollateral []
     preBody pparams lowerBound upperBound =
       TxBodyContent
         ((withWitness <$> txInsToSign) <> witnessedTxIns)
-        collateral'
+        (TxInsCollateral [txInCollateral])
         (TxInsReference (toList $ UTxO.inputSet referenceUtxo))
         outs
         TxTotalCollateralNone
@@ -363,20 +359,28 @@ autoCreateTx forL1Transaction (AutoCreateParams {..}) = do
     signingWitnesses body = fmap (makeSignWitness body . fst) authoredUtxos
 
 callBodyAutoBalance ::
+  Bool ->
+  ProtocolParameters ->
   RunningNode ->
   UTxO ->
   TxBodyContent BuildTx ->
   Address ShelleyAddr ->
   IO (Either TxBodyErrorAutoBalance TxBody)
 callBodyAutoBalance
+  forL1Transaction
+  pparams
   (RunningNode {networkId, nodeSocket})
   utxo
   preBody
   changeAddress = do
-    pparams <- queryProtocolParameters networkId nodeSocket QueryTip
     systemStart <- querySystemStart networkId nodeSocket QueryTip
     eraHistory <- queryEraHistory networkId nodeSocket QueryTip
-    stakePools <- queryStakePools networkId nodeSocket QueryTip
+
+    stakePools <- if forL1Transaction
+      then queryStakePools networkId nodeSocket QueryTip
+      else return Set.empty
+
+    putStrLn $ show pparams
 
     return $
       balancedTxBody
