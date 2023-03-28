@@ -237,6 +237,7 @@ library hydra-auction-utils
   import:          common-lang
   hs-source-dirs:  src-utils
   exposed-modules:
+    HydraAuctionUtils.BundledData
     HydraAuctionUtils.Extras.CardanoApi
     HydraAuctionUtils.Extras.Plutus
     HydraAuctionUtils.Extras.PlutusOrphans
