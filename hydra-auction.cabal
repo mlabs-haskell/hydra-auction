@@ -22,6 +22,7 @@ data-files:
   data/credentials/grace.vk
   data/credentials/hans.sk
   data/credentials/hans.vk
+  data/hydra-keys/*
   README.md
 
 source-repository head
