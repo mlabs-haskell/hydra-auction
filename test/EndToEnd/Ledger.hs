@@ -53,7 +53,7 @@ import HydraAuction.Tx.TermsConfig (
  )
 import HydraAuction.Tx.TestNFT (mintOneTestNFT)
 import HydraAuction.Types (ApprovedBidders (..), AuctionTerms (..), intToNatural)
-import HydraAuctionUtils.Fixture (Actor (..), getActorsPubKey)
+import HydraAuctionUtils.Fixture (Actor (..), getActorsPubKeyHash)
 
 -- Hydra auction test imports
 import EndToEnd.Utils (mkAssertion)
@@ -107,7 +107,7 @@ bidderBuysTest = mkAssertion $ do
   announceAuction terms
 
   waitUntil $ biddingStart terms
-  actorsPkh <- liftIO $ getActorsPubKey [buyer1, buyer2]
+  actorsPkh <- liftIO $ getActorsPubKeyHash [buyer1, buyer2]
   startBidding terms (ApprovedBidders actorsPkh)
 
   assertNFTNumEquals seller 0
@@ -170,7 +170,7 @@ sellerBidsTest = mkAssertion $ do
   announceAuction terms
 
   waitUntil $ biddingStart terms
-  sellerPkh <- liftIO $ getActorsPubKey [seller]
+  sellerPkh <- liftIO $ getActorsPubKeyHash [seller]
   result <- try $ startBidding terms (ApprovedBidders sellerPkh)
 
   case result of
@@ -197,7 +197,7 @@ unauthorisedBidderTest = mkAssertion $ do
   announceAuction terms
 
   waitUntil $ biddingStart terms
-  actorsPkh <- liftIO $ getActorsPubKey [buyer1]
+  actorsPkh <- liftIO $ getActorsPubKeyHash [buyer1]
   startBidding terms (ApprovedBidders actorsPkh)
 
   assertNFTNumEquals seller 0

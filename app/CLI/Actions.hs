@@ -41,7 +41,7 @@ import HydraAuction.Tx.StandingBid (cleanupTx, currentWinningBidder, newBid)
 import HydraAuction.Tx.TermsConfig (constructTermsDynamic)
 import HydraAuction.Tx.TestNFT (findTestNFT, mintOneTestNFT)
 import HydraAuction.Types (ApprovedBidders (..), AuctionStage (..), AuctionTerms, Natural, naturalToInt)
-import HydraAuctionUtils.Fixture (Actor (..), getActorsPubKey)
+import HydraAuctionUtils.Fixture (Actor (..), getActorsPubKeyHash)
 import HydraAuctionUtils.Monads (fromPlutusAddressInMonad)
 
 -- Hydra auction CLI imports
@@ -176,7 +176,7 @@ handleCliAction userAction = do
     StartBidding auctionName actors -> do
       -- FIXME: proper error printing
       Just terms <- liftIO $ readAuctionTerms auctionName
-      actorsPkh <- liftIO $ getActorsPubKey actors
+      actorsPkh <- liftIO $ getActorsPubKeyHash actors
       liftIO . putStrLn $
         show actor
           <> " starts the bidding phase of auction "

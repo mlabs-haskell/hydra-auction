@@ -1,10 +1,10 @@
 module HydraAuctionUtils.Fixture (
   Actor (..),
   keysFor,
-  getActorsPubKey,
-  getActorVkHash,
   hydraNodeActors,
   partyFor,
+  getActorPubKeyHash,
+  getActorsPubKeyHash,
 ) where
 
 -- Prelude imports
@@ -94,13 +94,13 @@ partyFor actor = do
       fail $ "cannot decode text envelope from '" <> show bs <> "', error: " <> show err
     Right vk -> return $ Party vk
 
-getActorVkHash :: Actor -> IO PubKeyHash
-getActorVkHash actor = do
+getActorPubKeyHash :: Actor -> IO PubKeyHash
+getActorPubKeyHash actor = do
   (actorVk, _) <- keysFor actor
   return $ toPlutusKeyHash $ verificationKeyHash actorVk
 
-getActorsPubKey :: [Actor] -> IO [PubKeyHash]
-getActorsPubKey actors = sequence $ getActorVkHash <$> actors
+getActorsPubKeyHash :: [Actor] -> IO [PubKeyHash]
+getActorsPubKeyHash actors = sequence $ getActorPubKeyHash <$> actors
 
 actorName :: Actor -> String
 actorName = \case
