@@ -64,7 +64,7 @@ data DelegateServerLog
 
 instance Pretty DelegateServerLog where
   pretty = \case
-    Started port -> "Started Server at Port" <> pretty (show port)
+    Started port -> "Started Server at Port" <> viaShow port
     FrontendConnected -> "Frontend connected to Server"
     DelegateOutput out -> "Delegate output" <> line <> viaShow out
     FrontendInput inp -> "Frontend input" <> line <> viaShow inp
