@@ -101,7 +101,7 @@ newBid terms bidAmount = do
         { authoredUtxos =
             [ (bidderSk, bidderMoneyUtxo)
             ]
-        , signers = [bidderSk]
+        , signers = []
         , referenceUtxo = mempty
         , witnessedUtxos =
             [ (standingBidWitness, standingBidUtxo)
@@ -127,7 +127,7 @@ cleanupTx terms = do
     autoSubmitAndAwaitTx $
       AutoCreateParams
         { authoredUtxos = [(actorSk, actorMoneyUtxo)]
-        , signers = [actorSk]
+        , signers = []
         , referenceUtxo = mempty
         , witnessedUtxos =
             [ (standingBidWitness, standingBidUtxo)
