@@ -1,30 +1,44 @@
 module Main (main) where
 
 -- Prelude imports
-
--- Prelude imports
-import Hydra.Cardano.Api.Prelude (lookupEnv)
-import Hydra.Prelude (readMaybe, traverse_)
+import Hydra.Cardano.Api.Prelude (MonadReader (ask), lookupEnv)
+import Hydra.Prelude (race_, readMaybe, traverse_)
 import Prelude
 
 -- Haskell imports
 import Control.Concurrent (threadDelay)
+import Control.Concurrent.STM (
+  TChan,
+  TQueue,
+  atomically,
+  dupTChan,
+  flushTQueue,
+  newTChan,
+  newTQueue,
+  readTChan,
+  writeTChan,
+  writeTQueue,
+ )
 import Control.Monad (forever, (>=>))
-import Control.Monad.Extra (whenJust)
-import Control.Monad.State (MonadState (get), StateT, evalStateT, put)
-import Control.Monad.Trans
-import Control.Tracer (Tracer, contramap, stdoutTracer)
+import Control.Monad.Trans (MonadIO (..), MonadTrans (lift))
+import Control.Tracer (Tracer, contramap, stdoutTracer, traceWith)
 import Data.Aeson (decode, encode)
 import Data.Maybe (fromMaybe)
 import Network.HTTP.Types (status200)
 import Network.Wai (Application, responseLBS)
 import Network.Wai.Handler.Warp (run)
 import Network.Wai.Handler.WebSockets (websocketsOr)
-import Network.WebSockets
+import Network.WebSockets (
+  acceptRequest,
+  defaultConnectionOptions,
+  receiveData,
+  sendTextData,
+  withPingThread,
+ )
 import Prettyprinter (Pretty (pretty))
 
 -- Hydra imports
-import Hydra.Network
+import Hydra.Network (IP)
 
 -- HydraAuction imports
 import HydraAuction.Delegate (
@@ -34,6 +48,7 @@ import HydraAuction.Delegate (
   delegateStep,
   execDelegateRunnerT,
  )
+import HydraAuction.Delegate.Interface (DelegateResponse, FrontendRequest)
 import HydraAuction.Delegate.Server (
   DelegateError (FrontendNoParse),
   DelegateServerConfig (DelegateServerConfig, dlgt'host, dlgt'port, dlgt'tick),
@@ -42,92 +57,119 @@ import HydraAuction.Delegate.Server (
   ServerAppT,
   TracerT,
   askTracer,
+  dlgt'ping,
   dlgt'tick,
   runWithTracer',
  )
 
-eventsProducer :: Monad m => Bool -> DelegateRunnerT m (Maybe DelegateEvent)
-eventsProducer thisIsFirstRun =
-  if thisIsFirstRun
-    then return $ Just Start
-    else return Nothing
-
 delegateServerApp ::
-  (MonadIO m, MonadTracer DelegateServerLog m) =>
+  ( MonadIO m
+  , MonadTracer DelegateServerLog m
+  , MonadReader (Tracer IO DelegateServerLog) m
+  ) =>
   Int ->
+  TQueue DelegateInput ->
+  TChan DelegateResponse ->
   ServerAppT m
-delegateServerApp tick pending = do
+delegateServerApp pingSecs reqq broadcast pending = do
   connection <- liftIO $ acceptRequest pending
   trace FrontendConnected
-  -- FIXME: we will probably have to do this in parallel, but how can we enqueue in the same
-  -- state? probably have to remodel this
-  execDelegateRunnerT $ flip evalStateT True $ mkRunner tick connection
 
+  tracer <- ask
+  liftIO $ do
+    broadcast' <- atomically $ dupTChan broadcast
+
+    let receive = forever $ do
+          inp <- receiveData connection
+          case decode @FrontendRequest inp of
+            Nothing -> traceWith tracer $ DelegateError FrontendNoParse
+            Just req -> do
+              traceWith tracer $ FrontendInput req
+              atomically $ writeTQueue reqq $ FrontendRequest req
+        send =
+          forever $
+            atomically (readTChan broadcast')
+              >>= sendTextData connection . encode
+
+    withPingThread connection pingSecs (pure ()) $ race_ receive send -- TODO: can we do this
+
+-- liftIO (receiveData connection)
+--   >>= ( \case
+--           Nothing -> trace (DelegateError FrontendNoParse)
+--           Just req -> do
+--             trace $ FrontendInput req
+--             -- delegateStep will enqueue a request
+--       )
+--     . decode
 -- FIXME: remove concrete monads and make this tagless final (needs MonadDelegate)
 mkRunner ::
+  forall m.
   (MonadIO m, MonadTracer DelegateServerLog m) =>
   Int ->
-  Connection ->
-  StateT Bool (DelegateRunnerT m) ()
+  TQueue DelegateInput ->
+  TChan DelegateResponse ->
+  DelegateRunnerT m ()
 -- FIXME: we need to abort at some point but this doesn't seem
 -- to be implemented yet so we just go on
-mkRunner tick con = forever $ do
-  isFirstRun <- get
-  _ <- lift $ do
-    let encodeSend = liftIO . sendTextData con . encode
-    liftIO (receiveData con)
-      >>= ( \case
-              Nothing -> lift $ trace (DelegateError FrontendNoParse)
-              Just req -> do
-                lift . trace $ FrontendInput req
-                step <- delegateStep (FrontendRequest req)
-                lift $ traverse_ (trace . DelegateOutput) step
-                encodeSend step
-          )
-        -- yes, this is not nice, but hlint wants it so badly
-        . decode
+mkRunner tick reqq broadcast = forever $ do
+  -- FIXME: more elaborate logic for eventsProducer
+  let encodeBroadcast :: [DelegateResponse] -> DelegateRunnerT m ()
+      encodeBroadcast responses = do
+        liftIO . atomically $ traverse_ (writeTChan broadcast) responses
+        lift $ traverse_ (trace . DelegateOutput) responses
 
-    -- FIXME: more elaborate logic for eventsProducer
-    mdelegateEvent <- eventsProducer isFirstRun
-    whenJust (DelegateEvent <$> mdelegateEvent) $
-      delegateStep >=> encodeSend
+  events <- liftIO $ do
+    atomically $ flushTQueue reqq
+
+  traverse_ (delegateStep >=> encodeBroadcast) events
 
   liftIO $ threadDelay tick
-  put False
 
 runDelegateServer ::
   DelegateServerConfig ->
   TracerT DelegateServerLog IO ()
 runDelegateServer conf = do
   trace (Started $ dlgt'port conf)
+
   let fallback :: Application
       fallback _req res =
         res $
           responseLBS status200 [("Content-Type", "text/plain")] "Websocket endpoint of delegate server"
 
   tracer <- askTracer
+
+  delegateInputChan <- liftIO . atomically $ do
+    q <- newTQueue
+    writeTQueue q (DelegateEvent Start)
+    pure q
+  delegateBroadCastChan <- liftIO . atomically $ newTChan
+
+  execDelegateRunnerT $ mkRunner (dlgt'tick conf) delegateInputChan delegateBroadCastChan
+
   liftIO $
     run (fromIntegral $ dlgt'port conf) $
       flip (websocketsOr defaultConnectionOptions) fallback $
-        runWithTracer' tracer . delegateServerApp (dlgt'tick conf)
+        runWithTracer' tracer . delegateServerApp (dlgt'ping conf) delegateInputChan delegateBroadCastChan
 
 main :: IO ()
 main = do
-  -- FIXME: cover either case. It probably should not be transformer.
-  port <- lookupEnv "port"
+  port <- lookupEnv "PORT"
 
-  -- FIXME: do we need this?
-  let host :: IP = "127.0.0.1"
-      tick :: Int = 1_000
-
-      conf :: DelegateServerConfig
+  let conf :: DelegateServerConfig
       conf =
         DelegateServerConfig
           { dlgt'host = host
           , dlgt'port = fromMaybe 8080 $ port >>= readMaybe
           , dlgt'tick = tick
+          , dlgt'ping = 30
           }
-      tracer :: Tracer IO DelegateServerLog
-      tracer = contramap (show . pretty) stdoutTracer
-
   runWithTracer' tracer $ runDelegateServer conf
+  where
+    tracer :: Tracer IO DelegateServerLog
+    tracer = contramap (show . pretty) stdoutTracer
+
+    host :: IP
+    host = "127.0.0.1"
+
+    tick :: Int
+    tick = 1_000

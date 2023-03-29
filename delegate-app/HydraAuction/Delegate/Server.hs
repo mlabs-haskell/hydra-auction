@@ -40,7 +40,13 @@ import Hydra.Network (IP, PortNumber)
 
 -- Hydra auction imports
 
-import Control.Monad.RWS
+import Control.Monad.Reader (
+  MonadIO,
+  MonadReader (ask),
+  MonadTrans (lift),
+ )
+import Control.Monad.State (MonadState)
+import Control.Monad.Writer (MonadWriter)
 import HydraAuction.Delegate.Interface (DelegateResponse, FrontendRequest)
 import Network.WebSockets (PendingConnection)
 
@@ -52,6 +58,8 @@ data DelegateServerConfig = DelegateServerConfig
   -- ^ the port number the delegate server receives input at
   , dlgt'tick :: Int
   -- ^ the amount of milliseconds, the thread should wait
+  , dlgt'ping :: Int
+  -- ^ the amount of seconds between pings for the client thread
   }
 
 data DelegateServerLog
