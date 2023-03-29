@@ -27,11 +27,11 @@ import HydraAuction.OnChain.Common (secondsLeftInInterval, stageToInterval)
 import HydraAuction.Tx.Common (currentAuctionStage, currentTimeMilliseconds)
 
 consumer :: Chan DelegateInput -> DelegateRunnerT IO ()
-consumer events = do
+consumer delegateInputs = do
   -- This will block until an event appears in the queue
-  ev <- liftIO $ readChan events
-  delegateResponse <- delegateStep ev
-  liftIO $ mbQueueAuctionPhases delegateResponse events
+  delegateIn <- liftIO $ readChan delegateInputs
+  delegateResponse <- delegateStep delegateIn
+  liftIO $ mbQueueAuctionPhases delegateResponse delegateInputs
   -- FIXME: send response to client
   liftIO $
     putStrLn $
@@ -51,14 +51,11 @@ mbQueueAuctionPhases [AuctionSet terms] events = queueCurrentStage
           void $ async (threadDelay (fromInteger s * 1000) >> queueCurrentStage)
 mbQueueAuctionPhases _ _ = pure ()
 
-spawnServer :: Chan DelegateInput -> IO ()
-spawnServer _ = forever $ pure ()
-
 main :: IO ()
 main = do
-  events <- newChan
+  delegateInputs <- newChan
   -- Write init even in queue
-  writeChan events (DelegateEvent Start)
+  writeChan delegateInputs (DelegateEvent Start)
   -- FIXME: cover either case. It probably should not be transformer.
-  _ <- execDelegateRunnerT $ forever (consumer events)
+  _ <- execDelegateRunnerT $ forever (consumer delegateInputs)
   return ()
