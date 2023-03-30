@@ -1,7 +1,7 @@
 module Main (main) where
 
 -- Prelude imports
-import Hydra.Cardano.Api.Prelude (MonadReader (ask), lookupEnv)
+import Hydra.Cardano.Api.Prelude (lookupEnv)
 import Hydra.Prelude (race_, readMaybe, traverse_)
 import Prelude
 
@@ -51,31 +51,42 @@ import HydraAuction.Delegate (
 import HydraAuction.Delegate.Interface (DelegateResponse, FrontendRequest)
 import HydraAuction.Delegate.Server (
   DelegateError (FrontendNoParse),
-  DelegateServerConfig (DelegateServerConfig, dlgt'host, dlgt'port, dlgt'tick),
-  DelegateServerLog (DelegateError, DelegateOutput, FrontendConnected, FrontendInput, Started),
-  MonadTracer (trace),
+  DelegateServerConfig (
+    DelegateServerConfig,
+    dlgt'host,
+    dlgt'ping,
+    dlgt'port,
+    dlgt'tick
+  ),
+  DelegateServerLog (
+    DelegateError,
+    DelegateOutput,
+    FrontendConnected,
+    FrontendInput,
+    Started
+  ),
+  DelegateTracerT,
   ServerAppT,
-  TracerT,
-  askTracer,
-  dlgt'ping,
-  dlgt'tick,
-  runWithTracer',
  )
+import HydraAuction.Delegate.Tracing (MonadTracer (trace), TracerT, askTracer, runWithTracer')
 
+{- | per websocket, a thread gets spawned which then
+   subscribes to the broadcast channel and sends to
+   the incoming channel of the delegate runner
+-}
 delegateServerApp ::
-  ( MonadIO m
-  , MonadTracer DelegateServerLog m
-  , MonadReader (Tracer IO DelegateServerLog) m
-  ) =>
+  -- | the amount of seconds between pings
   Int ->
+  -- | the queue for the inputs of the delegates (this is where the requests are enqueued)
   TQueue DelegateInput ->
+  -- | the queue for the broadcast (this is where we receives events from the runner)
   TChan DelegateResponse ->
-  ServerAppT m
+  ServerAppT (DelegateTracerT IO)
 delegateServerApp pingSecs reqq broadcast pending = do
   connection <- liftIO $ acceptRequest pending
   trace FrontendConnected
 
-  tracer <- ask
+  tracer <- askTracer
   liftIO $ do
     broadcast' <- atomically $ dupTChan broadcast
 
@@ -93,28 +104,21 @@ delegateServerApp pingSecs reqq broadcast pending = do
 
     withPingThread connection pingSecs (pure ()) $ race_ receive send -- TODO: can we do this
 
--- liftIO (receiveData connection)
---   >>= ( \case
---           Nothing -> trace (DelegateError FrontendNoParse)
---           Just req -> do
---             trace $ FrontendInput req
---             -- delegateStep will enqueue a request
---       )
---     . decode
--- FIXME: remove concrete monads and make this tagless final (needs MonadDelegate)
+{- | create a delegate runner that will listen for incoming events and output outgoing events
+   accordingly
+-}
 mkRunner ::
-  forall m.
-  (MonadIO m, MonadTracer DelegateServerLog m) =>
+  -- | the time in milliseconds that the runner sleeps between acts
   Int ->
+  -- | the queue of incoming messages
   TQueue DelegateInput ->
+  -- | the broadcast queue of outgoing messages (write only)
   TChan DelegateResponse ->
-  DelegateRunnerT m ()
+  DelegateRunnerT (DelegateTracerT IO) ()
 -- FIXME: we need to abort at some point but this doesn't seem
 -- to be implemented yet so we just go on
 mkRunner tick reqq broadcast = forever $ do
-  -- FIXME: more elaborate logic for eventsProducer
-  let encodeBroadcast :: [DelegateResponse] -> DelegateRunnerT m ()
-      encodeBroadcast responses = do
+  let encodeBroadcast responses = do
         liftIO . atomically $ traverse_ (writeTChan broadcast) responses
         lift $ traverse_ (trace . DelegateOutput) responses
 
@@ -125,7 +129,9 @@ mkRunner tick reqq broadcast = forever $ do
 
   liftIO $ threadDelay tick
 
+-- | run a delegate server
 runDelegateServer ::
+  -- | the configuration of the delegate server
   DelegateServerConfig ->
   TracerT DelegateServerLog IO ()
 runDelegateServer conf = do
