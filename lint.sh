@@ -17,4 +17,4 @@ then
       mode="+"
 fi
 
-pre-commit run hlint
+pre-commit run hlint --all-files
