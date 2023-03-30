@@ -56,7 +56,7 @@ deriving newtype instance MonadState s m => MonadState s (TracerT t m)
 runWithTracer :: forall a t m n. (forall b. n b -> m b) -> Tracer n t -> TracerT t m a -> m a
 runWithTracer natTrans tracer = flip runReaderT (natTracer natTrans tracer) . runTracerT
 
--- | like 'runWithTracher' but using 'id' as the natural transformation
+-- | like 'runWithTracer' but using 'id' as the natural transformation
 runWithTracer' :: forall a t m. Tracer m t -> TracerT t m a -> m a
 runWithTracer' = runWithTracer id
 

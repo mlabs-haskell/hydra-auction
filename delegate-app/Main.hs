@@ -6,7 +6,7 @@ import Hydra.Prelude (race_, readMaybe, traverse_)
 import Prelude
 
 -- Haskell imports
-import Control.Concurrent (threadDelay)
+import Control.Concurrent (forkIO, threadDelay)
 import Control.Concurrent.STM (
   TChan,
   TQueue,
@@ -21,17 +21,13 @@ import Control.Concurrent.STM (
  )
 import Control.Monad (forever, (>=>))
 import Control.Monad.Trans (MonadIO (..), MonadTrans (lift))
-import Control.Tracer (Tracer, contramap, stdoutTracer, traceWith)
-import Data.Aeson (decode, encode)
+import Control.Tracer (Tracer, contramap, stdoutTracer)
+import Data.Aeson (ToJSON, eitherDecode, encode)
 import Data.Maybe (fromMaybe)
-import Network.HTTP.Types (status200)
-import Network.Wai (Application, responseLBS)
-import Network.Wai.Handler.Warp (run)
-import Network.Wai.Handler.WebSockets (websocketsOr)
 import Network.WebSockets (
   acceptRequest,
-  defaultConnectionOptions,
   receiveData,
+  runServer,
   sendTextData,
   withPingThread,
  )
@@ -84,23 +80,32 @@ delegateServerApp ::
   ServerAppT (DelegateTracerT IO)
 delegateServerApp pingSecs reqq broadcast pending = do
   connection <- liftIO $ acceptRequest pending
-  trace FrontendConnected
 
+  trace FrontendConnected
   tracer <- askTracer
+
   liftIO $ do
     broadcast' <- atomically $ dupTChan broadcast
 
-    let receive = forever $ do
-          inp <- receiveData connection
-          case decode @FrontendRequest inp of
-            Nothing -> traceWith tracer $ DelegateError FrontendNoParse
-            Just req -> do
-              traceWith tracer $ FrontendInput req
-              atomically $ writeTQueue reqq $ FrontendRequest req
+    let encodeSend :: forall a. ToJSON a => a -> IO ()
+        encodeSend = sendTextData connection . encode
+
+        receive = forever $
+          runWithTracer' tracer $ do
+            inp <- liftIO $ receiveData connection
+            case eitherDecode @FrontendRequest inp of
+              Left msg -> do
+                let err = FrontendNoParse msg
+                trace (DelegateError err)
+                liftIO $ encodeSend err
+              Right req -> do
+                trace $ FrontendInput req
+                liftIO . atomically . writeTQueue reqq $ FrontendRequest req
+
         send =
           forever $
             atomically (readTChan broadcast')
-              >>= sendTextData connection . encode
+              >>= encodeSend
 
     withPingThread connection pingSecs (pure ()) $ race_ receive send -- TODO: can we do this
 
@@ -122,9 +127,7 @@ mkRunner tick reqq broadcast = forever $ do
         liftIO . atomically $ traverse_ (writeTChan broadcast) responses
         lift $ traverse_ (trace . DelegateOutput) responses
 
-  events <- liftIO $ do
-    atomically $ flushTQueue reqq
-
+  events <- liftIO . atomically $ flushTQueue reqq
   traverse_ (delegateStep >=> encodeBroadcast) events
 
   liftIO $ threadDelay tick
@@ -137,11 +140,6 @@ runDelegateServer ::
 runDelegateServer conf = do
   trace (Started $ dlgt'port conf)
 
-  let fallback :: Application
-      fallback _req res =
-        res $
-          responseLBS status200 [("Content-Type", "text/plain")] "Websocket endpoint of delegate server"
-
   tracer <- askTracer
 
   delegateInputChan <- liftIO . atomically $ do
@@ -150,12 +148,12 @@ runDelegateServer conf = do
     pure q
   delegateBroadCastChan <- liftIO . atomically $ newTChan
 
-  execDelegateRunnerT $ mkRunner (dlgt'tick conf) delegateInputChan delegateBroadCastChan
-
-  liftIO $
-    run (fromIntegral $ dlgt'port conf) $
-      flip (websocketsOr defaultConnectionOptions) fallback $
+  _ <-
+    liftIO . forkIO $
+      runServer (show $ dlgt'host conf) (fromIntegral $ dlgt'port conf) $
         runWithTracer' tracer . delegateServerApp (dlgt'ping conf) delegateInputChan delegateBroadCastChan
+
+  execDelegateRunnerT $ mkRunner (dlgt'tick conf) delegateInputChan delegateBroadCastChan
 
 main :: IO ()
 main = do

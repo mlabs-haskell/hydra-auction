@@ -15,9 +15,10 @@ module HydraAuction.Delegate.Server (
 import Prelude
 
 -- Haskell imports
+import Data.Aeson (FromJSON, ToJSON)
 import GHC.Generics (Generic)
 import Network.WebSockets (PendingConnection)
-import Prettyprinter (Pretty (pretty), line, viaShow, (<+>))
+import Prettyprinter (Doc, Pretty (pretty), indent, line, viaShow, (<+>))
 
 -- Cardano imports
 import Hydra.Network (IP, PortNumber)
@@ -51,19 +52,24 @@ instance Pretty DelegateServerLog where
   pretty = \case
     Started port -> "Started Server at Port" <+> viaShow port
     FrontendConnected -> "Frontend connected to Server"
-    DelegateOutput out -> "Delegate output" <> line <> viaShow out
-    FrontendInput inp -> "Frontend input" <> line <> viaShow inp
-    DelegateError err -> "Delegate error" <> line <> pretty err
+    DelegateOutput out -> "Delegate output" <> extraInfo (viaShow out)
+    FrontendInput inp -> "Frontend input" <> extraInfo (viaShow inp)
+    DelegateError err -> "Delegate error" <> extraInfo (pretty err)
 
 {- | the error that can be thrown by the delegate server, before entering the Delegate
    transformer
 -}
-data DelegateError = FrontendNoParse
+newtype DelegateError = FrontendNoParse String
   deriving stock (Eq, Show, Generic)
+  deriving anyclass (FromJSON, ToJSON)
 
 instance Pretty DelegateError where
   pretty = \case
-    FrontendNoParse -> "Could not parse the input provided by the frontend"
+    FrontendNoParse err -> "Could not parse the input provided by the frontend" <> extraInfo (pretty err)
+
+-- | additional information on a log event
+extraInfo :: forall ann. Doc ann -> Doc ann
+extraInfo = (line <>) . indent 2
 
 -- | trace a 'DelegateServerLog'
 type DelegateTracerT = TracerT DelegateServerLog

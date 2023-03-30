@@ -189,17 +189,7 @@ executable hydra-auction-delegate
 
   hs-source-dirs: delegate-app
   ghc-options:    -threaded -rtsopts
-  build-depends:
-    , cardano-api             >=1.35
-    , cardano-ledger-babbage
-    , cardano-ledger-core
-    , http-types
-    , hydra-auction
-    , plutus-cbor
-    , unliftio-core
-    , wai
-    , wai-websockets
-    , warp
+  build-depends:  hydra-auction
 
 library
   import:          common-lang
