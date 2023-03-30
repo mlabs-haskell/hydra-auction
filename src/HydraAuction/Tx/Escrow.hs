@@ -135,8 +135,8 @@ announceAuction terms = do
   void $
     autoSubmitAndAwaitTx $
       AutoCreateParams
-        { authoredUtxos = [(sellerSk, utxoWithLotNFT <> sellerMoneyUtxo)]
-        , signers = []
+        { signedUtxos = [(sellerSk, utxoWithLotNFT <> sellerMoneyUtxo)]
+        , additionalSigners = []
         , referenceUtxo = mempty
         , witnessedUtxos = []
         , collateral = Nothing
@@ -207,8 +207,8 @@ startBidding terms = do
   void $
     autoSubmitAndAwaitTx $
       AutoCreateParams
-        { authoredUtxos = [(sellerSk, sellerMoneyUtxo)]
-        , signers = []
+        { signedUtxos = [(sellerSk, sellerMoneyUtxo)]
+        , additionalSigners = []
         , referenceUtxo = mempty
         , witnessedUtxos = [(escrowWitness, escrowAnnounceUtxo)]
         , collateral = Nothing
@@ -301,8 +301,8 @@ bidderBuys terms = do
   void $
     autoSubmitAndAwaitTx $
       AutoCreateParams
-        { authoredUtxos = [(bidderSk, bidderMoneyUtxo)]
-        , signers = []
+        { signedUtxos = [(bidderSk, bidderMoneyUtxo)]
+        , additionalSigners = []
         , referenceUtxo = standingBidUtxo
         , witnessedUtxos =
             [ (escrowWitness, escrowBiddingStartedUtxo)
@@ -363,8 +363,8 @@ sellerReclaims terms = do
   void $
     autoSubmitAndAwaitTx $
       AutoCreateParams
-        { authoredUtxos = [(sellerSk, sellerMoneyUtxo)]
-        , signers = []
+        { signedUtxos = [(sellerSk, sellerMoneyUtxo)]
+        , additionalSigners = []
         , referenceUtxo = mempty
         , witnessedUtxos =
             [ (escrowWitness, escrowBiddingStartedUtxo)

@@ -293,8 +293,8 @@ scriptUtxos script terms = do
   liftIO $ queryUTxO networkId nodeSocket QueryTip [scriptAddress']
 
 data AutoCreateParams = AutoCreateParams
-  { authoredUtxos :: [(SigningKey PaymentKey, UTxO)]
-  , signers :: [SigningKey PaymentKey]
+  { signedUtxos :: [(SigningKey PaymentKey, UTxO)]
+  , additionalSigners :: [SigningKey PaymentKey]
   -- ^ List of keys that will sign the tx
   , referenceUtxo :: UTxO
   -- ^ Utxo which TxIns will be used as reference inputs
@@ -337,15 +337,15 @@ autoCreateTx (AutoCreateParams {..}) = do
       either (\x -> error $ "Autobalance error: " <> show x) id
         <$> callBodyAutoBalance
           node
-          (allAuthoredUtxos <> allWitnessedUtxos <> referenceUtxo)
+          (allSignedUtxos <> allWitnessedUtxos <> referenceUtxo)
           (preBody pparams lowerBound upperBound)
           changeAddress
     pure $ makeSignedTransaction (signingWitnesses body) body
   where
-    allAuthoredUtxos = foldMap snd authoredUtxos
+    allSignedUtxos = foldMap snd signedUtxos
     allWitnessedUtxos = foldMap snd witnessedUtxos
-    allSKeys = signers <> (fst <$> authoredUtxos)
-    txInsToSign = toList (UTxO.inputSet allAuthoredUtxos)
+    allSKeys = additionalSigners <> (fst <$> signedUtxos)
+    txInsToSign = toList (UTxO.inputSet allSignedUtxos)
     witnessedTxIns =
       [ (txIn, witness)
       | (witness, utxo) <- witnessedUtxos
@@ -354,7 +354,7 @@ autoCreateTx (AutoCreateParams {..}) = do
     txInCollateral =
       case collateral of
         Just txIn -> txIn
-        Nothing -> fst $ case UTxO.pairs $ filterAdaOnlyUtxo allAuthoredUtxos of
+        Nothing -> fst $ case UTxO.pairs $ filterAdaOnlyUtxo allSignedUtxos of
           x : _ -> x
           [] -> error "Cannot select collateral, cuz no money utxo was provided"
     preBody pparams lowerBound upperBound =

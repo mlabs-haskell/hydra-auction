@@ -78,8 +78,8 @@ mintOneTestNFT = do
 
   autoSubmitAndAwaitTx $
     AutoCreateParams
-      { authoredUtxos = [(actorSk, actorMoneyUtxo)]
-      , signers = []
+      { signedUtxos = [(actorSk, actorMoneyUtxo)]
+      , additionalSigners = []
       , referenceUtxo = mempty
       , witnessedUtxos = []
       , collateral = Nothing
