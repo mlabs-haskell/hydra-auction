@@ -120,6 +120,51 @@ services:
         ipv4_address: 172.16.238.30
     restart: always
 
+  devnet-server-1:
+    image: hydra-auction-delegate:latest
+    profiles:
+      - delegate-server
+    volumes:
+      - ./data/hydra-keys:/keys:ro
+    ports:
+      - "8001:8001"
+    command:
+      [ "hydra-auction-delegate"
+      , "--actor", "rupert"
+      , "--hydra-host", "127.0.0.1"
+      , "--hydra-port", "4001"
+      ]
+
+  devnet-server-2:
+    image: hydra-auction-delegate:latest
+    profiles:
+      - delegate-server
+    volumes:
+      - ./data/hydra-keys:/keys:ro
+    ports:
+      - "8002:8001"
+    command:
+      [ "hydra-auction-delegate"
+      , "--actor", "patricia"
+      , "--hydra-host", "127.0.0.1"
+      , "--hydra-port", "4002"
+      ]
+
+  devnet-server-3:
+    image: hydra-auction-delegate:latest
+    profiles:
+      - delegate-server
+    volumes:
+      - ./data/hydra-keys:/keys:ro
+    ports:
+      - "8003:8001"
+    command:
+      [ "hydra-auction-delegate"
+      , "--actor", "oscar"
+      , "--hydra-host", "127.0.0.1"
+      , "--hydra-port", "4003"
+      ]
+
 networks:
   hydra_net:
     driver: bridge

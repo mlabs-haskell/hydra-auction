@@ -176,6 +176,7 @@
           cliImage = pkgs.dockerTools.buildLayeredImage
             {
               name = "hydra-auction-cli";
+              tag = "latest";
               contents = [ haskellNixFlake.packages."hydra-auction:exe:hydra-auction" ];
               config = {
                 Cmd = [ "hydra-auction" ];
@@ -184,6 +185,7 @@
           delegateImage = pkgs.dockerTools.buildLayeredImage
             {
               name = "hydra-auction-delegate";
+              tag = "latest";
               contents = [ haskellNixFlake.packages."hydra-auction:exe:hydra-auction-delegate" ];
               config = {
                 Cmd = [ "hydra-auction-delegate" ];
