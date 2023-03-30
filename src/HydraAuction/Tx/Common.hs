@@ -273,7 +273,9 @@ scriptUtxos script terms = do
   queryUtxo (ByAddress scriptAddress')
 
 data AutoCreateParams = AutoCreateParams
-  { authoredUtxos :: [(SigningKey PaymentKey, UTxO)]
+  { signedUtxos :: [(SigningKey PaymentKey, UTxO)]
+  , additionalSigners :: [SigningKey PaymentKey]
+  -- ^ List of keys that will sign the tx
   , referenceUtxo :: UTxO
   -- ^ Utxo which TxIns will be used as reference inputs
   , collateral :: Maybe TxIn
@@ -315,14 +317,15 @@ autoCreateTx (AutoCreateParams {..}) = do
       either (\x -> error $ "Autobalance error: " <> show x) id
         <$> callBodyAutoBalance
           node
-          (allAuthoredUtxos <> allWitnessedUtxos <> referenceUtxo)
+          (allSignedUtxos <> allWitnessedUtxos <> referenceUtxo)
           (preBody pparams lowerBound upperBound)
           changeAddress
     pure $ makeSignedTransaction (signingWitnesses body) body
   where
-    allAuthoredUtxos = foldMap snd authoredUtxos
+    allSignedUtxos = foldMap snd signedUtxos
     allWitnessedUtxos = foldMap snd witnessedUtxos
-    txInsToSign = toList (UTxO.inputSet allAuthoredUtxos)
+    allSKeys = additionalSigners <> (fst <$> signedUtxos)
+    txInsToSign = toList (UTxO.inputSet allSignedUtxos)
     witnessedTxIns =
       [ (txIn, witness)
       | (witness, utxo) <- witnessedUtxos
@@ -331,7 +334,7 @@ autoCreateTx (AutoCreateParams {..}) = do
     txInCollateral =
       case collateral of
         Just txIn -> txIn
-        Nothing -> fst $ case UTxO.pairs $ filterAdaOnlyUtxo allAuthoredUtxos of
+        Nothing -> fst $ case UTxO.pairs $ filterAdaOnlyUtxo allSignedUtxos of
           x : _ -> x
           [] -> error "Cannot select collateral, cuz no money utxo was provided"
     preBody pparams lowerBound upperBound =
@@ -349,7 +352,7 @@ autoCreateTx (AutoCreateParams {..}) = do
         -- Adding all keys here, cuz other way `txSignedBy` does not see those
         -- signatures
         ( TxExtraKeyWitnesses $
-            fmap (verificationKeyHash . getVerificationKey . fst) authoredUtxos
+            fmap (verificationKeyHash . getVerificationKey) allSKeys
         )
         (BuildTxWith $ Just pparams)
         TxWithdrawalsNone
@@ -357,10 +360,11 @@ autoCreateTx (AutoCreateParams {..}) = do
         TxUpdateProposalNone
         toMint
         TxScriptValidityNone
-    makeSignWitness body sk = makeShelleyKeyWitness body (WitnessPaymentKey sk)
-    signingWitnesses :: TxBody -> [KeyWitness]
-    signingWitnesses body = fmap (makeSignWitness body . fst) authoredUtxos
 
+    signingWitnesses :: TxBody -> [KeyWitness]
+    signingWitnesses body = makeSignWitness <$> allSKeys
+      where
+        makeSignWitness sk = makeShelleyKeyWitness body (WitnessPaymentKey sk)
 callBodyAutoBalance ::
   RunningNode ->
   UTxO ->
