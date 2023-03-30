@@ -38,9 +38,16 @@ Will build the CLI application and link it to `./result/bin/hydra-auction`.
 ## Starting docker-compose environment
 
 To setup the environment required for the demo, we have a compose file
-which will start a single cardano-node and 3 hydra-nodes for the delgates.
+which will start a single cardano-node,
+3 hydra-nodes for the delgates,
+and 3 instances of the delegate server.
+
+Before starting the demo we will need to build the delegate server docker images.
+This is done through nix and can be done by `make build-docker`.
+This command will build the image and load it as `hydra-auction-delegate:latest`.
 
 We recommend using the `spin-up-new-devnet.sh` script
+to run the demo and start the components,
 as it will take care of setting up the correct files for the cardano-node
 and seeding the actors running the hydra-nodes with enough funds to manage the head lifecycle.
 
