@@ -73,6 +73,7 @@ common common-lang
     , hydra-node
     , hydra-prelude
     , mtl
+    , plutus-ledger-api
     , plutus-tx-plugin
     , prettyprinter
     , record-dot-preprocessor
@@ -117,6 +118,8 @@ common common-lang
     TemplateHaskell
     TupleSections
     TypeApplications
+    TypeFamilies
+    TypeFamilyDependencies
     TypeOperators
     TypeSynonymInstances
     UndecidableInstances
@@ -163,6 +166,7 @@ executable hydra-auction
     , directory
     , haskeline
     , hydra-auction
+    , hydra-auction-utils
     , hydra-cardano-api
     , hydra-plutus
     , hydra-test-utils
@@ -170,7 +174,6 @@ executable hydra-auction
     , optparse-applicative
     , ouroboros-network               ==0.1.0.1
     , parsec
-    , plutus-ledger-api               ==1.0.0.0
     , plutus-tx
     , QuickCheck
     , serialise
@@ -193,12 +196,10 @@ library
     HydraAuction.Addresses
     HydraAuction.Delegate
     HydraAuction.Delegate.Interface
-    HydraAuction.Fixture
     HydraAuction.Hydra.Interface
     HydraAuction.OnChain
     HydraAuction.OnChain.Common
     HydraAuction.OnChain.TestNFT
-    HydraAuction.Plutus.Orphans
     HydraAuction.Runner
     HydraAuction.Runner.Time
     HydraAuction.Tx.Common
@@ -213,11 +214,11 @@ library
     HydraAuction.OnChain.Escrow
     HydraAuction.OnChain.StandingBid
     HydraAuction.OnChain.StateToken
-    HydraAuction.Plutus.Extras
     HydraAuction.Runner.Tracer
 
   build-depends:
     , directory
+    , hydra-auction-utils
     , hydra-cardano-api
     , hydra-cluster
     , hydra-node
@@ -225,11 +226,25 @@ library
     , hydra-prelude
     , hydra-test-utils
     , natural-numbers
-    , plutus-ledger-api
     , plutus-tx
     , time
 
   hs-source-dirs:  src
+
+library hydra-auction-utils
+  import:          common-lang
+  hs-source-dirs:  src-utils
+  exposed-modules:
+    HydraAuctionUtils.Extras.CardanoApi
+    HydraAuctionUtils.Extras.Plutus
+    HydraAuctionUtils.Extras.PlutusOrphans
+    HydraAuctionUtils.Fixture
+    HydraAuctionUtils.Monads
+    Paths_hydra_auction
+
+  build-depends:
+    , hydra-plutus
+    , plutus-tx
 
 test-suite hydra-auction-test
   import:         common-lang
@@ -248,6 +263,7 @@ test-suite hydra-auction-test
     , containers
     , directory
     , hydra-auction
+    , hydra-auction-utils
     , hydra-cardano-api
     , hydra-cluster
     , hydra-node
@@ -256,7 +272,6 @@ test-suite hydra-auction-test
     , lens
     , lens-aeson
     , plutus-cbor
-    , plutus-ledger-api
     , plutus-tx
     , plutus-tx-plugin
     , QuickCheck

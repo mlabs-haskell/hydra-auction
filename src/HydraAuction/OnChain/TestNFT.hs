@@ -9,7 +9,7 @@ import Plutus.V2.Ledger.Api (CurrencySymbol, MintingPolicy, TokenName (..), mkMi
 import PlutusTx qualified
 
 -- Hydra auction imports
-import HydraAuction.Plutus.Extras (scriptCurrencySymbol)
+import HydraAuctionUtils.Extras.Plutus (scriptCurrencySymbol)
 
 testNftPolicy :: MintingPolicy
 testNftPolicy =

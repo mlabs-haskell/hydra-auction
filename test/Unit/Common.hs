@@ -27,7 +27,6 @@ import Hydra.Ledger.Cardano ()
 import Plutus.V1.Ledger.Interval (from, interval, to)
 
 -- Hydra auction imports
-import HydraAuction.Fixture (Actor (..))
 import HydraAuction.OnChain.Common (secondsLeftInInterval)
 import HydraAuction.Tx.Common (currentAuctionStage)
 import HydraAuction.Tx.TermsConfig (
@@ -36,6 +35,7 @@ import HydraAuction.Tx.TermsConfig (
   constructTermsDynamic,
  )
 import HydraAuction.Types (AuctionStage (..), intToNatural)
+import HydraAuctionUtils.Fixture (Actor (..))
 
 testSuite :: TestTree
 testSuite =

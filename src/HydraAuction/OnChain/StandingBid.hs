@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -fno-specialise #-}
+
 module HydraAuction.OnChain.StandingBid (mkStandingBidValidator) where
 
 -- Prelude imports
@@ -8,7 +10,7 @@ import Plutus.V1.Ledger.Address (pubKeyHashAddress, scriptHashAddress)
 import Plutus.V1.Ledger.Interval (contains, interval)
 import Plutus.V1.Ledger.Value (assetClass, assetClassValueOf)
 import Plutus.V2.Ledger.Api (TxInfo, scriptContextTxInfo, txInInfoResolved, txInfoInputs, txInfoMint, txInfoOutputs, txInfoValidRange, txOutAddress)
-import Plutus.V2.Ledger.Contexts (ScriptContext, ownHash)
+import Plutus.V2.Ledger.Contexts (ScriptContext, ownHash, txSignedBy)
 
 -- Hydra auction imports
 import HydraAuction.Addresses (VoucherCS (..))
@@ -19,6 +21,7 @@ import HydraAuction.OnChain.Common (
  )
 import HydraAuction.OnChain.StateToken (StateTokenKind (..), stateTokenKindToTokenName)
 import HydraAuction.Types (
+  ApprovedBidders (..),
   AuctionTerms (..),
   BidTerms (..),
   StandingBidDatum (..),
@@ -53,22 +56,24 @@ mkStandingBidValidator terms datum redeemer context =
     info :: TxInfo
     info = scriptContextTxInfo context
     validNewBid :: StandingBidState -> StandingBidState -> Bool
-    validNewBid oldBid (Bid newBidTerms) =
-      -- FIXME: can be removed when we will have approved bidder functionality
-      traceIfFalse
-        "Seller cannot place a bid"
-        (seller terms /= bidBidder newBidTerms)
+    validNewBid (StandingBidState oldApprovedBidders oldBid) (StandingBidState newApprovedBidders (Just newBidTerms)) =
+      traceIfFalse "Bidder not signed" (txSignedBy info (bidBidder newBidTerms))
+        && traceIfFalse
+          "Bidder is not approved"
+          (bidBidder newBidTerms `elem` bidders oldApprovedBidders)
+        && traceIfFalse
+          "Approved Bidders can not be modified"
+          (oldApprovedBidders == newApprovedBidders)
         && case oldBid of
-          Bid oldBidTerms ->
+          Just oldBidTerms ->
             traceIfFalse "Bid increment is not greater than minimumBidIncrement" $
               bidAmount oldBidTerms + minimumBidIncrement terms <= bidAmount newBidTerms
-          NoBid ->
+          Nothing ->
             traceIfFalse "Bid is not greater than startingBid" $
               startingBid terms <= bidAmount newBidTerms
-    validNewBid _ NoBid = False
+    validNewBid _ (StandingBidState _ Nothing) = False
     checkCorrectNewBidOutput inputOut = case byAddress (scriptHashAddress $ ownHash context) $ txInfoOutputs info of
       [out] ->
-        -- FIXME: Check bidder has right to make a bid
         traceIfFalse "Output is not into standing bid" $
           txOutAddress out == scriptHashAddress (ownHash context)
             && checkValidNewBid out
