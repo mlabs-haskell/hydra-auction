@@ -38,7 +38,7 @@ consumer delegateInputs = do
       "Delegate responses for input: " <> show delegateResponse
 
 mbQueueAuctionPhases :: [DelegateResponse] -> Chan DelegateInput -> IO ()
-mbQueueAuctionPhases [AuctionSet terms] events = queueCurrentStage
+mbQueueAuctionPhases [AuctionSet terms] events = void $ async queueCurrentStage
   where
     queueCurrentStage = do
       currentStage <- currentAuctionStage terms
@@ -48,7 +48,8 @@ mbQueueAuctionPhases [AuctionSet terms] events = queueCurrentStage
       case mSecsLeft of
         Nothing -> pure ()
         Just s -> do
-          void $ async (threadDelay (fromInteger s * 1000) >> queueCurrentStage)
+          threadDelay (fromInteger s * 1000)
+          queueCurrentStage
 mbQueueAuctionPhases _ _ = pure ()
 
 main :: IO ()
