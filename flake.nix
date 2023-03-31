@@ -101,113 +101,125 @@
             };
         })
       ];
+      removeIncompatibleAttrs = pkgNames: attrName: systems: flake:
+        let
+          f = attrset: system:
+            nixpkgs.lib.updateManyAttrsByPath [{
+              path = [ "${attrName}" "${system}" ];
+              update = set: (builtins.removeAttrs set pkgNames);
+            }]
+              attrset;
+        in
+        builtins.foldl' f flake systems;
     in
-    flake-utils.lib.eachSystem systems
-      (system:
-      let
-        pkgs = import nixpkgs {
-          inherit system overlays;
-          inherit (haskellNix) config;
-        };
-        haskellNixFlake = pkgs.hydraProject.flake { };
+    removeIncompatibleAttrs [ "cliImage" "delegateImage" ] "packages" (builtins.filter (sys: sys != "x86_64-linux") systems)
+      (flake-utils.lib.eachSystem systems
+        (system:
+        let
+          pkgs = import nixpkgs {
+            inherit system overlays;
+            inherit (haskellNix) config;
+          };
+          haskellNixFlake = pkgs.hydraProject.flake { };
 
-        preCommitHook = pre-commit-hooks.lib.${system}.run
-          {
-            src = ./.;
-            hooks = {
-              nixpkgs-fmt.enable = true;
-              statix.enable = true;
-              deadnix.enable = true;
-              fourmolu.enable = true;
-              hlint.enable = true;
-              cabal-fmt.enable = true;
+          preCommitHook = pre-commit-hooks.lib.${system}.run
+            {
+              src = ./.;
+              hooks = {
+                nixpkgs-fmt.enable = true;
+                statix.enable = true;
+                deadnix.enable = true;
+                fourmolu.enable = true;
+                hlint.enable = true;
+                cabal-fmt.enable = true;
+              };
+              tools.fourmolu = pkgs.lib.mkForce pkgs.haskell.packages.ghc92.fourmolu;
+              settings = {
+                ormolu.defaultExtensions = [
+                  "BangPatterns"
+                  "TypeApplications"
+                  "QualifiedDo"
+                  "NondecreasingIndentation"
+                  "PatternSynonyms"
+                  "ImportQualifiedPost"
+                  "TemplateHaskell"
+                ];
+              };
             };
-            tools.fourmolu = pkgs.lib.mkForce pkgs.haskell.packages.ghc92.fourmolu;
-            settings = {
-              ormolu.defaultExtensions = [
-                "BangPatterns"
-                "TypeApplications"
-                "QualifiedDo"
-                "NondecreasingIndentation"
-                "PatternSynonyms"
-                "ImportQualifiedPost"
-                "TemplateHaskell"
+
+          wrapTest = test: pkgs.runCommand "${test.name}-wrapped"
+            {
+              nativeBuildInputs = [
+                pkgs.bubblewrap
               ];
-            };
+              buildInputs = [
+                cardano-node.packages.${system}.cardano-node
+                cardano-node.packages.${system}.cardano-cli
+                hydra.packages.${system}.hydra-node
+              ];
+            }
+            ''
+              mkdir -p $out/log
+              exec &> >(tee $out/log/test.log)
+              bwrap \
+                --ro-bind /nix/store /nix/store \
+                --bind /build /build \
+                --share-net \
+                --proc /proc \
+                --ro-bind ${pkgs.tzdata}/share/zoneinfo /usr/share/zoneinfo \
+                -- ${test}/bin/${test.exeName} >&2
+            '';
+
+          hydraChecks = haskellNixFlake.packages // {
+            # NOTE: mind that we use `packages` here, not checks
+            hydra-test = wrapTest haskellNixFlake.packages."hydra-auction:test:hydra-auction-test";
+          };
+        in
+        rec {
+          inherit haskellNixFlake;
+          packages = {
+            default = haskellNixFlake.packages."hydra-auction:exe:hydra-auction";
+            # FIXME: this can probably be removed
+            check = pkgs.runCommand "combined-test"
+              {
+                nativeBuildInputs = builtins.attrValues self.checks.${system};
+              } "touch $out";
+            cliImage = pkgs.dockerTools.buildLayeredImage
+              {
+                name = "hydra-auction-cli";
+                tag = "latest";
+                contents = [ haskellNixFlake.packages."hydra-auction:exe:hydra-auction" ];
+                config = {
+                  Cmd = [ "hydra-auction" ];
+                };
+              };
+            delegateImage = pkgs.dockerTools.buildLayeredImage
+              {
+                name = "hydra-auction-delegate";
+                tag = "latest";
+                contents = [ haskellNixFlake.packages."hydra-auction:exe:hydra-auction-delegate" ];
+                config = {
+                  Cmd = [ "hydra-auction-delegate" ];
+                };
+              };
           };
 
-        wrapTest = test: pkgs.runCommand "${test.name}-wrapped"
-          {
-            nativeBuildInputs = [
-              pkgs.bubblewrap
-            ];
-            buildInputs = [
-              cardano-node.packages.${system}.cardano-node
-              cardano-node.packages.${system}.cardano-cli
-              hydra.packages.${system}.hydra-node
-            ];
-          }
-          ''
-            mkdir -p $out/log
-            exec &> >(tee $out/log/test.log)
-            bwrap \
-              --ro-bind /nix/store /nix/store \
-              --bind /build /build \
-              --share-net \
-              --proc /proc \
-              --ro-bind ${pkgs.tzdata}/share/zoneinfo /usr/share/zoneinfo \
-              -- ${test}/bin/${test.exeName} >&2
-          '';
+          devShells = builtins.mapAttrs
+            (_: shell: shell.overrideAttrs (old: {
+              shellHook = old.shellHook + preCommitHook.shellHook;
+              buildInputs = old.buildInputs ++ [
+                pkgs.docker-compose
+                pkgs.jq
+              ];
+            }))
+            haskellNixFlake.devShells;
 
-        hydraChecks = haskellNixFlake.packages // {
-          # NOTE: mind that we use `packages` here, not checks
-          hydra-test = wrapTest haskellNixFlake.packages."hydra-auction:test:hydra-auction-test";
-        };
-      in
-      rec {
-        inherit haskellNixFlake;
-        packages = {
-          default = haskellNixFlake.packages."hydra-auction:exe:hydra-auction";
-          # FIXME: this can probably be removed
-          check = pkgs.runCommand "combined-test"
-            {
-              nativeBuildInputs = builtins.attrValues self.checks.${system};
-            } "touch $out";
-          cliImage = pkgs.dockerTools.buildLayeredImage
-            {
-              name = "hydra-auction-cli";
-              tag = "latest";
-              contents = [ haskellNixFlake.packages."hydra-auction:exe:hydra-auction" ];
-              config = {
-                Cmd = [ "hydra-auction" ];
-              };
-            };
-          delegateImage = pkgs.dockerTools.buildLayeredImage
-            {
-              name = "hydra-auction-delegate";
-              tag = "latest";
-              contents = [ haskellNixFlake.packages."hydra-auction:exe:hydra-auction-delegate" ];
-              config = {
-                Cmd = [ "hydra-auction-delegate" ];
-              };
-            };
-        };
+          checks = hydraChecks // {
+            formatting = preCommitHook;
+          };
 
-        devShells = builtins.mapAttrs
-          (_: shell: shell.overrideAttrs (old: {
-            shellHook = old.shellHook + preCommitHook.shellHook;
-            buildInputs = old.buildInputs ++ [
-              pkgs.docker-compose
-              pkgs.jq
-            ];
-          }))
-          haskellNixFlake.devShells;
-
-        checks = hydraChecks // {
-          formatting = preCommitHook;
-        };
-
-      }) // {
-      herculesCI.ciSystems = [ "x86_64-linux" ];
-    };
+        }) // {
+        inherit removeIncompatibleAttrs;
+        herculesCI.ciSystems = [ "x86_64-linux" ];
+      });
 }
