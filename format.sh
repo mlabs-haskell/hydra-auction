@@ -8,5 +8,5 @@ export LC_CTYPE=C.UTF-8
 export LC_ALL=C.UTF-8
 export LANG=C.UTF-8
 
-pre-commit run fourmolu
-pre-commit run cabal-fmt
+pre-commit run fourmolu --all-files
+pre-commit run cabal-fmt --all-files

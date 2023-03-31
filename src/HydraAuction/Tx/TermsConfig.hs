@@ -5,7 +5,6 @@ module HydraAuction.Tx.TermsConfig (
   AuctionTermsDynamic (..),
   constructTermsDynamic,
   configToAuctionTerms,
-  getActorVkHash,
 ) where
 
 -- Prelude imports
@@ -29,11 +28,11 @@ import Plutus.V2.Ledger.Contexts (TxOutRef)
 import Hydra.Cardano.Api (TxIn, toPlutusTxOutRef)
 
 -- Hydra auction imports
-import HydraAuction.Fixture (Actor, getActorVkHash)
 import HydraAuction.OnChain.TestNFT (testNftAssetClass)
-import HydraAuction.Plutus.Orphans ()
 import HydraAuction.Tx.Common (currentTimeSeconds)
 import HydraAuction.Types (AuctionTerms (..), Natural)
+import HydraAuctionUtils.Extras.PlutusOrphans ()
+import HydraAuctionUtils.Fixture (Actor, getActorVkHash)
 
 data AuctionTermsConfig = AuctionTermsConfig
   { configDiffBiddingStart :: !Integer

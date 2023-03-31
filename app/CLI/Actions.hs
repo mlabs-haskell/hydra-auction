@@ -18,7 +18,6 @@ import Plutus.V1.Ledger.Address (pubKeyHashAddress)
 import Hydra.Cardano.Api (Lovelace, pattern ShelleyAddressInEra)
 
 -- Hydra auction imports
-import HydraAuction.Fixture (Actor (..), getActorsPubKey)
 import HydraAuction.OnChain (AuctionScript)
 import HydraAuction.Runner (
   ExecutionContext (..),
@@ -30,7 +29,6 @@ import HydraAuction.Tx.Common (
   actorTipUtxo,
   addressAndKeys,
   currentAuctionStage,
-  fromPlutusAddressInRunner,
   scriptUtxos,
  )
 import HydraAuction.Tx.Escrow (
@@ -43,6 +41,8 @@ import HydraAuction.Tx.StandingBid (cleanupTx, currentWinningBidder, newBid)
 import HydraAuction.Tx.TermsConfig (constructTermsDynamic)
 import HydraAuction.Tx.TestNFT (findTestNFT, mintOneTestNFT)
 import HydraAuction.Types (ApprovedBidders (..), AuctionStage (..), AuctionTerms, Natural, naturalToInt)
+import HydraAuctionUtils.Fixture (Actor (..), getActorsPubKey)
+import HydraAuctionUtils.Monads (fromPlutusAddressInMonad)
 
 -- Hydra auction CLI imports
 import CLI.Config (
@@ -106,7 +106,7 @@ handleCliAction userAction = do
     Seed -> do
       liftIO . putStrLn $
         "Seeding all wallets with 10,000 ADA."
-      initWallet seedAmount actor
+      void $ initWallet seedAmount actor
     Prepare sellerActor -> do
       liftIO . putStrLn $
         "Seeding all wallets with 10,000 ADA and minting the test NFT for "
@@ -210,7 +210,7 @@ handleCliAction userAction = do
         case mWinningBidderPk of
           Just winningBidderPk -> do
             winningBidderAddress <-
-              fromPlutusAddressInRunner $
+              fromPlutusAddressInMonad $
                 pubKeyHashAddress winningBidderPk
             if winningBidderAddress == ShelleyAddressInEra currentActorAddress
               then do

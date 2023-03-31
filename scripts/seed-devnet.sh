@@ -43,7 +43,7 @@ function hnode() {
   else
       docker run --rm -it \
         -v ${SCRIPT_DIR}/devnet:/devnet \
-        ghcr.io/input-output-hk/hydra-node:0.8.1 -- ${@}
+        ghcr.io/input-output-hk/hydra-node:0.9.0 -- ${@}
   fi
 }
 
