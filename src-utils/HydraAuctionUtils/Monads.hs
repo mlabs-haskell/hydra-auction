@@ -1,3 +1,5 @@
+{-# LANGUAGE StrictData #-}
+
 module HydraAuctionUtils.Monads (
   UtxoQuery (..),
   MonadTrace (..),
