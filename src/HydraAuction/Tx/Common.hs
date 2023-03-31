@@ -4,7 +4,6 @@ module HydraAuction.Tx.Common (
   AutoCreateParams (..),
   filterAdaOnlyUtxo,
   actorTipUtxo,
-  toSlotNo,
   addressAndKeys,
   filterUtxoByCurrencySymbols,
   minLovelace,
@@ -24,7 +23,7 @@ module HydraAuction.Tx.Common (
 ) where
 
 -- Prelude imports
-import Hydra.Prelude (ask, liftIO, toList)
+import Hydra.Prelude (ask, toList)
 import PlutusTx.Prelude (emptyByteString)
 import Prelude
 
@@ -32,8 +31,6 @@ import Prelude
 import Control.Monad.TimeMachine (MonadTime (getCurrentTime))
 import Data.List (sort)
 import Data.Map qualified as Map
-import Data.Time (secondsToNominalDiffTime)
-import Data.Time.Clock.POSIX (posixSecondsToUTCTime)
 import Data.Time.Clock.POSIX qualified as POSIXTime
 import Data.Tuple.Extra (first)
 
@@ -57,17 +54,7 @@ import Plutus.V2.Ledger.Api (
 
 -- Hydra imports
 import Cardano.Api.UTxO qualified as UTxO
-import CardanoClient (
-  QueryPoint (QueryTip),
-  buildScriptAddress,
-  queryEraHistory,
-  queryProtocolParameters,
-  queryStakePools,
-  querySystemStart,
- )
-import CardanoNode (
-  RunningNode (RunningNode, networkId, nodeSocket),
- )
+import CardanoClient (buildScriptAddress)
 import Hydra.Cardano.Api (
   Address,
   AssetName,
@@ -83,7 +70,6 @@ import Hydra.Cardano.Api (
   ScriptWitness,
   ShelleyAddr,
   SigningKey,
-  SlotNo,
   ToScriptData,
   Tx,
   TxBody,
@@ -142,7 +128,6 @@ import Hydra.Cardano.Api (
   pattern TxWithdrawalsNone,
   pattern WitnessPaymentKey,
  )
-import Hydra.Chain.Direct.TimeHandle (queryTimeHandle, slotFromUTCTime)
 
 -- Hydra auction imports
 
@@ -160,8 +145,12 @@ import HydraAuction.Types (
   auctionStages,
  )
 import HydraAuctionUtils.Monads (
+  BlockchainParams (..),
+  MonadBlockchainParams (..),
   MonadNetworkId (..),
   MonadQueryUtxo (..),
+  MonadSubmitTx,
+  MonadTrace,
   UtxoQuery (..),
   addressAndKeysForActor,
   logMsg,
@@ -288,20 +277,11 @@ data AutoCreateParams = AutoCreateParams
   , validityBound :: (Maybe POSIXTime, Maybe POSIXTime)
   }
 
-toSlotNo :: POSIXTime -> Runner SlotNo
-toSlotNo ptime = do
-  MkExecutionContext {node} <- ask
-  timeHandle <-
-    liftIO $
-      queryTimeHandle (networkId node) (nodeSocket node)
-  let timeInSeconds = getPOSIXTime ptime `div` 1000
-      ndtime = secondsToNominalDiffTime $ fromInteger timeInSeconds
-      utcTime = posixSecondsToUTCTime ndtime
-  either (error . show) return $ slotFromUTCTime timeHandle utcTime
-
-autoCreateTx :: AutoCreateParams -> Runner Tx
+autoCreateTx ::
+  (MonadFail m, MonadBlockchainParams m) =>
+  AutoCreateParams ->
+  m Tx
 autoCreateTx (AutoCreateParams {..}) = do
-  MkExecutionContext {node} <- ask
   let (lowerBound', upperBound') = validityBound
   lowerBound <- case lowerBound' of
     Nothing -> pure TxValidityNoLowerBound
@@ -310,17 +290,15 @@ autoCreateTx (AutoCreateParams {..}) = do
     Nothing -> pure TxValidityNoUpperBound
     Just x -> TxValidityUpperBound <$> toSlotNo x
 
-  liftIO $ do
-    pparams <-
-      queryProtocolParameters (networkId node) (nodeSocket node) QueryTip
-    body <-
-      either (\x -> error $ "Autobalance error: " <> show x) id
-        <$> callBodyAutoBalance
-          node
-          (allSignedUtxos <> allWitnessedUtxos <> referenceUtxo)
-          (preBody pparams lowerBound upperBound)
-          changeAddress
-    pure $ makeSignedTransaction (signingWitnesses body) body
+  MkBlockchainParams {protocolParameters} <-
+    queryBlockchainParams
+  body <-
+    either (\x -> fail $ "Autobalance error: " <> show x) return
+      =<< callBodyAutoBalance
+        (allSignedUtxos <> allWitnessedUtxos <> referenceUtxo)
+        (preBody protocolParameters lowerBound upperBound)
+        changeAddress
+  pure $ makeSignedTransaction (signingWitnesses body) body
   where
     allSignedUtxos = foldMap snd signedUtxos
     allWitnessedUtxos = foldMap snd witnessedUtxos
@@ -337,7 +315,7 @@ autoCreateTx (AutoCreateParams {..}) = do
         Nothing -> fst $ case UTxO.pairs $ filterAdaOnlyUtxo allSignedUtxos of
           x : _ -> x
           [] -> error "Cannot select collateral, cuz no money utxo was provided"
-    preBody pparams lowerBound upperBound =
+    preBody protocolParameters lowerBound upperBound =
       TxBodyContent
         ((withWitness <$> txInsToSign) <> witnessedTxIns)
         (TxInsCollateral [txInCollateral])
@@ -354,7 +332,7 @@ autoCreateTx (AutoCreateParams {..}) = do
         ( TxExtraKeyWitnesses $
             fmap (verificationKeyHash . getVerificationKey) allSKeys
         )
-        (BuildTxWith $ Just pparams)
+        (BuildTxWith $ Just protocolParameters)
         TxWithdrawalsNone
         TxCertificatesNone
         TxUpdateProposalNone
@@ -366,35 +344,34 @@ autoCreateTx (AutoCreateParams {..}) = do
       where
         makeSignWitness sk = makeShelleyKeyWitness body (WitnessPaymentKey sk)
 callBodyAutoBalance ::
-  RunningNode ->
+  (MonadBlockchainParams m) =>
   UTxO ->
   TxBodyContent BuildTx ->
   Address ShelleyAddr ->
-  IO (Either TxBodyErrorAutoBalance TxBody)
+  m (Either TxBodyErrorAutoBalance TxBody)
 callBodyAutoBalance
-  (RunningNode {networkId, nodeSocket})
   utxo
   preBody
   changeAddress = do
-    pparams <- queryProtocolParameters networkId nodeSocket QueryTip
-    systemStart <- querySystemStart networkId nodeSocket QueryTip
-    eraHistory <- queryEraHistory networkId nodeSocket QueryTip
-    stakePools <- queryStakePools networkId nodeSocket QueryTip
-
+    MkBlockchainParams {protocolParameters, systemStart, eraHistory, stakePools} <-
+      queryBlockchainParams
     return $
       balancedTxBody
         <$> makeTransactionBodyAutoBalance
           BabbageEraInCardanoMode
           systemStart
           eraHistory
-          pparams
+          protocolParameters
           stakePools
           (UTxO.toApi utxo)
           preBody
           (ShelleyAddressInEra changeAddress)
           Nothing
 
-autoSubmitAndAwaitTx :: AutoCreateParams -> Runner Tx
+autoSubmitAndAwaitTx ::
+  (MonadTrace m, MonadFail m, MonadBlockchainParams m, MonadSubmitTx m) =>
+  AutoCreateParams ->
+  m Tx
 autoSubmitAndAwaitTx params = do
   tx <- autoCreateTx params
   logMsg "Signed"
