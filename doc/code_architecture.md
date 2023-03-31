@@ -7,7 +7,7 @@ Utilities:
 * `HydraAuction.Plutus.Extras` - extension of `PlutusExtra` package,
    which contains reimpelementation for important `plutus-ledger` stuff
 * `HydraAuction.Plutus.Orphans` - orphans for Plutus stuff.
-* `HydraAuction.Fixture` bunch of known actors (== Cardano keys) to use.
+* `HydraAuctionUtils.Fixture` bunch of known actors (== Cardano keys) to use.
    Hydra does have one too, but it only have 3 general-use actors.
 
 Library code:
@@ -15,7 +15,7 @@ Library code:
 * `HydraAuction.Types` domain types used by scripts
    as well as  our own `Natural` implementation,
    because we cannot add the dependency on `plutus-apps`
-   that `plutus-numeric` would require. 
+   that `plutus-numeric` would require.
 * `HydraAuction.Addresses` - newtypes over our script addresses
 * `HydraAuction.(Tx|Onchain).Common` contains both common domain code
    and utilities we use (to be fixed),

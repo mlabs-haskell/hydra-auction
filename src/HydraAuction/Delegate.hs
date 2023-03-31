@@ -17,7 +17,6 @@ import Control.Monad.State (MonadState, StateT (..), evalStateT, get, put)
 import Control.Monad.Trans (MonadTrans (lift))
 
 -- HydraAuction imports
-
 import HydraAuction.Delegate.Interface (
   DelegateResponse (..),
   FrontendRequest (..),
@@ -81,7 +80,7 @@ delegateStep input = case input of
     case state of
       NoAuction -> do
         put $ HasAuction auctionTerms
-        return [] -- FIXME: validate AuctionTerms are valid
+        return [AuctionSet auctionTerms] -- FIXME: validate AuctionTerms are valid
       HasAuction _ -> return [AlreadyHasAuction]
   FrontendRequest (NewBid _) -> do
     state <- get
