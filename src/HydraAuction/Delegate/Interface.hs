@@ -27,4 +27,5 @@ data DelegateResponse
   | HydraRequestError
   | AlreadyHasAuction
   | HasNoAuction
+  | AuctionSet AuctionTerms
   deriving stock (Show)
