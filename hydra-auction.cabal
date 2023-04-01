@@ -158,6 +158,7 @@ executable hydra-auction
     , directory
     , haskeline
     , hydra-auction
+    , hydra-auction-utils
     , hydra-cardano-api
     , hydra-plutus
     , hydra-test-utils
