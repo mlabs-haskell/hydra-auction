@@ -54,10 +54,10 @@ import HydraAuction.Delegate.Server (
   DelegateError (FrontendNoParse),
   DelegateServerConfig (
     DelegateServerConfig,
-    dlgt'host,
-    dlgt'ping,
-    dlgt'port,
-    dlgt'tick
+    host,
+    ping,
+    port,
+    tick
   ),
   DelegateServerLog (
     CancelThread,
@@ -155,7 +155,7 @@ runDelegateServer ::
   DelegateServerConfig ->
   DelegateTracerT IO ()
 runDelegateServer conf = do
-  trace (Started $ dlgt'port conf)
+  trace (Started $ port conf)
 
   tracer <- askTracer
 
@@ -173,11 +173,11 @@ runDelegateServer conf = do
 
       wsServer, delegateRunner, queueAuctionPhases :: IO ()
       wsServer =
-        runServer (show $ dlgt'host conf) (fromIntegral $ dlgt'port conf) $
-          runWithTracer' tracer . delegateServerApp (dlgt'ping conf) delegateInputChan delegateBroadCastChan
+        runServer (show $ host conf) (fromIntegral $ port conf) $
+          runWithTracer' tracer . delegateServerApp (ping conf) delegateInputChan delegateBroadCastChan
 
       delegateRunner =
-        runWithTracer' tracer $ execDelegateRunnerT $ mkRunner (dlgt'tick conf) delegateInputChan delegateBroadCastChan
+        runWithTracer' tracer $ execDelegateRunnerT $ mkRunner (tick conf) delegateInputChan delegateBroadCastChan
 
       queueAuctionPhases = runWithTracer' tracer $ mbQueueAuctionPhases delegateInputChan delegateBroadCastChan
 
@@ -190,9 +190,10 @@ runDelegateServer conf = do
       ]
 
 mbQueueAuctionPhases :: TQueue DelegateInput -> TChan DelegateResponse -> DelegateTracerT IO ()
-mbQueueAuctionPhases reqq =
-  liftIO . atomically . (dupTChan >=> getTerms)
-    >=> liftIO . (traceQueueEvent *> queueCurrentStage)
+mbQueueAuctionPhases reqq broadcast = do
+  terms <- liftIO . atomically $ getTerms =<< dupTChan broadcast
+  liftIO $ queueStages terms
+  traceQueueEvent terms
   where
     traceQueueEvent :: AuctionTerms -> DelegateTracerT IO ()
     traceQueueEvent = trace . QueueAuctionPhaseEvent . ReceivedAuctionSet
@@ -203,8 +204,8 @@ mbQueueAuctionPhases reqq =
         AuctionSet terms -> pure terms
         _ -> getTerms chan
 
-    queueCurrentStage :: AuctionTerms -> IO ()
-    queueCurrentStage terms = do
+    queueStages :: AuctionTerms -> IO ()
+    queueStages terms = do
       currentStage <- currentAuctionStage terms
       atomically $ writeTQueue reqq (DelegateEvent $ AuctionStageStarted currentStage)
       currentPosixTime <- POSIXTime <$> currentTimeMilliseconds
@@ -213,7 +214,7 @@ mbQueueAuctionPhases reqq =
         Nothing -> pure ()
         Just s -> do
           threadDelay (fromInteger s * 1000)
-          queueCurrentStage terms
+          queueStages terms
 
 main :: IO ()
 main = do
@@ -222,10 +223,10 @@ main = do
   let conf :: DelegateServerConfig
       conf =
         DelegateServerConfig
-          { dlgt'host = host
-          , dlgt'port = fromMaybe 8080 $ port >>= readMaybe
-          , dlgt'tick = tick
-          , dlgt'ping = 30
+          { host
+          , port = fromMaybe 8080 $ port >>= readMaybe
+          , tick = tick
+          , ping = 30
           }
   runWithTracer' tracer $ runDelegateServer conf
   where

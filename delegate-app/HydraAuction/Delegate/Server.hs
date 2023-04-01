@@ -32,13 +32,13 @@ import HydraAuction.Types (AuctionTerms)
 
 -- | The config for the delegate server
 data DelegateServerConfig = DelegateServerConfig
-  { dlgt'host :: IP
+  { host :: IP
   -- ^ the host of the delegate server
-  , dlgt'port :: PortNumber
+  , port :: PortNumber
   -- ^ the port number the delegate server receives input at
-  , dlgt'tick :: Int
+  , tick :: Int
   -- ^ the amount of milliseconds, the thread should wait
-  , dlgt'ping :: Int
+  , ping :: Int
   -- ^ the amount of seconds between pings for the client thread
   }
 
