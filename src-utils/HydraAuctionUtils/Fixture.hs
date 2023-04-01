@@ -63,7 +63,7 @@ hydraNodeActors = [Rupert, Oscar, Patricia]
 -- | Get the "well-known" keys for given actor.
 keysFor :: Actor -> IO (VerificationKey PaymentKey, SigningKey PaymentKey)
 keysFor actor = do
-  bs <- readDataFile $ "credentials" </> actorName actor <.> ".sk"
+  bs <- readDataFile $ "credentials" </> actorName actor <.> "sk"
   let res =
         first TextEnvelopeAesonDecodeError (Aeson.eitherDecodeStrict bs)
           >>= deserialiseFromTextEnvelope asSigningKey
