@@ -13,11 +13,7 @@ import Paths_hydra_auction qualified as Pkg
 import System.FilePath ((</>))
 
 -- Hydra imports
-import Hydra.Cardano.Api (
-  ProtocolParameters,
-  ShelleyBasedEra (ShelleyBasedEraShelley),
-  fromLedgerPParams,
- )
+import Hydra.Cardano.Api (ProtocolParameters)
 
 -- | Lookup a config file similar reading a file from disk.
 readDataFile :: FilePath -> IO BS.ByteString

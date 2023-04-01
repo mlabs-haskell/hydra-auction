@@ -129,7 +129,7 @@ sellerReclaimsTest :: Assertion
 sellerReclaimsTest = mkAssertion $ do
   let seller = Alice
 
-  initWallet 100_000_000 seller
+  _ <- initWallet 100_000_000 seller
 
   nftTx <- mintOneTestNFT
   let utxoRef = mkTxIn nftTx 0
@@ -157,7 +157,7 @@ sellerBidsTest :: Assertion
 sellerBidsTest = mkAssertion $ do
   let seller = Alice
 
-  initWallet 100_000_000 seller
+  _ <- initWallet 100_000_000 seller
 
   nftTx <- mintOneTestNFT
   let utxoRef = mkTxIn nftTx 0
