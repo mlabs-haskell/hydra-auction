@@ -2,12 +2,14 @@ module Main (main) where
 
 -- Prelude imports
 import Hydra.Cardano.Api.Prelude (lookupEnv)
-import Hydra.Prelude (race_, readMaybe, traverse_)
+import Hydra.Prelude (readMaybe, traverse_)
 import Prelude
 
 -- Haskell imports
-import Control.Concurrent (forkIO, threadDelay)
+import Control.Concurrent (threadDelay)
+import Control.Concurrent.Async (mapConcurrently_, race_)
 import Control.Concurrent.STM (
+  STM,
   TChan,
   TQueue,
   atomically,
@@ -20,8 +22,8 @@ import Control.Concurrent.STM (
   writeTQueue,
  )
 import Control.Monad (forever, (>=>))
-import Control.Monad.Trans (MonadIO (..), MonadTrans (lift))
-import Control.Tracer (Tracer, contramap, stdoutTracer)
+import Control.Monad.Trans (MonadIO (liftIO), MonadTrans (lift))
+import Control.Tracer (Tracer, contramap, stdoutTracer, traceWith)
 import Data.Aeson (ToJSON, eitherDecode, encode)
 import Data.Maybe (fromMaybe)
 import Network.WebSockets (
@@ -36,15 +38,18 @@ import Prettyprinter (Pretty (pretty))
 -- Hydra imports
 import Hydra.Network (IP)
 
+-- Plutus imports
+import Plutus.V2.Ledger.Api (POSIXTime (..))
+
 -- HydraAuction imports
 import HydraAuction.Delegate (
-  DelegateEvent (Start),
+  DelegateEvent (AuctionStageStarted, Start),
   DelegateInput (DelegateEvent, FrontendRequest),
   DelegateRunnerT,
   delegateStep,
   execDelegateRunnerT,
  )
-import HydraAuction.Delegate.Interface (DelegateResponse, FrontendRequest)
+import HydraAuction.Delegate.Interface (DelegateResponse (AuctionSet), FrontendRequest)
 import HydraAuction.Delegate.Server (
   DelegateError (FrontendNoParse),
   DelegateServerConfig (
@@ -55,16 +60,24 @@ import HydraAuction.Delegate.Server (
     dlgt'tick
   ),
   DelegateServerLog (
+    CancelThread,
     DelegateError,
     DelegateOutput,
     FrontendConnected,
     FrontendInput,
+    QueueAuctionPhaseEvent,
+    StartThread,
     Started
   ),
   DelegateTracerT,
+  QueueAuctionPhaseEvent (ReceivedAuctionSet),
   ServerAppT,
+  ThreadSort (DelegateRunnerThread, QueueAuctionStageThread, WebsocketThread),
  )
-import HydraAuction.Delegate.Tracing (MonadTracer (trace), TracerT, askTracer, runWithTracer')
+import HydraAuction.Delegate.Tracing (MonadTracer (trace), askTracer, runWithTracer')
+import HydraAuction.OnChain.Common (secondsLeftInInterval, stageToInterval)
+import HydraAuction.Tx.Common (currentAuctionStage, currentTimeMilliseconds)
+import HydraAuction.Types (AuctionTerms)
 
 {- | per websocket, a thread gets spawned which then
    subscribes to the broadcast channel and sends to
@@ -107,7 +120,11 @@ delegateServerApp pingSecs reqq broadcast pending = do
             atomically (readTChan broadcast')
               >>= encodeSend
 
-    withPingThread connection pingSecs (pure ()) $ race_ receive send -- TODO: can we do this
+    -- From the Documentation of 'withPingThread' in 'Network.Websockets':
+    -- This is useful to keep idle connections open through proxies and whatnot.
+    -- Many (but not all) proxies have a 60 second default timeout, so based on
+    -- that sending a ping every 30 seconds is a good idea.
+    withPingThread connection pingSecs (pure ()) $ race_ receive send
 
 {- | create a delegate runner that will listen for incoming events and output outgoing events
    accordingly
@@ -136,7 +153,7 @@ mkRunner tick reqq broadcast = forever $ do
 runDelegateServer ::
   -- | the configuration of the delegate server
   DelegateServerConfig ->
-  TracerT DelegateServerLog IO ()
+  DelegateTracerT IO ()
 runDelegateServer conf = do
   trace (Started $ dlgt'port conf)
 
@@ -148,12 +165,55 @@ runDelegateServer conf = do
     pure q
   delegateBroadCastChan <- liftIO . atomically $ newTChan
 
-  _ <-
-    liftIO . forkIO $
-      runServer (show $ dlgt'host conf) (fromIntegral $ dlgt'port conf) $
-        runWithTracer' tracer . delegateServerApp (dlgt'ping conf) delegateInputChan delegateBroadCastChan
+  let startWorker :: ThreadSort -> IO () -> IO ()
+      startWorker thread act = do
+        traceWith tracer $ StartThread thread
+        act
+        traceWith tracer $ CancelThread thread
 
-  execDelegateRunnerT $ mkRunner (dlgt'tick conf) delegateInputChan delegateBroadCastChan
+      wsServer, delegateRunner, queueAuctionPhases :: IO ()
+      wsServer =
+        runServer (show $ dlgt'host conf) (fromIntegral $ dlgt'port conf) $
+          runWithTracer' tracer . delegateServerApp (dlgt'ping conf) delegateInputChan delegateBroadCastChan
+
+      delegateRunner =
+        runWithTracer' tracer $ execDelegateRunnerT $ mkRunner (dlgt'tick conf) delegateInputChan delegateBroadCastChan
+
+      queueAuctionPhases = runWithTracer' tracer $ mbQueueAuctionPhases delegateInputChan delegateBroadCastChan
+
+  liftIO $
+    mapConcurrently_
+      (uncurry startWorker)
+      [ (WebsocketThread, wsServer)
+      , (QueueAuctionStageThread, queueAuctionPhases)
+      , (DelegateRunnerThread, delegateRunner)
+      ]
+
+mbQueueAuctionPhases :: TQueue DelegateInput -> TChan DelegateResponse -> DelegateTracerT IO ()
+mbQueueAuctionPhases reqq =
+  liftIO . atomically . (dupTChan >=> getTerms)
+    >=> liftIO . (traceQueueEvent *> queueCurrentStage)
+  where
+    traceQueueEvent :: AuctionTerms -> DelegateTracerT IO ()
+    traceQueueEvent = trace . QueueAuctionPhaseEvent . ReceivedAuctionSet
+
+    getTerms :: TChan DelegateResponse -> STM AuctionTerms
+    getTerms chan =
+      readTChan chan >>= \case
+        AuctionSet terms -> pure terms
+        _ -> getTerms chan
+
+    queueCurrentStage :: AuctionTerms -> IO ()
+    queueCurrentStage terms = do
+      currentStage <- currentAuctionStage terms
+      atomically $ writeTQueue reqq (DelegateEvent $ AuctionStageStarted currentStage)
+      currentPosixTime <- POSIXTime <$> currentTimeMilliseconds
+      let mSecsLeft = secondsLeftInInterval currentPosixTime (stageToInterval terms currentStage)
+      case mSecsLeft of
+        Nothing -> pure ()
+        Just s -> do
+          threadDelay (fromInteger s * 1000)
+          queueCurrentStage terms
 
 main :: IO ()
 main = do

@@ -1,6 +1,5 @@
 module HydraAuction.Tx.Escrow (
   toForgeStateToken,
-  currentWinningBidder,
   announceAuction,
   startBidding,
   bidderBuys,
@@ -8,55 +7,37 @@ module HydraAuction.Tx.Escrow (
 ) where
 
 -- Prelude imports
-
 import PlutusTx.Prelude (emptyByteString)
 import Prelude
 
 -- Haskell imports
-import Control.Monad (void)
+import Control.Monad (void, when)
 
 -- Plutus imports
 import Plutus.V1.Ledger.Address (pubKeyHashAddress)
-import Plutus.V1.Ledger.Crypto (PubKeyHash)
 import Plutus.V1.Ledger.Value (
   CurrencySymbol (..),
   assetClassValue,
   unAssetClass,
  )
-import Plutus.V2.Ledger.Api (
-  fromData,
-  getMintingPolicy,
- )
 
 -- Hydra imports
-import Cardano.Api.UTxO qualified as UTxO
 import Hydra.Cardano.Api (
-  BuildTx,
   Lovelace (..),
-  TxMintValue,
-  fromPlutusScript,
   fromPlutusTxOutRef,
   fromPlutusValue,
   lovelaceToValue,
-  toPlutusData,
-  txOutDatum,
   pattern ReferenceScriptNone,
   pattern ShelleyAddressInEra,
   pattern TxMintValueNone,
   pattern TxOut,
-  pattern TxOutDatumInline,
   pattern TxOutDatumNone,
  )
 
 -- Hydra auction imports
 import HydraAuction.Addresses (VoucherCS (..))
 import HydraAuction.OnChain (AuctionScript (..), policy, voucherAssetClass)
-import HydraAuction.OnChain.StateToken (
-  StateTokenKind (..),
-  stateTokenKindToTokenName,
- )
-import HydraAuction.Plutus.Extras (scriptCurrencySymbol)
-import HydraAuction.Runner (Runner, logMsg)
+import HydraAuction.Runner (Runner)
 import HydraAuction.Tx.Common (
   AutoCreateParams (..),
   actorTipUtxo,
@@ -64,18 +45,17 @@ import HydraAuction.Tx.Common (
   autoSubmitAndAwaitTx,
   filterAdaOnlyUtxo,
   filterUtxoByCurrencySymbols,
-  fromPlutusAddressInRunner,
   minLovelace,
-  mintedTokens,
   mkInlineDatum,
   mkInlinedDatumScriptWitness,
-  queryUTxOByTxInInRunner,
   scriptAddress,
   scriptPlutusScript,
   scriptUtxos,
-  tokenToAsset,
+  toForgeStateToken,
  )
+import HydraAuction.Tx.StandingBid (getStadingBidDatum)
 import HydraAuction.Types (
+  ApprovedBidders (..),
   ApprovedBiddersHash (..),
   AuctionEscrowDatum (..),
   AuctionState (..),
@@ -83,22 +63,18 @@ import HydraAuction.Types (
   BidTerms (..),
   EscrowRedeemer (..),
   StandingBidDatum (..),
-  StandingBidState (Bid, NoBid),
-  VoucherForgingRedeemer (BurnVoucher, MintVoucher),
+  StandingBidState (..),
+  VoucherForgingRedeemer (MintVoucher),
   calculateTotalFee,
   naturalToInt,
  )
-
-toForgeStateToken :: AuctionTerms -> VoucherForgingRedeemer -> TxMintValue BuildTx
-toForgeStateToken terms redeemer =
-  mintedTokens
-    (fromPlutusScript $ getMintingPolicy $ policy terms)
-    redeemer
-    [(tokenToAsset $ stateTokenKindToTokenName Voucher, num)]
-  where
-    num = case redeemer of
-      MintVoucher -> 1
-      BurnVoucher -> -1
+import HydraAuctionUtils.Extras.Plutus (scriptCurrencySymbol)
+import HydraAuctionUtils.Monads (
+  MonadQueryUtxo (queryUtxo),
+  UtxoQuery (ByTxIns),
+  fromPlutusAddressInMonad,
+  logMsg,
+ )
 
 announceAuction :: AuctionTerms -> Runner ()
 announceAuction terms = do
@@ -123,7 +99,7 @@ announceAuction terms = do
   (sellerAddress, _, sellerSk) <- addressAndKeys
 
   utxoWithLotNFT <-
-    queryUTxOByTxInInRunner [fromPlutusTxOutRef $ utxoNonce terms]
+    queryUtxo (ByTxIns [fromPlutusTxOutRef $ utxoNonce terms])
 
   sellerMoneyUtxo <- filterAdaOnlyUtxo <$> actorTipUtxo
 
@@ -135,7 +111,8 @@ announceAuction terms = do
   void $
     autoSubmitAndAwaitTx $
       AutoCreateParams
-        { authoredUtxos = [(sellerSk, utxoWithLotNFT <> sellerMoneyUtxo)]
+        { signedUtxos = [(sellerSk, utxoWithLotNFT <> sellerMoneyUtxo)]
+        , additionalSigners = []
         , referenceUtxo = mempty
         , witnessedUtxos = []
         , collateral = Nothing
@@ -145,9 +122,12 @@ announceAuction terms = do
         , validityBound = (Nothing, Just $ biddingStart terms)
         }
 
-startBidding :: AuctionTerms -> Runner ()
-startBidding terms = do
+startBidding :: AuctionTerms -> ApprovedBidders -> Runner ()
+startBidding terms approvedBidders = do
   logMsg "Doing start bidding"
+
+  when (seller terms `elem` bidders approvedBidders) $ do
+    fail "Seller can not be in approved bidders"
 
   let escrowScript = scriptPlutusScript Escrow terms
 
@@ -175,7 +155,7 @@ startBidding terms = do
           valueOutStanding
           (mkInlineDatum standingBidDatum)
           ReferenceScriptNone
-      standingBidDatum = StandingBidDatum NoBid voucherCS
+      standingBidDatum = StandingBidDatum (StandingBidState approvedBidders Nothing) voucherCS
       valueOutStanding =
         fromPlutusValue (assetClassValue (voucherAssetClass terms) 1)
           <> lovelaceToValue minLovelace
@@ -206,7 +186,8 @@ startBidding terms = do
   void $
     autoSubmitAndAwaitTx $
       AutoCreateParams
-        { authoredUtxos = [(sellerSk, sellerMoneyUtxo)]
+        { signedUtxos = [(sellerSk, sellerMoneyUtxo)]
+        , additionalSigners = []
         , referenceUtxo = mempty
         , witnessedUtxos = [(escrowWitness, escrowAnnounceUtxo)]
         , collateral = Nothing
@@ -216,30 +197,13 @@ startBidding terms = do
         , validityBound = (Just $ biddingStart terms, Just $ biddingEnd terms)
         }
 
-getStadingBidDatum :: UTxO.UTxO -> StandingBidDatum
-getStadingBidDatum standingBidUtxo =
-  case UTxO.pairs standingBidUtxo of
-    [(_, out)] -> case txOutDatum out of
-      TxOutDatumInline scriptData ->
-        case fromData $ toPlutusData scriptData of
-          Just standingBidDatum -> standingBidDatum
-          Nothing ->
-            error "Impossible happened: Cannot decode standing bid datum"
-      _ -> error "Impossible happened: No inline data for standing bid"
-    _ -> error "Wrong number of standing bid UTxOs found"
-
-currentWinningBidder :: AuctionTerms -> Runner (Maybe PubKeyHash)
-currentWinningBidder terms = do
-  standingBidUtxo <- scriptUtxos StandingBid terms
-  let StandingBidDatum {standingBidState} = getStadingBidDatum standingBidUtxo
-  return $ case standingBidState of
-    (Bid (BidTerms {bidBidder})) -> Just bidBidder
-    NoBid -> Nothing
-
 bidderBuys :: AuctionTerms -> Runner ()
 bidderBuys terms = do
   feeEscrowAddress <- scriptAddress FeeEscrow terms
-  sellerAddress <- fromPlutusAddressInRunner $ pubKeyHashAddress $ seller terms
+  sellerAddress <-
+    fromPlutusAddressInMonad $
+      pubKeyHashAddress $
+        seller terms
 
   let txOutSellerGotBid standingBidUtxo =
         TxOut
@@ -253,9 +217,9 @@ bidderBuys terms = do
               Lovelace $
                 bidAmount' - calculateTotalFee terms
           StandingBidDatum {standingBidState} = getStadingBidDatum standingBidUtxo
-          bidAmount' = case standingBidState of
-            (Bid (BidTerms {bidAmount})) -> naturalToInt bidAmount
-            NoBid -> error "Standing bid UTxO has no bid"
+          bidAmount' = case standingBid standingBidState of
+            (Just (BidTerms {bidAmount})) -> naturalToInt bidAmount
+            Nothing -> error "Standing bid UTxO has no bid"
       txOutBidderGotLot bidderAddress =
         TxOut
           (ShelleyAddressInEra bidderAddress)
@@ -299,7 +263,8 @@ bidderBuys terms = do
   void $
     autoSubmitAndAwaitTx $
       AutoCreateParams
-        { authoredUtxos = [(bidderSk, bidderMoneyUtxo)]
+        { signedUtxos = [(bidderSk, bidderMoneyUtxo)]
+        , additionalSigners = []
         , referenceUtxo = standingBidUtxo
         , witnessedUtxos =
             [ (escrowWitness, escrowBiddingStartedUtxo)
@@ -360,7 +325,8 @@ sellerReclaims terms = do
   void $
     autoSubmitAndAwaitTx $
       AutoCreateParams
-        { authoredUtxos = [(sellerSk, sellerMoneyUtxo)]
+        { signedUtxos = [(sellerSk, sellerMoneyUtxo)]
+        , additionalSigners = []
         , referenceUtxo = mempty
         , witnessedUtxos =
             [ (escrowWitness, escrowBiddingStartedUtxo)

@@ -32,5 +32,6 @@ data DelegateResponse
   | HydraRequestError
   | AlreadyHasAuction
   | HasNoAuction
+  | AuctionSet AuctionTerms
   deriving stock (Eq, Show, Generic)
   deriving anyclass (FromJSON, ToJSON)

@@ -104,8 +104,8 @@ mkEscrowValidator (StandingBidAddress standingBidAddressLocal, FeeEscrowAddress 
           standingBidAddressLocal
           "Standing bid"
           ( \out ->
-              traceIfFalse "Standing bid does not equal NoBid" $
-                (standingBidState <$> decodeOutputDatum info out) == Just NoBid
+              traceIfFalse "Standing bid should be Nothing" $
+                (standingBid <$> (standingBidState <$> decodeOutputDatum info out)) == Just Nothing
           )
     checkBidderBuys escrowInputOutput =
       case byAddress standingBidAddressLocal (txInInfoResolved <$> txInfoReferenceInputs info) of
@@ -122,9 +122,9 @@ mkEscrowValidator (StandingBidAddress standingBidAddressLocal, FeeEscrowAddress 
           )
             -- Check bid is present, bidder signed transaction, auction lot sent to bidder and bid/fee is paid
             && case decodeOutputDatum info standingBidInOut of
-              Just (StandingBidDatum {standingBidState}) -> case standingBidState of
-                NoBid -> traceError "NoBid in standing bid datum"
-                (Bid bidTerms) ->
+              Just (StandingBidDatum {standingBidState}) -> case standingBid standingBidState of
+                Nothing -> traceError "No bid in standing bid datum"
+                (Just bidTerms) ->
                   traceIfFalse "Not signed by bidder" (txSignedBy info (bidBidder bidTerms))
                     && checkSingleNonAdaOutput
                       (pubKeyHashAddress $ bidBidder bidTerms)

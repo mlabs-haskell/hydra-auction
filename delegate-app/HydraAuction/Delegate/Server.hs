@@ -3,6 +3,8 @@ module HydraAuction.Delegate.Server (
   DelegateServerConfig (..),
   DelegateServerLog (..),
   DelegateError (..),
+  ThreadSort (..),
+  QueueAuctionPhaseEvent (..),
 
   -- ** delegate tracing
   DelegateTracerT,
@@ -26,6 +28,7 @@ import Hydra.Network (IP, PortNumber)
 -- Hydra auction imports
 import HydraAuction.Delegate.Interface (DelegateResponse, FrontendRequest)
 import HydraAuction.Delegate.Tracing (TracerT)
+import HydraAuction.Types (AuctionTerms)
 
 -- | The config for the delegate server
 data DelegateServerConfig = DelegateServerConfig
@@ -46,6 +49,9 @@ data DelegateServerLog
   | FrontendInput FrontendRequest
   | DelegateOutput DelegateResponse
   | DelegateError DelegateError
+  | StartThread ThreadSort
+  | CancelThread ThreadSort
+  | QueueAuctionPhaseEvent QueueAuctionPhaseEvent
   deriving stock (Eq, Show, Generic)
 
 instance Pretty DelegateServerLog where
@@ -55,6 +61,24 @@ instance Pretty DelegateServerLog where
     DelegateOutput out -> "Delegate output" <> extraInfo (viaShow out)
     FrontendInput inp -> "Frontend input" <> extraInfo (viaShow inp)
     DelegateError err -> "Delegate error" <> extraInfo (pretty err)
+    StartThread info -> "Thread" <+> viaShow info <+> "was started"
+    CancelThread info -> "Thread" <+> viaShow info <+> "was cancelled"
+    QueueAuctionPhaseEvent ev -> "Auction phase queueing" <> extraInfo (pretty ev)
+
+-- | Which specific thrad was cancelled
+data ThreadSort
+  = WebsocketThread
+  | DelegateRunnerThread
+  | QueueAuctionStageThread
+  deriving stock (Eq, Ord, Show)
+
+newtype QueueAuctionPhaseEvent
+  = ReceivedAuctionSet AuctionTerms
+  deriving stock (Eq, Ord, Show)
+
+instance Pretty QueueAuctionPhaseEvent where
+  pretty = \case
+    ReceivedAuctionSet terms -> "Received an AuctionSet" <> extraInfo (viaShow terms)
 
 {- | the error that can be thrown by the delegate server, before entering the Delegate
    transformer

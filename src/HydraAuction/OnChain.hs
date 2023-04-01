@@ -23,13 +23,13 @@ import HydraAuction.OnChain.StateToken (
   mkPolicy,
   stateTokenKindToTokenName,
  )
-import HydraAuction.Plutus.Extras (
+import HydraAuction.Types (AuctionTerms (..))
+import HydraAuctionUtils.Extras.Plutus (
   scriptCurrencySymbol,
   validatorAddress,
   wrapMintingPolicy,
   wrapValidator,
  )
-import HydraAuction.Types (AuctionTerms (..))
 
 -- Addresses
 

@@ -25,14 +25,14 @@ import Plutus.V1.Ledger.Value (AssetClass, CurrencySymbol (..))
 import Plutus.V2.Ledger.Contexts (TxOutRef)
 
 -- Hydra imports
-import Hydra.Cardano.Api (TxIn, toPlutusKeyHash, toPlutusTxOutRef, verificationKeyHash)
+import Hydra.Cardano.Api (TxIn, toPlutusTxOutRef)
 
 -- Hydra auction imports
-import HydraAuction.Fixture (Actor, keysFor)
 import HydraAuction.OnChain.TestNFT (testNftAssetClass)
-import HydraAuction.Plutus.Orphans ()
 import HydraAuction.Tx.Common (currentTimeSeconds)
 import HydraAuction.Types (AuctionTerms (..), Natural)
+import HydraAuctionUtils.Extras.PlutusOrphans ()
+import HydraAuctionUtils.Fixture (Actor, getActorVkHash)
 
 data AuctionTermsConfig = AuctionTermsConfig
   { configDiffBiddingStart :: !Integer
@@ -62,11 +62,6 @@ data AuctionTermsDynamic = AuctionTermsDynamic
 instance ToJSON AuctionTermsDynamic
 
 instance FromJSON AuctionTermsDynamic
-
-getActorVkHash :: Actor -> IO PubKeyHash
-getActorVkHash actor = do
-  (actorVk, _) <- keysFor actor
-  return $ toPlutusKeyHash $ verificationKeyHash actorVk
 
 constructTermsDynamic ::
   forall (timedMonad :: Type -> Type). (MonadTime timedMonad, MonadIO timedMonad) => Actor -> TxIn -> timedMonad AuctionTermsDynamic
