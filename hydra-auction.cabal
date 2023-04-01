@@ -237,6 +237,8 @@ library hydra-auction-utils
     HydraAuctionUtils.Extras.PlutusOrphans
     HydraAuctionUtils.Fixture
     HydraAuctionUtils.Monads
+    HydraAuctionUtils.Tx.AutoCreateTx
+    HydraAuctionUtils.Tx.Utxo
     Paths_hydra_auction
 
   build-depends:
