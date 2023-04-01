@@ -1,4 +1,4 @@
-#!/bin/sh -e
+#!/usr/bin/env bash -e
 parent_path=$( cd "$(dirname "${BASH_SOURCE[0]}")" ; pwd -P )
 cd "$parent_path/.."
 
@@ -27,3 +27,6 @@ echo "Seeding hydra node actors with fuel and publish reference scripts"
 
 echo "Starting hydra nodes"
 docker-compose --profile hydra-node up -d
+
+echo "Starting delegate servers"
+docker-compose --profile delegate-server up -d
