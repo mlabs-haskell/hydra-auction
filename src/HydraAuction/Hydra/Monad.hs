@@ -13,14 +13,13 @@ import Prelude
 -- Haskell imports
 import Control.Monad (void)
 import GHC.Natural (Natural)
-import Unsafe.Coerce (unsafeCoerce)
 
 -- Cardano imports
 import Cardano.Api (AddressInEra (..))
 import Cardano.Api.UTxO qualified as UTxO
 
 -- Hydra imports
-import Hydra.Cardano.Api (Tx)
+import Hydra.Cardano.Api (Address (ByronAddress, ShelleyAddress), Tx)
 import Hydra.Cardano.Api.Prelude (TxOut (..))
 
 -- HydraAuction imports
@@ -68,6 +67,9 @@ instance {-# OVERLAPPABLE #-} (Monad m, MonadHydra m) => MonadQueryUtxo m where
     return $ UTxO.fromPairs $ filter predicate $ UTxO.pairs utxo
     where
       predicate (txIn, TxOut (AddressInEra _ txOutAddress) _ _ _) = case query of
-        -- FIXUP: use safe coerce
-        ByAddress address -> txOutAddress == unsafeCoerce address
+        ByAddress address ->
+          case txOutAddress of
+            addr@ShelleyAddress {} ->
+              address == addr
+            ByronAddress _ -> error "didn't expect Byron address"
         ByTxIns txIns -> txIn `elem` txIns
