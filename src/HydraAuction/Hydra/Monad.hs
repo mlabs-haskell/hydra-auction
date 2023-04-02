@@ -51,7 +51,8 @@ sendCommandAndWaitFor awaitedSpec command = do
   sendCommand command
   waitForHydraEvent awaitedSpec
 
-instance (Monad m, MonadHydra m) => MonadSubmitTx m where
+-- FIXME: this does not work without `Monad m`, do not know why
+instance {-# OVERLAPPABLE #-} (Monad m, MonadHydra m) => MonadSubmitTx m where
   submitTx :: Tx -> m ()
   submitTx = sendCommand . NewTx
   awaitTx :: Tx -> m ()
