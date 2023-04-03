@@ -5,7 +5,7 @@ import Hydra.Prelude (lookupEnv, readMaybe, traverse_)
 import Prelude
 
 -- Haskell imports
-import Control.Concurrent (threadDelay)
+import Control.Concurrent (newMVar, putMVar, takeMVar, threadDelay)
 import Control.Concurrent.Async (mapConcurrently_, race_)
 import Control.Concurrent.STM (
   STM,
@@ -20,7 +20,7 @@ import Control.Concurrent.STM (
   writeTChan,
   writeTQueue,
  )
-import Control.Monad (forever, (>=>))
+import Control.Monad (forever, when, (>=>))
 import Control.Monad.Trans (MonadIO (liftIO))
 import Control.Tracer (Tracer, contramap, stdoutTracer)
 import Data.Aeson (ToJSON, eitherDecode, encode)
@@ -36,16 +36,19 @@ import Network.WebSockets (
 import Prettyprinter (Pretty (pretty))
 
 -- Hydra imports
--- Hydra imports
 import Hydra.Network (IP, PortNumber)
 
 -- Plutus imports
 import Plutus.V2.Ledger.Api (POSIXTime (..))
 
 -- HydraAuction imports
+
 import HydraAuction.Delegate (
+  ClientId,
+  ClientResponseScope (Broadcast),
   DelegateEvent (..),
   DelegateRunnerT,
+  clientIsInScope,
   delegateEventStep,
   delegateFrontendRequestStep,
   execDelegateRunnerT,
@@ -80,7 +83,11 @@ import HydraAuction.Delegate.Server (
 import HydraAuction.OnChain.Common (secondsLeftInInterval, stageToInterval)
 import HydraAuction.Tx.Common (currentAuctionStage, currentTimeMilliseconds)
 import HydraAuction.Types (AuctionTerms)
-import HydraAuctionUtils.Tracing (MonadTracer (trace), askTracer, runWithTracer')
+import HydraAuctionUtils.Tracing (
+  MonadTracer (trace),
+  askTracer,
+  runWithTracer',
+ )
 
 {- | per websocket, a thread gets spawned which then
    subscribes to the broadcast channel and sends to
@@ -89,51 +96,66 @@ import HydraAuctionUtils.Tracing (MonadTracer (trace), askTracer, runWithTracer'
 websocketsServer ::
   -- | the amount of seconds between pings
   Int ->
+  IO ClientId ->
   -- | the queue for the frontend requests of the delegates
   --   (this is where the requests are enqueued)
-  TQueue FrontendRequest ->
+  TQueue (ClientId, FrontendRequest) ->
   -- | the queue for the broadcast (this is where we receives events from the runner)
-  TChan DelegateResponse ->
+  TChan (ClientResponseScope, DelegateResponse) ->
   ServerAppT (DelegateTracerT IO)
-websocketsServer pingSecs frontendRequestQueue broadcast pending = do
-  connection <- liftIO $ acceptRequest pending
+websocketsServer
+  pingSecs
+  genFreshClientId
+  frontendRequestQueue
+  broadcast
+  pending = do
+    connection <- liftIO $ acceptRequest pending
+    clientId <- liftIO genFreshClientId
 
-  trace FrontendConnected
-  tracer <- askTracer
+    trace $ FrontendConnected clientId
+    tracer <- askTracer
 
-  liftIO $ do
-    broadcastChannelCopy <- atomically $ dupTChan broadcast
-    -- From the Documentation of 'withPingThread' in 'Network.Websockets':
-    -- This is useful to keep idle connections open through proxies and whatnot.
-    -- Many (but not all) proxies have a 60 second default timeout, so based on
-    -- that sending a ping every 30 seconds is a good idea.
-    withPingThread connection pingSecs (pure ()) $
-      race_
-        (forever $ receiveAndPutInQueue tracer connection)
-        (forever $ sendFromChannel connection broadcastChannelCopy)
-  where
-    sendToClient :: forall a. ToJSON a => Connection -> a -> IO ()
-    sendToClient connection = sendTextData connection . encode
-    receiveAndPutInQueue ::
-      Tracer IO DelegateServerLog ->
-      Connection ->
-      IO ()
-    receiveAndPutInQueue tracer connection =
-      runWithTracer' tracer $ do
-        inp <- liftIO $ receiveData connection
-        case eitherDecode @FrontendRequest inp of
-          Left msg -> do
-            let err = FrontendNoParse msg
-            trace (DelegateError err)
-            liftIO $ sendToClient connection err
-          Right request -> do
-            trace $ FrontendInput request
-            liftIO . atomically $
-              writeTQueue frontendRequestQueue request
-    sendFromChannel :: Connection -> TChan DelegateResponse -> IO ()
-    sendFromChannel connection broadcastCopy =
-      atomically (readTChan broadcastCopy)
-        >>= sendToClient connection
+    liftIO $ do
+      toClientsChannelCopy <- atomically $ dupTChan broadcast
+      -- From the Documentation of 'withPingThread' in 'Network.Websockets':
+      -- This is useful to keep idle connections open through proxies and whatnot.
+      -- Many (but not all) proxies have a 60 second default timeout, so based on
+      -- that sending a ping every 30 seconds is a good idea.
+      withPingThread connection pingSecs (pure ()) $
+        race_
+          (forever $ receiveAndPutInQueue tracer connection clientId)
+          ( forever $
+              sendFromChannel connection clientId toClientsChannelCopy
+          )
+    where
+      sendToClient :: forall a. ToJSON a => Connection -> a -> IO ()
+      sendToClient connection = sendTextData connection . encode
+      receiveAndPutInQueue ::
+        Tracer IO DelegateServerLog ->
+        Connection ->
+        ClientId ->
+        IO ()
+      receiveAndPutInQueue tracer connection clientId =
+        runWithTracer' tracer $ do
+          inp <- liftIO $ receiveData connection
+          case eitherDecode @FrontendRequest inp of
+            Left msg -> do
+              let err = FrontendNoParse msg
+              trace (DelegateError err)
+              liftIO $ sendToClient connection err
+            Right request -> do
+              trace $ FrontendInput request
+              liftIO . atomically $
+                writeTQueue frontendRequestQueue (clientId, request)
+      sendFromChannel ::
+        Connection ->
+        ClientId ->
+        TChan (ClientResponseScope, DelegateResponse) ->
+        IO ()
+      sendFromChannel connection clientId broadcastCopy = do
+        (scope, message) <- atomically (readTChan broadcastCopy)
+        when (clientIsInScope clientId scope) $
+          sendToClient connection message
 
 {- | create a delegate runner that will listen for incoming events
      and output outgoing events accordingly
@@ -144,9 +166,9 @@ runDelegateLogicSteps ::
   Int ->
   -- | the queue of incoming messages
   TQueue DelegateEvent ->
-  TQueue FrontendRequest ->
+  TQueue (ClientId, FrontendRequest) ->
   -- | the broadcast queue of outgoing messages (write only)
-  TChan DelegateResponse ->
+  TChan (ClientResponseScope, DelegateResponse) ->
   DelegateRunnerT (DelegateTracerT IO) void
 -- FIXME: we need to abort at some point but this doesn't seem
 -- to be implemented yet so we just go on
@@ -157,19 +179,21 @@ runDelegateLogicSteps
   broadcast = forever $ do
     flushAndTraverseNewElements
       eventQueue
-      (delegateEventStep >=> encodeAndBroadcast)
+      ( delegateEventStep
+          -- All delegateEventStep responses should be brodcasted
+          >=> return . fmap (Broadcast,)
+          >=> putInToClientsQueue
+      )
     flushAndTraverseNewElements
       frontendRequestQueue
-      ( (\request -> return (0, request))
-          >=> delegateFrontendRequestStep
-          >=> return . fmap snd
-          >=> encodeAndBroadcast
+      ( delegateFrontendRequestStep
+          >=> putInToClientsQueue
       )
     -- FIXME: log queues overload and make tick not-static
     liftIO $ threadDelay tick
     where
       -- TODO: this is not actually broadcast now
-      encodeAndBroadcast responses = do
+      putInToClientsQueue responses = do
         liftIO . atomically $
           traverse_ (writeTChan broadcast) responses
       -- TODO: make work
@@ -193,7 +217,9 @@ runDelegateServer conf = do
     writeTQueue q Start
     pure q
   frontendRequestQueue <- liftIO . atomically $ newTQueue
-  broadcastChannel <- liftIO . atomically $ newTChan
+  toClientsChannel <- liftIO . atomically $ newTChan
+
+  clientCounter <- liftIO $ newMVar 0
 
   let workerAction threadSort =
         withStartStopTrace threadSort $
@@ -204,17 +230,18 @@ runDelegateServer conf = do
                   runWithTracer' tracer
                     . websocketsServer
                       (ping conf)
+                      (freshClientIdGenerator clientCounter)
                       frontendRequestQueue
-                      broadcastChannel
+                      toClientsChannel
             DelegateRunnerThread ->
               execDelegateRunnerT $
                 runDelegateLogicSteps
                   (tick conf)
                   eventQueue
                   frontendRequestQueue
-                  broadcastChannel
+                  toClientsChannel
             QueueAuctionStageThread ->
-              mbQueueAuctionPhases eventQueue broadcastChannel
+              mbQueueAuctionPhases eventQueue toClientsChannel
 
   liftIO $
     mapConcurrently_
@@ -223,6 +250,11 @@ runDelegateServer conf = do
       , QueueAuctionStageThread
       , DelegateRunnerThread
       ]
+  where
+    freshClientIdGenerator clientCounter = do
+      v <- takeMVar clientCounter
+      putMVar clientCounter (v + 1)
+      return v
 
 -- | start a worker and log it
 withStartStopTrace :: ThreadSort -> DelegateTracerT IO () -> DelegateTracerT IO ()
@@ -232,30 +264,39 @@ withStartStopTrace threadSort action = do
   -- FIXME: use finally or something like that
   trace $ ThreadEvent ThreadCancelled threadSort
 
-mbQueueAuctionPhases :: TQueue DelegateEvent -> TChan DelegateResponse -> DelegateTracerT IO ()
-mbQueueAuctionPhases delegateEvents broadcast = do
+mbQueueAuctionPhases ::
+  TQueue DelegateEvent ->
+  TChan (ClientResponseScope, DelegateResponse) ->
+  DelegateTracerT IO ()
+mbQueueAuctionPhases delegateEvents toClientsChannel = do
   terms <-
     liftIO . atomically $
-      awaitForAuctionSetTerms =<< dupTChan broadcast
+      awaitForAuctionSetTerms =<< dupTChan toClientsChannel
   traceQueueEvent terms
   liftIO $ forever $ queueCurrentStageAndWaitForNext terms
   where
     traceQueueEvent :: AuctionTerms -> DelegateTracerT IO ()
     traceQueueEvent = trace . QueueAuctionPhaseEvent . ReceivedAuctionSet
 
-    awaitForAuctionSetTerms :: TChan DelegateResponse -> STM AuctionTerms
+    awaitForAuctionSetTerms ::
+      TChan (ClientResponseScope, DelegateResponse) -> STM AuctionTerms
     awaitForAuctionSetTerms chan =
       readTChan chan >>= \case
-        AuctionSet terms -> pure terms
+        (Broadcast, AuctionSet terms) -> pure terms
         -- FIXME: maybe thread wait?
         _ -> awaitForAuctionSetTerms chan
 
     queueCurrentStageAndWaitForNext :: AuctionTerms -> IO ()
     queueCurrentStageAndWaitForNext terms = do
       currentStage <- currentAuctionStage terms
-      atomically $ writeTQueue delegateEvents $ AuctionStageStarted currentStage
+      atomically $
+        writeTQueue delegateEvents $
+          AuctionStageStarted currentStage
       currentPosixTime <- POSIXTime <$> currentTimeMilliseconds
-      let mSecsLeft = secondsLeftInInterval currentPosixTime (stageToInterval terms currentStage)
+      let mSecsLeft =
+            secondsLeftInInterval
+              currentPosixTime
+              (stageToInterval terms currentStage)
       case mSecsLeft of
         Nothing -> pure ()
         Just s -> do

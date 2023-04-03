@@ -35,6 +35,7 @@ import Prettyprinter (Doc, Pretty (pretty), indent, line, viaShow, (<+>))
 import Hydra.Network (IP, PortNumber)
 
 -- Hydra auction imports
+import HydraAuction.Delegate (ClientId)
 import HydraAuction.Delegate.Interface (DelegateResponse, FrontendRequest)
 import HydraAuction.Types (AuctionTerms)
 import HydraAuctionUtils.Tracing (TracerT)
@@ -54,7 +55,7 @@ data DelegateServerConfig = DelegateServerConfig
 -- | Representation of the Delegate Server's log
 data DelegateServerLog
   = Started PortNumber
-  | FrontendConnected
+  | FrontendConnected ClientId
   | FrontendInput FrontendRequest
   | DelegateOutput DelegateResponse
   | DelegateError DelegateError
@@ -65,7 +66,8 @@ data DelegateServerLog
 instance Pretty DelegateServerLog where
   pretty = \case
     Started port -> "Started Server at Port" <+> viaShow port
-    FrontendConnected -> "Frontend connected to Server"
+    FrontendConnected clientId ->
+      "Frontend with clientId " <> viaShow clientId <> "connected to Server"
     DelegateOutput out -> "Delegate output" <> extraInfo (viaShow out)
     FrontendInput inp -> "Frontend input" <> extraInfo (viaShow inp)
     DelegateError err -> "Delegate runner error occured" <> extraInfo (pretty err)
