@@ -3,6 +3,8 @@
 module HydraAuctionUtils.Tx.AutoCreateTx (
   AutoCreateParams (..),
   autoCreateTx,
+  makeSignedTransactionWithKeys,
+  callBodyAutoBalance,
   autoSubmitAndAwaitTx,
 ) where
 
@@ -24,7 +26,6 @@ import Hydra.Cardano.Api (
   BuildTx,
   BuildTxWith,
   CtxTx,
-  KeyWitness,
   PaymentKey,
   ShelleyAddr,
   SigningKey,
@@ -101,14 +102,17 @@ autoCreateTx ::
   (MonadFail m, MonadBlockchainParams m) =>
   AutoCreateParams ->
   m Tx
+-- FIXME: more docs on usage
 autoCreateTx (AutoCreateParams {..}) = do
   let (lowerBound', upperBound') = validityBound
   lowerBound <- case lowerBound' of
     Nothing -> pure TxValidityNoLowerBound
     Just x -> TxValidityLowerBound <$> toSlotNo x
+  -- FIXUP: more elegant solution to prevent empty interval
+  let hackInc x = if x == 0 then x + 1 else x
   upperBound <- case upperBound' of
     Nothing -> pure TxValidityNoUpperBound
-    Just x -> TxValidityUpperBound <$> toSlotNo x
+    Just x -> TxValidityUpperBound . hackInc <$> toSlotNo x
 
   MkBlockchainParams {protocolParameters} <-
     queryBlockchainParams
@@ -118,23 +122,26 @@ autoCreateTx (AutoCreateParams {..}) = do
         (allSignedUtxos <> allWitnessedUtxos <> referenceUtxo)
         (preBody protocolParameters lowerBound upperBound)
         changeAddress
-  pure $ makeSignedTransaction (signingWitnesses body) body
+  pure $ makeSignedTransactionWithKeys allSigningKeys body
   where
     allSignedUtxos = foldMap snd signedUtxos
     allWitnessedUtxos = foldMap snd witnessedUtxos
-    allSKeys = additionalSigners <> (fst <$> signedUtxos)
+    allSigningKeys = additionalSigners <> (fst <$> signedUtxos)
     txInsToSign = toList (UTxO.inputSet allSignedUtxos)
     witnessedTxIns =
       [ (txIn, witness)
       | (witness, utxo) <- witnessedUtxos
       , txIn <- fst <$> UTxO.pairs utxo
       ]
+    -- FIXME: Just collateral never actually work
     txInCollateral =
       case collateral of
         Just txIn -> txIn
         Nothing -> fst $ case UTxO.pairs $ filterAdaOnlyUtxo allSignedUtxos of
           x : _ -> x
           [] -> error "Cannot select collateral, cuz no money utxo was provided"
+    -- FIXME: write on all hacks and invariants:
+    --        Signing witness, Utxo, zeroed feez
     preBody protocolParameters lowerBound upperBound =
       TxBodyContent
         ((withWitness <$> txInsToSign) <> witnessedTxIns)
@@ -150,7 +157,7 @@ autoCreateTx (AutoCreateParams {..}) = do
         -- Adding all keys here, cuz other way `txSignedBy` does not see those
         -- signatures
         ( TxExtraKeyWitnesses $
-            fmap (verificationKeyHash . getVerificationKey) allSKeys
+            fmap (verificationKeyHash . getVerificationKey) allSigningKeys
         )
         (BuildTxWith $ Just protocolParameters)
         TxWithdrawalsNone
@@ -158,10 +165,16 @@ autoCreateTx (AutoCreateParams {..}) = do
         TxUpdateProposalNone
         toMint
         TxScriptValidityNone
-    signingWitnesses :: TxBody -> [KeyWitness]
-    signingWitnesses body = makeSignWitness <$> allSKeys
-      where
-        makeSignWitness sk = makeShelleyKeyWitness body (WitnessPaymentKey sk)
+
+makeSignedTransactionWithKeys ::
+  [SigningKey PaymentKey] ->
+  TxBody ->
+  Tx
+makeSignedTransactionWithKeys keys txBody =
+  makeSignedTransaction keyWitnesses txBody
+  where
+    createWitness key = makeShelleyKeyWitness txBody (WitnessPaymentKey key)
+    keyWitnesses = fmap createWitness keys
 
 callBodyAutoBalance ::
   (MonadBlockchainParams m) =>

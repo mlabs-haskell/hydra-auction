@@ -1,7 +1,7 @@
 module HydraAuction.Hydra.Runner (
   HydraRunner (..),
   matchingHydraEvent,
-  executeHydraRunnerInTest,
+  executeHydraRunnerFakingParams,
   executeHydraRunner,
 ) where
 
@@ -55,7 +55,11 @@ import HydraAuction.Hydra.Monad (
   EventMatcher (..),
   MonadHydra (..),
  )
+import HydraAuction.Runner (Runner)
+import HydraAuctionUtils.BundledData (readHydraNodeProtocolParams)
 import HydraAuctionUtils.Monads (
+  BlockchainParams (..),
+  MonadBlockchainParams (..),
   MonadNetworkId (askNetworkId),
   MonadTrace (..),
  )
@@ -70,6 +74,7 @@ data HydraRunnerLog
 data HydraExecutionContext = MkHydraExecutionContext
   { node :: HydraClient
   , tracer :: Tracer IO HydraRunnerLog
+  , fakeBlockchainParams :: BlockchainParams
   }
 
 newtype HydraRunner a = MkHydraRunner
@@ -127,6 +132,15 @@ instance MonadTrace HydraRunner where
     MkHydraExecutionContext {tracer} <- ask
     liftIO $ traceWith tracer message
 
+instance MonadBlockchainParams HydraRunner where
+  queryBlockchainParams = do
+    MkHydraExecutionContext {fakeBlockchainParams} <- ask
+    return fakeBlockchainParams
+
+  -- Hydra slot is always 0, so it probably safe to use it
+  -- for interval conversion
+  toSlotNo _ = return 0
+
 matchingHydraEvent :: Value -> Maybe HydraEvent
 matchingHydraEvent value =
   case value ^? key "tag" of
@@ -167,8 +181,20 @@ executeHydraRunner ::
 executeHydraRunner context runner =
   runReaderT (unHydraRunner runner) context
 
-executeHydraRunnerInTest :: HydraClient -> HydraRunner a -> IO a
-executeHydraRunnerInTest node = executeHydraRunner context
+executeHydraRunnerFakingParams :: HydraClient -> HydraRunner a -> Runner a
+executeHydraRunnerFakingParams node monad = do
+  params <- queryBlockchainParams
+  protocolParameters <- liftIO readHydraNodeProtocolParams
+  let patchedParams =
+        params
+          { protocolParameters = protocolParameters
+          }
+  liftIO $ executeHydraRunner (context patchedParams) monad
   where
     tracer = contramap show stdoutTracer
-    context = MkHydraExecutionContext {node = node, tracer = tracer}
+    context params =
+      MkHydraExecutionContext
+        { node = node
+        , tracer = tracer
+        , fakeBlockchainParams = params
+        }
