@@ -234,21 +234,24 @@ withStartStopTrace threadSort action = do
 
 mbQueueAuctionPhases :: TQueue DelegateEvent -> TChan DelegateResponse -> DelegateTracerT IO ()
 mbQueueAuctionPhases delegateEvents broadcast = do
-  terms <- liftIO . atomically $ getTerms =<< dupTChan broadcast
-  liftIO $ queueStages terms
+  terms <-
+    liftIO . atomically $
+      awaitForAuctionSetTerms =<< dupTChan broadcast
   traceQueueEvent terms
+  liftIO $ forever $ queueCurrentStageAndWaitForNext terms
   where
     traceQueueEvent :: AuctionTerms -> DelegateTracerT IO ()
     traceQueueEvent = trace . QueueAuctionPhaseEvent . ReceivedAuctionSet
 
-    getTerms :: TChan DelegateResponse -> STM AuctionTerms
-    getTerms chan =
+    awaitForAuctionSetTerms :: TChan DelegateResponse -> STM AuctionTerms
+    awaitForAuctionSetTerms chan =
       readTChan chan >>= \case
         AuctionSet terms -> pure terms
-        _ -> getTerms chan
+        -- FIXME: maybe thread wait?
+        _ -> awaitForAuctionSetTerms chan
 
-    queueStages :: AuctionTerms -> IO ()
-    queueStages terms = do
+    queueCurrentStageAndWaitForNext :: AuctionTerms -> IO ()
+    queueCurrentStageAndWaitForNext terms = do
       currentStage <- currentAuctionStage terms
       atomically $ writeTQueue delegateEvents $ AuctionStageStarted currentStage
       currentPosixTime <- POSIXTime <$> currentTimeMilliseconds
@@ -257,7 +260,6 @@ mbQueueAuctionPhases delegateEvents broadcast = do
         Nothing -> pure ()
         Just s -> do
           threadDelay (fromInteger s * 1000)
-          queueStages terms
 
 {- | start a delegate server at a @$PORT@,
    it accepts incoming websocket connections
