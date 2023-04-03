@@ -23,7 +23,7 @@ readDataFile source = do
 
 readHydraNodeProtocolParams :: IO ProtocolParameters
 readHydraNodeProtocolParams = do
-  bytes <- readDataFile "protocol-parameters.json"
+  bytes <- readDataFile "devnet-source/protocol-parameters.json"
   case Aeson.eitherDecodeStrict bytes of
     Left errorMsg ->
       fail $
