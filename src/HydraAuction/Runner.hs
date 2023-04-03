@@ -14,12 +14,8 @@ module HydraAuction.Runner (
 ) where
 
 -- Prelude imports
+
 import Hydra.Prelude (
-  Applicative,
-  Functor,
-  IO,
-  Monad,
-  MonadFail,
   MonadIO,
   MonadReader,
   ReaderT,
@@ -28,33 +24,40 @@ import Hydra.Prelude (
   liftIO,
   local,
   runReaderT,
-  show,
-  ($),
-  (.),
  )
 import Test.Hydra.Prelude (withTempDir)
-import Prelude (return)
+import Prelude
 
 -- Haskell imports
 
 import Control.Monad (void)
 import Control.Monad.Catch (MonadCatch, MonadMask, MonadThrow)
 import Control.Tracer (stdoutTracer, traceWith)
-import System.FilePath (FilePath)
 
 -- Cardano imports
 import CardanoClient (
   QueryPoint (QueryTip),
   awaitTransaction,
+  queryEraHistory,
+  queryProtocolParameters,
+  queryStakePools,
+  querySystemStart,
   queryUTxO,
   queryUTxOByTxIn,
   submitTransaction,
  )
+
 import CardanoNode (
   NodeLog (..),
   RunningNode (RunningNode, networkId, nodeSocket),
   withCardanoNodeDevnet,
  )
+
+-- Plutus imports
+import Data.Time (secondsToNominalDiffTime)
+import Data.Time.Clock.POSIX (posixSecondsToUTCTime)
+import Hydra.Chain.Direct.TimeHandle (TimeHandle (..), queryTimeHandle)
+import Plutus.V2.Ledger.Api (POSIXTime (getPOSIXTime))
 
 -- Hydra imports
 import Hydra.Cardano.Api (Lovelace, NetworkId, Tx, UTxO)
@@ -71,6 +74,8 @@ import HydraAuction.Runner.Tracer (
  )
 import HydraAuctionUtils.Fixture (Actor (..), keysFor)
 import HydraAuctionUtils.Monads (
+  BlockchainParams (..),
+  MonadBlockchainParams (..),
   MonadNetworkId (..),
   MonadQueryUtxo (..),
   MonadSubmitTx (..),
@@ -120,6 +125,29 @@ instance MonadNetworkId Runner where
     MkExecutionContext {node} <- ask
     let RunningNode {networkId} = node
     return networkId
+
+instance MonadBlockchainParams Runner where
+  queryBlockchainParams :: Runner BlockchainParams
+  queryBlockchainParams = do
+    MkExecutionContext {node} <- ask
+    let RunningNode {networkId, nodeSocket} = node
+    liftIO $
+      MkBlockchainParams
+        <$> queryProtocolParameters networkId nodeSocket QueryTip
+        <*> querySystemStart networkId nodeSocket QueryTip
+        <*> queryEraHistory networkId nodeSocket QueryTip
+        <*> queryStakePools networkId nodeSocket QueryTip
+
+  toSlotNo ptime = do
+    MkExecutionContext {node} <- ask
+    let RunningNode {networkId, nodeSocket} = node
+    timeHandle <-
+      liftIO $ queryTimeHandle networkId nodeSocket
+    let timeInSeconds = getPOSIXTime ptime `div` 1000
+        ndtime = secondsToNominalDiffTime $ fromInteger timeInSeconds
+        utcTime = posixSecondsToUTCTime ndtime
+    either (error . show) return $
+      slotFromUTCTime timeHandle utcTime
 
 callWithTx ::
   (MonadReader ExecutionContext m, MonadIO m) =>

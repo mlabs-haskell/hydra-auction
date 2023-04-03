@@ -20,8 +20,7 @@ import Cardano.Api (AddressInEra (..))
 import Cardano.Api.UTxO qualified as UTxO
 
 -- Hydra imports
-import Hydra.Cardano.Api (Address (ByronAddress, ShelleyAddress), Tx)
-import Hydra.Cardano.Api.Prelude (TxOut (..))
+import Hydra.Cardano.Api (Address (ByronAddress, ShelleyAddress), Tx, pattern TxOut)
 
 -- HydraAuction imports
 import HydraAuction.Hydra.Interface (

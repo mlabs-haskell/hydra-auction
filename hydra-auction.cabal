@@ -241,6 +241,8 @@ library hydra-auction-utils
     HydraAuctionUtils.Fixture
     HydraAuctionUtils.Monads
     HydraAuctionUtils.Tracing
+    HydraAuctionUtils.Tx.AutoCreateTx
+    HydraAuctionUtils.Tx.Utxo
     Paths_hydra_auction
 
   build-depends:
