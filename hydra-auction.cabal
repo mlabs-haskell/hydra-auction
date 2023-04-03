@@ -256,7 +256,9 @@ test-suite hydra-auction-test
   main-is:        Spec.hs
   other-modules:
     EndToEnd.Hydra
+    EndToEnd.HydraUtils
     EndToEnd.Ledger
+    EndToEnd.LedgerL2
     EndToEnd.Utils
     Unit.Common
 
@@ -276,6 +278,7 @@ test-suite hydra-auction-test
     , plutus-cbor
     , plutus-tx
     , plutus-tx-plugin
+    , process
     , QuickCheck
     , tasty
     , tasty-hspec

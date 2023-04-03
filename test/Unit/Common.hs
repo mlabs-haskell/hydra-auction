@@ -1,7 +1,6 @@
 module Unit.Common (testSuite) where
 
 -- Prelude imports
-
 import Hydra.Prelude (MonadIO (liftIO))
 import PlutusTx.Prelude
 import Prelude qualified
