@@ -11,6 +11,7 @@ import Prelude
 -- Haskell imports
 
 import Control.Lens ((^?))
+import Control.Lens.Getter (Getting)
 import Control.Monad (guard)
 import Control.Monad.Catch (MonadCatch, MonadMask, MonadThrow)
 import Control.Monad.Reader (MonadReader, ReaderT (runReaderT), ask)
@@ -26,6 +27,7 @@ import Data.Aeson (
 import Data.Aeson.Lens (key)
 import Data.Aeson.Types (parseMaybe)
 import Data.Map qualified as Map
+import Data.Monoid (First)
 import GHC.Natural (Natural)
 
 -- Cardano imports
@@ -50,6 +52,7 @@ import HydraAuction.Hydra.Interface (
  )
 import HydraAuction.Hydra.Monad (
   AwaitedHydraEvent (..),
+  EventMatcher (..),
   MonadHydra (..),
  )
 import HydraAuctionUtils.Monads (
@@ -58,7 +61,10 @@ import HydraAuctionUtils.Monads (
  )
 
 {- HLINT ignore "Use newtype instead of data" -}
-data HydraRunnerLog = HydraRunnerStringMessage String
+data HydraRunnerLog
+  = HydraRunnerStringMessage String
+  | AwaitingHydraEvent AwaitedHydraEvent
+  | AwaitedHydraEvent HydraEvent
   deriving stock (Show)
 
 data HydraExecutionContext = MkHydraExecutionContext
@@ -95,15 +101,21 @@ instance MonadHydra HydraRunner where
   waitForHydraEvent' :: Natural -> AwaitedHydraEvent -> HydraRunner HydraEvent
   waitForHydraEvent' timeout awaitedSpec = do
     MkHydraExecutionContext {node} <- ask
-    liftIO $ waitMatch timeout node matchingHandler
+    traceMessage $ AwaitingHydraEvent awaitedSpec
+    -- FIXME: raise custom errors
+    event <- liftIO $ waitMatch timeout node matchingHandler
+    traceMessage $ AwaitedHydraEvent event
+    return event
     where
       matchingHandler value = do
         event <- matchingHydraEvent value
-        case awaitedSpec of
-          Any -> return ()
-          SpecificKind expectedKind -> guard $ getHydraEventKind event == expectedKind
-          SpecificEvent expectedEvent -> guard $ event == expectedEvent
+        guard $ matchingPredicate event
         return event
+      matchingPredicate event = case awaitedSpec of
+        Any -> True
+        SpecificKind expectedKind -> getHydraEventKind event == expectedKind
+        SpecificEvent expectedEvent -> event == expectedEvent
+        CustomMatcher (EventMatcher customMatcher) -> customMatcher event
 
 instance MonadNetworkId HydraRunner where
   askNetworkId = return $ Testnet $ NetworkMagic 42
@@ -122,6 +134,13 @@ matchingHydraEvent value =
     Just "HeadIsInitializing" ->
       HeadIsInitializing <$> retrieveField "headId"
     Just "TxSeen" -> TxSeen <$> retrieveField "tx"
+    Just "TxValid" -> TxValid <$> retrieveField "tx"
+    Just "TxInvalid" -> TxInvalid <$> retrieveField "tx"
+    Just "SnapshotConfirmed" ->
+      SnapshotConfirmed
+        <$> retrieveField'
+          ( key "snapshot" . key "confirmedTransactions"
+          )
     Just "Committed" -> Committed <$> retrieveField "utxo"
     Just "HeadIsOpen" -> Just HeadIsOpen
     Just "HeadIsClosed" -> Just HeadIsClosed
@@ -134,8 +153,11 @@ matchingHydraEvent value =
         txInOutMap <- retrieveField "utxo"
         return $ UTxO.fromPairs $ Map.toList txInOutMap
     retrieveField :: FromJSON a => Key -> Maybe a
-    retrieveField fieldKey = do
-      fieldValue <- value ^? key fieldKey
+    retrieveField fieldKey = retrieveField' $ key fieldKey
+    retrieveField' ::
+      FromJSON a => Getting (First Value) Value Value -> Maybe a
+    retrieveField' getter = do
+      fieldValue <- value ^? getter
       parseMaybe parseJSON fieldValue
 
 executeHydraRunner ::

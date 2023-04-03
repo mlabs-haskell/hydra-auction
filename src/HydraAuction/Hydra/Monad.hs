@@ -2,6 +2,7 @@
 
 module HydraAuction.Hydra.Monad (
   MonadHydra (..),
+  EventMatcher (..),
   AwaitedHydraEvent (..),
   waitForHydraEvent,
   sendCommandAndWaitFor,
@@ -25,15 +26,26 @@ import Hydra.Cardano.Api.Prelude (TxOut (..))
 -- HydraAuction imports
 import HydraAuction.Hydra.Interface (
   HydraCommand (GetUTxO, NewTx),
-  HydraEvent (GetUTxOResponse, TxSeen),
+  HydraEvent (GetUTxOResponse, SnapshotConfirmed),
   HydraEventKind (GetUTxOResponseKind),
  )
-import HydraAuctionUtils.Monads (MonadQueryUtxo (..), MonadSubmitTx (..), UtxoQuery (..))
+import HydraAuctionUtils.Monads (
+  MonadQueryUtxo (..),
+  MonadSubmitTx (..),
+  UtxoQuery (..),
+ )
 
 data AwaitedHydraEvent
   = Any
   | SpecificEvent HydraEvent
   | SpecificKind HydraEventKind
+  | CustomMatcher EventMatcher
+  deriving stock (Show)
+
+newtype EventMatcher = EventMatcher (HydraEvent -> Bool)
+
+instance Show EventMatcher where
+  show (EventMatcher _) = "EventMatcher <some HydraEvent predicate>"
 
 class Monad m => MonadHydra m where
   sendCommand :: HydraCommand -> m ()
@@ -52,10 +64,16 @@ sendCommandAndWaitFor awaitedSpec command = do
 
 -- FIXME: this does not work without `Monad m`, do not know why
 instance {-# OVERLAPPABLE #-} (Monad m, MonadHydra m) => MonadSubmitTx m where
+  -- FIXME: handle TxValid/TxInvalid
   submitTx :: Tx -> m ()
-  submitTx = sendCommand . NewTx
+  submitTx tx = do
+    sendCommand $ NewTx tx
+
   awaitTx :: Tx -> m ()
-  awaitTx = void . waitForHydraEvent . SpecificEvent . TxSeen
+  awaitTx tx = do
+    void $ waitForHydraEvent . CustomMatcher . EventMatcher $ \case
+      SnapshotConfirmed txs -> tx `elem` txs
+      _ -> False
 
 instance {-# OVERLAPPABLE #-} (Monad m, MonadHydra m) => MonadQueryUtxo m where
   queryUtxo query = do

@@ -43,29 +43,38 @@ commandConstructorName Fanout = "Fanout"
 data HydraEvent
   = GetUTxOResponse UTxO.UTxO
   | TxSeen Tx
+  | TxValid Tx
+  | TxInvalid Tx
+  | SnapshotConfirmed [Tx]
   | Committed UTxO.UTxO
   | HeadIsInitializing HeadId
   | HeadIsOpen
   | HeadIsClosed
   | ReadyToFanout
   | HeadIsFinalized
-  deriving stock (Eq)
+  deriving stock (Eq, Show)
 
 data HydraEventKind
   = GetUTxOResponseKind
   | TxSeenKind
+  | TxValidKind
+  | TxInvalidKind
+  | SnapshotConfirmedKind
   | CommittedKind
   | HeadIsInitializingKind
   | HeadIsOpenKind
   | HeadIsClosedKind
   | ReadyToFanoutKind
   | HeadIsFinalizedKind
-  deriving stock (Eq)
+  deriving stock (Eq, Show)
 
 getHydraEventKind :: HydraEvent -> HydraEventKind
 getHydraEventKind event = case event of
   GetUTxOResponse _ -> GetUTxOResponseKind
   TxSeen _ -> TxSeenKind
+  TxValid _ -> TxValidKind
+  TxInvalid _ -> TxInvalidKind
+  SnapshotConfirmed _ -> SnapshotConfirmedKind
   Committed _ -> CommittedKind
   HeadIsInitializing _ -> HeadIsInitializingKind
   HeadIsOpen -> HeadIsOpenKind
