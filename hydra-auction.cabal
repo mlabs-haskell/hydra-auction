@@ -50,6 +50,7 @@ common common-lang
     , base                     ^>=4.14
     , base16-bytestring
     , bytestring
+    , cardano-api
     , cardano-ledger-core
     , containers
     , contra-tracer
@@ -59,7 +60,10 @@ common common-lang
     , hydra-cardano-api
     , hydra-cluster
     , hydra-node
+    , hydra-plutus
     , hydra-prelude
+    , lens
+    , lens-aeson
     , mtl
     , plutus-ledger-api
     , plutus-tx-plugin
@@ -187,6 +191,8 @@ library
     HydraAuction.Delegate
     HydraAuction.Delegate.Interface
     HydraAuction.Hydra.Interface
+    HydraAuction.Hydra.Monad
+    HydraAuction.Hydra.Runner
     HydraAuction.OnChain
     HydraAuction.OnChain.Common
     HydraAuction.OnChain.TestNFT
@@ -260,8 +266,6 @@ test-suite hydra-auction-test
     , hydra-node
     , hydra-prelude
     , hydra-test-utils
-    , lens
-    , lens-aeson
     , plutus-cbor
     , plutus-tx
     , plutus-tx-plugin
