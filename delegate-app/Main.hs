@@ -26,6 +26,7 @@ import Control.Tracer (Tracer, contramap, stdoutTracer)
 import Data.Aeson (ToJSON, eitherDecode, encode)
 import Data.Maybe (fromMaybe)
 import Network.WebSockets (
+  Connection,
   acceptRequest,
   receiveData,
   runServer,
@@ -101,39 +102,41 @@ websocketsServer pingSecs frontendRequestQueue broadcast pending = do
   tracer <- askTracer
 
   liftIO $ do
-    broadcast' <- atomically $ dupTChan broadcast
-
-    let encodeSend :: forall a. ToJSON a => a -> IO ()
-        encodeSend = sendTextData connection . encode
-
-        receive :: forall void. IO void
-        receive = forever $
-          runWithTracer' tracer $ do
-            inp <- liftIO $ receiveData connection
-            case eitherDecode @FrontendRequest inp of
-              Left msg -> do
-                let err = FrontendNoParse msg
-                trace (DelegateError err)
-                liftIO $ encodeSend err
-              Right req -> do
-                trace $ FrontendInput req
-                liftIO . atomically $
-                  writeTQueue frontendRequestQueue req
-
-        send :: forall void. IO void
-        send =
-          forever $
-            atomically (readTChan broadcast')
-              >>= encodeSend
-
+    broadcastChannelCopy <- atomically $ dupTChan broadcast
     -- From the Documentation of 'withPingThread' in 'Network.Websockets':
     -- This is useful to keep idle connections open through proxies and whatnot.
     -- Many (but not all) proxies have a 60 second default timeout, so based on
     -- that sending a ping every 30 seconds is a good idea.
-    withPingThread connection pingSecs (pure ()) $ race_ receive send
+    withPingThread connection pingSecs (pure ()) $
+      race_
+        (forever $ receiveAndPutInQueue tracer connection)
+        (forever $ sendFromChannel connection broadcastChannelCopy)
+  where
+    sendToClient :: forall a. ToJSON a => Connection -> a -> IO ()
+    sendToClient connection = sendTextData connection . encode
+    receiveAndPutInQueue ::
+      Tracer IO DelegateServerLog ->
+      Connection ->
+      IO ()
+    receiveAndPutInQueue tracer connection =
+      runWithTracer' tracer $ do
+        inp <- liftIO $ receiveData connection
+        case eitherDecode @FrontendRequest inp of
+          Left msg -> do
+            let err = FrontendNoParse msg
+            trace (DelegateError err)
+            liftIO $ sendToClient connection err
+          Right request -> do
+            trace $ FrontendInput request
+            liftIO . atomically $
+              writeTQueue frontendRequestQueue request
+    sendFromChannel :: Connection -> TChan DelegateResponse -> IO ()
+    sendFromChannel connection broadcastCopy =
+      atomically (readTChan broadcastCopy)
+        >>= sendToClient connection
 
-{- | create a delegate runner that will listen for incoming events and output outgoing events
-   accordingly
+{- | create a delegate runner that will listen for incoming events
+     and output outgoing events accordingly
 -}
 runDelegateLogicSteps ::
   forall void.
@@ -192,30 +195,42 @@ runDelegateServer conf = do
   frontendRequestQueue <- liftIO . atomically $ newTQueue
   broadcastChannel <- liftIO . atomically $ newTChan
 
-  let wsServer, delegateRunner, queueAuctionPhases :: IO ()
-      wsServer =
-        runServer (show $ host conf) (fromIntegral $ port conf) $
-          runWithTracer' tracer . websocketsServer (ping conf) frontendRequestQueue broadcastChannel
-
-      delegateRunner =
-        runWithTracer' tracer . execDelegateRunnerT $ runDelegateLogicSteps (tick conf) eventQueue frontendRequestQueue broadcastChannel
-
-      queueAuctionPhases = runWithTracer' tracer $ mbQueueAuctionPhases eventQueue broadcastChannel
+  let workerAction threadSort =
+        withStartStopTrace threadSort $
+          case threadSort of
+            WebsocketThread -> do
+              liftIO $
+                runServer (show $ host conf) (fromIntegral $ port conf) $
+                  runWithTracer' tracer
+                    . websocketsServer
+                      (ping conf)
+                      frontendRequestQueue
+                      broadcastChannel
+            DelegateRunnerThread ->
+              execDelegateRunnerT $
+                runDelegateLogicSteps
+                  (tick conf)
+                  eventQueue
+                  frontendRequestQueue
+                  broadcastChannel
+            QueueAuctionStageThread ->
+              mbQueueAuctionPhases eventQueue broadcastChannel
 
   liftIO $
     mapConcurrently_
-      (runWithTracer' tracer . uncurry startWorker)
-      [ (WebsocketThread, wsServer)
-      , (QueueAuctionStageThread, queueAuctionPhases)
-      , (DelegateRunnerThread, delegateRunner)
+      (runWithTracer' tracer . workerAction)
+      [ WebsocketThread
+      , QueueAuctionStageThread
+      , DelegateRunnerThread
       ]
 
 -- | start a worker and log it
-startWorker :: ThreadSort -> IO () -> DelegateTracerT IO ()
-startWorker thread act = do
-  trace $ ThreadEvent ThreadStarted thread
-  liftIO act
-  trace $ ThreadEvent ThreadCancelled thread
+withStartStopTrace :: ThreadSort -> DelegateTracerT IO () -> DelegateTracerT IO ()
+withStartStopTrace threadSort action = do
+  trace $ ThreadEvent ThreadStarted threadSort
+  action
+  -- FIXME: use finally or something like that
+  trace $ ThreadEvent ThreadCancelled threadSort
 
 mbQueueAuctionPhases :: TQueue DelegateEvent -> TChan DelegateResponse -> DelegateTracerT IO ()
 mbQueueAuctionPhases delegateEvents broadcast = do
