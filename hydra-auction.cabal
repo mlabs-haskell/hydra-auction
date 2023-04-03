@@ -116,6 +116,9 @@ common common-lang
     TypeSynonymInstances
     UndecidableInstances
 
+  if flag(dev)
+    default-extensions: PartialTypeSignatures
+
   default-language:   Haskell2010
 
 executable hydra-auction
