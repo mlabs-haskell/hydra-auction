@@ -48,9 +48,9 @@ data Actor
   | Frank
   | Grace
   | Hans
-  | Rupert
   | Oscar
   | Patricia
+  | Rupert
   deriving stock (Eq, Show, Enum, Bounded, Generic)
 
 instance Aeson.FromJSON Actor
@@ -58,7 +58,7 @@ instance Aeson.ToJSON Actor
 
 -- These actors are supposed to be used as Hydra node admins
 hydraNodeActors :: [Actor]
-hydraNodeActors = [Rupert, Oscar, Patricia]
+hydraNodeActors = [Oscar, Patricia, Rupert]
 
 -- | Get the "well-known" keys for given actor.
 keysFor :: Actor -> IO (VerificationKey PaymentKey, SigningKey PaymentKey)
@@ -112,6 +112,6 @@ actorName = \case
   Frank -> "frank"
   Grace -> "grace"
   Hans -> "hans"
-  Rupert -> "rupert"
   Oscar -> "oscar"
   Patricia -> "patricia"
+  Rupert -> "rupert"
