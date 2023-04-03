@@ -23,7 +23,7 @@ import Control.Concurrent.STM (
  )
 import Control.Monad (forever, (>=>))
 import Control.Monad.Trans (MonadIO (liftIO), MonadTrans (lift))
-import Control.Tracer (Tracer, contramap, stdoutTracer, traceWith)
+import Control.Tracer (Tracer, contramap, stdoutTracer)
 import Data.Aeson (ToJSON, eitherDecode, encode)
 import Data.Maybe (fromMaybe)
 import Network.WebSockets (
@@ -36,7 +36,8 @@ import Network.WebSockets (
 import Prettyprinter (Pretty (pretty))
 
 -- Hydra imports
-import Hydra.Network (IP)
+-- Hydra imports
+import Hydra.Network (IP, PortNumber)
 
 -- Plutus imports
 import Plutus.V2.Ledger.Api (POSIXTime (..))
@@ -60,18 +61,18 @@ import HydraAuction.Delegate.Server (
     tick
   ),
   DelegateServerLog (
-    CancelThread,
     DelegateError,
     DelegateOutput,
     FrontendConnected,
     FrontendInput,
     QueueAuctionPhaseEvent,
-    StartThread,
-    Started
+    Started,
+    ThreadEvent
   ),
   DelegateTracerT,
   QueueAuctionPhaseEvent (ReceivedAuctionSet),
   ServerAppT,
+  ThreadEvent (ThreadCancelled, ThreadStarted),
   ThreadSort (DelegateRunnerThread, QueueAuctionStageThread, WebsocketThread),
  )
 import HydraAuction.OnChain.Common (secondsLeftInInterval, stageToInterval)
@@ -103,6 +104,7 @@ delegateServerApp pingSecs reqq broadcast pending = do
     let encodeSend :: forall a. ToJSON a => a -> IO ()
         encodeSend = sendTextData connection . encode
 
+        receive :: forall void. IO void
         receive = forever $
           runWithTracer' tracer $ do
             inp <- liftIO $ receiveData connection
@@ -115,6 +117,7 @@ delegateServerApp pingSecs reqq broadcast pending = do
                 trace $ FrontendInput req
                 liftIO . atomically . writeTQueue reqq $ FrontendRequest req
 
+        send :: forall void. IO void
         send =
           forever $
             atomically (readTChan broadcast')
@@ -130,13 +133,14 @@ delegateServerApp pingSecs reqq broadcast pending = do
    accordingly
 -}
 mkRunner ::
+  forall void.
   -- | the time in milliseconds that the runner sleeps between acts
   Int ->
   -- | the queue of incoming messages
   TQueue DelegateInput ->
   -- | the broadcast queue of outgoing messages (write only)
   TChan DelegateResponse ->
-  DelegateRunnerT (DelegateTracerT IO) ()
+  DelegateRunnerT (DelegateTracerT IO) void
 -- FIXME: we need to abort at some point but this doesn't seem
 -- to be implemented yet so we just go on
 mkRunner tick reqq broadcast = forever $ do
@@ -165,29 +169,30 @@ runDelegateServer conf = do
     pure q
   delegateBroadCastChan <- liftIO . atomically $ newTChan
 
-  let startWorker :: ThreadSort -> IO () -> IO ()
-      startWorker thread act = do
-        traceWith tracer $ StartThread thread
-        act
-        traceWith tracer $ CancelThread thread
-
-      wsServer, delegateRunner, queueAuctionPhases :: IO ()
+  let wsServer, delegateRunner, queueAuctionPhases :: IO ()
       wsServer =
         runServer (show $ host conf) (fromIntegral $ port conf) $
           runWithTracer' tracer . delegateServerApp (ping conf) delegateInputChan delegateBroadCastChan
 
       delegateRunner =
-        runWithTracer' tracer $ execDelegateRunnerT $ mkRunner (tick conf) delegateInputChan delegateBroadCastChan
+        runWithTracer' tracer . execDelegateRunnerT $ mkRunner (tick conf) delegateInputChan delegateBroadCastChan
 
       queueAuctionPhases = runWithTracer' tracer $ mbQueueAuctionPhases delegateInputChan delegateBroadCastChan
 
   liftIO $
     mapConcurrently_
-      (uncurry startWorker)
+      (runWithTracer' tracer . uncurry startWorker)
       [ (WebsocketThread, wsServer)
       , (QueueAuctionStageThread, queueAuctionPhases)
       , (DelegateRunnerThread, delegateRunner)
       ]
+
+-- | start a worker and log it
+startWorker :: ThreadSort -> IO () -> DelegateTracerT IO ()
+startWorker thread act = do
+  trace $ ThreadEvent ThreadStarted thread
+  liftIO act
+  trace $ ThreadEvent ThreadCancelled thread
 
 mbQueueAuctionPhases :: TQueue DelegateInput -> TChan DelegateResponse -> DelegateTracerT IO ()
 mbQueueAuctionPhases reqq broadcast = do
@@ -216,6 +221,9 @@ mbQueueAuctionPhases reqq broadcast = do
           threadDelay (fromInteger s * 1000)
           queueStages terms
 
+{- | start a delegate server at a @$PORT@, it accepts incoming websocket connections and
+   runs the delegate
+-}
 main :: IO ()
 main = do
   port <- lookupEnv "PORT"
@@ -224,9 +232,9 @@ main = do
       conf =
         DelegateServerConfig
           { host
-          , port = fromMaybe 8080 $ port >>= readMaybe
+          , port = fromMaybe portDefault $ port >>= readMaybe
           , tick = tick
-          , ping = 30
+          , ping = ping
           }
   runWithTracer' tracer $ runDelegateServer conf
   where
@@ -238,3 +246,9 @@ main = do
 
     tick :: Int
     tick = 1_000
+
+    ping :: Int
+    ping = 30
+
+    portDefault :: PortNumber
+    portDefault = 8080

@@ -1,9 +1,14 @@
 module HydraAuction.Delegate.Server (
   -- * Delegate server types
+
+  -- ** Server config types
   DelegateServerConfig (..),
+
+  -- ** Server log types
   DelegateServerLog (..),
   DelegateError (..),
   ThreadSort (..),
+  ThreadEvent (..),
   QueueAuctionPhaseEvent (..),
 
   -- ** delegate tracing
@@ -11,6 +16,10 @@ module HydraAuction.Delegate.Server (
 
   -- * wai extras
   ServerAppT,
+
+  -- * pretty extras
+  ViaShow (..),
+  extraInfo,
 ) where
 
 -- Prelude imports
@@ -49,8 +58,7 @@ data DelegateServerLog
   | FrontendInput FrontendRequest
   | DelegateOutput DelegateResponse
   | DelegateError DelegateError
-  | StartThread ThreadSort
-  | CancelThread ThreadSort
+  | ThreadEvent ThreadEvent ThreadSort
   | QueueAuctionPhaseEvent QueueAuctionPhaseEvent
   deriving stock (Eq, Show, Generic)
 
@@ -60,18 +68,30 @@ instance Pretty DelegateServerLog where
     FrontendConnected -> "Frontend connected to Server"
     DelegateOutput out -> "Delegate output" <> extraInfo (viaShow out)
     FrontendInput inp -> "Frontend input" <> extraInfo (viaShow inp)
-    DelegateError err -> "Delegate error" <> extraInfo (pretty err)
-    StartThread info -> "Thread" <+> viaShow info <+> "was started"
-    CancelThread info -> "Thread" <+> viaShow info <+> "was cancelled"
+    DelegateError err -> "Delegate runner error occured" <> extraInfo (pretty err)
+    ThreadEvent ev info -> "Thread" <+> pretty info <> ":" <> extraInfo (pretty ev)
     QueueAuctionPhaseEvent ev -> "Auction phase queueing" <> extraInfo (pretty ev)
 
--- | Which specific thrad was cancelled
+-- | The event type to occur
+data ThreadEvent
+  = ThreadStarted
+  | ThreadCancelled
+  deriving stock (Eq, Ord, Show)
+
+instance Pretty ThreadEvent where
+  pretty = \case
+    ThreadStarted -> "Thread started"
+    ThreadCancelled -> "Thread cancelled"
+
+-- | Which specific thrad the event originates from
 data ThreadSort
   = WebsocketThread
   | DelegateRunnerThread
   | QueueAuctionStageThread
   deriving stock (Eq, Ord, Show)
+  deriving (Pretty) via ViaShow ThreadSort
 
+-- | an event happening in the queueAuctionPhase thread
 newtype QueueAuctionPhaseEvent
   = ReceivedAuctionSet AuctionTerms
   deriving stock (Eq, Ord, Show)
@@ -84,19 +104,26 @@ instance Pretty QueueAuctionPhaseEvent where
    transformer
 -}
 newtype DelegateError = FrontendNoParse String
-  deriving stock (Eq, Show, Generic)
+  deriving stock (Eq, Ord, Show, Generic)
   deriving anyclass (FromJSON, ToJSON)
 
 instance Pretty DelegateError where
   pretty = \case
     FrontendNoParse err -> "Could not parse the input provided by the frontend" <> extraInfo (pretty err)
 
--- | additional information on a log event
-extraInfo :: forall ann. Doc ann -> Doc ann
-extraInfo = (line <>) . indent 2
-
 -- | trace a 'DelegateServerLog'
 type DelegateTracerT = TracerT DelegateServerLog
 
 -- | like @ServerApp@ but can be used with a transformer
 type ServerAppT m = PendingConnection -> m ()
+
+-- | a newtype for deriving Pretty via Show
+newtype ViaShow a = ViaShow {unViaShow :: a}
+  deriving stock (Eq, Ord, Generic)
+
+instance Show a => Pretty (ViaShow a) where
+  pretty = viaShow . unViaShow
+
+-- | additional information on a log event
+extraInfo :: forall ann. Doc ann -> Doc ann
+extraInfo = (line <>) . indent 2
