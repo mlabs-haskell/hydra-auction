@@ -4,6 +4,7 @@ module HydraAuction.Runner (
   NodeLog (..),
   Runner,
   executeRunner,
+  executeRunnerWithLocalNode,
   executeTestRunner,
   StateDirectory (..),
   ExecutionContext (..),
@@ -36,6 +37,7 @@ import Control.Tracer (stdoutTracer, traceWith)
 
 -- Cardano imports
 import CardanoClient (
+  CardanoClient (networkId),
   QueryPoint (QueryTip),
   awaitTransaction,
   queryEraHistory,
@@ -48,6 +50,7 @@ import CardanoClient (
  )
 
 import CardanoNode (
+  CardanoNodeArgs (nodeSocket),
   NodeLog (..),
   RunningNode (RunningNode, networkId, nodeSocket),
   withCardanoNodeDevnet,
@@ -60,7 +63,13 @@ import Hydra.Chain.Direct.TimeHandle (TimeHandle (..), queryTimeHandle)
 import Plutus.V2.Ledger.Api (POSIXTime (getPOSIXTime))
 
 -- Hydra imports
-import Hydra.Cardano.Api (Lovelace, NetworkId, Tx, UTxO)
+import Hydra.Cardano.Api (
+  Lovelace,
+  NetworkId (Testnet),
+  NetworkMagic (NetworkMagic),
+  Tx,
+  UTxO,
+ )
 import Hydra.Cluster.Faucet (Marked (Normal), seedFromFaucet)
 import Hydra.Logging (Tracer)
 import HydraNode (EndToEndLog (FromCardanoNode, FromFaucet))
@@ -198,6 +207,20 @@ executeTestRunner runner = do
         executeRunner
           (MkExecutionContext {tracer = tracer, node = node, actor = Alice})
           runner
+
+localNode :: RunningNode
+localNode =
+  RunningNode
+    { networkId = Testnet $ NetworkMagic 42
+    , nodeSocket = "./devnet/node.socket"
+    }
+
+executeRunnerWithLocalNode :: Runner () -> IO ()
+executeRunnerWithLocalNode runner = do
+  let tracer = contramap show stdoutTracer
+  executeRunner
+    (MkExecutionContext {tracer = tracer, node = localNode, actor = Alice})
+    runner
 
 -- * Utils
 
