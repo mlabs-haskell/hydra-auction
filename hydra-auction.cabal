@@ -6,22 +6,10 @@ homepage:      https://github.com/mlabs-haskell/hydra-auction
 author:        MLabs
 maintainer:    giovanni@mlabs.city
 data-files:
-  data/credentials/alice.sk
-  data/credentials/alice.vk
-  data/credentials/bob.sk
-  data/credentials/bob.vk
-  data/credentials/carol.sk
-  data/credentials/carol.vk
-  data/credentials/dave.sk
-  data/credentials/dave.vk
-  data/credentials/eve.sk
-  data/credentials/eve.vk
-  data/credentials/frank.sk
-  data/credentials/frank.vk
-  data/credentials/grace.sk
-  data/credentials/grace.vk
-  data/credentials/hans.sk
-  data/credentials/hans.vk
+  data/credentials/*.sk
+  data/credentials/*.vk
+  data/hydra-keys/*.sk
+  data/hydra-keys/*.vk
   README.md
 
 source-repository head
@@ -62,6 +50,7 @@ common common-lang
     , base                     ^>=4.14
     , base16-bytestring
     , bytestring
+    , cardano-api
     , cardano-ledger-core
     , containers
     , contra-tracer
@@ -71,7 +60,10 @@ common common-lang
     , hydra-cardano-api
     , hydra-cluster
     , hydra-node
+    , hydra-plutus
     , hydra-prelude
+    , lens
+    , lens-aeson
     , mtl
     , plutus-ledger-api
     , plutus-tx-plugin
@@ -204,6 +196,8 @@ library
     HydraAuction.Delegate
     HydraAuction.Delegate.Interface
     HydraAuction.Hydra.Interface
+    HydraAuction.Hydra.Monad
+    HydraAuction.Hydra.Runner
     HydraAuction.OnChain
     HydraAuction.OnChain.Common
     HydraAuction.OnChain.TestNFT
@@ -243,6 +237,7 @@ library hydra-auction-utils
   import:          common-lang
   hs-source-dirs:  src-utils
   exposed-modules:
+    HydraAuctionUtils.BundledData
     HydraAuctionUtils.Extras.CardanoApi
     HydraAuctionUtils.Extras.Plutus
     HydraAuctionUtils.Extras.PlutusOrphans
@@ -277,8 +272,6 @@ test-suite hydra-auction-test
     , hydra-node
     , hydra-prelude
     , hydra-test-utils
-    , lens
-    , lens-aeson
     , plutus-cbor
     , plutus-tx
     , plutus-tx-plugin

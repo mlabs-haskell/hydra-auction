@@ -11,7 +11,6 @@ TARGETDIR="$ROOTDIR/devnet"
 
 cp -af "$ROOTDIR/data/devnet-source/" "$TARGETDIR"
 cp -af "$ROOTDIR/data/credentials" "$TARGETDIR"
-cp -af "$ROOTDIR/data/protocol-parameters.json" "$TARGETDIR"
 
 echo '{"Producers": []}' > "$TARGETDIR/topology.json"
 sed -i.bk "s/\"startTime\": [0-9]*/\"startTime\": $(date +%s)/" "$TARGETDIR/genesis-byron.json" && rm -f "$TARGETDIR/genesis-byron.json.bk" && \

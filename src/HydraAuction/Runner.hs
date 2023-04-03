@@ -48,7 +48,6 @@ import CardanoClient (
   awaitTransaction,
   queryUTxO,
   queryUTxOByTxIn,
-  queryUTxOFor,
   submitTransaction,
  )
 import CardanoNode (
@@ -58,7 +57,7 @@ import CardanoNode (
  )
 
 -- Hydra imports
-import Hydra.Cardano.Api (Lovelace, NetworkId, Tx, TxIn, UTxO)
+import Hydra.Cardano.Api (Lovelace, NetworkId, Tx, UTxO)
 import Hydra.Cluster.Faucet (Marked (Normal), seedFromFaucet)
 import Hydra.Logging (Tracer)
 import HydraNode (EndToEndLog (FromCardanoNode, FromFaucet))

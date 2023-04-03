@@ -71,9 +71,10 @@ delegateStep input = case input of
   DelegateEvent (AuctionStageStarted VoucherExpiredStage) -> return []
   DelegateEvent (AuctionStageStarted _) -> return []
   -- FIXME: commit empty transaction
-  DelegateEvent (HydraEvent NodeCommitted) -> return []
+  DelegateEvent (HydraEvent (Committed _)) -> return []
   -- FIXME: fanout Hydra node
-  DelegateEvent (HydraEvent ContestationTimeEnded) -> return []
+  DelegateEvent (HydraEvent ReadyToFanout) -> return []
+  DelegateEvent (HydraEvent _) -> return []
   -- FIXME: validate standing bid utxo and move it to hydra
   FrontendRequest (CommitStandingBid {auctionTerms}) -> do
     state <- get

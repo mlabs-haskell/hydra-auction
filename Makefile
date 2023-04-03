@@ -38,7 +38,11 @@ lint-check: requires_nix_shell
 lint: requires_nix_shell
 	@sh lint.sh
 
-docker:
+build-docker:
+	nix build .#packages.x86_64-linux.delegateImage
+	docker load < result
+
+start-docker:
 	./scripts/spin-up-new-devnet.sh
 
 BUILD_PATH = "dist-newstyle"
