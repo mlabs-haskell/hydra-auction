@@ -1,7 +1,7 @@
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE RankNTypes #-}
 
-module HydraAuction.Delegate.Tracing (
+module HydraAuctionUtils.Tracing (
   -- * tracing types
 
   -- ** tracing transformer

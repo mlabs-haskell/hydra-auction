@@ -178,10 +178,7 @@ executable hydra-auction
 executable hydra-auction-delegate
   import:         common-lang
   main-is:        Main.hs
-  other-modules:
-    HydraAuction.Delegate.Server
-    HydraAuction.Delegate.Tracing
-
+  other-modules:  HydraAuction.Delegate.Server
   hs-source-dirs: delegate-app
   ghc-options:    -threaded -rtsopts
   build-depends:
@@ -243,6 +240,7 @@ library hydra-auction-utils
     HydraAuctionUtils.Extras.PlutusOrphans
     HydraAuctionUtils.Fixture
     HydraAuctionUtils.Monads
+    HydraAuctionUtils.Tracing
     Paths_hydra_auction
 
   build-depends:

@@ -27,8 +27,8 @@ import Hydra.Network (IP, PortNumber)
 
 -- Hydra auction imports
 import HydraAuction.Delegate.Interface (DelegateResponse, FrontendRequest)
-import HydraAuction.Delegate.Tracing (TracerT)
 import HydraAuction.Types (AuctionTerms)
+import HydraAuctionUtils.Tracing (TracerT)
 
 -- | The config for the delegate server
 data DelegateServerConfig = DelegateServerConfig

@@ -74,10 +74,10 @@ import HydraAuction.Delegate.Server (
   ServerAppT,
   ThreadSort (DelegateRunnerThread, QueueAuctionStageThread, WebsocketThread),
  )
-import HydraAuction.Delegate.Tracing (MonadTracer (trace), askTracer, runWithTracer')
 import HydraAuction.OnChain.Common (secondsLeftInInterval, stageToInterval)
 import HydraAuction.Tx.Common (currentAuctionStage, currentTimeMilliseconds)
 import HydraAuction.Types (AuctionTerms)
+import HydraAuctionUtils.Tracing (MonadTracer (trace), askTracer, runWithTracer')
 
 {- | per websocket, a thread gets spawned which then
    subscribes to the broadcast channel and sends to
