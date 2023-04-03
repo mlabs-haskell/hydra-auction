@@ -1,8 +1,7 @@
 module Main (main) where
 
 -- Prelude imports
-import Hydra.Cardano.Api.Prelude (lookupEnv)
-import Hydra.Prelude (readMaybe, traverse_)
+import Hydra.Prelude (lookupEnv, readMaybe, traverse_)
 import Prelude
 
 -- Haskell imports
@@ -22,7 +21,7 @@ import Control.Concurrent.STM (
   writeTQueue,
  )
 import Control.Monad (forever, (>=>))
-import Control.Monad.Trans (MonadIO (liftIO), MonadTrans (lift))
+import Control.Monad.Trans (MonadIO (liftIO))
 import Control.Tracer (Tracer, contramap, stdoutTracer)
 import Data.Aeson (ToJSON, eitherDecode, encode)
 import Data.Maybe (fromMaybe)
@@ -44,13 +43,16 @@ import Plutus.V2.Ledger.Api (POSIXTime (..))
 
 -- HydraAuction imports
 import HydraAuction.Delegate (
-  DelegateEvent (AuctionStageStarted, Start),
-  DelegateInput (DelegateEvent, FrontendRequest),
+  DelegateEvent (..),
   DelegateRunnerT,
-  delegateStep,
+  delegateEventStep,
+  delegateFrontendRequestStep,
   execDelegateRunnerT,
  )
-import HydraAuction.Delegate.Interface (DelegateResponse (AuctionSet), FrontendRequest)
+import HydraAuction.Delegate.Interface (
+  DelegateResponse (AuctionSet),
+  FrontendRequest,
+ )
 import HydraAuction.Delegate.Server (
   DelegateError (FrontendNoParse),
   DelegateServerConfig (
@@ -62,7 +64,6 @@ import HydraAuction.Delegate.Server (
   ),
   DelegateServerLog (
     DelegateError,
-    DelegateOutput,
     FrontendConnected,
     FrontendInput,
     QueueAuctionPhaseEvent,
@@ -84,15 +85,16 @@ import HydraAuctionUtils.Tracing (MonadTracer (trace), askTracer, runWithTracer'
    subscribes to the broadcast channel and sends to
    the incoming channel of the delegate runner
 -}
-delegateServerApp ::
+websocketsServer ::
   -- | the amount of seconds between pings
   Int ->
-  -- | the queue for the inputs of the delegates (this is where the requests are enqueued)
-  TQueue DelegateInput ->
+  -- | the queue for the frontend requests of the delegates
+  --   (this is where the requests are enqueued)
+  TQueue FrontendRequest ->
   -- | the queue for the broadcast (this is where we receives events from the runner)
   TChan DelegateResponse ->
   ServerAppT (DelegateTracerT IO)
-delegateServerApp pingSecs reqq broadcast pending = do
+websocketsServer pingSecs frontendRequestQueue broadcast pending = do
   connection <- liftIO $ acceptRequest pending
 
   trace FrontendConnected
@@ -115,7 +117,8 @@ delegateServerApp pingSecs reqq broadcast pending = do
                 liftIO $ encodeSend err
               Right req -> do
                 trace $ FrontendInput req
-                liftIO . atomically . writeTQueue reqq $ FrontendRequest req
+                liftIO . atomically $
+                  writeTQueue frontendRequestQueue req
 
         send :: forall void. IO void
         send =
@@ -132,26 +135,45 @@ delegateServerApp pingSecs reqq broadcast pending = do
 {- | create a delegate runner that will listen for incoming events and output outgoing events
    accordingly
 -}
-mkRunner ::
+runDelegateLogicSteps ::
   forall void.
   -- | the time in milliseconds that the runner sleeps between acts
   Int ->
   -- | the queue of incoming messages
-  TQueue DelegateInput ->
+  TQueue DelegateEvent ->
+  TQueue FrontendRequest ->
   -- | the broadcast queue of outgoing messages (write only)
   TChan DelegateResponse ->
   DelegateRunnerT (DelegateTracerT IO) void
 -- FIXME: we need to abort at some point but this doesn't seem
 -- to be implemented yet so we just go on
-mkRunner tick reqq broadcast = forever $ do
-  let encodeBroadcast responses = do
-        liftIO . atomically $ traverse_ (writeTChan broadcast) responses
-        lift $ traverse_ (trace . DelegateOutput) responses
-
-  events <- liftIO . atomically $ flushTQueue reqq
-  traverse_ (delegateStep >=> encodeBroadcast) events
-
-  liftIO $ threadDelay tick
+runDelegateLogicSteps
+  tick
+  eventQueue
+  frontendRequestQueue
+  broadcast = forever $ do
+    flushAndTraverseNewElements
+      eventQueue
+      (delegateEventStep >=> encodeAndBroadcast)
+    flushAndTraverseNewElements
+      frontendRequestQueue
+      ( (\request -> return (0, request))
+          >=> delegateFrontendRequestStep
+          >=> return . fmap snd
+          >=> encodeAndBroadcast
+      )
+    -- FIXME: log queues overload and make tick not-static
+    liftIO $ threadDelay tick
+    where
+      -- TODO: this is not actually broadcast now
+      encodeAndBroadcast responses = do
+        liftIO . atomically $
+          traverse_ (writeTChan broadcast) responses
+      -- TODO: make work
+      -- lift $ traverse_ (trace . DelegateOutput) responses
+      flushAndTraverseNewElements queue handler = do
+        elements <- liftIO . atomically $ flushTQueue queue
+        traverse_ handler elements
 
 -- | run a delegate server
 runDelegateServer ::
@@ -163,21 +185,22 @@ runDelegateServer conf = do
 
   tracer <- askTracer
 
-  delegateInputChan <- liftIO . atomically $ do
+  eventQueue <- liftIO . atomically $ do
     q <- newTQueue
-    writeTQueue q (DelegateEvent Start)
+    writeTQueue q Start
     pure q
-  delegateBroadCastChan <- liftIO . atomically $ newTChan
+  frontendRequestQueue <- liftIO . atomically $ newTQueue
+  broadcastChannel <- liftIO . atomically $ newTChan
 
   let wsServer, delegateRunner, queueAuctionPhases :: IO ()
       wsServer =
         runServer (show $ host conf) (fromIntegral $ port conf) $
-          runWithTracer' tracer . delegateServerApp (ping conf) delegateInputChan delegateBroadCastChan
+          runWithTracer' tracer . websocketsServer (ping conf) frontendRequestQueue broadcastChannel
 
       delegateRunner =
-        runWithTracer' tracer . execDelegateRunnerT $ mkRunner (tick conf) delegateInputChan delegateBroadCastChan
+        runWithTracer' tracer . execDelegateRunnerT $ runDelegateLogicSteps (tick conf) eventQueue frontendRequestQueue broadcastChannel
 
-      queueAuctionPhases = runWithTracer' tracer $ mbQueueAuctionPhases delegateInputChan delegateBroadCastChan
+      queueAuctionPhases = runWithTracer' tracer $ mbQueueAuctionPhases eventQueue broadcastChannel
 
   liftIO $
     mapConcurrently_
@@ -194,8 +217,8 @@ startWorker thread act = do
   liftIO act
   trace $ ThreadEvent ThreadCancelled thread
 
-mbQueueAuctionPhases :: TQueue DelegateInput -> TChan DelegateResponse -> DelegateTracerT IO ()
-mbQueueAuctionPhases reqq broadcast = do
+mbQueueAuctionPhases :: TQueue DelegateEvent -> TChan DelegateResponse -> DelegateTracerT IO ()
+mbQueueAuctionPhases delegateEvents broadcast = do
   terms <- liftIO . atomically $ getTerms =<< dupTChan broadcast
   liftIO $ queueStages terms
   traceQueueEvent terms
@@ -212,7 +235,7 @@ mbQueueAuctionPhases reqq broadcast = do
     queueStages :: AuctionTerms -> IO ()
     queueStages terms = do
       currentStage <- currentAuctionStage terms
-      atomically $ writeTQueue reqq (DelegateEvent $ AuctionStageStarted currentStage)
+      atomically $ writeTQueue delegateEvents $ AuctionStageStarted currentStage
       currentPosixTime <- POSIXTime <$> currentTimeMilliseconds
       let mSecsLeft = secondsLeftInInterval currentPosixTime (stageToInterval terms currentStage)
       case mSecsLeft of
@@ -221,8 +244,9 @@ mbQueueAuctionPhases reqq broadcast = do
           threadDelay (fromInteger s * 1000)
           queueStages terms
 
-{- | start a delegate server at a @$PORT@, it accepts incoming websocket connections and
-   runs the delegate
+{- | start a delegate server at a @$PORT@,
+   it accepts incoming websocket connections
+   and runs the delegate.
 -}
 main :: IO ()
 main = do
