@@ -193,6 +193,7 @@ library
     HydraAuction.Hydra.Interface
     HydraAuction.Hydra.Monad
     HydraAuction.Hydra.Runner
+    HydraAuction.HydraHacks
     HydraAuction.OnChain
     HydraAuction.OnChain.Common
     HydraAuction.OnChain.TestNFT
