@@ -7,18 +7,27 @@ import PlutusTx.Prelude
 
 -- Plutus imports
 import Plutus.V1.Ledger.Address (pubKeyHashAddress, scriptHashAddress)
-import Plutus.V1.Ledger.Interval (contains, interval)
+import Plutus.V1.Ledger.Interval (contains, to)
 import Plutus.V1.Ledger.Value (assetClass, assetClassValueOf)
-import Plutus.V2.Ledger.Api (TxInfo, scriptContextTxInfo, txInInfoResolved, txInfoInputs, txInfoMint, txInfoOutputs, txInfoValidRange, txOutAddress)
+import Plutus.V2.Ledger.Api (
+  TxInfo,
+  TxOut (..),
+  scriptContextTxInfo,
+  txInInfoResolved,
+  txInfoInputs,
+  txInfoMint,
+  txInfoOutputs,
+  txInfoValidRange,
+  txOutAddress,
+ )
 import Plutus.V2.Ledger.Contexts (ScriptContext, ownHash, txSignedBy)
+
+-- Hydra imporst
+import Hydra.Contract.Head (hasPT)
 
 -- Hydra auction imports
 import HydraAuction.Addresses (VoucherCS (..))
-import HydraAuction.OnChain.Common (
-  byAddress,
-  decodeOutputDatum,
-  nothingForged,
- )
+import HydraAuction.OnChain.Common (byAddress, decodeOutputDatum, isNotAdaOnlyOutput, nothingForged)
 import HydraAuction.OnChain.StateToken (StateTokenKind (..), stateTokenKindToTokenName)
 import HydraAuction.Types (
   ApprovedBidders (..),
@@ -33,28 +42,39 @@ import HydraAuction.Types (
 mkStandingBidValidator :: AuctionTerms -> StandingBidDatum -> StandingBidRedeemer -> ScriptContext -> Bool
 mkStandingBidValidator terms datum redeemer context =
   -- All cases require single standing bid input
-  case byAddress (scriptHashAddress $ ownHash context) $ txInInfoResolved <$> txInfoInputs info of
-    [inputOut] -> case redeemer of
-      MoveToHydra ->
-        -- XXX: using strange check, cuz == for lists failed compilation of Plutus Tx
-        length (txInfoOutputs info) == 1 -- Check that nothing changed in output
-          && head (txInfoOutputs info) == inputOut
-          && nothingForged info
-      NewBid ->
-        checkCorrectNewBidOutput inputOut
-          && nothingForged info
-          && traceIfFalse
-            "Wrong interval for NewBid"
-            (contains (interval 0 (biddingEnd terms)) (txInfoValidRange info))
-      Cleanup ->
-        -- XXX: interval is checked on burning
-        checkExactlyOneVoucherBurned
-          && checkOutputIsToSeller
+  case inOutsByAddress standingBidAddress of
+    [standingBidInOut] ->
+      case redeemer of
+        MoveToHydra ->
+          case filter isNotAdaOnlyOutput $ txInfoOutputs info of
+            [standingBidOutput] ->
+              -- Lot cannot be stolen, cuz we have only one output
+              -- Hydra validator shoud check that datum is not changed
+              -- in commited output
+              -- Also validator checks that output address is correct
+              -- The only thing we should check is Tx has right PT
+              traceIfFalse "No Hydra Participation Token" $
+                hasPT (hydraHeadId terms) standingBidOutput
+            _ -> traceError "Wrong number of standing bid outputs"
+            && nothingForged info
+        NewBid ->
+          checkCorrectNewBidOutput standingBidInOut
+            && nothingForged info
+            && traceIfFalse
+              "Wrong interval for NewBid"
+              (contains (to (biddingEnd terms)) (txInfoValidRange info))
+        Cleanup ->
+          -- XXX: interval is checked on burning
+          checkExactlyOneVoucherBurned
+            && checkOutputIsToSeller
     _ : _ -> traceError "More than one standing bid input"
     [] -> traceError "Impossible happened: no inputs for staning bid validator"
   where
     info :: TxInfo
     info = scriptContextTxInfo context
+    standingBidAddress = scriptHashAddress $ ownHash context
+    inOutsByAddress address =
+      byAddress address $ txInInfoResolved <$> txInfoInputs info
     validNewBid :: StandingBidState -> StandingBidState -> Bool
     validNewBid (StandingBidState oldApprovedBidders oldBid) (StandingBidState newApprovedBidders (Just newBidTerms)) =
       traceIfFalse "Bidder not signed" (txSignedBy info (bidBidder newBidTerms))
@@ -72,19 +92,21 @@ mkStandingBidValidator terms datum redeemer context =
             traceIfFalse "Bid is not greater than startingBid" $
               startingBid terms <= bidAmount newBidTerms
     validNewBid _ (StandingBidState _ Nothing) = False
-    checkCorrectNewBidOutput inputOut = case byAddress (scriptHashAddress $ ownHash context) $ txInfoOutputs info of
-      [out] ->
-        traceIfFalse "Output is not into standing bid" $
-          txOutAddress out == scriptHashAddress (ownHash context)
-            && checkValidNewBid out
-      _ -> traceError "Not exactly one ouput"
+    checkCorrectNewBidOutput inputOut =
+      case byAddress standingBidAddress $ txInfoOutputs info of
+        [out] ->
+          traceIfFalse "Output is not into standing bid" $
+            txOutAddress out == scriptHashAddress (ownHash context)
+              && checkValidNewBid out
+        _ -> traceError "Not exactly one ouput"
       where
         checkValidNewBid out =
           let inBid = standingBidState <$> decodeOutputDatum info inputOut
               outBid = standingBidState <$> decodeOutputDatum info out
            in case validNewBid <$> inBid <*> outBid of
                 Just x -> traceIfFalse "Incorrect bid" x
-                Nothing -> traceError "Incorrect encoding for input or output datum"
+                Nothing ->
+                  traceError "Incorrect encoding for input or output datum"
     checkOutputIsToSeller = case txInfoOutputs info of
       [out] ->
         traceIfFalse

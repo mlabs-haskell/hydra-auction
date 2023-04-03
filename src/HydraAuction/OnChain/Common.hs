@@ -12,6 +12,7 @@ module HydraAuction.OnChain.Common (
   checkInterval,
   secondsLeftInInterval,
   stageToInterval,
+  isNotAdaOnlyOutput,
 ) where
 
 -- Prelude imports
@@ -27,6 +28,7 @@ import Plutus.V2.Ledger.Api (
   CurrencySymbol (..),
   OutputDatum (..),
   TokenName (..),
+  Value (..),
   fromBuiltinData,
   getDatum,
   txInfoValidRange,
@@ -53,13 +55,13 @@ stageToInterval terms stage = case stage of
 {-# INLINEABLE checkInterval #-}
 checkInterval :: AuctionTerms -> AuctionStage -> TxInfo -> Bool
 checkInterval terms stage info =
-  traceIfFalse "Wrong interval for transaction" $
+  traceIfFalse "Wrong interval for transaction (checkInterval)" $
     contains (stageToInterval terms stage) (txInfoValidRange info)
 
 {-# INLINEABLE checkVoucherExpiredOrLater #-}
 checkVoucherExpiredOrLater :: AuctionTerms -> TxInfo -> Bool
 checkVoucherExpiredOrLater terms info =
-  traceIfFalse "Wrong interval for transaction" $
+  traceIfFalse "Wrong interval for transaction (checkcheckVoucherExpiredOrLaterVoucherExpiredOrLater)" $
     contains (from (voucherExpiry terms)) (txInfoValidRange info)
 
 {- | Given a POSIXTime, and an 'Interval' this function computes
@@ -99,6 +101,12 @@ decodeOutputDatum info output = do
 {-# INLINEABLE byAddress #-}
 byAddress :: Address -> [TxOut] -> [TxOut]
 byAddress address = filter (\o -> txOutAddress o == address)
+
+{-# INLINEABLE isNotAdaOnlyOutput #-}
+isNotAdaOnlyOutput :: TxOut -> Bool
+isNotAdaOnlyOutput output =
+  let value = txOutValue output
+   in length (getValue value) > 1
 
 -- XXX: Plutus.V1.Ledger.Ada module requires more dependencies
 lovelaceOfOutput :: TxOut -> Integer
