@@ -81,7 +81,7 @@ keysFor actor = do
 
 partyFor :: Actor -> IO Party
 partyFor actor = do
-  unless (actor `notElem` hydraNodeActors) $
+  unless (actor `elem` hydraNodeActors) $
     fail "Only Hydra Node actors do have hydra keys and party"
   bs <-
     readDataFile $
