@@ -41,6 +41,7 @@ import Plutus.V2.Ledger.Api (
  )
 
 -- Hydra imports
+
 import Cardano.Api.UTxO qualified as UTxO
 import CardanoClient (buildScriptAddress)
 import Hydra.Cardano.Api (
@@ -76,7 +77,6 @@ import Hydra.Cardano.Api (
   pattern PlutusScript,
   pattern PolicyId,
   pattern ScriptWitness,
-  pattern TxAuxScriptsNone,
   pattern TxMintValue,
   pattern TxOutDatumInline,
  )
