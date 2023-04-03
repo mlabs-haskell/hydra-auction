@@ -1,3 +1,4 @@
+-- FIXME: should be abstracted on MonadBlockchainParams
 module HydraAuction.Runner.Time (
   waitUntil,
   currentSlot,
@@ -21,7 +22,7 @@ import Hydra.Cardano.Api (ChainPoint (..), SlotNo (..))
 
 -- Hydra auction imports
 import HydraAuction.Runner (ExecutionContext (..), Runner)
-import HydraAuction.Tx.Common (toSlotNo)
+import HydraAuctionUtils.Monads (MonadBlockchainParams (toSlotNo))
 
 waitUntil :: POSIXTime -> Runner ()
 waitUntil time = do

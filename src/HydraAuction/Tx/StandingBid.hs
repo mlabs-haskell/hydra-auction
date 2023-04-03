@@ -43,11 +43,8 @@ import HydraAuction.OnChain (
  )
 import HydraAuction.Runner (Runner)
 import HydraAuction.Tx.Common (
-  AutoCreateParams (..),
   actorTipUtxo,
   addressAndKeys,
-  autoSubmitAndAwaitTx,
-  filterAdaOnlyUtxo,
   minLovelace,
   mkInlineDatum,
   mkInlinedDatumScriptWitness,
@@ -68,6 +65,13 @@ import HydraAuction.Types (
  )
 import HydraAuctionUtils.Extras.Plutus (scriptCurrencySymbol)
 import HydraAuctionUtils.Monads (logMsg)
+import HydraAuctionUtils.Tx.AutoCreateTx (
+  AutoCreateParams (..),
+  autoSubmitAndAwaitTx,
+ )
+import HydraAuctionUtils.Tx.Utxo (
+  filterAdaOnlyUtxo,
+ )
 
 getStadingBidDatum :: UTxO.UTxO -> StandingBidDatum
 getStadingBidDatum standingBidUtxo =

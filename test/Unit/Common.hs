@@ -67,7 +67,6 @@ testCurrentAuctionStage = do
 
   nonce <- generate arbitrary :: Prelude.IO TxIn
 
-  -- TODO: halt
   terms <- liftIO $ do
     dynamicState <- constructTermsDynamic Alice nonce
     configToAuctionTerms config dynamicState
