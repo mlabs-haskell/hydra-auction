@@ -33,6 +33,7 @@ import HydraAuction.Tx.TermsConfig (
   AuctionTermsConfig (..),
   configToAuctionTerms,
   constructTermsDynamic,
+  nonExistentHeadIdStub,
  )
 import HydraAuction.Types (AuctionStage (..), intToNatural)
 import HydraAuctionUtils.Fixture (Actor (..))
@@ -68,7 +69,7 @@ testCurrentAuctionStage = do
   nonce <- generate arbitrary :: Prelude.IO TxIn
 
   terms <- liftIO $ do
-    dynamicState <- constructTermsDynamic Alice nonce
+    dynamicState <- constructTermsDynamic Alice nonce nonExistentHeadIdStub
     configToAuctionTerms config dynamicState
 
   assertStageAtTime terms (0 `minutes` later) AnnouncedStage

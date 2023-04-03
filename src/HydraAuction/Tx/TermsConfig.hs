@@ -3,12 +3,12 @@
 module HydraAuction.Tx.TermsConfig (
   AuctionTermsConfig (..),
   AuctionTermsDynamic (..),
+  nonExistentHeadIdStub,
   constructTermsDynamic,
   configToAuctionTerms,
 ) where
 
 -- Prelude imports
-import PlutusTx.Prelude (emptyByteString)
 import Prelude
 
 -- Haskell imports
@@ -51,8 +51,10 @@ instance FromJSON AuctionTermsConfig
 
 data AuctionTermsDynamic = AuctionTermsDynamic
   { configAuctionLot :: !AssetClass
-  , -- Storing Actor, not only PubKeyHash, is required to simplify CLI actions on seller behalf
+  , -- Storing Actor, not only PubKeyHash,
+    -- is required to simplify CLI actions on seller behalf
     configSellerActor :: !Actor
+  , configHeadId :: CurrencySymbol
   , configDelegates :: ![PubKeyHash]
   , configUtxoNonce :: !TxOutRef
   , configAnnouncementTime :: !POSIXTime
@@ -63,16 +65,26 @@ instance ToJSON AuctionTermsDynamic
 
 instance FromJSON AuctionTermsDynamic
 
+-- | Stub for tests not checking MoveToHydra
+nonExistentHeadIdStub :: CurrencySymbol
+nonExistentHeadIdStub = "DOESNOTEXISTSTUB"
+
 constructTermsDynamic ::
-  forall (timedMonad :: Type -> Type). (MonadTime timedMonad, MonadIO timedMonad) => Actor -> TxIn -> timedMonad AuctionTermsDynamic
-constructTermsDynamic sellerActor utxoNonce = do
+  forall (timedMonad :: Type -> Type).
+  (MonadTime timedMonad, MonadIO timedMonad) =>
+  Actor ->
+  TxIn ->
+  CurrencySymbol ->
+  timedMonad AuctionTermsDynamic
+constructTermsDynamic sellerActor utxoNonce headId = do
   currentTimeSeconds' <- currentTimeSeconds
   sellerVkHash <- liftIO $ getActorPubKeyHash sellerActor
   return $
     AuctionTermsDynamic
       { configAuctionLot = testNftAssetClass
       , configSellerActor = sellerActor
-      , -- FIXME
+      , configHeadId = headId
+      , -- FIXME: get actual list of delegates
         configDelegates = [sellerVkHash]
       , configUtxoNonce = toPlutusTxOutRef utxoNonce
       , -- Convert to miliseconds and add one more second to have some time for submiting Tx
@@ -89,8 +101,7 @@ configToAuctionTerms AuctionTermsConfig {..} AuctionTermsDynamic {..} = do
     AuctionTerms
       { auctionLot = configAuctionLot
       , seller = sellerVkHash
-      , -- FUTURE FIXME
-        hydraHeadId = CurrencySymbol emptyByteString
+      , hydraHeadId = configHeadId
       , delegates = configDelegates
       , biddingStart = toAbsTime configDiffBiddingStart
       , biddingEnd = toAbsTime configDiffBiddingEnd

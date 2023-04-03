@@ -38,7 +38,7 @@ import HydraAuction.Tx.Escrow (
   startBidding,
  )
 import HydraAuction.Tx.StandingBid (cleanupTx, currentWinningBidder, newBid)
-import HydraAuction.Tx.TermsConfig (constructTermsDynamic)
+import HydraAuction.Tx.TermsConfig (constructTermsDynamic, nonExistentHeadIdStub)
 import HydraAuction.Tx.TestNFT (findTestNFT, mintOneTestNFT)
 import HydraAuction.Types (ApprovedBidders (..), AuctionStage (..), AuctionTerms, Natural, naturalToInt)
 import HydraAuctionUtils.Fixture (Actor (..), getActorsPubKeyHash)
@@ -161,7 +161,10 @@ handleCliAction userAction = do
       mTxIn <- findTestNFT <$> actorTipUtxo
       case mTxIn of
         Just txIn -> do
-          dynamic <- liftIO $ constructTermsDynamic actor txIn
+          -- FIXME: add HeadId support
+          dynamic <-
+            liftIO $
+              constructTermsDynamic actor txIn nonExistentHeadIdStub
           liftIO $ writeAuctionTermsDynamic auctionName dynamic
           -- FIXME: proper error printing
           Just config <- liftIO $ readAuctionTermsConfig auctionName
