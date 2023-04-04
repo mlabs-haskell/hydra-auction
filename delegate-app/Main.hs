@@ -17,32 +17,32 @@ import Plutus.V2.Ledger.Api (POSIXTime (..))
 
 import HydraAuction.Delegate (
   DelegateEvent (..),
-  DelegateInput (DelegateEvent),
   DelegateRunnerT,
-  delegateStep,
+  delegateEventStep,
   execDelegateRunnerT,
  )
 import HydraAuction.Delegate.Interface (DelegateResponse (..))
 import HydraAuction.OnChain.Common (secondsLeftInInterval, stageToInterval)
 import HydraAuction.Tx.Common (currentAuctionStage, currentTimeMilliseconds)
 
-consumer :: Chan DelegateInput -> DelegateRunnerT IO ()
-consumer delegateInputs = do
+consumer :: Chan DelegateEvent -> DelegateRunnerT IO ()
+consumer delegateEvents = do
   -- This will block until an event appears in the queue
-  delegateIn <- liftIO $ readChan delegateInputs
-  delegateResponse <- delegateStep delegateIn
-  liftIO $ mbQueueAuctionPhases delegateResponse delegateInputs
+  -- FIXME: support frontend requests too
+  delegateEvent <- liftIO $ readChan delegateEvents
+  delegateResponse <- delegateEventStep delegateEvent
+  liftIO $ mbQueueAuctionPhases delegateResponse delegateEvents
   -- FIXME: send response to client
   liftIO $
     putStrLn $
       "Delegate responses for input: " <> show delegateResponse
 
-mbQueueAuctionPhases :: [DelegateResponse] -> Chan DelegateInput -> IO ()
+mbQueueAuctionPhases :: [DelegateResponse] -> Chan DelegateEvent -> IO ()
 mbQueueAuctionPhases [AuctionSet terms] events = void $ async queueCurrentStage
   where
     queueCurrentStage = do
       currentStage <- currentAuctionStage terms
-      writeChan events (DelegateEvent $ AuctionStageStarted currentStage)
+      writeChan events $ AuctionStageStarted currentStage
       currentPosixTime <- POSIXTime <$> currentTimeMilliseconds
       let mSecsLeft = secondsLeftInInterval currentPosixTime (stageToInterval terms currentStage)
       case mSecsLeft of
@@ -54,9 +54,9 @@ mbQueueAuctionPhases _ _ = pure ()
 
 main :: IO ()
 main = do
-  delegateInputs <- newChan
+  delegateEvents <- newChan
   -- Write init even in queue
-  writeChan delegateInputs (DelegateEvent Start)
+  writeChan delegateEvents Start
   -- FIXME: cover either case. It probably should not be transformer.
-  _ <- execDelegateRunnerT $ forever (consumer delegateInputs)
+  _ <- execDelegateRunnerT $ forever (consumer delegateEvents)
   return ()

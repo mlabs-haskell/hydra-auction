@@ -1,9 +1,9 @@
 {-# LANGUAGE StrictData #-}
 
 module HydraAuction.Delegate (
-  delegateStep,
+  delegateFrontendRequestStep,
+  delegateEventStep,
   DelegateEvent (..),
-  DelegateInput (..),
   DelegateRunnerT (..),
   execDelegateRunnerT,
 ) where
@@ -24,16 +24,10 @@ import HydraAuction.Delegate.Interface (
 import HydraAuction.Hydra.Interface (HydraEvent (..))
 import HydraAuction.Types (AuctionStage (..), AuctionTerms (..))
 
--- FIXME: add client authentication (where is issue on this)
-
 data DelegateEvent
   = Start
   | AuctionStageStarted AuctionStage
   | HydraEvent HydraEvent
-
-data DelegateInput
-  = DelegateEvent DelegateEvent
-  | FrontendRequest FrontendRequest
 
 data DelegateState = NoAuction | HasAuction AuctionTerms
 
@@ -57,37 +51,51 @@ execDelegateRunnerT (MkDelegateRunner action) = evalStateT action initialState
 instance MonadTrans DelegateRunnerT where
   lift = MkDelegateRunner . lift
 
-delegateStep ::
+type ClientId = Int
+
+data ClientResponseScope
+  = Broadcast
+  | PerClient ClientId
+
+delegateFrontendRequestStep ::
   forall m.
   Monad m =>
-  DelegateInput ->
-  DelegateRunnerT m [DelegateResponse]
-delegateStep input = case input of
-  -- FIXME: initialize Hydra
-  DelegateEvent Start -> return []
-  -- FIXME: close Hydra node
-  DelegateEvent (AuctionStageStarted BiddingEndedStage) -> return []
-  -- FIXME: abort Hydra node
-  DelegateEvent (AuctionStageStarted VoucherExpiredStage) -> return []
-  DelegateEvent (AuctionStageStarted _) -> return []
-  -- FIXME: commit empty transaction
-  DelegateEvent (HydraEvent (Committed _)) -> return []
-  -- FIXME: fanout Hydra node
-  DelegateEvent (HydraEvent ReadyToFanout) -> return []
-  DelegateEvent (HydraEvent _) -> return []
+  (ClientId, FrontendRequest) ->
+  DelegateRunnerT m [(ClientResponseScope, DelegateResponse)]
+delegateFrontendRequestStep (clientId, request) = case request of
   -- FIXME: validate standing bid utxo and move it to hydra
-  FrontendRequest (CommitStandingBid {auctionTerms}) -> do
+  CommitStandingBid {auctionTerms} -> do
     state <- get
     case state of
       NoAuction -> do
         put $ HasAuction auctionTerms
-        return [AuctionSet auctionTerms] -- FIXME: validate AuctionTerms are valid
-      HasAuction _ -> return [AlreadyHasAuction]
-  FrontendRequest (NewBid _) -> do
+        -- FIXME: validate AuctionTerms are valid
+        return [(Broadcast, AuctionSet auctionTerms)]
+      HasAuction _ -> return [(PerClient clientId, AlreadyHasAuction)]
+  NewBid _ -> do
     state <- get
     case state of
-      NoAuction -> return [HasNoAuction]
+      NoAuction -> return [(PerClient clientId, HasNoAuction)]
       HasAuction _ -> do
         -- FIXME: place new bid
         -- FIXME: return closing transaction
-        return [ClosingTxTemplate]
+        return [(PerClient clientId, ClosingTxTemplate)]
+
+delegateEventStep ::
+  forall m.
+  Monad m =>
+  DelegateEvent ->
+  DelegateRunnerT m [DelegateResponse]
+delegateEventStep event = case event of
+  -- FIXME: initialize Hydra
+  Start -> return []
+  -- FIXME: close Hydra node
+  AuctionStageStarted BiddingEndedStage -> return []
+  -- FIXME: abort Hydra node
+  AuctionStageStarted VoucherExpiredStage -> return []
+  AuctionStageStarted _ -> return []
+  -- FIXME: commit empty transaction
+  HydraEvent (Committed _) -> return []
+  -- FIXME: fanout Hydra node
+  HydraEvent ReadyToFanout -> return []
+  HydraEvent _ -> return []
