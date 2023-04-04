@@ -230,6 +230,7 @@ library
     , natural-numbers
     , plutus-tx
     , time
+    , typed-process
 
   hs-source-dirs:  src
 

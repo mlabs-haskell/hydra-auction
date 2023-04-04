@@ -5,6 +5,7 @@ module HydraAuction.Runner (
   Runner,
   executeRunner,
   executeTestRunner,
+  executeDockerRunner,
   StateDirectory (..),
   ExecutionContext (..),
   withActor,
@@ -41,6 +42,7 @@ import Control.Monad (void)
 import Control.Monad.Catch (MonadCatch, MonadMask, MonadThrow)
 import Control.Tracer (stdoutTracer, traceWith)
 import System.FilePath (FilePath)
+import System.Process.Typed (runProcess_)
 
 -- Cardano imports
 import CardanoClient (
@@ -48,7 +50,6 @@ import CardanoClient (
   awaitTransaction,
   queryUTxO,
   queryUTxOByTxIn,
-  queryUTxOFor,
   submitTransaction,
  )
 import CardanoNode (
@@ -58,7 +59,7 @@ import CardanoNode (
  )
 
 -- Hydra imports
-import Hydra.Cardano.Api (Lovelace, NetworkId, Tx, TxIn, UTxO)
+import Hydra.Cardano.Api (Lovelace, NetworkId, NetworkMagic (..), Tx, UTxO, fromNetworkMagic)
 import Hydra.Cluster.Faucet (Marked (Normal), seedFromFaucet)
 import Hydra.Logging (Tracer)
 import HydraNode (EndToEndLog (FromCardanoNode, FromFaucet))
@@ -171,6 +172,14 @@ executeTestRunner runner = do
         executeRunner
           (MkExecutionContext {tracer = tracer, node = node, actor = Alice})
           runner
+
+executeDockerRunner :: Runner () -> IO ()
+executeDockerRunner runner = do
+  runProcess_ "make start-docker"
+  let tracer = contramap show stdoutTracer
+      -- can we not hardcode these?
+      node = RunningNode {nodeSocket = "./devnet/node.socket", networkId = fromNetworkMagic $ NetworkMagic 42}
+  executeRunner (MkExecutionContext {tracer = tracer, node = node, actor = Alice}) runner
 
 -- * Utils
 
