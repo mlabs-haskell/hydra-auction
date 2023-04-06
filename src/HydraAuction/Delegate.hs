@@ -44,6 +44,7 @@ newtype DelegateRunnerT m x = MkDelegateRunner
     ( Functor
     , Applicative
     , Monad
+    , MonadFail
     , MonadState DelegateState
     , MonadIO
     )
