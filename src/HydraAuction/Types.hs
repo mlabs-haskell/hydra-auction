@@ -200,6 +200,7 @@ data BidTerms = BidTerms
   -- ^ Which amount did the bidder set to buy the auction lot?
   }
   deriving stock (Generic, Prelude.Show, Prelude.Eq)
+  deriving anyclass (FromJSON, ToJSON)
 
 instance Eq BidTerms where
   {-# INLINEABLE (==) #-}
