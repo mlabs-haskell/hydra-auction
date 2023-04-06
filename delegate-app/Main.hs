@@ -273,7 +273,7 @@ mbQueueAuctionPhases delegateEvents toClientsChannel = do
     liftIO . atomically $
       awaitForAuctionSetTerms =<< dupTChan toClientsChannel
   traceQueueEvent terms
-  liftIO $ forever $ queueCurrentStageAndWaitForNext terms
+  liftIO $ queueCurrentStageAndWaitForNextLoop terms
   where
     traceQueueEvent :: AuctionTerms -> DelegateTracerT IO ()
     traceQueueEvent = trace . QueueAuctionPhaseEvent . ReceivedAuctionSet
@@ -286,8 +286,8 @@ mbQueueAuctionPhases delegateEvents toClientsChannel = do
         -- FIXME: maybe thread wait?
         _ -> awaitForAuctionSetTerms chan
 
-    queueCurrentStageAndWaitForNext :: AuctionTerms -> IO ()
-    queueCurrentStageAndWaitForNext terms = do
+    queueCurrentStageAndWaitForNextLoop :: AuctionTerms -> IO ()
+    queueCurrentStageAndWaitForNextLoop terms = do
       currentStage <- currentAuctionStage terms
       atomically $
         writeTQueue delegateEvents $
@@ -301,6 +301,7 @@ mbQueueAuctionPhases delegateEvents toClientsChannel = do
         Nothing -> pure ()
         Just s -> do
           threadDelay (fromInteger s * 1000)
+          queueCurrentStageAndWaitForNextLoop terms
 
 {- | start a delegate server at a @$PORT@,
    it accepts incoming websocket connections
