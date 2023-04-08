@@ -54,7 +54,7 @@ data AuctionTermsDynamic = AuctionTermsDynamic
   , -- Storing Actor, not only PubKeyHash,
     -- is required to simplify CLI actions on seller behalf
     configSellerActor :: !Actor
-  , configHeadId :: CurrencySymbol
+  , configHeadId :: !CurrencySymbol
   , configDelegates :: ![PubKeyHash]
   , configUtxoNonce :: !TxOutRef
   , configAnnouncementTime :: !POSIXTime
@@ -65,9 +65,9 @@ instance ToJSON AuctionTermsDynamic
 
 instance FromJSON AuctionTermsDynamic
 
--- | Stub for tests not checking MoveToHydra
+-- | Stub for tests not checking MoveToHyda. Something not existent.
 nonExistentHeadIdStub :: CurrencySymbol
-nonExistentHeadIdStub = "DOESNOTEXISTSTUB"
+nonExistentHeadIdStub = "DEADBEEF"
 
 constructTermsDynamic ::
   forall (timedMonad :: Type -> Type).
