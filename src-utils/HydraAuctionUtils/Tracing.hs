@@ -43,6 +43,7 @@ newtype TracerT t m a = TracerT {runTracerT :: ReaderT (Tracer m t) m a}
     ( Functor
     , Applicative
     , Monad
+    , MonadFail
     , MonadReader (Tracer m t)
     , MonadIO
     )
