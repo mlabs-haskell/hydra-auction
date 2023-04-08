@@ -8,8 +8,11 @@ module HydraAuction.Delegate.Interface (
 -- Prelude imports
 import Prelude
 
+-- Haskell imports
+import GHC.Generics (Generic)
+
 -- Cardano imports
-import Cardano.Api.UTxO (UTxO)
+import Cardano.Api
 
 -- HydraAuction imports
 import HydraAuction.Types (AuctionTerms (..), Natural)
@@ -17,10 +20,12 @@ import HydraAuction.Types (AuctionTerms (..), Natural)
 data FrontendRequest
   = CommitStandingBid
       { auctionTerms :: AuctionTerms
-      , utxoToCommit :: UTxO
+      , utxoToCommit :: TxIn
       }
   | -- FIXME: commit full datum
     NewBid {bidAmount :: Natural}
+  deriving stock (Eq, Show, Generic)
+  deriving anyclass (ToJSON, FromJSON)
 
 data DelegateResponse
   = ClosingTxTemplate
@@ -28,4 +33,5 @@ data DelegateResponse
   | AlreadyHasAuction
   | HasNoAuction
   | AuctionSet AuctionTerms
-  deriving stock (Show)
+  deriving stock (Eq, Show, Generic)
+  deriving anyclass (FromJSON, ToJSON)

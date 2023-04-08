@@ -5,7 +5,10 @@ module HydraAuction.Delegate (
   delegateEventStep,
   DelegateEvent (..),
   DelegateRunnerT (..),
+  ClientResponseScope (..),
+  ClientId,
   execDelegateRunnerT,
+  clientIsInScope,
 ) where
 
 -- Prelude imports
@@ -56,6 +59,11 @@ type ClientId = Int
 data ClientResponseScope
   = Broadcast
   | PerClient ClientId
+
+clientIsInScope :: ClientId -> ClientResponseScope -> Bool
+clientIsInScope clientId scope = case scope of
+  Broadcast -> True
+  PerClient expectedClientId -> clientId == expectedClientId
 
 delegateFrontendRequestStep ::
   forall m.
