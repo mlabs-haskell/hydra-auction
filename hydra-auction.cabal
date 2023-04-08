@@ -192,6 +192,7 @@ library
     HydraAuction.Addresses
     HydraAuction.Delegate
     HydraAuction.Delegate.Interface
+    HydraAuction.Delegate.Runner
     HydraAuction.Hydra.Interface
     HydraAuction.Hydra.Monad
     HydraAuction.Hydra.Runner

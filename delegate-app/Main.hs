@@ -47,15 +47,17 @@ import HydraAuction.Delegate (
   ClientId,
   ClientResponseScope (Broadcast),
   DelegateEvent (..),
-  DelegateRunnerT,
   clientIsInScope,
   delegateEventStep,
   delegateFrontendRequestStep,
-  execDelegateRunnerT,
  )
 import HydraAuction.Delegate.Interface (
   DelegateResponse (AuctionSet),
   FrontendRequest,
+ )
+import HydraAuction.Delegate.Runner (
+  DelegateRunnerT,
+  execDelegateRunnerT,
  )
 import HydraAuction.Delegate.Server (
   DelegateError (FrontendNoParse),

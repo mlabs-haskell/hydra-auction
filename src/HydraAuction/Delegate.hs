@@ -1,13 +1,12 @@
 {-# LANGUAGE StrictData #-}
 
+-- | Pure logic and Hydra communication used for Delegate server
 module HydraAuction.Delegate (
   delegateFrontendRequestStep,
   delegateEventStep,
   DelegateEvent (..),
-  DelegateRunnerT (..),
   ClientResponseScope (..),
   ClientId,
-  execDelegateRunnerT,
   clientIsInScope,
 ) where
 
@@ -15,9 +14,7 @@ module HydraAuction.Delegate (
 import Prelude
 
 -- Haskell imports
-import Control.Monad.IO.Class (MonadIO)
-import Control.Monad.State (MonadState, StateT (..), evalStateT, get, put)
-import Control.Monad.Trans (MonadTrans (lift))
+import Control.Monad.State (get, put)
 
 -- HydraAuction imports
 
@@ -29,8 +26,8 @@ import HydraAuction.Delegate.Interface (
   InitializedState (..),
   RequestIgnoredReason (..),
   ResponseReason (..),
-  initialState,
  )
+import HydraAuction.Delegate.Runner (DelegateRunnerT (..))
 import HydraAuction.Hydra.Interface (HydraEvent (..))
 import HydraAuction.OnChain.Common (validAuctionTerms)
 import HydraAuction.Types (AuctionStage (..), AuctionTerms (..))
@@ -39,25 +36,6 @@ data DelegateEvent
   = Start
   | AuctionStageStarted AuctionStage
   | HydraEvent HydraEvent
-
-newtype DelegateRunnerT m x = MkDelegateRunner
-  { unDelegateRunner :: StateT DelegateState m x
-  }
-  deriving newtype
-    ( Functor
-    , Applicative
-    , Monad
-    , MonadFail
-    , MonadState DelegateState
-    , MonadIO
-    )
-
-execDelegateRunnerT :: Monad m => DelegateRunnerT m x -> m x
-execDelegateRunnerT (MkDelegateRunner action) =
-  evalStateT action initialState
-
-instance MonadTrans DelegateRunnerT where
-  lift = MkDelegateRunner . lift
 
 type ClientId = Int
 
