@@ -149,23 +149,24 @@ commitTxBody
         mkTxOutDatum $
           mkCommitDatum party (Just (scriptInput, scriptOutput)) (headIdToCurrencySymbol headId)
 
-findHeadUtxo :: Runner (TxIn, TxOut CtxUTxO)
-findHeadUtxo = do
+-- | Find initial Utxo with Participation Token matchin our current actor
+findInitialUtxo :: Runner (TxIn, TxOut CtxUTxO)
+findInitialUtxo = do
   (_, commitingNodeVk, _) <- addressAndKeys
   let vkh = verificationKeyHash commitingNodeVk
 
-  headAddress <- formHeadAddress
-  headUtxo <- queryUtxo (ByAddress headAddress)
-  let utxoHead =
+  headAddress <- formInitialAddress
+  commiterUtxo <- queryUtxo (ByAddress headAddress)
+  let initialUtxo =
         filter
           (hasMatchingPT vkh . txOutValue . snd)
-          (UTxO.pairs headUtxo)
+          (UTxO.pairs commiterUtxo)
 
   -- Node should be only in one
-  [(headTxIn, headTxOut)] <- return utxoHead
-  return (headTxIn, headTxOut)
+  [(initialTxIn, initialTxOut)] <- return initialUtxo
+  return (initialTxIn, initialTxOut)
   where
-    formHeadAddress = do
+    formInitialAddress = do
       MkExecutionContext {node} <- ask
       let RunningNode {networkId} = node
       return $
@@ -213,7 +214,7 @@ submitAndAwaitCommitTx
       party <- liftIO $ partyFor actor
 
       initialScriptRefUtxo <- findInitialScriptRefUtxo scriptRegistry
-      (headTxIn, headTxOut) <- findHeadUtxo
+      (initialTxIn, initialTxOut) <- findInitialUtxo
 
       commiterAdaUtxo <- filterAdaOnlyUtxo <$> actorTipUtxo
       (commiterAdaTxIn, commiterAdaTxOut) : _ <-
@@ -225,7 +226,7 @@ submitAndAwaitCommitTx
               scriptRegistry
               headId
               party
-              (headTxIn, headTxOut)
+              (initialTxIn, initialTxOut)
               (scriptTxIn, scriptTxOut, scriptTxWitness)
               commiterAdaTxIn
               commiterVkh
@@ -239,7 +240,7 @@ submitAndAwaitCommitTx
 
       let utxos =
             UTxO.fromPairs
-              [ (headTxIn, headTxOut)
+              [ (initialTxIn, initialTxOut)
               , (scriptTxIn, scriptTxOut)
               , (commiterAdaTxIn, commiterAdaTxOut)
               ]
