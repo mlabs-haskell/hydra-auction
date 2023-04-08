@@ -125,18 +125,18 @@ newBid' terms submitingActor bidAmount = do
   -- Actor is not neccesary bidder, on L2 it may be commiter
   logMsg "Doing new bid"
 
-  (bidderAddress, bidderVk, bidderSk) <- addressAndKeysForActor submitingActor
-  bidderMoneyUtxo <- queryUtxo (ByAddress bidderAddress)
+  (submitterAddress, submitterVk, submitterSk) <- addressAndKeysForActor submitingActor
+  submitterMoneyUtxo <- queryUtxo (ByAddress submitterAddress)
 
   standingBidUtxo <- scriptUtxos StandingBid terms
 
   validateHasSingleUtxo standingBidUtxo "standingBidUtxo"
-  validateHasSingleUtxo bidderMoneyUtxo "bidderMoneyUtxo"
+  validateHasSingleUtxo submitterMoneyUtxo "bidderMoneyUtxo"
 
   standingBidAddress <- scriptAddress StandingBid terms
   approvedBidders <- getApprovedBidders terms
 
-  let txOutStandingBid bidderVk =
+  let txOutStandingBid =
         TxOut
           (ShelleyAddressInEra standingBidAddress)
           valueStandingBid
@@ -151,7 +151,7 @@ newBid' terms submitingActor bidAmount = do
                   { standingBid =
                       Just $
                         BidTerms
-                          (toPlutusKeyHash $ verificationKeyHash bidderVk)
+                          (toPlutusKeyHash $ verificationKeyHash submitterVk)
                           bidAmount
                   , approvedBidders = approvedBidders
                   }
@@ -167,16 +167,16 @@ newBid' terms submitingActor bidAmount = do
   void $
     autoSubmitAndAwaitTx $
       AutoCreateParams
-        { signedUtxos = [(bidderSk, bidderMoneyUtxo)]
+        { signedUtxos = [(submitterSk, submitterMoneyUtxo)]
         , additionalSigners = []
         , referenceUtxo = mempty
         , witnessedUtxos =
             [ (standingBidWitness, standingBidUtxo)
             ]
         , collateral = Nothing
-        , outs = [txOutStandingBid bidderVk]
+        , outs = [txOutStandingBid]
         , toMint = TxMintValueNone
-        , changeAddress = bidderAddress
+        , changeAddress = submitterAddress
         , validityBound = (Just $ biddingStart terms, Just $ biddingEnd terms)
         }
 
