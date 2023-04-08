@@ -175,7 +175,7 @@ findInitialUtxo = do
           networkId
     hasMatchingPT :: Hash PaymentKey -> Value -> Bool
     hasMatchingPT vkh val =
-      not $ any hasAssetNameMatchingPT $ valueToList val
+      any hasAssetNameMatchingPT $ valueToList val
       where
         hasAssetNameMatchingPT (x, _) = case x of
           (AssetId _ (AssetName bs)) -> bs == serialiseToRawBytes vkh
