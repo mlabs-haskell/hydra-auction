@@ -23,6 +23,7 @@ import Hydra.Cardano.Api (
   fromPlutusScript,
   mkTxIn,
  )
+import Hydra.Chain.Direct.Tx (headIdToCurrencySymbol)
 
 -- Hydra auction imports
 import HydraAuction.Hydra.Interface (HydraCommand (..), HydraEvent (..), HydraEventKind (..))
@@ -80,7 +81,6 @@ import HydraAuctionUtils.Tx.Utxo (filterNonFuelUtxo)
 import EndToEnd.HydraUtils (
   runningThreeNodesDockerComposeHydra,
  )
-import Hydra.Chain.Direct.Tx (headIdToCurrencySymbol)
 
 testSuite :: TestTree
 testSuite =
