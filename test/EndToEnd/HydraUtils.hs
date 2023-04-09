@@ -1,7 +1,6 @@
 module EndToEnd.HydraUtils (
   runningThreeNodesDockerComposeHydra,
   filterNonFuelUtxo,
-  prepareScriptRegistry,
 ) where
 
 -- Preludes import
@@ -17,19 +16,10 @@ import Data.Map qualified as Map
 import Network.WebSockets (runClient)
 import System.Process (system)
 
--- Cardano imports
-
-import CardanoNode (
-  RunningNode (..),
- )
-
 -- Hydra imports
 
 import Cardano.Api.UTxO qualified as UTxO
-import Hydra.Chain.Direct.ScriptRegistry (ScriptRegistry, queryScriptRegistry)
 import Hydra.Chain.Direct.Util (isMarkedOutput)
-import Hydra.Cluster.Faucet (publishHydraScriptsAs)
-import Hydra.Cluster.Fixture qualified as HydraFixture
 import HydraNode (HydraClient (..))
 
 -- HydraAuction imports
@@ -39,12 +29,6 @@ import HydraAuctionUtils.Fixture (
   Actor (..),
   hydraNodeActors,
  )
-
-prepareScriptRegistry :: RunningNode -> IO ScriptRegistry
-prepareScriptRegistry node@RunningNode {networkId, nodeSocket} = do
-  hydraScriptsTxId <-
-    liftIO $ publishHydraScriptsAs node HydraFixture.Faucet
-  queryScriptRegistry networkId nodeSocket hydraScriptsTxId
 
 type ThreeClients =
   ((HydraClient, Actor), (HydraClient, Actor), (HydraClient, Actor))

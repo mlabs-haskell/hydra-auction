@@ -32,7 +32,7 @@ import HydraAuction.Hydra.Monad (
   waitForHydraEvent,
  )
 import HydraAuction.Hydra.Runner (executeHydraRunnerFakingParams)
-import HydraAuction.HydraHacks (submitAndAwaitCommitTx)
+import HydraAuction.HydraHacks (prepareScriptRegistry, submitAndAwaitCommitTx)
 import HydraAuction.OnChain (AuctionScript (StandingBid), standingBidValidator)
 import HydraAuction.Runner (
   ExecutionContext (MkExecutionContext, node),
@@ -78,7 +78,6 @@ import HydraAuctionUtils.Fixture (Actor (..), getActorsPubKeyHash)
 
 import EndToEnd.HydraUtils (
   filterNonFuelUtxo,
-  prepareScriptRegistry,
   runningThreeNodesDockerComposeHydra,
  )
 import Hydra.Chain.Direct.Tx (headIdToCurrencySymbol)
