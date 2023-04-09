@@ -73,11 +73,11 @@ import HydraAuction.Types (
   intToNatural,
  )
 import HydraAuctionUtils.Fixture (Actor (..), getActorsPubKeyHash)
+import HydraAuctionUtils.Tx.Utxo (filterNonFuelUtxo)
 
 -- Hydra auction test imports
 
 import EndToEnd.HydraUtils (
-  filterNonFuelUtxo,
   runningThreeNodesDockerComposeHydra,
  )
 import Hydra.Chain.Direct.Tx (headIdToCurrencySymbol)

@@ -1,6 +1,5 @@
 module EndToEnd.HydraUtils (
   runningThreeNodesDockerComposeHydra,
-  filterNonFuelUtxo,
 ) where
 
 -- Preludes import
@@ -12,19 +11,15 @@ import Prelude
 import Control.Concurrent (threadDelay)
 import Control.Exception (finally)
 import Control.Tracer (stdoutTracer)
-import Data.Map qualified as Map
 import Network.WebSockets (runClient)
 import System.Process (system)
 
 -- Hydra imports
 
-import Cardano.Api.UTxO qualified as UTxO
-import Hydra.Chain.Direct.Util (isMarkedOutput)
 import HydraNode (HydraClient (..))
 
 -- HydraAuction imports
 
-import Hydra.Cardano.Api (UTxO' (UTxO))
 import HydraAuctionUtils.Fixture (
   Actor (..),
   hydraNodeActors,
@@ -66,7 +61,3 @@ runningThreeNodesDockerComposeHydra cont = do
       contramap
         (\x -> "Hydra client for node " <> show n <> " :" <> show x)
         stdoutTracer
-
-filterNonFuelUtxo :: UTxO.UTxO -> UTxO.UTxO
-filterNonFuelUtxo =
-  UTxO . snd . Map.partition isMarkedOutput . UTxO.toMap
