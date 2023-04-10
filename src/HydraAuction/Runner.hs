@@ -83,6 +83,7 @@ import HydraAuctionUtils.Fixture (Actor (..), keysFor)
 import HydraAuctionUtils.Monads (
   BlockchainParams (..),
   MonadBlockchainParams (..),
+  MonadHasActor (..),
   MonadNetworkId (..),
   MonadQueryUtxo (..),
   MonadSubmitTx (..),
@@ -180,6 +181,11 @@ instance MonadTrace Runner where
   traceMessage message = do
     MkExecutionContext {tracer} <- ask
     liftIO $ traceWith tracer message
+
+instance MonadHasActor Runner where
+  askActor = do
+    MkExecutionContext {actor} <- ask
+    return actor
 
 executeRunner ::
   ExecutionContext ->
