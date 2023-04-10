@@ -213,7 +213,7 @@ localNode =
     , nodeSocket = "./devnet/node.socket"
     }
 
-executeRunnerWithLocalNode :: Runner () -> IO ()
+executeRunnerWithLocalNode :: forall x. Runner x -> IO x
 executeRunnerWithLocalNode runner = do
   let tracer = contramap show stdoutTracer
   executeRunner
