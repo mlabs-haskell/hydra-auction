@@ -37,7 +37,6 @@ import Control.Tracer (stdoutTracer, traceWith)
 
 -- Cardano imports
 import CardanoClient (
-  CardanoClient (networkId),
   QueryPoint (QueryTip),
   awaitTransaction,
   queryEraHistory,
@@ -50,7 +49,6 @@ import CardanoClient (
  )
 
 import CardanoNode (
-  CardanoNodeArgs (nodeSocket),
   NodeLog (..),
   RunningNode (RunningNode, networkId, nodeSocket),
   withCardanoNodeDevnet,
