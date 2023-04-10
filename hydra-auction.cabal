@@ -199,6 +199,7 @@ library
     HydraAuction.Runner
     HydraAuction.Runner.Time
     HydraAuction.Tx.Common
+    HydraAuction.Tx.Deposit
     HydraAuction.Tx.Escrow
     HydraAuction.Tx.StandingBid
     HydraAuction.Tx.TermsConfig
@@ -207,6 +208,7 @@ library
     Paths_hydra_auction
 
   other-modules:
+    HydraAuction.OnChain.Deposit
     HydraAuction.OnChain.Escrow
     HydraAuction.OnChain.StandingBid
     HydraAuction.OnChain.StateToken

@@ -22,6 +22,7 @@ import Plutus.V1.Ledger.Value (assetClassValueOf)
 import Hydra.Cardano.Api (mkTxIn, toPlutusValue, txOutValue)
 
 -- Hydra auction imports
+import HydraAuction.OnChain (AuctionScript (..))
 import HydraAuction.OnChain.TestNFT (testNftAssetClass)
 import HydraAuction.Runner (
   Runner,
@@ -29,7 +30,8 @@ import HydraAuction.Runner (
   withActor,
  )
 import HydraAuction.Runner.Time (waitUntil)
-import HydraAuction.Tx.Common (actorTipUtxo)
+import HydraAuction.Tx.Common (actorTipUtxo, scriptUtxos)
+import HydraAuction.Tx.Deposit (claimDeposit, mkDeposit)
 import HydraAuction.Tx.Escrow (
   announceAuction,
   bidderBuys,
@@ -66,7 +68,14 @@ testSuite =
     , testCase "seller-reclaims" sellerReclaimsTest
     , testCase "seller-bids" sellerBidsTest
     , testCase "unauthorised-bidder" unauthorisedBidderTest
+    , testGroup "bidder-deposit" bidderDepositTests
     ]
+
+bidderDepositTests :: [TestTree]
+bidderDepositTests =
+  [ testCase "losing-bidder" losingBidderClaimDepositTest
+  , testCase "losing-bidder-double-claim" losingBidderDoubleClaimTest
+  ]
 
 assertNFTNumEquals :: Actor -> Integer -> Runner ()
 assertNFTNumEquals actor expectedNum = do
@@ -74,6 +83,11 @@ assertNFTNumEquals actor expectedNum = do
   liftIO $ do
     let value = mconcat [toPlutusValue $ txOutValue out | (_, out) <- UTxO.pairs utxo]
     assetClassValueOf value testNftAssetClass @=? expectedNum
+
+assertUTxOsInScriptEquals :: AuctionScript -> AuctionTerms -> Integer -> Runner ()
+assertUTxOsInScriptEquals script terms expectedNum = do
+  utxo <- scriptUtxos script terms
+  liftIO $ length (UTxO.pairs utxo) @=? expectedNum
 
 config :: AuctionTermsConfig
 config =
@@ -208,3 +222,87 @@ unauthorisedBidderTest = mkAssertion $ do
   case result of
     Left (_ :: SomeException) -> return ()
     Right _ -> fail "New bid should fail, actor is not authorised"
+
+losingBidderClaimDepositTest :: Assertion
+losingBidderClaimDepositTest = mkAssertion $ do
+  let seller = Alice
+      buyer1 = Bob
+      buyer2 = Carol
+
+  mapM_ (initWallet 100_000_000) [seller, buyer1, buyer2]
+
+  nftTx <- mintOneTestNFT
+  let utxoRef = mkTxIn nftTx 0
+
+  terms <- liftIO $ do
+    dynamicState <- constructTermsDynamic seller utxoRef
+    configToAuctionTerms config dynamicState
+
+  assertNFTNumEquals seller 1
+
+  announceAuction terms
+
+  withActor buyer1 $ mkDeposit terms
+  withActor buyer2 $ mkDeposit terms
+
+  assertUTxOsInScriptEquals Deposit terms 2
+
+  waitUntil $ biddingStart terms
+  actorsPkh <- liftIO $ getActorsPubKeyHash [buyer1, buyer2]
+  startBidding terms (ApprovedBidders actorsPkh)
+
+  assertNFTNumEquals seller 0
+
+  withActor buyer1 $ newBid terms $ startingBid terms
+  withActor buyer2 $ newBid terms $ startingBid terms + minimumBidIncrement terms
+
+  waitUntil $ biddingEnd terms
+
+  withActor buyer1 $ claimDeposit terms
+
+  assertUTxOsInScriptEquals Deposit terms 1
+
+losingBidderDoubleClaimTest :: Assertion
+losingBidderDoubleClaimTest = mkAssertion $ do
+  let seller = Alice
+      buyer1 = Bob
+      buyer2 = Carol
+
+  mapM_ (initWallet 100_000_000) [seller, buyer1, buyer2]
+
+  nftTx <- mintOneTestNFT
+  let utxoRef = mkTxIn nftTx 0
+
+  terms <- liftIO $ do
+    dynamicState <- constructTermsDynamic seller utxoRef
+    configToAuctionTerms config dynamicState
+
+  assertNFTNumEquals seller 1
+
+  announceAuction terms
+
+  withActor buyer1 $ mkDeposit terms
+  withActor buyer2 $ mkDeposit terms
+
+  assertUTxOsInScriptEquals Deposit terms 2
+
+  waitUntil $ biddingStart terms
+  actorsPkh <- liftIO $ getActorsPubKeyHash [buyer1, buyer2]
+  startBidding terms (ApprovedBidders actorsPkh)
+
+  assertNFTNumEquals seller 0
+
+  withActor buyer1 $ newBid terms $ startingBid terms
+  withActor buyer2 $ newBid terms $ startingBid terms + minimumBidIncrement terms
+
+  waitUntil $ biddingEnd terms
+
+  withActor buyer1 $ claimDeposit terms
+
+  assertUTxOsInScriptEquals Deposit terms 1
+
+  result <- try $ withActor buyer1 $ claimDeposit terms
+
+  case result of
+    Left (_ :: SomeException) -> assertUTxOsInScriptEquals Deposit terms 1
+    Right _ -> fail "User should not be able to claim depoist twice"

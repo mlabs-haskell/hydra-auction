@@ -76,7 +76,6 @@ import Hydra.Cardano.Api (
   pattern PlutusScript,
   pattern PolicyId,
   pattern ScriptWitness,
-  pattern TxAuxScriptsNone,
   pattern TxMintValue,
   pattern TxOutDatumInline,
  )
