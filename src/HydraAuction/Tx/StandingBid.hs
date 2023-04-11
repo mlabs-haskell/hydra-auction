@@ -4,12 +4,16 @@ module HydraAuction.Tx.StandingBid (
   getStadingBidDatum,
   currentWinningBidder,
   getApprovedBidders,
+  newBid',
 ) where
 
 -- Prelude imports
 
-import Hydra.Prelude (void)
+import Hydra.Prelude (MonadIO, void)
 import Prelude
+
+-- Haskell imports
+import Control.Monad (when)
 
 -- Plutus imports
 import Plutus.V1.Ledger.Value (assetClassValue)
@@ -34,6 +38,8 @@ import Hydra.Cardano.Api (
  )
 
 -- Hydra auction imports
+
+import Control.Monad.Reader (MonadReader (ask))
 import HydraAuction.Addresses (VoucherCS (..))
 import HydraAuction.OnChain (
   AuctionScript (StandingBid),
@@ -41,7 +47,7 @@ import HydraAuction.OnChain (
   standingBidValidator,
   voucherAssetClass,
  )
-import HydraAuction.Runner (Runner)
+import HydraAuction.Runner (ExecutionContext (..), Runner)
 import HydraAuction.Tx.Common (
   actorTipUtxo,
   addressAndKeys,
@@ -64,7 +70,16 @@ import HydraAuction.Types (
   VoucherForgingRedeemer (BurnVoucher),
  )
 import HydraAuctionUtils.Extras.Plutus (scriptCurrencySymbol)
-import HydraAuctionUtils.Monads (logMsg)
+import HydraAuctionUtils.Fixture (Actor)
+import HydraAuctionUtils.Monads (
+  MonadCardanoClient,
+  MonadNetworkId,
+  MonadQueryUtxo (..),
+  MonadTrace,
+  UtxoQuery (..),
+  addressAndKeysForActor,
+  logMsg,
+ )
 import HydraAuctionUtils.Tx.AutoCreateTx (
   AutoCreateParams (..),
   autoSubmitAndAwaitTx,
@@ -85,7 +100,7 @@ getStadingBidDatum standingBidUtxo =
       _ -> error "Impossible happened: No inline data for standing bid"
     _ -> error "Wrong number of standing bid UTxOs found"
 
-currentWinningBidder :: AuctionTerms -> Runner (Maybe PubKeyHash)
+currentWinningBidder :: (MonadNetworkId m, MonadQueryUtxo m) => AuctionTerms -> m (Maybe PubKeyHash)
 currentWinningBidder terms = do
   standingBidUtxo <- scriptUtxos StandingBid terms
   let StandingBidDatum {standingBidState} = getStadingBidDatum standingBidUtxo
@@ -93,7 +108,7 @@ currentWinningBidder terms = do
     (Just (BidTerms {bidBidder})) -> Just bidBidder
     Nothing -> Nothing
 
-getApprovedBidders :: AuctionTerms -> Runner ApprovedBidders
+getApprovedBidders :: (MonadNetworkId m, MonadQueryUtxo m) => AuctionTerms -> m ApprovedBidders
 getApprovedBidders terms = do
   standingBidUtxo <- scriptUtxos StandingBid terms
   let StandingBidDatum {standingBidState} = getStadingBidDatum standingBidUtxo
@@ -101,12 +116,27 @@ getApprovedBidders terms = do
 
 newBid :: AuctionTerms -> Natural -> Runner ()
 newBid terms bidAmount = do
-  logMsg "Doing New bid"
+  MkExecutionContext {actor} <- ask
+  newBid' terms actor bidAmount
+
+newBid' ::
+  (MonadIO m, MonadFail m, MonadCardanoClient m, MonadTrace m) => AuctionTerms -> Actor -> Natural -> m ()
+newBid' terms submitingActor bidAmount = do
+  -- Actor is not neccesary bidder, on L2 it may be commiter
+  logMsg "Doing new bid"
+
+  (submitterAddress, submitterVk, submitterSk) <- addressAndKeysForActor submitingActor
+  submitterMoneyUtxo <- queryUtxo (ByAddress submitterAddress)
+
+  standingBidUtxo <- scriptUtxos StandingBid terms
+
+  validateHasSingleUtxo standingBidUtxo "standingBidUtxo"
+  validateHasSingleUtxo submitterMoneyUtxo "bidderMoneyUtxo"
 
   standingBidAddress <- scriptAddress StandingBid terms
   approvedBidders <- getApprovedBidders terms
 
-  let txOutStandingBid bidderVk =
+  let txOutStandingBid =
         TxOut
           (ShelleyAddressInEra standingBidAddress)
           valueStandingBid
@@ -121,7 +151,7 @@ newBid terms bidAmount = do
                   { standingBid =
                       Just $
                         BidTerms
-                          (toPlutusKeyHash $ verificationKeyHash bidderVk)
+                          (toPlutusKeyHash $ verificationKeyHash submitterVk)
                           bidAmount
                   , approvedBidders = approvedBidders
                   }
@@ -134,29 +164,27 @@ newBid terms bidAmount = do
         where
           script = scriptPlutusScript StandingBid terms
 
-  (bidderAddress, bidderVk, bidderSk) <- addressAndKeys
-
-  bidderMoneyUtxo <- filterAdaOnlyUtxo <$> actorTipUtxo
-  standingBidUtxo <- scriptUtxos StandingBid terms
-
-  -- FIXME: cover not proper UTxOs
   void $
     autoSubmitAndAwaitTx $
       AutoCreateParams
-        { signedUtxos =
-            [ (bidderSk, bidderMoneyUtxo)
-            ]
+        { signedUtxos = [(submitterSk, submitterMoneyUtxo)]
         , additionalSigners = []
         , referenceUtxo = mempty
         , witnessedUtxos =
             [ (standingBidWitness, standingBidUtxo)
             ]
         , collateral = Nothing
-        , outs = [txOutStandingBid bidderVk]
+        , outs = [txOutStandingBid]
         , toMint = TxMintValueNone
-        , changeAddress = bidderAddress
+        , changeAddress = submitterAddress
         , validityBound = (Just $ biddingStart terms, Just $ biddingEnd terms)
         }
+
+validateHasSingleUtxo :: MonadFail m => UTxO.UTxO -> String -> m ()
+validateHasSingleUtxo utxo utxoName =
+  when (length utxo /= 1) $
+    fail $
+      utxoName <> " UTxO has not exactly one TxIn"
 
 cleanupTx :: AuctionTerms -> Runner ()
 cleanupTx terms = do
