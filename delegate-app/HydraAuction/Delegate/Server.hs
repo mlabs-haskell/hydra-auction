@@ -94,6 +94,7 @@ data ThreadSort
   = WebsocketThread
   | DelegateLogicStepsThread
   | QueueAuctionStageThread
+  | QueueHydraEventsThread
   deriving stock (Eq, Ord, Show)
   deriving (Pretty) via ViaShow ThreadSort
 

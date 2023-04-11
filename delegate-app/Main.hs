@@ -256,12 +256,18 @@ runDelegateServer conf = do
                       toClientsChannel
             QueueAuctionStageThread ->
               mbQueueAuctionPhases eventQueue toClientsChannel
+            QueueHydraEventsThread ->
+              liftIO $ do
+                executeCompositeRunnerForConfig $
+                  runHydraInComposite $
+                    queueHydraEvents eventQueue
 
   liftIO $
     mapConcurrently_
       (runWithTracer' tracer . workerAction)
       [ WebsocketThread
       , QueueAuctionStageThread
+      , QueueHydraEventsThread
       , DelegateLogicStepsThread
       ]
   where
@@ -278,6 +284,15 @@ runDelegateServer conf = do
             return $
               MkCompositeExecutionContext {hydraContext, l1Context}
       executeCompositeRunner context action
+
+queueHydraEvents :: forall void. TQueue DelegateEvent -> HydraRunner void
+queueHydraEvents delegateEventQueue = forever $ ignoreExceptions $ do
+  event <- waitForHydraEvent Any
+  liftIO $ atomically $ writeTQueue delegateEventQueue $ HydraEvent event
+  where
+    handler :: forall m. Monad m => HUnitFailure -> m ()
+    handler _ = return ()
+    ignoreExceptions action = catch action handler
 
 -- | start a worker and log it
 withStartStopTrace :: ThreadSort -> DelegateTracerT IO () -> DelegateTracerT IO ()
