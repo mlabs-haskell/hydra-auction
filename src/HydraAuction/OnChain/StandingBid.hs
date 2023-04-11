@@ -20,7 +20,7 @@ import Plutus.V2.Ledger.Api (
   txInfoValidRange,
   txOutAddress,
  )
-import Plutus.V2.Ledger.Contexts (ScriptContext, ownHash, txSignedBy)
+import Plutus.V2.Ledger.Contexts (ScriptContext, ownHash)
 
 -- Hydra imporst
 import Hydra.Contract.Head (hasPT)
@@ -30,7 +30,6 @@ import HydraAuction.Addresses (VoucherCS (..))
 import HydraAuction.OnChain.Common (byAddress, decodeOutputDatum, isNotAdaOnlyOutput, nothingForged)
 import HydraAuction.OnChain.StateToken (StateTokenKind (..), stateTokenKindToTokenName)
 import HydraAuction.Types (
-  ApprovedBidders (..),
   AuctionTerms (..),
   BidTerms (..),
   StandingBidDatum (..),
@@ -77,13 +76,14 @@ mkStandingBidValidator terms datum redeemer context =
       byAddress address $ txInInfoResolved <$> txInfoInputs info
     validNewBid :: StandingBidState -> StandingBidState -> Bool
     validNewBid (StandingBidState oldApprovedBidders oldBid) (StandingBidState newApprovedBidders (Just newBidTerms)) =
-      traceIfFalse "Bidder not signed" (txSignedBy info (bidBidder newBidTerms))
-        && traceIfFalse
-          "Bidder is not approved"
-          (bidBidder newBidTerms `elem` bidders oldApprovedBidders)
-        && traceIfFalse
-          "Approved Bidders can not be modified"
-          (oldApprovedBidders == newApprovedBidders)
+      -- FIXME: disabled until M6
+      -- traceIfFalse "Bidder not signed" (txSignedBy info (bidBidder newBidTerms))
+      -- && traceIfFalse
+      --   "Bidder is not approved"
+      --   (bidBidder newBidTerms `elem` bidders oldApprovedBidders)
+      traceIfFalse
+        "Approved Bidders can not be modified"
+        (oldApprovedBidders == newApprovedBidders)
         && case oldBid of
           Just oldBidTerms ->
             traceIfFalse "Bid increment is not greater than minimumBidIncrement" $
@@ -95,9 +95,10 @@ mkStandingBidValidator terms datum redeemer context =
     checkCorrectNewBidOutput inputOut =
       case byAddress standingBidAddress $ txInfoOutputs info of
         [out] ->
-          traceIfFalse "Output is not into standing bid" $
-            txOutAddress out == scriptHashAddress (ownHash context)
-              && checkValidNewBid out
+          traceIfFalse
+            "Output is not into standing bid"
+            (txOutAddress out == scriptHashAddress (ownHash context))
+            && checkValidNewBid out
         _ -> traceError "Not exactly one ouput"
       where
         checkValidNewBid out =
