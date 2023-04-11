@@ -194,6 +194,7 @@ library
   exposed-modules:
     HydraAuction.Addresses
     HydraAuction.Delegate
+    HydraAuction.Delegate.CompositeRunner
     HydraAuction.Delegate.Interface
     HydraAuction.Hydra.Interface
     HydraAuction.Hydra.Monad

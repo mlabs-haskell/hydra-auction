@@ -1,5 +1,6 @@
 module HydraAuction.Hydra.Runner (
   HydraRunner (..),
+  HydraExecutionContext (..),
   matchingHydraEvent,
   executeHydraRunnerFakingParams,
   executeHydraRunner,
