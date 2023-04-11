@@ -8,6 +8,12 @@ import Prelude
 -- Haskell imports
 import Control.Monad.Catch (try)
 import Control.Monad.Trans.Class (lift)
+import Network.WebSockets (
+  Connection,
+  receiveData,
+  runClient,
+  sendTextData,
+ )
 import System.Console.Haskeline (
   InputT,
   defaultSettings,
@@ -46,6 +52,13 @@ import CLI.Parsers (
 import CLI.Watch (
   watchAuction,
  )
+import Control.Concurrent.Async (withAsync)
+import Control.Monad (forever)
+import Data.Aeson (decode, encode)
+import Data.IORef (IORef, newIORef, writeIORef)
+import Data.Maybe (fromJust)
+import HydraAuction.Delegate.Interface (DelegateResponse (..), DelegateState, FrontendRequest (QueryCurrentDelegateState), initialState)
+import System.Environment (lookupEnv)
 
 main :: IO ()
 main = do
@@ -53,24 +66,45 @@ main = do
   handleCliInput ci
 
 handleCliInput :: CliInput -> IO ()
-handleCliInput (Watch auctionName) = watchAuction auctionName
-handleCliInput (InteractivePrompt MkPromptOptions {..}) = do
-  let hydraVerbosity = if cliVerbosity then Verbose "hydra-auction" else Quiet
-  tracer <- stdoutOrNullTracer hydraVerbosity
+handleCliInput input = do
+  -- Connect to delegate server
+  -- TODO: port change
+  -- FIXUP: parse actual adress and other params
+  delegateNumber <- read . fromJust <$> lookupEnv "DELEGATE_NUMBER"
+  runClient "127.0.0.1" (8000 + delegateNumber) "/" $ \client -> do
+    currentDelegateStateRef <- newIORef initialState
+    sendTextData client . encode $ QueryCurrentDelegateState
+    -- DelegateState receiving thread
+    withAsync (updateStateThread client currentDelegateStateRef) $ \_ -> do
+      handleCliInput' client currentDelegateStateRef input
+  where
+    updateStateThread client currentDelegateStateRef = forever $ do
+      mMessage <- decode <$> receiveData client
+      case mMessage of
+        Just (CurrentDelegateState _ state) ->
+          writeIORef currentDelegateStateRef state
+        _ -> putStrLn $ "Ignoring server message: " <> show mMessage
 
-  let node = RunningNode {nodeSocket = cliNodeSocket, networkId = cliNetworkId}
+handleCliInput' :: _ -> IORef _ -> CliInput -> IO ()
+handleCliInput' client currentDelegateStateRef input = case input of
+  (Watch auctionName) -> watchAuction auctionName currentDelegateStateRef
+  (InteractivePrompt MkPromptOptions {..}) -> do
+    let hydraVerbosity = if cliVerbosity then Verbose "hydra-auction" else Quiet
+    tracer <- stdoutOrNullTracer hydraVerbosity
 
-      runnerContext =
-        MkExecutionContext
-          { tracer = tracer
-          , node = node
-          , actor = cliActor
-          }
+    let node = RunningNode {nodeSocket = cliNodeSocket, networkId = cliNetworkId}
 
-  executeRunner runnerContext loopCLI
+        runnerContext =
+          MkExecutionContext
+            { tracer = tracer
+            , node = node
+            , actor = cliActor
+            }
 
-loopCLI :: Runner ()
-loopCLI = do
+    executeRunner runnerContext (loopCLI client currentDelegateStateRef)
+
+loopCLI :: Connection -> IORef DelegateState -> Runner ()
+loopCLI client currentDelegateStateRef = do
   ctx <- ask
   let promtString = show (actor ctx) <> "> "
   let loop :: InputT Runner ()
@@ -85,13 +119,16 @@ loopCLI = do
             loop
   runInputT defaultSettings loop
   where
+    sendRequestToDelegate = sendTextData client . encode
     handleInput :: String -> Runner ()
     handleInput input = case parseCliAction $ words input of
       Left e -> liftIO $ putStrLn e
       Right cmd -> handleCliAction' cmd
     handleCliAction' :: CliAction -> Runner ()
     handleCliAction' cmd = do
-      result <- try $ handleCliAction cmd
+      result <-
+        try $
+          handleCliAction sendRequestToDelegate currentDelegateStateRef cmd
       case result of
         Right _ -> pure ()
         Left (actionError :: SomeException) ->

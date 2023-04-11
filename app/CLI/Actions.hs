@@ -10,12 +10,15 @@ import Prelude
 
 -- Haskell imports
 import Control.Monad (forM_, void)
+import Data.IORef (IORef, readIORef)
 
 -- Plutus imports
 import Plutus.V1.Ledger.Address (pubKeyHashAddress)
 
 -- Hydra imports
+
 import Hydra.Cardano.Api (Lovelace, pattern ShelleyAddressInEra)
+import Hydra.Chain.Direct.Tx (headIdToCurrencySymbol)
 
 -- Cardano node imports
 import Cardano.Api.UTxO qualified as UTxO
@@ -45,8 +48,8 @@ import HydraAuction.Tx.Escrow (
   sellerReclaims,
   startBidding,
  )
-import HydraAuction.Tx.StandingBid (cleanupTx, currentWinningBidder, newBid)
-import HydraAuction.Tx.TermsConfig (constructTermsDynamic, nonExistentHeadIdStub)
+import HydraAuction.Tx.StandingBid (cleanupTx, createStandingBidDatum, currentWinningBidder, newBid)
+import HydraAuction.Tx.TermsConfig (constructTermsDynamic)
 import HydraAuction.Tx.TestNFT (findTestNFT, mintOneTestNFT)
 import HydraAuction.Types (ApprovedBidders (..), AuctionStage (..), AuctionTerms, BidDepositDatum (..), Natural, naturalToInt)
 import HydraAuctionUtils.Fixture (Actor (..), actorFromPkh, allActors, getActorsPubKeyHash)
@@ -63,6 +66,9 @@ import CLI.Config (
   writeAuctionTermsDynamic,
  )
 import CLI.Prettyprinter (prettyPrintUtxo)
+import Cardano.Api.UTxO qualified as UTxO
+import HydraAuction.Delegate.Interface (DelegateState (..))
+import HydraAuction.Delegate.Interface qualified as DelegateInterface
 
 seedAmount :: Lovelace
 seedAmount = 10_000_000_000
@@ -78,9 +84,11 @@ data CliAction
   | Prepare !Actor
   | MintTestNFT
   | AuctionAnounce !AuctionName
-  | StartBidding !AuctionName ![Actor]
   | MakeDeposit !AuctionName !Natural
+  | StartBidding !AuctionName ![Actor]
+  | MoveToL2 !AuctionName
   | NewBid !AuctionName !Natural
+  | NewBidOnL2 !AuctionName !Natural
   | BidderBuys !AuctionName
   | SellerReclaims !AuctionName
   | Cleanup !AuctionName
@@ -100,8 +108,13 @@ doOnMatchingStage terms requiredStage action = do
               <> show requiredStage
           )
 
-handleCliAction :: CliAction -> Runner ()
-handleCliAction userAction = do
+handleCliAction ::
+  (DelegateInterface.FrontendRequest -> IO ()) ->
+  IORef DelegateState ->
+  CliAction ->
+  Runner ()
+handleCliAction sendRequestToDelegate currentDelegateStateRef userAction = do
+  -- Await for initialized DelegateState
   MkExecutionContext {actor} <- ask
   case userAction of
     ShowCurrentStage auctionName -> do
@@ -181,20 +194,29 @@ handleCliAction userAction = do
       mTxIn <- findTestNFT <$> actorTipUtxo
       case mTxIn of
         Just txIn -> do
-          -- FIXME: add HeadId support
-          dynamic <-
-            liftIO $
-              constructTermsDynamic actor txIn nonExistentHeadIdStub
-          liftIO $ writeAuctionTermsDynamic auctionName dynamic
-          -- FIXME: proper error printing
-          Just config <- liftIO $ readAuctionTermsConfig auctionName
-          terms <- liftIO $ configToAuctionTerms config dynamic
-          liftIO . putStrLn $
-            show actor
-              <> " announces auction called "
-              <> show auctionName
-              <> "."
-          announceAuction terms
+          delegateState <- liftIO $ readIORef currentDelegateStateRef
+          case delegateState of
+            Initialized headId _ -> do
+              liftIO $ putStrLn $ "HeadId is: " <> show headId
+              dynamic <-
+                liftIO $
+                  constructTermsDynamic
+                    actor
+                    txIn
+                    (headIdToCurrencySymbol headId)
+              liftIO $ writeAuctionTermsDynamic auctionName dynamic
+              -- FIXME: proper error printing
+              Just config <- liftIO $ readAuctionTermsConfig auctionName
+              terms <- liftIO $ configToAuctionTerms config dynamic
+              -- TODO
+              liftIO . putStrLn $ show terms
+              liftIO . putStrLn $
+                show actor
+                  <> " announces auction called "
+                  <> show auctionName
+                  <> "."
+              announceAuction terms
+            _ -> liftIO . putStrLn $ "Hydra is not initialized yet"
         Nothing -> liftIO . putStrLn $ "User doesn't have the \"Mona Lisa\" token.\nThis demo is configured to use this token as the auction lot."
     StartBidding auctionName actors -> do
       -- FIXME: proper error printing
@@ -206,6 +228,17 @@ handleCliAction userAction = do
           <> show auctionName
           <> "."
       startBidding terms (ApprovedBidders actorsPkh)
+    MoveToL2 auctionName -> do
+      -- FIXME: proper error printing
+      Just CliEnhancedAuctionTerms {terms} <- liftIO $ readCliEnhancedAuctionTerms auctionName
+      doOnMatchingStage terms BiddingStartedStage $ do
+        [(standingBidTxIn, _)] <- UTxO.pairs <$> scriptUtxos StandingBid terms
+        liftIO $
+          sendRequestToDelegate $
+            DelegateInterface.CommitStandingBid
+              { auctionTerms = terms
+              , utxoToCommit = standingBidTxIn
+              }
     NewBid auctionName bidAmount -> do
       -- FIXME: proper error printing
       Just CliEnhancedAuctionTerms {terms, sellerActor} <- liftIO $ readCliEnhancedAuctionTerms auctionName
@@ -221,6 +254,30 @@ handleCliAction userAction = do
               <> "."
           doOnMatchingStage terms BiddingStartedStage $
             newBid terms bidAmount
+    NewBidOnL2 auctionName bidAmount -> do
+      -- FIXME: proper error printingsellerActor
+      Just CliEnhancedAuctionTerms {terms, sellerActor} <- liftIO $ readCliEnhancedAuctionTerms auctionName
+      -- FIXME: deduplicate
+      if actor == sellerActor
+        then liftIO $ putStrLn "Seller cannot place a bid"
+        else do
+          liftIO . putStrLn $
+            show actor
+              <> " places a new bid of "
+              <> show (naturalToInt bidAmount `div` 1_000_000)
+              <> " ADA in auction "
+              <> show auctionName
+              <> "."
+          doOnMatchingStage terms BiddingStartedStage $ do
+            (_, bidderPublicKey, _) <- addressAndKeys
+            let bidDatum =
+                  createStandingBidDatum terms bidAmount bidderPublicKey
+            liftIO $
+              sendRequestToDelegate $
+                DelegateInterface.NewBid
+                  { auctionTerms = terms
+                  , datum = bidDatum
+                  }
     MakeDeposit auctionName depositAmount -> do
       -- FIXME: proper error printing
       Just terms <- liftIO $ readAuctionTerms auctionName
