@@ -28,7 +28,6 @@ import Plutus.V1.Ledger.Value (assetClassValueOf)
 import Hydra.Cardano.Api (toPlutusValue, txOutValue)
 
 -- Hydra auction imports
-
 import HydraAuction.OnChain (AuctionScript (..))
 import HydraAuction.OnChain.TestNFT (testNftAssetClass)
 import HydraAuction.Runner (Runner, executeTestRunner, withActor)
