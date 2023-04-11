@@ -11,6 +11,8 @@ import PlutusTx.Prelude
 import Prelude qualified
 
 -- Haskell imports
+
+import Data.Aeson (FromJSON, ToJSON)
 import GHC.Generics (Generic)
 
 -- Plutus imports
@@ -18,9 +20,13 @@ import Plutus.V1.Ledger.Value (CurrencySymbol)
 import Plutus.V2.Ledger.Api (Address)
 import PlutusTx qualified
 
+-- HydraAuction imports
+import HydraAuctionUtils.Extras.PlutusOrphans ()
+
 newtype VoucherCS = VoucherCS {unVoucherCS :: CurrencySymbol}
   deriving stock (Generic)
   deriving newtype (Prelude.Eq, Prelude.Show, Eq)
+  deriving anyclass (ToJSON, FromJSON)
 
 PlutusTx.makeIsDataIndexed ''VoucherCS [('VoucherCS, 0)]
 PlutusTx.makeLift ''VoucherCS
