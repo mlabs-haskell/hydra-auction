@@ -93,6 +93,7 @@ delegateFrontendRequestStep (clientId, request) = case request of
                 && termsHaveSameHeadId
               then return [(PerClient clientId, RequestIgnored IncorrectData)]
               else do
+                -- FIXME: Waiting for support by
                 lift $
                   runL1RunnerInComposite $
                     moveToHydra headId auctionTerms standingBidSingleUtxo

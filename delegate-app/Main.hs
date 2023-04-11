@@ -59,7 +59,8 @@ import HydraAuction.Delegate (
   delegateEventStep,
   delegateFrontendRequestStep,
  )
-import HydraAuction.Delegate.CompositeRunner (CompositeExecutionContext (..), CompositeRunner, executeCompositeRunner, runHydraInComposite)
+import HydraAuction.Delegate.CompositeRunner (
+  CompositeExecutionContext (..), CompositeRunner, executeCompositeRunner, runHydraInComposite)
 import HydraAuction.Delegate.Interface (
   DelegateResponse (AuctionSet),
   FrontendRequest,
