@@ -340,4 +340,4 @@ main = do
     ping = 30
 
     portDefault :: PortNumber
-    portDefault = 8080
+    portDefault = 8001
