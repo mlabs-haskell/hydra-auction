@@ -21,7 +21,7 @@ import Control.Concurrent.STM (
   writeTQueue,
  )
 import Control.Monad (forever, void, when, (>=>))
-import Control.Monad.State (StateT, runStateT)
+import Control.Monad.State (runStateT)
 import Control.Monad.Trans (MonadIO (liftIO))
 import Control.Tracer (Tracer, contramap, stdoutTracer)
 import Data.Aeson (ToJSON, eitherDecode, encode)
@@ -52,7 +52,12 @@ import HydraAuction.Delegate (
   delegateEventStep,
   delegateFrontendRequestStep,
  )
-import HydraAuction.Delegate.Interface (DelegateResponse (AuctionSet), DelegateState, FrontendRequest, initialState)
+import HydraAuction.Delegate.CompositeRunner (CompositeRunner, executeCompositeRunner)
+import HydraAuction.Delegate.Interface (
+  DelegateResponse (AuctionSet),
+  FrontendRequest,
+  initialState,
+ )
 import HydraAuction.Delegate.Server (
   DelegateError (FrontendNoParse),
   DelegateServerConfig (
@@ -165,28 +170,31 @@ runDelegateLogicSteps ::
   TQueue (ClientId, FrontendRequest) ->
   -- | the broadcast queue of outgoing messages (write only)
   TChan (ClientResponseScope, DelegateResponse) ->
-  StateT DelegateState (DelegateTracerT IO) void
+  CompositeRunner void
 -- FIXME: we need to abort at some point but this doesn't seem
 -- to be implemented yet so we just go on
 runDelegateLogicSteps
   tick
   eventQueue
   frontendRequestQueue
-  broadcast = forever $ do
-    flushAndTraverseNewElements
-      eventQueue
-      ( delegateEventStep
-          -- All delegateEventStep responses should be brodcasted
-          >=> return . fmap (Broadcast,)
-          >=> putInToClientsQueue
-      )
-    flushAndTraverseNewElements
-      frontendRequestQueue
-      ( delegateFrontendRequestStep
-          >=> putInToClientsQueue
-      )
-    -- FIXME: log queues overload and make tick not-static
-    liftIO $ threadDelay tick
+  broadcast = do
+    (voidResult, _) <-
+      flip runStateT initialState $ forever $ do
+        flushAndTraverseNewElements
+          eventQueue
+          ( delegateEventStep
+              -- All delegateEventStep responses should be brodcasted
+              >=> return . fmap (Broadcast,)
+              >=> putInToClientsQueue
+          )
+        flushAndTraverseNewElements
+          frontendRequestQueue
+          ( delegateFrontendRequestStep
+              >=> putInToClientsQueue
+          )
+        -- FIXME: log queues overload and make tick not-static
+        liftIO $ threadDelay tick
+    return voidResult
     where
       -- TODO: this is not actually broadcast now
       putInToClientsQueue responses = do
@@ -231,12 +239,13 @@ runDelegateServer conf = do
                       toClientsChannel
             DelegateLogicStepsThread ->
               void $
-                flip runStateT initialState $
-                  runDelegateLogicSteps
-                    (tick conf)
-                    eventQueue
-                    frontendRequestQueue
-                    toClientsChannel
+                liftIO $
+                  executeCompositeRunner (error "TODO") $
+                    runDelegateLogicSteps
+                      (tick conf)
+                      eventQueue
+                      frontendRequestQueue
+                      toClientsChannel
             QueueAuctionStageThread ->
               mbQueueAuctionPhases eventQueue toClientsChannel
 
