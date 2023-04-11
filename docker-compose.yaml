@@ -123,7 +123,7 @@ services:
         ipv4_address: 172.16.238.30
     restart: always
 
-  devnet-server-1:
+  delegate-server-1:
     image: hydra-auction-delegate:latest
     profiles:
       - delegate-server
@@ -138,7 +138,7 @@ services:
       , "--hydra-port", "4001"
       ]
 
-  devnet-server-2:
+  delegate-server-2:
     image: hydra-auction-delegate:latest
     profiles:
       - delegate-server
@@ -153,7 +153,7 @@ services:
       , "--hydra-port", "4002"
       ]
 
-  devnet-server-3:
+  delegate-server-3:
     image: hydra-auction-delegate:latest
     profiles:
       - delegate-server
