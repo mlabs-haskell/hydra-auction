@@ -61,7 +61,7 @@ checkInterval terms stage info =
 {-# INLINEABLE checkVoucherExpiredOrLater #-}
 checkVoucherExpiredOrLater :: AuctionTerms -> TxInfo -> Bool
 checkVoucherExpiredOrLater terms info =
-  traceIfFalse "Wrong interval for transaction (checkcheckVoucherExpiredOrLaterVoucherExpiredOrLater)" $
+  traceIfFalse "Wrong interval for transaction (checkcheckVoucherExpiredOrLater)" $
     contains (from (voucherExpiry terms)) (txInfoValidRange info)
 
 {- | Given a POSIXTime, and an 'Interval' this function computes
