@@ -107,7 +107,7 @@ depositValidator :: AuctionTerms -> Validator
 depositValidator terms =
   mkValidatorScript $
     $$(PlutusTx.compile [||wrapValidator . mkDepositValidator||])
-      `PlutusTx.applyCode` PlutusTx.liftCode (standingBidAddress terms, terms)
+      `PlutusTx.applyCode` PlutusTx.liftCode (standingBidAddress terms, escrowAddress terms, terms)
 
 {-# INLINEABLE depositAddress #-}
 depositAddress :: AuctionTerms -> DepositAddress

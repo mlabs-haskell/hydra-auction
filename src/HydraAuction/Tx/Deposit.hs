@@ -1,6 +1,7 @@
 module HydraAuction.Tx.Deposit (
   mkDeposit,
-  claimDeposit,
+  losingBidderClaimDeposit,
+  sellerClaimDepositFor,
 ) where
 
 -- Prelude imports
@@ -10,13 +11,14 @@ import Prelude
 import Control.Monad (void)
 
 -- Plutus imports
-import Plutus.V2.Ledger.Api (fromData)
+import Plutus.V2.Ledger.Api (PubKeyHash, fromData)
 
 -- Cardano node imports
 import Cardano.Api.UTxO qualified as UTxO
 
 -- Hydra imports
 import Hydra.Cardano.Api (
+  TxOut,
   lovelaceToValue,
   toPlutusData,
   toPlutusKeyHash,
@@ -71,8 +73,8 @@ mkDeposit terms = do
   bidderMoneyUtxo <- filterAdaOnlyUtxo <$> actorTipUtxo
 
   let mp = policy terms
-      voucerCS = VoucherCS $ scriptCurrencySymbol mp
-      bidDepositDatum = BidDepositDatum (toPlutusKeyHash $ verificationKeyHash bidderVk) voucerCS
+      voucherCS = VoucherCS $ scriptCurrencySymbol mp
+      bidDepositDatum = BidDepositDatum (toPlutusKeyHash $ verificationKeyHash bidderVk) voucherCS
       bidDepositTxOut =
         TxOut
           (ShelleyAddressInEra depositAddress)
@@ -96,8 +98,8 @@ mkDeposit terms = do
         , validityBound = (Nothing, Just $ biddingStart terms)
         }
 
-claimDeposit :: AuctionTerms -> Runner ()
-claimDeposit terms = do
+losingBidderClaimDeposit :: AuctionTerms -> Runner ()
+losingBidderClaimDeposit terms = do
   logMsg "Claiming bidder deposit"
 
   (bidderAddress, bidderVk, bidderSk) <- addressAndKeys
@@ -107,12 +109,12 @@ claimDeposit terms = do
   allDeposits <- scriptUtxos Deposit terms
 
   let mp = policy terms
-      voucerCS = VoucherCS $ scriptCurrencySymbol mp
-      expectedDatum = BidDepositDatum (toPlutusKeyHash $ verificationKeyHash bidderVk) voucerCS
+      voucherCS = VoucherCS $ scriptCurrencySymbol mp
+      expectedDatum = BidDepositDatum (toPlutusKeyHash $ verificationKeyHash bidderVk) voucherCS
       depositScript = scriptPlutusScript Deposit terms
       depositWitness = mkInlinedDatumScriptWitness depositScript LosingBidder
 
-  case UTxO.find ((== expectedDatum) . parseDatum) allDeposits of
+  case UTxO.find ((== expectedDatum) . parseBidDepositDatum) allDeposits of
     Nothing -> fail "Unable to find matching deposit"
     Just deposit -> do
       void $
@@ -128,11 +130,47 @@ claimDeposit terms = do
             , changeAddress = bidderAddress
             , validityBound = (Just $ biddingEnd terms, Nothing)
             }
-  where
-    parseDatum out = case txOutDatum out of
-      TxOutDatumInline scriptData ->
-        case fromData $ toPlutusData scriptData of
-          Just bidDepositDatum -> bidDepositDatum
-          Nothing ->
-            error "Impossible happened: Cannot decode bid deposit datum"
-      _ -> error "Impossible happened: No inline data for bid deposit"
+
+parseBidDepositDatum :: TxOut ctx -> BidDepositDatum
+parseBidDepositDatum out = case txOutDatum out of
+  TxOutDatumInline scriptData ->
+    case fromData $ toPlutusData scriptData of
+      Just bidDepositDatum -> bidDepositDatum
+      Nothing ->
+        error "Impossible happened: Cannot decode bid deposit datum"
+  _ -> error "Impossible happened: No inline data for bid deposit"
+
+sellerClaimDepositFor :: AuctionTerms -> PubKeyHash -> Runner ()
+sellerClaimDepositFor terms bidderPkh = do
+  logMsg "Seller claiming bidder deposit"
+
+  (sellerAddress, _, sellerSk) <- addressAndKeys
+
+  sellerMoneyUtxo <- filterAdaOnlyUtxo <$> actorTipUtxo
+  standingBidUtxo <- scriptUtxos StandingBid terms
+  auctionEscrowUtxo <- scriptUtxos Escrow terms
+
+  allDeposits <- scriptUtxos Deposit terms
+
+  let mp = policy terms
+      voucherCS = VoucherCS $ scriptCurrencySymbol mp
+      expectedDatum = BidDepositDatum bidderPkh voucherCS
+      depositScript = scriptPlutusScript Deposit terms
+      depositWitness = mkInlinedDatumScriptWitness depositScript SellerClaimsDeposit
+
+  case UTxO.find ((== expectedDatum) . parseBidDepositDatum) allDeposits of
+    Nothing -> fail "Unable to find matching deposit"
+    Just deposit -> do
+      void $
+        autoSubmitAndAwaitTx $
+          AutoCreateParams
+            { signedUtxos = [(sellerSk, sellerMoneyUtxo)]
+            , additionalSigners = []
+            , referenceUtxo = standingBidUtxo <> auctionEscrowUtxo
+            , witnessedUtxos = [(depositWitness, UTxO.singleton deposit)]
+            , collateral = Nothing
+            , outs = []
+            , toMint = TxMintValueNone
+            , changeAddress = sellerAddress
+            , validityBound = (Just $ voucherExpiry terms, Nothing)
+            }
