@@ -45,7 +45,10 @@ data HydraEvent
   | TxSeen Tx
   | TxValid Tx
   | TxInvalid Tx
-  | SnapshotConfirmed [Tx]
+  | SnapshotConfirmed
+      { txs :: [Tx]
+      , utxo :: UTxO.UTxO
+      }
   | Committed UTxO.UTxO
   | HeadIsInitializing HeadId
   | HeadIsOpen
@@ -74,7 +77,7 @@ getHydraEventKind event = case event of
   TxSeen _ -> TxSeenKind
   TxValid _ -> TxValidKind
   TxInvalid _ -> TxInvalidKind
-  SnapshotConfirmed _ -> SnapshotConfirmedKind
+  SnapshotConfirmed {} -> SnapshotConfirmedKind
   Committed _ -> CommittedKind
   HeadIsInitializing _ -> HeadIsInitializingKind
   HeadIsOpen -> HeadIsOpenKind

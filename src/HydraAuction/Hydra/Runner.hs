@@ -156,6 +156,9 @@ matchingHydraEvent value =
         <$> retrieveField'
           ( key "snapshot" . key "confirmedTransactions"
           )
+        <*> retrieveField'
+          ( key "snapshot" . key "utxo"
+          )
     Just "Committed" -> Committed <$> retrieveField "utxo"
     Just "HeadIsOpen" -> Just HeadIsOpen
     Just "HeadIsClosed" -> Just HeadIsClosed

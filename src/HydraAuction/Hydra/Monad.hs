@@ -28,7 +28,7 @@ import Hydra.Cardano.Api (Address (ByronAddress, ShelleyAddress), Tx, pattern Tx
 -- HydraAuction imports
 import HydraAuction.Hydra.Interface (
   HydraCommand (GetUTxO, NewTx),
-  HydraEvent (GetUTxOResponse, SnapshotConfirmed),
+  HydraEvent (..),
   HydraEventKind (GetUTxOResponseKind),
  )
 import HydraAuctionUtils.Monads (
@@ -74,7 +74,7 @@ instance {-# OVERLAPPABLE #-} (Monad m, MonadHydra m) => MonadSubmitTx m where
   awaitTx :: Tx -> m ()
   awaitTx tx = do
     void $ waitForHydraEvent . CustomMatcher . EventMatcher $ \case
-      SnapshotConfirmed txs -> tx `elem` txs
+      SnapshotConfirmed {txs} -> tx `elem` txs
       _ -> False
 
 instance {-# OVERLAPPABLE #-} (Monad m, MonadHydra m) => MonadQueryUtxo m where
