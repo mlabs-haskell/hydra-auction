@@ -25,6 +25,9 @@ services:
     image: ghcr.io/input-output-hk/hydra-node:0.9.0
     profiles:
       - hydra-node
+    depends_on:
+      cardano-node:
+        condition: service_started
     volumes:
       - ./data/hydra-keys:/keys:ro
       - ./devnet:/devnet
@@ -59,6 +62,10 @@ services:
     image: ghcr.io/input-output-hk/hydra-node:0.9.0
     profiles:
       - hydra-node
+
+    depends_on:
+      cardano-node:
+        condition: service_started
     volumes:
       - ./data/hydra-keys:/keys:ro
       - ./devnet:/devnet
@@ -93,6 +100,9 @@ services:
     image: ghcr.io/input-output-hk/hydra-node:0.9.0
     profiles:
       - hydra-node
+    depends_on:
+      cardano-node:
+        condition: service_started
     volumes:
       - ./data/hydra-keys:/keys:ro
       - ./devnet:/devnet
@@ -127,8 +137,15 @@ services:
     image: hydra-auction-delegate:latest
     profiles:
       - delegate-server
+    depends_on:
+      hydra-node-1:
+        condition: service_started
+    restart: always
     volumes:
       - ./data/hydra-keys:/keys:ro
+      - ./devnet:/devnet
+    environment:
+      - HYDRA_NODE_NUMBER=1
     ports:
       - "8001:8001"
     command:
@@ -142,8 +159,15 @@ services:
     image: hydra-auction-delegate:latest
     profiles:
       - delegate-server
+    depends_on:
+      hydra-node-2:
+        condition: service_started
+    restart: always
     volumes:
       - ./data/hydra-keys:/keys:ro
+      - ./devnet:/devnet
+    environment:
+      - HYDRA_NODE_NUMBER=2
     ports:
       - "8002:8001"
     command:
@@ -157,8 +181,15 @@ services:
     image: hydra-auction-delegate:latest
     profiles:
       - delegate-server
+    depends_on:
+      hydra-node-3:
+        condition: service_started
+    restart: always
     volumes:
       - ./data/hydra-keys:/keys:ro
+      - ./devnet:/devnet
+    environment:
+      - HYDRA_NODE_NUMBER=3
     ports:
       - "8003:8001"
     command:

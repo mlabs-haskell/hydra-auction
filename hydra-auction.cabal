@@ -8,6 +8,7 @@ maintainer:    giovanni@mlabs.city
 data-files:
   data/credentials/*.sk
   data/credentials/*.vk
+  data/devnet-source/protocol-parameters.json
   data/hydra-keys/*.sk
   data/hydra-keys/*.vk
   README.md
@@ -75,6 +76,7 @@ common common-lang
     , time
     , time-machine
     , transformers
+    , unix
     , websockets
 
   default-extensions:
@@ -185,6 +187,7 @@ executable hydra-auction-delegate
   hs-source-dirs: delegate-app
   ghc-options:    -threaded -rtsopts
   build-depends:
+    , HUnit
     , hydra-auction
     , hydra-auction-utils
     , plutus-ledger-api
