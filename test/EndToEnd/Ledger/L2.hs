@@ -1,57 +1,58 @@
 module EndToEnd.Ledger.L2 (testSuite) where
 
--- Prelude imports
-import Hydra.Prelude (ask, liftIO)
-import Prelude
+-- Prelude import
+import PlutusTx.Prelude ((*), (+))
+import Prelude hiding ((*), (+))
 
 -- Haskell imports
+
+import Control.Monad (forM_)
+import Control.Monad.Trans (MonadIO (..), MonadTrans (lift))
 import Data.Maybe (fromJust)
 
 -- Haskell test imports
 import Test.Tasty (TestTree, testGroup)
-import Test.Tasty.HUnit (Assertion, testCase)
-
--- Plutus imports
-import Plutus.V2.Ledger.Api (getValidator)
+import Test.Tasty.HUnit (Assertion, assertEqual, testCase)
 
 -- Cardano imports
 import Cardano.Api.UTxO qualified as UTxO
 
 -- Hydra imports
-import Hydra.Cardano.Api (
-  PlutusScriptV2,
-  fromPlutusScript,
-  mkTxIn,
- )
+import Hydra.Cardano.Api (mkTxIn)
 import Hydra.Chain.Direct.Tx (headIdToCurrencySymbol)
 
 -- Hydra auction imports
-import HydraAuction.Hydra.Interface (HydraCommand (..), HydraEvent (..), HydraEventKind (..))
+
+import HydraAuction.Delegate (
+  ClientResponseScope (..),
+  DelegateEvent (..),
+  delegateEventStep,
+  delegateFrontendRequestStep,
+ )
+import HydraAuction.Delegate.Interface (
+  DelegateResponse (..),
+  DelegateState (..),
+  FrontendRequest (..),
+  InitializedState (..),
+  ResponseReason (..),
+ )
+import HydraAuction.Hydra.Interface (HydraEvent (..), HydraEventKind (..))
 import HydraAuction.Hydra.Monad (
   AwaitedHydraEvent (..),
-  sendCommandAndWaitFor,
   waitForHydraEvent,
  )
-import HydraAuction.Hydra.Runner (executeHydraRunnerFakingParams)
-import HydraAuction.HydraHacks (prepareScriptRegistry, submitAndAwaitCommitTx)
-import HydraAuction.OnChain (AuctionScript (StandingBid), standingBidValidator)
 import HydraAuction.Runner (
-  ExecutionContext (MkExecutionContext, node),
   executeRunnerWithLocalNode,
   initWallet,
   withActor,
  )
 import HydraAuction.Runner.Time (waitUntil)
-import HydraAuction.Tx.Common (
-  actorTipUtxo,
-  mkInlinedDatumScriptWitness,
-  scriptUtxos,
- )
+import HydraAuction.Tx.Common (scriptUtxos)
 import HydraAuction.Tx.Escrow (
   announceAuction,
+  bidderBuys,
   startBidding,
  )
-import HydraAuction.Tx.StandingBid (newBid')
 import HydraAuction.Tx.TermsConfig (
   AuctionTermsConfig (
     AuctionTermsConfig,
@@ -69,18 +70,26 @@ import HydraAuction.Tx.TermsConfig (
 import HydraAuction.Tx.TestNFT (mintOneTestNFT)
 import HydraAuction.Types (
   ApprovedBidders (..),
+  AuctionStage (..),
   AuctionTerms (..),
-  StandingBidRedeemer (MoveToHydra),
+  StandingBidDatum (standingBidState),
   intToNatural,
+  standingBid,
  )
-import HydraAuctionUtils.Fixture (Actor (..), getActorsPubKeyHash)
-import HydraAuctionUtils.Tx.Utxo (filterNonFuelUtxo)
+import HydraAuctionUtils.Fixture (Actor (..), getActorsPubKeyHash, keysFor)
 
 -- Hydra auction test imports
 
 import EndToEnd.HydraUtils (
-  runningThreeNodesDockerComposeHydra,
+  EmulatorDelegate (..),
+  runCompositeForAllDelegates,
+  runCompositeForDelegate,
+  runEmulatorUsingDockerCompose,
  )
+import EndToEnd.Utils (assertNFTNumEquals)
+import HydraAuction.Delegate.CompositeRunner (runHydraInComposite)
+import HydraAuction.OnChain (AuctionScript (..))
+import HydraAuction.Tx.StandingBid (createStandingBidDatum)
 
 testSuite :: TestTree
 testSuite =
@@ -93,44 +102,45 @@ config =
   AuctionTermsConfig
     { configDiffBiddingStart = 2
     , configDiffBiddingEnd = 5
-    , configDiffVoucherExpiry = 8
-    , configDiffCleanup = 10
+    , -- L2 stuff testing test take time after bidding end
+      configDiffVoucherExpiry = 15
+    , configDiffCleanup = 20
     , configAuctionFeePerDelegate = fromJust $ intToNatural 4_000_000
     , configStartingBid = fromJust $ intToNatural 8_000_000
     , configMinimumBidIncrement = fromJust $ intToNatural 8_000_000
     }
 
 bidderBuysTest :: Assertion
-bidderBuysTest = do
-  -- FIXME: xfail test to work on CI
-  liftIO $ runningThreeNodesDockerComposeHydra $ \stuff -> executeRunnerWithLocalNode $ do
-    let ( (n1, mainCommiter)
-          , (n2, commiter2)
-          , (n3, commiter3)
-          ) = stuff
-    MkExecutionContext {node} <- ask
+bidderBuysTest =
+  liftIO $ runEmulatorUsingDockerCompose $ do
+    -- Prepare Frontend CLI actors
 
-    -- Prepare Hydra connections
+    actors@[seller, bidder1, bidder2] <- return [Alice, Bob, Carol]
 
-    -- FIXME: should use already deployed registry as real code would
-    scriptRegistry <- liftIO $ prepareScriptRegistry node
-    liftIO $ putStrLn "Script registry gotten"
-
-    -- Prepare actors
-
-    actors@[seller, _bidder1, _bidder2] <- return [Alice, Bob, Carol]
-    mapM_ (initWallet 200_000_000) actors
+    liftIO $
+      executeRunnerWithLocalNode $
+        mapM_ (initWallet 200_000_000) actors
     liftIO $ putStrLn "Actors initialized"
 
     -- Init hydra
 
-    HeadIsInitializing headId <-
-      executeHydraRunnerFakingParams n1 $
-        sendCommandAndWaitFor Any Init
+    runCompositeForDelegate Main $ do
+      [] <- delegateEventStep Start
+      return ()
+
+    headId : _ <- runCompositeForAllDelegates $ do
+      event@(HeadIsInitializing headId) <- waitForHydraEvent Any
+      responses <- delegateEventStep $ HydraEvent event
+      liftIO $
+        assertEqual
+          "Initializing reaction"
+          responses
+          [CurrentDelegateState Updated $ Initialized headId NotYetOpen]
+      return headId
 
     -- Create
 
-    utxoRef <- withActor seller $ do
+    utxoRef <- liftIO $ executeRunnerWithLocalNode $ withActor seller $ do
       nftTx <- mintOneTestNFT
       return $ mkTxIn nftTx 0
 
@@ -139,60 +149,114 @@ bidderBuysTest = do
         constructTermsDynamic seller utxoRef (headIdToCurrencySymbol headId)
       configToAuctionTerms config dynamicState
 
-    -- FIXME: currenly delegates are checked as bidders onchain
-    actorsPkh <- liftIO $ getActorsPubKeyHash [commiter2, commiter3]
-    [(standingBidTxIn, standingBidTxOut)] <-
-      withActor seller $ do
-        announceAuction terms
+    [(standingBidTxIn, _)] <-
+      liftIO $
+        executeRunnerWithLocalNode $
+          do
+            withActor seller $ do
+              announceAuction terms
 
-        waitUntil $ biddingStart terms
-        startBidding terms (ApprovedBidders actorsPkh)
+              waitUntil $ biddingStart terms
 
-        UTxO.pairs <$> scriptUtxos StandingBid terms
+              -- FIXME: checks are disabled until M5
+              actorsPkh <- liftIO $ getActorsPubKeyHash []
+              startBidding terms (ApprovedBidders actorsPkh)
 
-    -- Move
+              UTxO.pairs <$> scriptUtxos StandingBid terms
 
-    -- FIXME: separate to hack function
-    let script =
-          fromPlutusScript @PlutusScriptV2 $
-            getValidator $
-              standingBidValidator terms
-        standingBidWitness = mkInlinedDatumScriptWitness script MoveToHydra
+    -- Move and commit
+
+    runCompositeForDelegate Main $ do
+      responses <-
+        delegateFrontendRequestStep
+          ( 1
+          , CommitStandingBid
+              { auctionTerms = terms
+              , utxoToCommit = standingBidTxIn
+              }
+          )
+      liftIO $
+        assertEqual "Commit Main" responses [(Broadcast, AuctionSet terms)]
+
+    forM_ [Second, Third] $ flip runCompositeForDelegate $ do
+      delegateStepOnHydraEvent
+        (SpecificKind CommittedKind)
+        [CurrentDelegateState Updated (Initialized headId HasCommit)]
 
     _ <-
-      withActor mainCommiter $
-        submitAndAwaitCommitTx
-          scriptRegistry
-          headId
-          (standingBidTxIn, standingBidTxOut, standingBidWitness)
+      runCompositeForAllDelegates $
+        delegateStepOnHydraEvent
+          (SpecificKind HeadIsOpenKind)
+          [CurrentDelegateState Updated (Initialized headId $ Open Nothing)]
 
-    commit2 <- withActor commiter2 $ filterNonFuelUtxo <$> actorTipUtxo
-    _ <-
-      executeHydraRunnerFakingParams n2 $
-        sendCommandAndWaitFor
-          (SpecificEvent $ Committed commit2)
-          (Commit commit2)
+    -- Placing bid by delegates
 
-    commit3 <- withActor commiter3 $ filterNonFuelUtxo <$> actorTipUtxo
-    _ <-
-      executeHydraRunnerFakingParams n3 $
-        sendCommandAndWaitFor
-          (SpecificEvent $ Committed commit3)
-          (Commit commit3)
-
-    HeadIsOpen <-
-      executeHydraRunnerFakingParams n1 $
-        waitForHydraEvent (SpecificKind HeadIsOpenKind)
-
-    -- Signing bid by delegate number 2 using its collateral
-    _ <-
-      executeHydraRunnerFakingParams n2 $
-        newBid' terms commiter2 (startingBid terms)
+    placeNewBidAndCheck headId terms Second bidder1 $ startingBid terms
+    placeNewBidAndCheck headId terms Third bidder2 $
+      startingBid terms + minimumBidIncrement terms
+    placeNewBidAndCheck headId terms Second bidder1 $
+      startingBid terms
+        + fromJust (intToNatural 2) * minimumBidIncrement terms
 
     -- Close Head
-    executeHydraRunnerFakingParams n1 $ do
-      HeadIsClosed <-
-        sendCommandAndWaitFor (SpecificKind HeadIsClosedKind) Close
-      ReadyToFanout <- waitForHydraEvent Any
-      HeadIsFinalized <- sendCommandAndWaitFor Any Fanout
-      return ()
+
+    liftIO $ executeRunnerWithLocalNode $ waitUntil $ biddingEnd terms
+    [] <-
+      runCompositeForDelegate Main $
+        delegateEventStep $
+          AuctionStageStarted BiddingEndedStage
+
+    _ <-
+      runCompositeForAllDelegates $
+        delegateStepOnHydraEvent
+          (SpecificKind HeadIsClosedKind)
+          [CurrentDelegateState Updated (Initialized headId Closed)]
+    _ <-
+      runCompositeForAllDelegates $
+        delegateStepOnHydraEvent
+          (SpecificKind ReadyToFanoutKind)
+          []
+    _ <-
+      runCompositeForAllDelegates $
+        delegateStepOnHydraEvent
+          (SpecificKind HeadIsFinalizedKind)
+          [CurrentDelegateState Updated (Initialized headId Finalized)]
+
+    -- Got lot
+
+    liftIO $ executeRunnerWithLocalNode $ do
+      withActor bidder1 $ bidderBuys terms
+      assertNFTNumEquals bidder1 1
+  where
+    placeNewBidAndCheck headId terms delegate bidder amount =
+      runCompositeForDelegate delegate $ do
+        let clientId = fromEnum delegate
+        (bidderPublicKey, _) <- liftIO $ keysFor bidder
+
+        -- Place new bid
+        let bidDatum = createStandingBidDatum terms amount bidderPublicKey
+        responses <-
+          delegateFrontendRequestStep
+            (clientId, NewBid {auctionTerms = terms, datum = bidDatum})
+        liftIO $
+          assertEqual
+            "New bid"
+            responses
+            [(PerClient clientId, ClosingTxTemplate)]
+
+        -- Check snapshot
+        let expectedBidTerms = standingBid $ standingBidState bidDatum
+        delegateStepOnHydraEvent
+          (SpecificKind SnapshotConfirmedKind)
+          [ CurrentDelegateState
+              Updated
+              (Initialized headId $ Open expectedBidTerms)
+          ]
+    delegateStepOnHydraEvent eventSpec expectedResponses = do
+      event <-
+        lift $
+          runHydraInComposite $
+            waitForHydraEvent eventSpec
+      responses <- delegateEventStep $ HydraEvent event
+      let message = "HydraEvent delegate reaction on " <> show eventSpec
+      liftIO $ assertEqual message responses expectedResponses
