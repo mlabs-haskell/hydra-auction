@@ -39,12 +39,12 @@ mkDepositValidator (StandingBidAddress standingBidAddr, EscrowAddress escrowAddr
       -- Single input from standing bid validator with matching vouhcer
       && traceIfFalse "Voucher CS does not match" (standingBidVoucherCS standingBidReferenceInputDatum == bidDepositVoucherCS datum)
       -- One output send to bidder containing deposit
-      && bidDepositToKey (bidDepositBidder datum)
+      && checkBidDepositOutToBidder
       -- Standing bid winner is not current bidder
       && traceIfFalse
         "Standing bid winner must not be current bidder"
         ((bidBidder <$> standingBid (standingBidState standingBidReferenceInputDatum)) /= Just (bidDepositBidder datum))
-      -- Tx validity >= bidding ends
+      -- The transaction validity time starts after the bidding ends
       && traceIfFalse
         "Wrong interval for Losing Bidder"
         (contains (from (biddingEnd terms)) (txInfoValidRange info))
@@ -71,7 +71,15 @@ mkDepositValidator (StandingBidAddress standingBidAddr, EscrowAddress escrowAddr
       && traceIfFalse "Bidder not signed" (txSignedBy info (bidDepositBidder datum))
       -- No tokens are minted or burned.
       && nothingForged info
-  CleanupDeposit -> False
+  CleanupDeposit ->
+    -- There is one output sent to the bidder containing the bid deposit.
+    checkBidDepositOutToBidder
+      -- The transaction validity time starts after the cleanup time.
+      && traceIfFalse
+        "Wrong interval for Losing"
+        (contains (from (cleanup terms)) (txInfoValidRange info))
+      -- No tokens are minted or burned.
+      && nothingForged info
   where
     info :: TxInfo
     info = scriptContextTxInfo context
@@ -98,9 +106,9 @@ mkDepositValidator (StandingBidAddress standingBidAddr, EscrowAddress escrowAddr
         Nothing -> traceError "Can not decode auction escrow input datum"
       _ : _ -> traceError "More than single input from auction escrow validator"
 
-    bidDepositToKey pkh = case txInfoOutputs info of
+    checkBidDepositOutToBidder = case txInfoOutputs info of
       [out] ->
         traceIfFalse
           "Output sent to incorrect address"
-          (txOutAddress out == pubKeyHashAddress pkh)
+          (txOutAddress out == pubKeyHashAddress (bidDepositBidder datum))
       _ -> traceError "Incorrect number of outputs"

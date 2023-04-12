@@ -31,7 +31,7 @@ import HydraAuction.Runner (
  )
 import HydraAuction.Runner.Time (waitUntil)
 import HydraAuction.Tx.Common (actorTipUtxo, scriptUtxos)
-import HydraAuction.Tx.Deposit (losingBidderClaimDeposit, mkDeposit, sellerClaimDepositFor)
+import HydraAuction.Tx.Deposit (cleanupDeposit, losingBidderClaimDeposit, mkDeposit, sellerClaimDepositFor)
 import HydraAuction.Tx.Escrow (
   announceAuction,
   bidderBuys,
@@ -78,6 +78,7 @@ bidderDepositTests =
   , testCase "seller-claims" sellerClaimsDepositTest
   , testCase "seller-claims-losing-deposit" sellerClaimsLosingDepositTest
   , testCase "bidder-buys-with-deposit" bidderBuysWithDepositTest
+  , testCase "cleanup-deposit" cleanupDepositTest
   ]
 
 assertNFTNumEquals :: Actor -> Integer -> Runner ()
@@ -430,3 +431,45 @@ bidderBuysWithDepositTest = mkAssertion $ do
 
   waitUntil $ cleanup terms
   cleanupTx terms
+
+cleanupDepositTest :: Assertion
+cleanupDepositTest = mkAssertion $ do
+  let seller = Alice
+      buyer1 = Bob
+      buyer2 = Carol
+
+  mapM_ (initWallet 100_000_000) [seller, buyer1, buyer2]
+
+  nftTx <- mintOneTestNFT
+  let utxoRef = mkTxIn nftTx 0
+
+  terms <- liftIO $ do
+    dynamicState <- constructTermsDynamic seller utxoRef
+    configToAuctionTerms config dynamicState
+
+  assertNFTNumEquals seller 1
+
+  announceAuction terms
+
+  withActor buyer1 $ mkDeposit terms
+  withActor buyer2 $ mkDeposit terms
+
+  assertUTxOsInScriptEquals Deposit terms 2
+
+  waitUntil $ biddingStart terms
+  actorsPkh <- liftIO $ getActorsPubKeyHash [buyer1, buyer2]
+  startBidding terms (ApprovedBidders actorsPkh)
+
+  assertNFTNumEquals seller 0
+
+  withActor buyer1 $ newBid terms $ startingBid terms
+  withActor buyer2 $ newBid terms $ startingBid terms + minimumBidIncrement terms
+
+  waitUntil $ cleanup terms
+  cleanupTx terms
+
+  withActor buyer1 $ cleanupDeposit terms
+  assertUTxOsInScriptEquals Deposit terms 1
+
+  withActor buyer2 $ cleanupDeposit terms
+  assertUTxOsInScriptEquals Deposit terms 0

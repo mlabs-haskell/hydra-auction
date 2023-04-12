@@ -3,6 +3,7 @@ module HydraAuction.Tx.Deposit (
   losingBidderClaimDeposit,
   sellerClaimDepositFor,
   parseBidDepositDatum,
+  cleanupDeposit,
 ) where
 
 -- Prelude imports
@@ -174,4 +175,37 @@ sellerClaimDepositFor terms bidderPkh = do
             , toMint = TxMintValueNone
             , changeAddress = sellerAddress
             , validityBound = (Just $ voucherExpiry terms, Nothing)
+            }
+
+cleanupDeposit :: AuctionTerms -> Runner ()
+cleanupDeposit terms = do
+  logMsg "Cleanup bidder deposit"
+
+  (bidderAddress, bidderVk, bidderSk) <- addressAndKeys
+
+  bidderMoneyUtxo <- filterAdaOnlyUtxo <$> actorTipUtxo
+
+  allDeposits <- scriptUtxos Deposit terms
+
+  let mp = policy terms
+      voucherCS = VoucherCS $ scriptCurrencySymbol mp
+      expectedDatum = BidDepositDatum (toPlutusKeyHash $ verificationKeyHash bidderVk) voucherCS
+      depositScript = scriptPlutusScript Deposit terms
+      depositWitness = mkInlinedDatumScriptWitness depositScript CleanupDeposit
+
+  case UTxO.find ((== expectedDatum) . parseBidDepositDatum) allDeposits of
+    Nothing -> fail "Unable to find matching deposit"
+    Just deposit -> do
+      void $
+        autoSubmitAndAwaitTx $
+          AutoCreateParams
+            { signedUtxos = [(bidderSk, bidderMoneyUtxo)]
+            , additionalSigners = []
+            , referenceUtxo = mempty
+            , witnessedUtxos = [(depositWitness, UTxO.singleton deposit)]
+            , collateral = Nothing
+            , outs = []
+            , toMint = TxMintValueNone
+            , changeAddress = bidderAddress
+            , validityBound = (Just $ cleanup terms, Nothing)
             }
