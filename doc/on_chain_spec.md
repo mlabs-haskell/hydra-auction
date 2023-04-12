@@ -526,6 +526,11 @@ inform prospective bidders in the auction announcement
 how much ADA they should deposit to qualify for the auction.
 However, none of this is enforced by any of the auction’s on-chain validators.
 
+Losing bidders can collect their deposit at any time after the bidding end time.
+The winning bidder can collect their deposit as they are consuming the auction lot utxo.
+
+In both cases deposits can be collected after the auction cleanup time.
+
 Under the **losing bidder** redeemer, we enforce that:
 
 - There is one input spent from the bid deposit validator,
