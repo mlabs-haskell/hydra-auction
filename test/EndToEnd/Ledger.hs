@@ -64,7 +64,7 @@ testSuite :: TestTree
 testSuite =
   testGroup
     "L1"
-    [ testCase "bidder-buys" bidderBuysTest
+    [ testCase "bidder-buys" bidderBuysNoDepositTest
     , testCase "seller-reclaims" sellerReclaimsTest
     , testCase "seller-bids" sellerBidsTest
     , testCase "unauthorised-bidder" unauthorisedBidderTest
@@ -77,6 +77,7 @@ bidderDepositTests =
   , testCase "losing-bidder-double-claim" losingBidderDoubleClaimTest
   , testCase "seller-claims" sellerClaimsDepositTest
   , testCase "seller-claims-losing-deposit" sellerClaimsLosingDepositTest
+  , testCase "bidder-buys-with-deposit" bidderBuysWithDepositTest
   ]
 
 assertNFTNumEquals :: Actor -> Integer -> Runner ()
@@ -103,8 +104,8 @@ config =
     , configMinimumBidIncrement = fromJust $ intToNatural 8_000_000
     }
 
-bidderBuysTest :: Assertion
-bidderBuysTest = mkAssertion $ do
+bidderBuysNoDepositTest :: Assertion
+bidderBuysNoDepositTest = mkAssertion $ do
   let seller = Alice
       buyer1 = Bob
       buyer2 = Carol
@@ -385,3 +386,47 @@ sellerClaimsLosingDepositTest = mkAssertion $ do
   case result of
     Left (_ :: SomeException) -> assertUTxOsInScriptEquals Deposit terms 2
     Right _ -> fail "Seller should not be able to claim deposit from losing bidder"
+
+bidderBuysWithDepositTest :: Assertion
+bidderBuysWithDepositTest = mkAssertion $ do
+  let seller = Alice
+      buyer1 = Bob
+      buyer2 = Carol
+
+  mapM_ (initWallet 100_000_000) [seller, buyer1, buyer2]
+
+  nftTx <- mintOneTestNFT
+  let utxoRef = mkTxIn nftTx 0
+
+  terms <- liftIO $ do
+    dynamicState <- constructTermsDynamic seller utxoRef
+    configToAuctionTerms config dynamicState
+
+  assertNFTNumEquals seller 1
+
+  announceAuction terms
+
+  withActor buyer1 $ mkDeposit terms
+  withActor buyer2 $ mkDeposit terms
+
+  assertUTxOsInScriptEquals Deposit terms 2
+
+  waitUntil $ biddingStart terms
+  actorsPkh <- liftIO $ getActorsPubKeyHash [buyer1, buyer2]
+  startBidding terms (ApprovedBidders actorsPkh)
+
+  assertNFTNumEquals seller 0
+
+  withActor buyer1 $ newBid terms $ startingBid terms
+  withActor buyer2 $ newBid terms $ startingBid terms + minimumBidIncrement terms
+
+  waitUntil $ biddingEnd terms
+  withActor buyer2 $ bidderBuys terms
+
+  assertNFTNumEquals seller 0
+  assertNFTNumEquals buyer1 0
+  assertNFTNumEquals buyer2 1
+  assertUTxOsInScriptEquals Deposit terms 1
+
+  waitUntil $ cleanup terms
+  cleanupTx terms

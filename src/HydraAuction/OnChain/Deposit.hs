@@ -9,7 +9,7 @@ import PlutusTx.Prelude
 
 import Plutus.V1.Ledger.Address (Address, pubKeyHashAddress)
 import Plutus.V1.Ledger.Interval (contains, from)
-import Plutus.V2.Ledger.Api (TxInfo, scriptContextTxInfo, txInInfoResolved, txInfoOutputs, txInfoReferenceInputs, txInfoValidRange, txOutAddress)
+import Plutus.V2.Ledger.Api (TxInfo, scriptContextTxInfo, txInInfoResolved, txInfoInputs, txInfoOutputs, txInfoReferenceInputs, txInfoValidRange, txOutAddress)
 import Plutus.V2.Ledger.Contexts (ScriptContext, txSignedBy)
 import PlutusTx qualified
 
@@ -37,13 +37,13 @@ mkDepositValidator (StandingBidAddress standingBidAddr, EscrowAddress escrowAddr
     -- Signer of this tx matches bidder in deposit datum
     traceIfFalse "Bidder not signed" (txSignedBy info (bidDepositBidder datum))
       -- Single input from standing bid validator with matching vouhcer
-      && traceIfFalse "Voucher CS does not match" (standingBidVoucherCS standingBidInputDatum == bidDepositVoucherCS datum)
+      && traceIfFalse "Voucher CS does not match" (standingBidVoucherCS standingBidReferenceInputDatum == bidDepositVoucherCS datum)
       -- One output send to bidder containing deposit
       && bidDepositToKey (bidDepositBidder datum)
       -- Standing bid winner is not current bidder
       && traceIfFalse
         "Standing bid winner must not be current bidder"
-        ((bidBidder <$> standingBid (standingBidState standingBidInputDatum)) /= Just (bidDepositBidder datum))
+        ((bidBidder <$> standingBid (standingBidState standingBidReferenceInputDatum)) /= Just (bidDepositBidder datum))
       -- Tx validity >= bidding ends
       && traceIfFalse
         "Wrong interval for Losing Bidder"
@@ -52,10 +52,10 @@ mkDepositValidator (StandingBidAddress standingBidAddr, EscrowAddress escrowAddr
       && nothingForged info
   SellerClaimsDeposit ->
     -- There is one reference input from the auction escrow validator, mentioning the same voucher and voucher expiry time.
-    traceIfFalse "Voucher CS does not match auction escrow" (auctionVoucherCS auctionEscrowDatum == bidDepositVoucherCS datum)
+    traceIfFalse "Voucher CS does not match auction escrow" (auctionVoucherCS auctionEscrowReferenceInputDatum == bidDepositVoucherCS datum)
       -- There is one reference input from the standing bid validator, mentioning the same voucher and bidder as the bid deposit input.
-      && traceIfFalse "Voucher CS does not match standing bid" (standingBidVoucherCS standingBidInputDatum == bidDepositVoucherCS datum)
-      && traceIfFalse "Bidder deposit input does not match standing bid validator" ((bidBidder <$> standingBid (standingBidState standingBidInputDatum)) == Just (bidDepositBidder datum))
+      && traceIfFalse "Voucher CS does not match standing bid" (standingBidVoucherCS standingBidReferenceInputDatum == bidDepositVoucherCS datum)
+      && traceIfFalse "Bidder deposit input does not match standing bid validator" ((bidBidder <$> standingBid (standingBidState standingBidReferenceInputDatum)) == Just (bidDepositBidder datum))
       -- The transaction validity interval starts after the voucher expiry time.
       && traceIfFalse
         "Wrong interval for Losing"
@@ -64,7 +64,13 @@ mkDepositValidator (StandingBidAddress standingBidAddr, EscrowAddress escrowAddr
       && traceIfFalse "Seller not signed" (txSignedBy info (seller terms))
       -- No tokens are minted or burned
       && nothingForged info
-  WinningBidder -> False
+  WinningBidder ->
+    -- There is one input spent from the auction escrow validator, mentioning the same voucher as the bid deposit in its datum.
+    traceIfFalse "Voucher CS does not match auction escrow" (auctionVoucherCS auctionEscrowInputDatum == bidDepositVoucherCS datum)
+      -- The transaction is signed by the bidder.
+      && traceIfFalse "Bidder not signed" (txSignedBy info (bidDepositBidder datum))
+      -- No tokens are minted or burned.
+      && nothingForged info
   CleanupDeposit -> False
   where
     info :: TxInfo
@@ -72,17 +78,25 @@ mkDepositValidator (StandingBidAddress standingBidAddr, EscrowAddress escrowAddr
 
     decodeReferenceInputDatum :: PlutusTx.FromData a => Address -> BuiltinString -> a
     decodeReferenceInputDatum addr name = case byAddress addr $ txInInfoResolved <$> txInfoReferenceInputs info of
-      [] -> traceError $ "Missing reference input for" <> name
+      [] -> traceError $ "Missing reference input for " <> name
       [refIn] -> case decodeOutputDatum info refIn of
         Just d -> d
         Nothing -> traceError $ "Can not decode " <> name <> " input datum"
       _ : _ -> traceError $ "More than single reference input from " <> name <> " validator"
 
-    auctionEscrowDatum :: AuctionEscrowDatum
-    auctionEscrowDatum = decodeReferenceInputDatum escrowAddr "auction escrow"
+    auctionEscrowReferenceInputDatum :: AuctionEscrowDatum
+    auctionEscrowReferenceInputDatum = decodeReferenceInputDatum escrowAddr "auction escrow"
 
-    standingBidInputDatum :: StandingBidDatum
-    standingBidInputDatum = decodeReferenceInputDatum standingBidAddr "standing bid"
+    standingBidReferenceInputDatum :: StandingBidDatum
+    standingBidReferenceInputDatum = decodeReferenceInputDatum standingBidAddr "standing bid"
+
+    auctionEscrowInputDatum :: AuctionEscrowDatum
+    auctionEscrowInputDatum = case byAddress escrowAddr $ txInInfoResolved <$> txInfoInputs info of
+      [] -> traceError "Missing input for auction escrow"
+      [auctionEscrowIn] -> case decodeOutputDatum info auctionEscrowIn of
+        Just d -> d
+        Nothing -> traceError "Can not decode auction escrow input datum"
+      _ : _ -> traceError "More than single input from auction escrow validator"
 
     bidDepositToKey pkh = case txInfoOutputs info of
       [out] ->

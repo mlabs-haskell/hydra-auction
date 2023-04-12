@@ -2,6 +2,7 @@ module HydraAuction.Tx.Deposit (
   mkDeposit,
   losingBidderClaimDeposit,
   sellerClaimDepositFor,
+  parseBidDepositDatum,
 ) where
 
 -- Prelude imports
