@@ -76,7 +76,7 @@ data CliAction
   | MintTestNFT
   | AuctionAnounce !AuctionName
   | StartBidding !AuctionName ![Actor]
-  | Deposit !AuctionName
+  | Deposit !AuctionName !Natural
   | NewBid !AuctionName !Natural
   | BidderBuys !AuctionName
   | SellerReclaims !AuctionName
@@ -202,11 +202,11 @@ handleCliAction userAction = do
               <> "."
           doOnMatchingStage terms BiddingStartedStage $
             newBid terms bidAmount
-    Deposit auctionName -> do
+    Deposit auctionName depositAmount -> do
       -- FIXME: proper error printing
       Just terms <- liftIO $ readAuctionTerms auctionName
       doOnMatchingStage terms AnnouncedStage $
-        mkDeposit terms
+        mkDeposit terms depositAmount
     BidderBuys auctionName -> do
       -- FIXME: proper error printing
       Just terms <- liftIO $ readAuctionTerms auctionName
