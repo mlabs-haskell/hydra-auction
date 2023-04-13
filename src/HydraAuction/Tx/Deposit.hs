@@ -20,6 +20,7 @@ import Cardano.Api.UTxO qualified as UTxO
 
 -- Hydra imports
 import Hydra.Cardano.Api (
+  Lovelace (..),
   TxOut,
   lovelaceToValue,
   toPlutusData,
@@ -40,7 +41,6 @@ import HydraAuction.Runner (Runner)
 import HydraAuction.Tx.Common (
   actorTipUtxo,
   addressAndKeys,
-  minLovelace,
   mkInlineDatum,
   mkInlinedDatumScriptWitness,
   scriptAddress,
@@ -51,6 +51,8 @@ import HydraAuction.Types (
   AuctionTerms (..),
   BidDepositDatum (..),
   BidDepositRedeemer (..),
+  Natural,
+  naturalToInt,
  )
 import HydraAuctionUtils.Extras.Plutus (scriptCurrencySymbol)
 import HydraAuctionUtils.Monads (
@@ -64,8 +66,27 @@ import HydraAuctionUtils.Tx.Utxo (
   filterAdaOnlyUtxo,
  )
 
-mkDeposit :: AuctionTerms -> Runner ()
-mkDeposit terms = do
+parseBidDepositDatum :: TxOut ctx -> BidDepositDatum
+parseBidDepositDatum out = case txOutDatum out of
+  TxOutDatumInline scriptData ->
+    case fromData $ toPlutusData scriptData of
+      Just bidDepositDatum -> bidDepositDatum
+      Nothing ->
+        error "Impossible happened: Cannot decode bid deposit datum"
+  _ -> error "Impossible happened: No inline data for bid deposit"
+
+findDepositMatchingPubKeyHash :: AuctionTerms -> PubKeyHash -> UTxO.UTxO -> Runner UTxO.UTxO
+findDepositMatchingPubKeyHash terms pkh allDeposits =
+  case UTxO.find ((== expectedDatum) . parseBidDepositDatum) allDeposits of
+    Nothing -> fail "Unable to find matching deposit"
+    Just deposit -> pure $ UTxO.singleton deposit
+  where
+    mp = policy terms
+    voucherCS = VoucherCS $ scriptCurrencySymbol mp
+    expectedDatum = BidDepositDatum pkh voucherCS
+
+mkDeposit :: AuctionTerms -> Natural -> Runner ()
+mkDeposit terms depositAmount = do
   logMsg "Doing bidder deposit"
 
   depositAddress <- scriptAddress Deposit terms
@@ -83,8 +104,7 @@ mkDeposit terms = do
           depositValue
           (mkInlineDatum bidDepositDatum)
           ReferenceScriptNone
-      -- FIXME: take as input?
-      depositValue = lovelaceToValue minLovelace
+      depositValue = lovelaceToValue (Lovelace (naturalToInt depositAmount))
 
   void $
     autoSubmitAndAwaitTx $
@@ -110,37 +130,24 @@ losingBidderClaimDeposit terms = do
   standingBidUtxo <- scriptUtxos StandingBid terms
   allDeposits <- scriptUtxos Deposit terms
 
-  let mp = policy terms
-      voucherCS = VoucherCS $ scriptCurrencySymbol mp
-      expectedDatum = BidDepositDatum (toPlutusKeyHash $ verificationKeyHash bidderVk) voucherCS
-      depositScript = scriptPlutusScript Deposit terms
-      depositWitness = mkInlinedDatumScriptWitness depositScript LosingBidder
+  deposit <- findDepositMatchingPubKeyHash terms (toPlutusKeyHash $ verificationKeyHash bidderVk) allDeposits
 
-  case UTxO.find ((== expectedDatum) . parseBidDepositDatum) allDeposits of
-    Nothing -> fail "Unable to find matching deposit"
-    Just deposit -> do
-      void $
-        autoSubmitAndAwaitTx $
-          AutoCreateParams
-            { signedUtxos = [(bidderSk, bidderMoneyUtxo)]
-            , additionalSigners = []
-            , referenceUtxo = standingBidUtxo
-            , witnessedUtxos = [(depositWitness, UTxO.singleton deposit)]
-            , collateral = Nothing
-            , outs = []
-            , toMint = TxMintValueNone
-            , changeAddress = bidderAddress
-            , validityBound = (Just $ biddingEnd terms, Nothing)
-            }
-
-parseBidDepositDatum :: TxOut ctx -> BidDepositDatum
-parseBidDepositDatum out = case txOutDatum out of
-  TxOutDatumInline scriptData ->
-    case fromData $ toPlutusData scriptData of
-      Just bidDepositDatum -> bidDepositDatum
-      Nothing ->
-        error "Impossible happened: Cannot decode bid deposit datum"
-  _ -> error "Impossible happened: No inline data for bid deposit"
+  void $
+    autoSubmitAndAwaitTx $
+      AutoCreateParams
+        { signedUtxos = [(bidderSk, bidderMoneyUtxo)]
+        , additionalSigners = []
+        , referenceUtxo = standingBidUtxo
+        , witnessedUtxos = [(depositWitness, deposit)]
+        , collateral = Nothing
+        , outs = []
+        , toMint = TxMintValueNone
+        , changeAddress = bidderAddress
+        , validityBound = (Just $ biddingEnd terms, Nothing)
+        }
+  where
+    depositScript = scriptPlutusScript Deposit terms
+    depositWitness = mkInlinedDatumScriptWitness depositScript LosingBidder
 
 sellerClaimDepositFor :: AuctionTerms -> PubKeyHash -> Runner ()
 sellerClaimDepositFor terms bidderPkh = do
@@ -154,28 +161,24 @@ sellerClaimDepositFor terms bidderPkh = do
 
   allDeposits <- scriptUtxos Deposit terms
 
-  let mp = policy terms
-      voucherCS = VoucherCS $ scriptCurrencySymbol mp
-      expectedDatum = BidDepositDatum bidderPkh voucherCS
-      depositScript = scriptPlutusScript Deposit terms
-      depositWitness = mkInlinedDatumScriptWitness depositScript SellerClaimsDeposit
+  deposit <- findDepositMatchingPubKeyHash terms bidderPkh allDeposits
 
-  case UTxO.find ((== expectedDatum) . parseBidDepositDatum) allDeposits of
-    Nothing -> fail "Unable to find matching deposit"
-    Just deposit -> do
-      void $
-        autoSubmitAndAwaitTx $
-          AutoCreateParams
-            { signedUtxos = [(sellerSk, sellerMoneyUtxo)]
-            , additionalSigners = []
-            , referenceUtxo = standingBidUtxo <> auctionEscrowUtxo
-            , witnessedUtxos = [(depositWitness, UTxO.singleton deposit)]
-            , collateral = Nothing
-            , outs = []
-            , toMint = TxMintValueNone
-            , changeAddress = sellerAddress
-            , validityBound = (Just $ voucherExpiry terms, Nothing)
-            }
+  void $
+    autoSubmitAndAwaitTx $
+      AutoCreateParams
+        { signedUtxos = [(sellerSk, sellerMoneyUtxo)]
+        , additionalSigners = []
+        , referenceUtxo = standingBidUtxo <> auctionEscrowUtxo
+        , witnessedUtxos = [(depositWitness, deposit)]
+        , collateral = Nothing
+        , outs = []
+        , toMint = TxMintValueNone
+        , changeAddress = sellerAddress
+        , validityBound = (Just $ voucherExpiry terms, Nothing)
+        }
+  where
+    depositScript = scriptPlutusScript Deposit terms
+    depositWitness = mkInlinedDatumScriptWitness depositScript SellerClaimsDeposit
 
 cleanupDeposit :: AuctionTerms -> Runner ()
 cleanupDeposit terms = do
@@ -187,25 +190,20 @@ cleanupDeposit terms = do
 
   allDeposits <- scriptUtxos Deposit terms
 
-  let mp = policy terms
-      voucherCS = VoucherCS $ scriptCurrencySymbol mp
-      expectedDatum = BidDepositDatum (toPlutusKeyHash $ verificationKeyHash bidderVk) voucherCS
-      depositScript = scriptPlutusScript Deposit terms
-      depositWitness = mkInlinedDatumScriptWitness depositScript CleanupDeposit
-
-  case UTxO.find ((== expectedDatum) . parseBidDepositDatum) allDeposits of
-    Nothing -> fail "Unable to find matching deposit"
-    Just deposit -> do
-      void $
-        autoSubmitAndAwaitTx $
-          AutoCreateParams
-            { signedUtxos = [(bidderSk, bidderMoneyUtxo)]
-            , additionalSigners = []
-            , referenceUtxo = mempty
-            , witnessedUtxos = [(depositWitness, UTxO.singleton deposit)]
-            , collateral = Nothing
-            , outs = []
-            , toMint = TxMintValueNone
-            , changeAddress = bidderAddress
-            , validityBound = (Just $ cleanup terms, Nothing)
-            }
+  deposit <- findDepositMatchingPubKeyHash terms (toPlutusKeyHash $ verificationKeyHash bidderVk) allDeposits
+  void $
+    autoSubmitAndAwaitTx $
+      AutoCreateParams
+        { signedUtxos = [(bidderSk, bidderMoneyUtxo)]
+        , additionalSigners = []
+        , referenceUtxo = mempty
+        , witnessedUtxos = [(depositWitness, deposit)]
+        , collateral = Nothing
+        , outs = []
+        , toMint = TxMintValueNone
+        , changeAddress = bidderAddress
+        , validityBound = (Just $ cleanup terms, Nothing)
+        }
+  where
+    depositScript = scriptPlutusScript Deposit terms
+    depositWitness = mkInlinedDatumScriptWitness depositScript CleanupDeposit

@@ -11,7 +11,8 @@ import Test.Tasty (TestTree, defaultMain, testGroup)
 
 -- Hydra auction test imports
 import EndToEnd.Hydra qualified as Hydra
-import EndToEnd.Ledger qualified as Ledger
+import EndToEnd.Ledger.Auction qualified as Ledger.Auction
+import EndToEnd.Ledger.BidDeposit qualified as Ledger.BidDeposit
 import Unit.Common qualified as UnitCommon
 
 main :: IO ()
@@ -23,7 +24,8 @@ testSuite :: TestTree
 testSuite =
   testGroup
     "hydra-auction"
-    [ Ledger.testSuite
+    [ Ledger.Auction.testSuite
+    , Ledger.BidDeposit.testSuite
     , Hydra.testSuite
     , UnitCommon.testSuite
     ]

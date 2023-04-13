@@ -253,7 +253,8 @@ test-suite hydra-auction-test
   main-is:        Spec.hs
   other-modules:
     EndToEnd.Hydra
-    EndToEnd.Ledger
+    EndToEnd.Ledger.Auction
+    EndToEnd.Ledger.BidDeposit
     EndToEnd.Utils
     Unit.Common
 
