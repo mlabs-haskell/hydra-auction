@@ -80,7 +80,7 @@ parseCliAction :: [String] -> Either String CliAction
 parseCliAction s = case execParserPure preferences options s of
   Success a -> Right a
   Failure failure -> Left $ fst $ renderFailure failure ""
-  _ -> Left "error"
+  CompletionInvoked _ -> Left "completion was invoked but is not supported"
   where
     options =
       info

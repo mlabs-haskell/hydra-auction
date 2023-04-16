@@ -132,6 +132,7 @@ executable hydra-auction
     CLI.Parsers
     CLI.Parsers.TxIn
     CLI.Prettyprinter
+    CLI.Types
     CLI.Watch
 
   build-depends:

@@ -282,9 +282,10 @@ runDelegateServer conf = do
       executeCompositeRunner context action
 
 queueHydraEvents :: forall void. TQueue DelegateEvent -> HydraRunner void
-queueHydraEvents delegateEventQueue = forever $ ignoreExceptions $ do
-  event <- waitForHydraEvent Any
-  liftIO $ atomically $ writeTQueue delegateEventQueue $ HydraEvent event
+queueHydraEvents delegateEventQueue = forever $
+  ignoreExceptions $ do
+    event <- waitForHydraEvent Any
+    liftIO $ atomically $ writeTQueue delegateEventQueue $ HydraEvent event
   where
     handler :: forall m. Monad m => HUnitFailure -> m ()
     handler _ = return ()
@@ -348,7 +349,13 @@ main = do
   hSetBuffering stderr LineBuffering
   port <- lookupEnv "PORT"
   -- FIXUP: parse actual adress and other params
-  hydraNodeNumber <- read . fromJust <$> lookupEnv "HYDRA_NODE_NUMBER"
+  envHydraNode <- lookupEnv "HYDRA_NODE_NUMBER"
+  hydraNodeNumber <-
+    maybe
+      (fail "could not find HYDRA_NODE_NUMBER environment variable")
+      pure
+      $ readMaybe =<< envHydraNode
+
   putStrLn $ "With number: " <> show hydraNodeNumber
   let actor = case hydraNodeNumber of
         1 -> Oscar
