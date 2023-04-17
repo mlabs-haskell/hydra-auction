@@ -1,7 +1,6 @@
 module Unit.Common (testSuite) where
 
 -- Prelude imports
-
 import Hydra.Prelude (MonadIO (liftIO))
 import PlutusTx.Prelude
 import Prelude qualified
@@ -33,6 +32,7 @@ import HydraAuction.Tx.TermsConfig (
   AuctionTermsConfig (..),
   configToAuctionTerms,
   constructTermsDynamic,
+  nonExistentHeadIdStub,
  )
 import HydraAuction.Types (AuctionStage (..), intToNatural)
 import HydraAuctionUtils.Fixture (Actor (..))
@@ -67,9 +67,8 @@ testCurrentAuctionStage = do
 
   nonce <- generate arbitrary :: Prelude.IO TxIn
 
-  -- TODO: halt
   terms <- liftIO $ do
-    dynamicState <- constructTermsDynamic Alice nonce
+    dynamicState <- constructTermsDynamic Alice nonce nonExistentHeadIdStub
     configToAuctionTerms config dynamicState
 
   assertStageAtTime terms (0 `minutes` later) AnnouncedStage

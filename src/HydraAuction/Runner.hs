@@ -4,6 +4,7 @@ module HydraAuction.Runner (
   NodeLog (..),
   Runner,
   executeRunner,
+  executeRunnerWithLocalNode,
   executeTestRunner,
   executeDockerRunner,
   StateDirectory (..),
@@ -15,12 +16,8 @@ module HydraAuction.Runner (
 ) where
 
 -- Prelude imports
+
 import Hydra.Prelude (
-  Applicative,
-  Functor,
-  IO,
-  Monad,
-  MonadFail,
   MonadIO,
   MonadReader,
   ReaderT,
@@ -29,12 +26,9 @@ import Hydra.Prelude (
   liftIO,
   local,
   runReaderT,
-  show,
-  ($),
-  (.),
  )
 import Test.Hydra.Prelude (withTempDir)
-import Prelude (return)
+import Prelude
 
 -- Haskell imports
 
@@ -46,20 +40,39 @@ import System.Process.Typed (runProcess_)
 
 -- Cardano imports
 import CardanoClient (
+  CardanoClient (networkId),
   QueryPoint (QueryTip),
   awaitTransaction,
+  queryEraHistory,
+  queryProtocolParameters,
+  queryStakePools,
+  querySystemStart,
   queryUTxO,
   queryUTxOByTxIn,
   submitTransaction,
  )
+
 import CardanoNode (
+  CardanoNodeArgs (nodeSocket),
   NodeLog (..),
   RunningNode (RunningNode, networkId, nodeSocket),
   withCardanoNodeDevnet,
  )
 
+-- Plutus imports
+import Data.Time (secondsToNominalDiffTime)
+import Data.Time.Clock.POSIX (posixSecondsToUTCTime)
+import Hydra.Chain.Direct.TimeHandle (TimeHandle (..), queryTimeHandle)
+import Plutus.V2.Ledger.Api (POSIXTime (getPOSIXTime))
+
 -- Hydra imports
-import Hydra.Cardano.Api (Lovelace, NetworkId, NetworkMagic (..), Tx, UTxO, fromNetworkMagic)
+import Hydra.Cardano.Api (
+  Lovelace,
+  NetworkId (Testnet),
+  NetworkMagic (NetworkMagic),
+  Tx,
+  UTxO,
+ )
 import Hydra.Cluster.Faucet (Marked (Normal), seedFromFaucet)
 import Hydra.Logging (Tracer)
 import HydraNode (EndToEndLog (FromCardanoNode, FromFaucet))
@@ -73,6 +86,8 @@ import HydraAuction.Runner.Tracer (
  )
 import HydraAuctionUtils.Fixture (Actor (..), keysFor)
 import HydraAuctionUtils.Monads (
+  BlockchainParams (..),
+  MonadBlockchainParams (..),
   MonadNetworkId (..),
   MonadQueryUtxo (..),
   MonadSubmitTx (..),
@@ -122,6 +137,29 @@ instance MonadNetworkId Runner where
     MkExecutionContext {node} <- ask
     let RunningNode {networkId} = node
     return networkId
+
+instance MonadBlockchainParams Runner where
+  queryBlockchainParams :: Runner BlockchainParams
+  queryBlockchainParams = do
+    MkExecutionContext {node} <- ask
+    let RunningNode {networkId, nodeSocket} = node
+    liftIO $
+      MkBlockchainParams
+        <$> queryProtocolParameters networkId nodeSocket QueryTip
+        <*> querySystemStart networkId nodeSocket QueryTip
+        <*> queryEraHistory networkId nodeSocket QueryTip
+        <*> queryStakePools networkId nodeSocket QueryTip
+
+  toSlotNo ptime = do
+    MkExecutionContext {node} <- ask
+    let RunningNode {networkId, nodeSocket} = node
+    timeHandle <-
+      liftIO $ queryTimeHandle networkId nodeSocket
+    let timeInSeconds = getPOSIXTime ptime `div` 1000
+        ndtime = secondsToNominalDiffTime $ fromInteger timeInSeconds
+        utcTime = posixSecondsToUTCTime ndtime
+    either (error . show) return $
+      slotFromUTCTime timeHandle utcTime
 
 callWithTx ::
   (MonadReader ExecutionContext m, MonadIO m) =>
@@ -178,8 +216,22 @@ executeDockerRunner runner = do
   runProcess_ "make start-docker"
   let tracer = contramap show stdoutTracer
       -- can we not hardcode these?
-      node = RunningNode {nodeSocket = "./devnet/node.socket", networkId = fromNetworkMagic $ NetworkMagic 42}
+      node = RunningNode {nodeSocket = "./devnet/node.socket", networkId = Testnet $ NetworkMagic 42}
   executeRunner (MkExecutionContext {tracer = tracer, node = node, actor = Alice}) runner
+
+localNode :: RunningNode
+localNode =
+  RunningNode
+    { networkId = Testnet $ NetworkMagic 42
+    , nodeSocket = "./devnet/node.socket"
+    }
+
+executeRunnerWithLocalNode :: Runner () -> IO ()
+executeRunnerWithLocalNode runner = do
+  let tracer = contramap show stdoutTracer
+  executeRunner
+    (MkExecutionContext {tracer = tracer, node = localNode, actor = Alice})
+    runner
 
 -- * Utils
 

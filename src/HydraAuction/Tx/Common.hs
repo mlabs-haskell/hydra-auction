@@ -1,17 +1,9 @@
-{-# LANGUAGE RecordWildCards #-}
-
 module HydraAuction.Tx.Common (
-  AutoCreateParams (..),
-  filterAdaOnlyUtxo,
   actorTipUtxo,
-  toSlotNo,
   addressAndKeys,
-  filterUtxoByCurrencySymbols,
   minLovelace,
   mkInlineDatum,
   mkInlinedDatumScriptWitness,
-  autoSubmitAndAwaitTx,
-  autoCreateTx,
   tokenToAsset,
   mintedTokens,
   scriptUtxos,
@@ -24,25 +16,19 @@ module HydraAuction.Tx.Common (
 ) where
 
 -- Prelude imports
-import Hydra.Prelude (ask, liftIO, toList)
-import PlutusTx.Prelude (emptyByteString)
+import Hydra.Prelude (ask)
 import Prelude
 
 -- Haskell imports
 import Control.Monad.TimeMachine (MonadTime (getCurrentTime))
-import Data.List (sort)
 import Data.Map qualified as Map
-import Data.Time (secondsToNominalDiffTime)
-import Data.Time.Clock.POSIX (posixSecondsToUTCTime)
 import Data.Time.Clock.POSIX qualified as POSIXTime
 import Data.Tuple.Extra (first)
 
 -- Plutus imports
 import Plutus.V1.Ledger.Interval (member)
 import Plutus.V1.Ledger.Value (
-  CurrencySymbol (..),
   TokenName (..),
-  symbols,
  )
 import Plutus.V2.Ledger.Api (
   POSIXTime (..),
@@ -52,29 +38,17 @@ import Plutus.V2.Ledger.Api (
   getValidator,
   toBuiltinData,
   toData,
-  txOutValue,
  )
 
 -- Hydra imports
+
 import Cardano.Api.UTxO qualified as UTxO
-import CardanoClient (
-  QueryPoint (QueryTip),
-  buildScriptAddress,
-  queryEraHistory,
-  queryProtocolParameters,
-  queryStakePools,
-  querySystemStart,
- )
-import CardanoNode (
-  RunningNode (RunningNode, networkId, nodeSocket),
- )
+import CardanoClient (buildScriptAddress)
 import Hydra.Cardano.Api (
   Address,
   AssetName,
   BuildTx,
   BuildTxWith,
-  CtxTx,
-  KeyWitness,
   Lovelace (..),
   PaymentKey,
   PlutusScript,
@@ -83,66 +57,29 @@ import Hydra.Cardano.Api (
   ScriptWitness,
   ShelleyAddr,
   SigningKey,
-  SlotNo,
   ToScriptData,
-  Tx,
-  TxBody,
-  TxBodyContent,
-  TxBodyErrorAutoBalance,
-  TxIn,
   TxMintValue,
-  TxOut,
   TxOutDatum,
-  UTxO,
   VerificationKey,
   WitCtxMint,
   WitCtxTxIn,
   Witness,
-  balancedTxBody,
   fromPlutusData,
   fromPlutusScript,
-  getVerificationKey,
   hashScript,
-  makeShelleyKeyWitness,
-  makeSignedTransaction,
-  makeTransactionBodyAutoBalance,
   mkScriptWitness,
   scriptWitnessCtx,
-  toPlutusTxOut,
   toScriptData,
   valueFromList,
-  verificationKeyHash,
-  withWitness,
   pattern AssetId,
   pattern AssetName,
-  pattern BabbageEraInCardanoMode,
   pattern BuildTxWith,
   pattern PlutusScript,
   pattern PolicyId,
   pattern ScriptWitness,
-  pattern ShelleyAddressInEra,
-  pattern TxAuxScriptsNone,
-  pattern TxBodyContent,
-  pattern TxCertificatesNone,
-  pattern TxExtraKeyWitnesses,
-  pattern TxFeeExplicit,
-  pattern TxInsCollateral,
-  pattern TxInsReference,
-  pattern TxMetadataNone,
   pattern TxMintValue,
   pattern TxOutDatumInline,
-  pattern TxReturnCollateralNone,
-  pattern TxScriptValidityNone,
-  pattern TxTotalCollateralNone,
-  pattern TxUpdateProposalNone,
-  pattern TxValidityLowerBound,
-  pattern TxValidityNoLowerBound,
-  pattern TxValidityNoUpperBound,
-  pattern TxValidityUpperBound,
-  pattern TxWithdrawalsNone,
-  pattern WitnessPaymentKey,
  )
-import Hydra.Chain.Direct.TimeHandle (queryTimeHandle, slotFromUTCTime)
 
 -- Hydra auction imports
 
@@ -164,8 +101,6 @@ import HydraAuctionUtils.Monads (
   MonadQueryUtxo (..),
   UtxoQuery (..),
   addressAndKeysForActor,
-  logMsg,
-  submitAndAwaitTx,
  )
 
 minLovelace :: Lovelace
@@ -243,16 +178,6 @@ addressAndKeys = do
   MkExecutionContext {actor} <- ask
   addressAndKeysForActor actor
 
-filterUtxoByCurrencySymbols :: [CurrencySymbol] -> UTxO -> UTxO
-filterUtxoByCurrencySymbols symbolsToMatch = UTxO.filter hasExactlySymbols
-  where
-    hasExactlySymbols x =
-      (sort . symbols . txOutValue <$> toPlutusTxOut x)
-        == Just (sort symbolsToMatch)
-
-filterAdaOnlyUtxo :: UTxO -> UTxO
-filterAdaOnlyUtxo = filterUtxoByCurrencySymbols [CurrencySymbol emptyByteString]
-
 actorTipUtxo :: Runner UTxO.UTxO
 actorTipUtxo = do
   (address, _, _) <- addressAndKeys
@@ -271,134 +196,3 @@ scriptUtxos :: (MonadNetworkId m, MonadQueryUtxo m) => AuctionScript -> AuctionT
 scriptUtxos script terms = do
   scriptAddress' <- scriptAddress script terms
   queryUtxo (ByAddress scriptAddress')
-
-data AutoCreateParams = AutoCreateParams
-  { signedUtxos :: [(SigningKey PaymentKey, UTxO)]
-  , additionalSigners :: [SigningKey PaymentKey]
-  -- ^ List of keys that will sign the tx
-  , referenceUtxo :: UTxO
-  -- ^ Utxo which TxIns will be used as reference inputs
-  , collateral :: Maybe TxIn
-  -- ^ Nothing means collateral will be chosen automatically from given UTxOs
-  , witnessedUtxos ::
-      [(BuildTxWith BuildTx (Witness WitCtxTxIn), UTxO)]
-  , outs :: [TxOut CtxTx]
-  , toMint :: TxMintValue BuildTx
-  , changeAddress :: Address ShelleyAddr
-  , validityBound :: (Maybe POSIXTime, Maybe POSIXTime)
-  }
-
-toSlotNo :: POSIXTime -> Runner SlotNo
-toSlotNo ptime = do
-  MkExecutionContext {node} <- ask
-  timeHandle <-
-    liftIO $
-      queryTimeHandle (networkId node) (nodeSocket node)
-  let timeInSeconds = getPOSIXTime ptime `div` 1000
-      ndtime = secondsToNominalDiffTime $ fromInteger timeInSeconds
-      utcTime = posixSecondsToUTCTime ndtime
-  either (error . show) return $ slotFromUTCTime timeHandle utcTime
-
-autoCreateTx :: AutoCreateParams -> Runner Tx
-autoCreateTx (AutoCreateParams {..}) = do
-  MkExecutionContext {node} <- ask
-  let (lowerBound', upperBound') = validityBound
-  lowerBound <- case lowerBound' of
-    Nothing -> pure TxValidityNoLowerBound
-    Just x -> TxValidityLowerBound <$> toSlotNo x
-  upperBound <- case upperBound' of
-    Nothing -> pure TxValidityNoUpperBound
-    Just x -> TxValidityUpperBound <$> toSlotNo x
-
-  liftIO $ do
-    pparams <-
-      queryProtocolParameters (networkId node) (nodeSocket node) QueryTip
-    body <-
-      either (\x -> error $ "Autobalance error: " <> show x) id
-        <$> callBodyAutoBalance
-          node
-          (allSignedUtxos <> allWitnessedUtxos <> referenceUtxo)
-          (preBody pparams lowerBound upperBound)
-          changeAddress
-    pure $ makeSignedTransaction (signingWitnesses body) body
-  where
-    allSignedUtxos = foldMap snd signedUtxos
-    allWitnessedUtxos = foldMap snd witnessedUtxos
-    allSKeys = additionalSigners <> (fst <$> signedUtxos)
-    txInsToSign = toList (UTxO.inputSet allSignedUtxos)
-    witnessedTxIns =
-      [ (txIn, witness)
-      | (witness, utxo) <- witnessedUtxos
-      , txIn <- fst <$> UTxO.pairs utxo
-      ]
-    txInCollateral =
-      case collateral of
-        Just txIn -> txIn
-        Nothing -> fst $ case UTxO.pairs $ filterAdaOnlyUtxo allSignedUtxos of
-          x : _ -> x
-          [] -> error "Cannot select collateral, cuz no money utxo was provided"
-    preBody pparams lowerBound upperBound =
-      TxBodyContent
-        ((withWitness <$> txInsToSign) <> witnessedTxIns)
-        (TxInsCollateral [txInCollateral])
-        (TxInsReference (toList $ UTxO.inputSet referenceUtxo))
-        outs
-        TxTotalCollateralNone
-        TxReturnCollateralNone
-        (TxFeeExplicit 0)
-        (lowerBound, upperBound)
-        TxMetadataNone
-        TxAuxScriptsNone
-        -- Adding all keys here, cuz other way `txSignedBy` does not see those
-        -- signatures
-        ( TxExtraKeyWitnesses $
-            fmap (verificationKeyHash . getVerificationKey) allSKeys
-        )
-        (BuildTxWith $ Just pparams)
-        TxWithdrawalsNone
-        TxCertificatesNone
-        TxUpdateProposalNone
-        toMint
-        TxScriptValidityNone
-
-    signingWitnesses :: TxBody -> [KeyWitness]
-    signingWitnesses body = makeSignWitness <$> allSKeys
-      where
-        makeSignWitness sk = makeShelleyKeyWitness body (WitnessPaymentKey sk)
-callBodyAutoBalance ::
-  RunningNode ->
-  UTxO ->
-  TxBodyContent BuildTx ->
-  Address ShelleyAddr ->
-  IO (Either TxBodyErrorAutoBalance TxBody)
-callBodyAutoBalance
-  (RunningNode {networkId, nodeSocket})
-  utxo
-  preBody
-  changeAddress = do
-    pparams <- queryProtocolParameters networkId nodeSocket QueryTip
-    systemStart <- querySystemStart networkId nodeSocket QueryTip
-    eraHistory <- queryEraHistory networkId nodeSocket QueryTip
-    stakePools <- queryStakePools networkId nodeSocket QueryTip
-
-    return $
-      balancedTxBody
-        <$> makeTransactionBodyAutoBalance
-          BabbageEraInCardanoMode
-          systemStart
-          eraHistory
-          pparams
-          stakePools
-          (UTxO.toApi utxo)
-          preBody
-          (ShelleyAddressInEra changeAddress)
-          Nothing
-
-autoSubmitAndAwaitTx :: AutoCreateParams -> Runner Tx
-autoSubmitAndAwaitTx params = do
-  tx <- autoCreateTx params
-  logMsg "Signed"
-
-  submitAndAwaitTx tx
-
-  return tx

@@ -1,11 +1,14 @@
 {-# LANGUAGE StrictData #-}
 
 module HydraAuction.Delegate (
-  delegateStep,
+  delegateFrontendRequestStep,
+  delegateEventStep,
   DelegateEvent (..),
-  DelegateInput (..),
   DelegateRunnerT (..),
+  ClientResponseScope (..),
+  ClientId,
   execDelegateRunnerT,
+  clientIsInScope,
 ) where
 
 -- Prelude imports
@@ -17,28 +20,25 @@ import Control.Monad.State (MonadState, StateT (..), evalStateT, get, put)
 import Control.Monad.Trans (MonadTrans (lift))
 
 -- HydraAuction imports
+
+import Hydra.Chain.Direct.Tx (headIdToCurrencySymbol)
 import HydraAuction.Delegate.Interface (
   DelegateResponse (..),
+  DelegateState (..),
   FrontendRequest (..),
+  InitializedState (..),
+  RequestIgnoredReason (..),
+  ResponseReason (..),
+  initialState,
  )
 import HydraAuction.Hydra.Interface (HydraEvent (..))
+import HydraAuction.OnChain.Common (validAuctionTerms)
 import HydraAuction.Types (AuctionStage (..), AuctionTerms (..))
-
--- FIXME: add client authentication (where is issue on this)
 
 data DelegateEvent
   = Start
   | AuctionStageStarted AuctionStage
   | HydraEvent HydraEvent
-
-data DelegateInput
-  = DelegateEvent DelegateEvent
-  | FrontendRequest FrontendRequest
-
-data DelegateState = NoAuction | HasAuction AuctionTerms
-
-initialState :: DelegateState
-initialState = NoAuction
 
 newtype DelegateRunnerT m x = MkDelegateRunner
   { unDelegateRunner :: StateT DelegateState m x
@@ -47,46 +47,105 @@ newtype DelegateRunnerT m x = MkDelegateRunner
     ( Functor
     , Applicative
     , Monad
+    , MonadFail
     , MonadState DelegateState
     , MonadIO
     )
 
 execDelegateRunnerT :: Monad m => DelegateRunnerT m x -> m x
-execDelegateRunnerT (MkDelegateRunner action) = evalStateT action initialState
+execDelegateRunnerT (MkDelegateRunner action) =
+  evalStateT action initialState
 
 instance MonadTrans DelegateRunnerT where
   lift = MkDelegateRunner . lift
 
-delegateStep ::
+type ClientId = Int
+
+data ClientResponseScope
+  = Broadcast
+  | PerClient ClientId
+
+clientIsInScope :: ClientId -> ClientResponseScope -> Bool
+clientIsInScope clientId scope = case scope of
+  Broadcast -> True
+  PerClient expectedClientId -> clientId == expectedClientId
+
+delegateFrontendRequestStep ::
   forall m.
-  Monad m =>
-  DelegateInput ->
-  DelegateRunnerT m [DelegateResponse]
-delegateStep input = case input of
-  -- FIXME: initialize Hydra
-  DelegateEvent Start -> return []
-  -- FIXME: close Hydra node
-  DelegateEvent (AuctionStageStarted BiddingEndedStage) -> return []
-  -- FIXME: abort Hydra node
-  DelegateEvent (AuctionStageStarted VoucherExpiredStage) -> return []
-  DelegateEvent (AuctionStageStarted _) -> return []
-  -- FIXME: commit empty transaction
-  DelegateEvent (HydraEvent NodeCommitted) -> return []
-  -- FIXME: fanout Hydra node
-  DelegateEvent (HydraEvent ContestationTimeEnded) -> return []
+  (MonadFail m) =>
+  (ClientId, FrontendRequest) ->
+  DelegateRunnerT m [(ClientResponseScope, DelegateResponse)]
+delegateFrontendRequestStep (clientId, request) = case request of
+  QueryCurrentDelegateState -> do
+    state <- get
+    return [(PerClient clientId, CurrentDelegateState WasQueried state)]
   -- FIXME: validate standing bid utxo and move it to hydra
-  FrontendRequest (CommitStandingBid {auctionTerms}) -> do
+  CommitStandingBid {auctionTerms} -> do
     state <- get
     case state of
-      NoAuction -> do
-        put $ HasAuction auctionTerms
-        return [AuctionSet auctionTerms] -- FIXME: validate AuctionTerms are valid
-      HasAuction _ -> return [AlreadyHasAuction]
-  FrontendRequest (NewBid _) -> do
+      Initialized headId NotYetOpen -> do
+        -- FIXME: validate delegates are matching real Hydra?
+        let termsHaveSameHeadId =
+              hydraHeadId auctionTerms == headIdToCurrencySymbol headId
+        if not $
+          validAuctionTerms auctionTerms
+            && termsHaveSameHeadId
+          then return [(PerClient clientId, RequestIgnored IncorrectData)]
+          else do
+            put $ Initialized headId HasCommit
+            -- FIXME: broadcast DelegateState
+            -- FIXME: this wont work on all other delegates
+            return [(Broadcast, AuctionSet auctionTerms)]
+      _ ->
+        return
+          [ (PerClient clientId, RequestIgnored $ WrongDelegateState state)
+          ]
+  NewBid _ -> do
     state <- get
     case state of
-      NoAuction -> return [HasNoAuction]
-      HasAuction _ -> do
+      Initialized _ (Open {}) -> do
+        -- FIXME: check standing bid would work
         -- FIXME: place new bid
         -- FIXME: return closing transaction
-        return [ClosingTxTemplate]
+        return [(PerClient clientId, ClosingTxTemplate)]
+      _ ->
+        return
+          [ (PerClient clientId, RequestIgnored $ WrongDelegateState state)
+          ]
+
+delegateEventStep ::
+  forall m.
+  MonadFail m =>
+  DelegateEvent ->
+  DelegateRunnerT m [DelegateResponse]
+delegateEventStep event = case event of
+  -- FIXME: initialize Hydra
+  Start -> return []
+  -- FIXME: close Hydra node
+  AuctionStageStarted BiddingEndedStage -> return []
+  -- FIXME: abort Hydra node
+  AuctionStageStarted VoucherExpiredStage -> return []
+  AuctionStageStarted _ -> return []
+  -- FIXME: read standing bid and update state on both cases
+  -- FIXME: commit empty transaction
+  HydraEvent (Committed _) -> return []
+  HydraEvent (SnapshotConfirmed _) -> return []
+  -- FIXME: fanout Hydra node
+  HydraEvent ReadyToFanout -> return []
+  HydraEvent (HeadIsInitializing headId) -> do
+    put $ Initialized headId NotYetOpen
+    -- Yes, this is code duplication
+    updateStateAndResponse NotYetOpen
+  HydraEvent HeadIsClosed -> do
+    updateStateAndResponse Closed
+  HydraEvent HeadIsFinalized ->
+    updateStateAndResponse Finalized
+  HydraEvent _ -> return []
+  where
+    updateStateAndResponse newInitializedState = do
+      -- FIXME: log incorrect previous state
+      -- FIXME: use optics?
+      Initialized headId _ <- get
+      let newState = Initialized headId newInitializedState
+      put newState
+      return [CurrentDelegateState Updated newState]

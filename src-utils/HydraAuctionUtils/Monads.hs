@@ -1,9 +1,13 @@
+{-# LANGUAGE StrictData #-}
+
 module HydraAuctionUtils.Monads (
   UtxoQuery (..),
   MonadTrace (..),
   MonadSubmitTx (..),
   MonadQueryUtxo (..),
   MonadNetworkId (..),
+  MonadBlockchainParams (..),
+  BlockchainParams (..),
   MonadCardanoClient,
   logMsg,
   submitAndAwaitTx,
@@ -14,15 +18,24 @@ module HydraAuctionUtils.Monads (
 -- Prelude imports
 import Prelude
 
+-- Haskell imports
+import Data.Set (Set)
+
 -- Cardano imports
 import Cardano.Api.UTxO qualified as UTxO
 import Hydra.Cardano.Api (
   Address,
   AddressInEra,
+  CardanoMode,
+  EraHistory,
   NetworkId,
   PaymentKey,
+  PoolId,
+  ProtocolParameters,
   ShelleyAddr,
   SigningKey,
+  SlotNo,
+  SystemStart,
   Tx,
   TxIn,
   VerificationKey,
@@ -39,6 +52,7 @@ import CardanoClient (buildAddress)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import HydraAuctionUtils.Extras.CardanoApi (networkIdToNetwork)
 import HydraAuctionUtils.Fixture (Actor, keysFor)
+import Plutus.V1.Ledger.Api (POSIXTime)
 
 -- MonadQueryUtxo
 
@@ -99,6 +113,19 @@ submitAndAwaitTx tx = do
   awaitTx tx
   logMsg $ "Created Tx id: " <> show (getTxId $ txBody tx)
 
+-- MonadBlockchainParams
+
+data BlockchainParams = MkBlockchainParams
+  { protocolParameters :: ProtocolParameters
+  , systemStart :: SystemStart
+  , eraHistory :: EraHistory CardanoMode
+  , stakePools :: Set PoolId
+  }
+
+class Monad m => MonadBlockchainParams m where
+  queryBlockchainParams :: m BlockchainParams
+  toSlotNo :: POSIXTime -> m SlotNo
+
 -- Complex constraint synonims
 
 {- Why split monads at all?
@@ -106,5 +133,18 @@ submitAndAwaitTx tx = do
    For example we could provide QueryUtxo but not SubmitTx
    for Delegate server clients.
 -}
-class (MonadQueryUtxo m, MonadNetworkId m, MonadSubmitTx m) => MonadCardanoClient m
-instance (MonadQueryUtxo m, MonadNetworkId m, MonadSubmitTx m) => MonadCardanoClient m
+
+class
+  ( MonadQueryUtxo m
+  , MonadNetworkId m
+  , MonadSubmitTx m
+  , MonadBlockchainParams m
+  ) =>
+  MonadCardanoClient m
+instance
+  ( MonadQueryUtxo m
+  , MonadNetworkId m
+  , MonadSubmitTx m
+  , MonadBlockchainParams m
+  ) =>
+  MonadCardanoClient m

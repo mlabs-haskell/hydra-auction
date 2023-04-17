@@ -6,22 +6,10 @@ homepage:      https://github.com/mlabs-haskell/hydra-auction
 author:        MLabs
 maintainer:    giovanni@mlabs.city
 data-files:
-  data/credentials/alice.sk
-  data/credentials/alice.vk
-  data/credentials/bob.sk
-  data/credentials/bob.vk
-  data/credentials/carol.sk
-  data/credentials/carol.vk
-  data/credentials/dave.sk
-  data/credentials/dave.vk
-  data/credentials/eve.sk
-  data/credentials/eve.vk
-  data/credentials/frank.sk
-  data/credentials/frank.vk
-  data/credentials/grace.sk
-  data/credentials/grace.vk
-  data/credentials/hans.sk
-  data/credentials/hans.vk
+  data/credentials/*.sk
+  data/credentials/*.vk
+  data/hydra-keys/*.sk
+  data/hydra-keys/*.vk
   README.md
 
 source-repository head
@@ -62,6 +50,7 @@ common common-lang
     , base                     ^>=4.14
     , base16-bytestring
     , bytestring
+    , cardano-api
     , cardano-ledger-core
     , containers
     , contra-tracer
@@ -71,7 +60,10 @@ common common-lang
     , hydra-cardano-api
     , hydra-cluster
     , hydra-node
+    , hydra-plutus
     , hydra-prelude
+    , lens
+    , lens-aeson
     , mtl
     , plutus-ledger-api
     , plutus-tx-plugin
@@ -123,6 +115,9 @@ common common-lang
     TypeOperators
     TypeSynonymInstances
     UndecidableInstances
+
+  if flag(dev)
+    default-extensions: PartialTypeSignatures
 
   default-language:   Haskell2010
 
@@ -186,10 +181,12 @@ executable hydra-auction
 executable hydra-auction-delegate
   import:         common-lang
   main-is:        Main.hs
+  other-modules:  HydraAuction.Delegate.Server
   hs-source-dirs: delegate-app
   ghc-options:    -threaded -rtsopts
   build-depends:
     , hydra-auction
+    , hydra-auction-utils
     , plutus-ledger-api
 
 library
@@ -199,6 +196,9 @@ library
     HydraAuction.Delegate
     HydraAuction.Delegate.Interface
     HydraAuction.Hydra.Interface
+    HydraAuction.Hydra.Monad
+    HydraAuction.Hydra.Runner
+    HydraAuction.HydraHacks
     HydraAuction.OnChain
     HydraAuction.OnChain.Common
     HydraAuction.OnChain.TestNFT
@@ -219,6 +219,7 @@ library
     HydraAuction.Runner.Tracer
 
   build-depends:
+    , cardano-api
     , directory
     , hydra-auction-utils
     , hydra-cardano-api
@@ -238,11 +239,15 @@ library hydra-auction-utils
   import:          common-lang
   hs-source-dirs:  src-utils
   exposed-modules:
+    HydraAuctionUtils.BundledData
     HydraAuctionUtils.Extras.CardanoApi
     HydraAuctionUtils.Extras.Plutus
     HydraAuctionUtils.Extras.PlutusOrphans
     HydraAuctionUtils.Fixture
     HydraAuctionUtils.Monads
+    HydraAuctionUtils.Tracing
+    HydraAuctionUtils.Tx.AutoCreateTx
+    HydraAuctionUtils.Tx.Utxo
     Paths_hydra_auction
 
   build-depends:
@@ -255,7 +260,9 @@ test-suite hydra-auction-test
   main-is:        Spec.hs
   other-modules:
     EndToEnd.Hydra
+    EndToEnd.HydraUtils
     EndToEnd.Ledger
+    EndToEnd.LedgerL2
     EndToEnd.Utils
     Unit.Common
 
@@ -272,11 +279,10 @@ test-suite hydra-auction-test
     , hydra-node
     , hydra-prelude
     , hydra-test-utils
-    , lens
-    , lens-aeson
     , plutus-cbor
     , plutus-tx
     , plutus-tx-plugin
+    , process
     , QuickCheck
     , tasty
     , tasty-hspec

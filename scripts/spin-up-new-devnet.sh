@@ -1,4 +1,4 @@
-#!/usr/bin/env bash -e
+#!/usr/bin/bash
 parent_path=$( cd "$(dirname "${BASH_SOURCE[0]}")" ; pwd -P )
 cd "$parent_path/.."
 
@@ -30,3 +30,6 @@ docker-compose --profile hydra-node up -d
 
 echo "Starting delegate servers"
 docker-compose --profile delegate-server up -d
+
+echo "Changing node.socket owner to current user"
+sudo chown $USER:$USER ./devnet/node.socket

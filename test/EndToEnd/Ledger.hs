@@ -52,10 +52,11 @@ import HydraAuction.Tx.TermsConfig (
   ),
   configToAuctionTerms,
   constructTermsDynamic,
+  nonExistentHeadIdStub,
  )
 import HydraAuction.Tx.TestNFT (mintOneTestNFT)
 import HydraAuction.Types (ApprovedBidders (..), AuctionTerms (..), intToNatural)
-import HydraAuctionUtils.Fixture (Actor (..), getActorsPubKey)
+import HydraAuctionUtils.Fixture (Actor (..), getActorsPubKeyHash)
 
 -- Hydra auction test imports
 import EndToEnd.Utils (mkAssertion)
@@ -101,7 +102,7 @@ bidderBuysTest = mkAssertion $ do
   let utxoRef = mkTxIn nftTx 0
 
   terms <- liftIO $ do
-    dynamicState <- constructTermsDynamic seller utxoRef
+    dynamicState <- constructTermsDynamic seller utxoRef nonExistentHeadIdStub
     configToAuctionTerms config dynamicState
 
   assertNFTNumEquals seller 1
@@ -109,7 +110,7 @@ bidderBuysTest = mkAssertion $ do
   announceAuction terms
 
   waitUntil $ biddingStart terms
-  actorsPkh <- liftIO $ getActorsPubKey [buyer1, buyer2]
+  actorsPkh <- liftIO $ getActorsPubKeyHash [buyer1, buyer2]
   startBidding terms (ApprovedBidders actorsPkh)
 
   assertNFTNumEquals seller 0
@@ -137,7 +138,7 @@ sellerReclaimsTest = mkAssertion $ do
   let utxoRef = mkTxIn nftTx 0
 
   terms <- liftIO $ do
-    dynamicState <- constructTermsDynamic seller utxoRef
+    dynamicState <- constructTermsDynamic seller utxoRef nonExistentHeadIdStub
     configToAuctionTerms config dynamicState
 
   assertNFTNumEquals seller 1
@@ -165,14 +166,14 @@ sellerBidsTest = mkAssertion $ do
   let utxoRef = mkTxIn nftTx 0
 
   terms <- liftIO $ do
-    dynamicState <- constructTermsDynamic seller utxoRef
+    dynamicState <- constructTermsDynamic seller utxoRef nonExistentHeadIdStub
     configToAuctionTerms config dynamicState
 
   assertNFTNumEquals seller 1
   announceAuction terms
 
   waitUntil $ biddingStart terms
-  sellerPkh <- liftIO $ getActorsPubKey [seller]
+  sellerPkh <- liftIO $ getActorsPubKeyHash [seller]
   result <- try $ startBidding terms (ApprovedBidders sellerPkh)
 
   case result of
@@ -191,7 +192,7 @@ unauthorisedBidderTest = mkAssertion $ do
   let utxoRef = mkTxIn nftTx 0
 
   terms <- liftIO $ do
-    dynamicState <- constructTermsDynamic seller utxoRef
+    dynamicState <- constructTermsDynamic seller utxoRef nonExistentHeadIdStub
     configToAuctionTerms config dynamicState
 
   assertNFTNumEquals seller 1
@@ -199,7 +200,7 @@ unauthorisedBidderTest = mkAssertion $ do
   announceAuction terms
 
   waitUntil $ biddingStart terms
-  actorsPkh <- liftIO $ getActorsPubKey [buyer1]
+  actorsPkh <- liftIO $ getActorsPubKeyHash [buyer1]
   startBidding terms (ApprovedBidders actorsPkh)
 
   assertNFTNumEquals seller 0

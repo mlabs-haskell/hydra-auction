@@ -3,12 +3,12 @@
 module HydraAuction.Tx.TermsConfig (
   AuctionTermsConfig (..),
   AuctionTermsDynamic (..),
+  nonExistentHeadIdStub,
   constructTermsDynamic,
   configToAuctionTerms,
 ) where
 
 -- Prelude imports
-import PlutusTx.Prelude (emptyByteString)
 import Prelude
 
 -- Haskell imports
@@ -32,7 +32,7 @@ import HydraAuction.OnChain.TestNFT (testNftAssetClass)
 import HydraAuction.Tx.Common (currentTimeSeconds)
 import HydraAuction.Types (AuctionTerms (..), Natural)
 import HydraAuctionUtils.Extras.PlutusOrphans ()
-import HydraAuctionUtils.Fixture (Actor, getActorVkHash)
+import HydraAuctionUtils.Fixture (Actor, getActorPubKeyHash)
 
 data AuctionTermsConfig = AuctionTermsConfig
   { configDiffBiddingStart :: !Integer
@@ -51,8 +51,10 @@ instance FromJSON AuctionTermsConfig
 
 data AuctionTermsDynamic = AuctionTermsDynamic
   { configAuctionLot :: !AssetClass
-  , -- Storing Actor, not only PubKeyHash, is required to simplify CLI actions on seller behalf
+  , -- Storing Actor, not only PubKeyHash,
+    -- is required to simplify CLI actions on seller behalf
     configSellerActor :: !Actor
+  , configHeadId :: !CurrencySymbol
   , configDelegates :: ![PubKeyHash]
   , configUtxoNonce :: !TxOutRef
   , configAnnouncementTime :: !POSIXTime
@@ -63,16 +65,26 @@ instance ToJSON AuctionTermsDynamic
 
 instance FromJSON AuctionTermsDynamic
 
+-- | Stub for tests not checking MoveToHyda. Something not existent.
+nonExistentHeadIdStub :: CurrencySymbol
+nonExistentHeadIdStub = "DEADBEEF"
+
 constructTermsDynamic ::
-  forall (timedMonad :: Type -> Type). (MonadTime timedMonad, MonadIO timedMonad) => Actor -> TxIn -> timedMonad AuctionTermsDynamic
-constructTermsDynamic sellerActor utxoNonce = do
+  forall (timedMonad :: Type -> Type).
+  (MonadTime timedMonad, MonadIO timedMonad) =>
+  Actor ->
+  TxIn ->
+  CurrencySymbol ->
+  timedMonad AuctionTermsDynamic
+constructTermsDynamic sellerActor utxoNonce headId = do
   currentTimeSeconds' <- currentTimeSeconds
-  sellerVkHash <- liftIO $ getActorVkHash sellerActor
+  sellerVkHash <- liftIO $ getActorPubKeyHash sellerActor
   return $
     AuctionTermsDynamic
       { configAuctionLot = testNftAssetClass
       , configSellerActor = sellerActor
-      , -- FIXME
+      , configHeadId = headId
+      , -- FIXME: get actual list of delegates
         configDelegates = [sellerVkHash]
       , configUtxoNonce = toPlutusTxOutRef utxoNonce
       , -- Convert to miliseconds and add one more second to have some time for submiting Tx
@@ -84,13 +96,12 @@ configToAuctionTerms ::
   AuctionTermsDynamic ->
   IO AuctionTerms
 configToAuctionTerms AuctionTermsConfig {..} AuctionTermsDynamic {..} = do
-  sellerVkHash <- getActorVkHash configSellerActor
+  sellerVkHash <- getActorPubKeyHash configSellerActor
   return $
     AuctionTerms
       { auctionLot = configAuctionLot
       , seller = sellerVkHash
-      , -- FUTURE FIXME
-        hydraHeadId = CurrencySymbol emptyByteString
+      , hydraHeadId = configHeadId
       , delegates = configDelegates
       , biddingStart = toAbsTime configDiffBiddingStart
       , biddingEnd = toAbsTime configDiffBiddingEnd
