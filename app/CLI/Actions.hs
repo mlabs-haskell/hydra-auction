@@ -17,8 +17,11 @@ import Plutus.V1.Ledger.Address (pubKeyHashAddress)
 -- Hydra imports
 import Hydra.Cardano.Api (Lovelace, pattern ShelleyAddressInEra)
 
+-- Cardano node imports
+import Cardano.Api.UTxO qualified as UTxO
+
 -- Hydra auction imports
-import HydraAuction.OnChain (AuctionScript)
+import HydraAuction.OnChain (AuctionScript (..))
 import HydraAuction.Runner (
   ExecutionContext (..),
   Runner,
@@ -32,7 +35,9 @@ import HydraAuction.Tx.Common (
   scriptUtxos,
  )
 import HydraAuction.Tx.Deposit (
+  filterDepositGreaterThan,
   mkDeposit,
+  parseBidDepositDatum,
  )
 import HydraAuction.Tx.Escrow (
   announceAuction,
@@ -43,8 +48,8 @@ import HydraAuction.Tx.Escrow (
 import HydraAuction.Tx.StandingBid (cleanupTx, currentWinningBidder, newBid)
 import HydraAuction.Tx.TermsConfig (constructTermsDynamic)
 import HydraAuction.Tx.TestNFT (findTestNFT, mintOneTestNFT)
-import HydraAuction.Types (ApprovedBidders (..), AuctionStage (..), AuctionTerms, Natural, naturalToInt)
-import HydraAuctionUtils.Fixture (Actor (..), getActorsPubKeyHash)
+import HydraAuction.Types (ApprovedBidders (..), AuctionStage (..), AuctionTerms, BidDepositDatum (..), Natural, naturalToInt)
+import HydraAuctionUtils.Fixture (Actor (..), actorFromPkh, allActors, getActorsPubKeyHash)
 import HydraAuctionUtils.Monads (fromPlutusAddressInMonad)
 
 -- Hydra auction CLI imports
@@ -62,21 +67,19 @@ import CLI.Prettyprinter (prettyPrintUtxo)
 seedAmount :: Lovelace
 seedAmount = 10_000_000_000
 
-allActors :: [Actor]
-allActors = [minBound .. maxBound]
-
 data CliAction
   = ShowCurrentStage !AuctionName
   | ShowScriptUtxos !AuctionName !AuctionScript
   | ShowUtxos
   | ShowAllUtxos
   | ShowCurrentWinningBidder !AuctionName
+  | ShowActorsMinDeposit !AuctionName !Natural
   | Seed
   | Prepare !Actor
   | MintTestNFT
   | AuctionAnounce !AuctionName
   | StartBidding !AuctionName ![Actor]
-  | Deposit !AuctionName !Natural
+  | MakeDeposit !AuctionName !Natural
   | NewBid !AuctionName !Natural
   | BidderBuys !AuctionName
   | SellerReclaims !AuctionName
@@ -152,9 +155,22 @@ handleCliAction userAction = do
     ShowCurrentWinningBidder auctionName -> do
       -- FIXME: proper error printing
       Just terms <- liftIO $ readAuctionTerms auctionName
-      -- FIXME: show actor instread of PubKey
-      winningBidderPk <- currentWinningBidder terms
-      liftIO $ print winningBidderPk
+      winningActor <- do
+        winningBidder <- currentWinningBidder terms
+        liftIO $ sequence $ actorFromPkh <$> winningBidder
+
+      liftIO $ print winningActor
+    ShowActorsMinDeposit auctionName minDeposit -> do
+      -- FIXME: proper error printing
+      Just terms <- liftIO $ readAuctionTerms auctionName
+      allDeposits <- scriptUtxos Deposit terms
+
+      let matchingDatums = (parseBidDepositDatum . snd <$>) . UTxO.pairs $ filterDepositGreaterThan minDeposit allDeposits
+      actors <- liftIO $ mapM (actorFromPkh . bidDepositBidder) matchingDatums
+
+      liftIO . putStrLn $
+        "Showing actors that satisfy min deposit: "
+          <> show actors
     MintTestNFT -> do
       liftIO . putStrLn $
         "Minting the test NFT for "
@@ -202,7 +218,7 @@ handleCliAction userAction = do
               <> "."
           doOnMatchingStage terms BiddingStartedStage $
             newBid terms bidAmount
-    Deposit auctionName depositAmount -> do
+    MakeDeposit auctionName depositAmount -> do
       -- FIXME: proper error printing
       Just terms <- liftIO $ readAuctionTerms auctionName
       doOnMatchingStage terms AnnouncedStage $

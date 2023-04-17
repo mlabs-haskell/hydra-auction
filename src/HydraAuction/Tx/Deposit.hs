@@ -1,5 +1,6 @@
 module HydraAuction.Tx.Deposit (
   mkDeposit,
+  filterDepositGreaterThan,
   losingBidderClaimDeposit,
   sellerClaimDepositFor,
   parseBidDepositDatum,
@@ -26,6 +27,8 @@ import Hydra.Cardano.Api (
   toPlutusData,
   toPlutusKeyHash,
   txOutDatum,
+  txOutValue,
+  valueToLovelace,
   verificationKeyHash,
   pattern ReferenceScriptNone,
   pattern ShelleyAddressInEra,
@@ -74,6 +77,14 @@ parseBidDepositDatum out = case txOutDatum out of
       Nothing ->
         error "Impossible happened: Cannot decode bid deposit datum"
   _ -> error "Impossible happened: No inline data for bid deposit"
+
+filterDepositGreaterThan :: Natural -> UTxO.UTxO -> UTxO.UTxO
+filterDepositGreaterThan minAmt =
+  UTxO.filter
+    ( \deposit -> case valueToLovelace (txOutValue deposit) of
+        Just adaAmt -> adaAmt >= Lovelace (naturalToInt minAmt)
+        Nothing -> False
+    )
 
 findDepositMatchingPubKeyHash :: AuctionTerms -> PubKeyHash -> UTxO.UTxO -> Runner UTxO.UTxO
 findDepositMatchingPubKeyHash terms pkh allDeposits =
