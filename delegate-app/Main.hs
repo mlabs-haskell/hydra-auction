@@ -1,8 +1,7 @@
 module Main (main) where
 
 -- Prelude imports
--- Prelude imports
-import Hydra.Prelude (lookupEnv, putStr, readMaybe, traverse_)
+import Hydra.Prelude (lookupEnv, readMaybe, traverse_)
 import Prelude
 
 -- Haskell imports
@@ -22,7 +21,6 @@ import Control.Concurrent.STM (
   writeTChan,
   writeTQueue,
  )
-import Control.Exception (ErrorCall)
 import Control.Monad (forever, void, when, (>=>))
 import Control.Monad.Catch (MonadCatch (..))
 import Control.Monad.Reader (MonadReader (..))
@@ -41,8 +39,7 @@ import Network.WebSockets (
   withPingThread,
  )
 import Prettyprinter (Pretty (pretty))
-import System.Directory.Extra (listDirectory)
-import System.Posix.Directory (getWorkingDirectory)
+import System.IO (BufferMode (LineBuffering), hSetBuffering, stderr, stdout)
 import Test.HUnit.Lang (HUnitFailure)
 
 -- Hydra imports
@@ -347,6 +344,9 @@ mbQueueAuctionPhases delegateEvents toClientsChannel = do
 -}
 main :: IO ()
 main = do
+  --- XXX: this prevents logging issues in Docker
+  hSetBuffering stdout LineBuffering
+  hSetBuffering stderr LineBuffering
   port <- lookupEnv "PORT"
   -- FIXUP: parse actual adress and other params
   hydraNodeNumber <- read . fromJust <$> lookupEnv "HYDRA_NODE_NUMBER"
