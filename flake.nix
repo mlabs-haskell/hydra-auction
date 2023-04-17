@@ -12,7 +12,7 @@
     # when you upgrade `hydra` input remember to also upgrade revs under
     # `source-repository-package`s in `cabal.project`
     hydra = {
-      url = "ssh://git@github.com/input-output-hk/hydra?ref=5ed00dfcd367d0390a774216035e1ea30dde5166";
+      url = "ssh://git@github.com/input-output-hk/hydra?ref=df3f84863028ec4ab5f09b6ac2423b10cbc8d988";
       type = "git";
       submodules = true;
     };
