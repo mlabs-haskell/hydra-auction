@@ -71,8 +71,5 @@ node-state
 # Auction state directory
 auction-state
 
-# Cardano-node devnet directory
-devnet/
-
 # hydra-node
 .env
