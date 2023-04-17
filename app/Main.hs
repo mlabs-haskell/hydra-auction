@@ -23,7 +23,7 @@ import System.Console.Haskeline (
 
 -- Hydra imports
 import Hydra.Logging (Verbosity (Quiet, Verbose))
-import Hydra.Prelude (SomeException, ask, liftIO, readMaybe)
+import Hydra.Prelude (SomeException, ask, liftIO)
 
 -- Hydra auction imports
 import HydraAuction.Runner (
@@ -44,12 +44,17 @@ import CardanoNode (
 -- Hydra auction CLI imports
 import CLI.Actions (CliAction, handleCliAction)
 import CLI.Parsers (
-  CliInput (InteractivePrompt, Watch),
+  CliInput,
+  CliOptions (InteractivePrompt, Watch),
   PromptOptions (..),
+  cliOptions,
+  delegateIP,
+  delegatePort,
+  delegateSettings,
   getCliInput,
   parseCliAction,
  )
-import CLI.Types (CLIError (InvalidResponse, UnimplementedResponse, UserError), UserError (EnvVarMissing), unrecoverable)
+import CLI.Types (CLIError (InvalidResponse, UnimplementedResponse))
 import CLI.Watch (
   watchAuction,
  )
@@ -60,7 +65,6 @@ import Data.Aeson (eitherDecode, encode)
 import Data.IORef (IORef, newIORef, writeIORef)
 import HydraAuction.Delegate.Interface (DelegateResponse (..), DelegateState, FrontendRequest (QueryCurrentDelegateState), initialState)
 import Prettyprinter (Pretty (pretty))
-import System.Environment (lookupEnv)
 
 main :: IO ()
 main = do
@@ -72,18 +76,15 @@ handleCliInput input = do
   -- Connect to delegate server
   -- TODO: port change
   -- FIXUP: parse actual adress and other params
-  delegateNumber :: Int <- do
-    let envVar = "DELEGATE_NUMBER"
-    lookupEnv envVar
-      >>= maybe (unrecoverable (UserError (EnvVarMissing envVar))) pure . (readMaybe =<<)
+  let settings = delegateSettings input
 
-  runClient "127.0.0.1" (8000 + delegateNumber) "/" $ \client -> do
+  runClient (show $ delegateIP settings) (fromIntegral $ delegatePort settings) "/" $ \client -> do
     currentDelegateStateRef <- newIORef initialState
     let tracer = contramap (show . pretty) stdoutTracer
     sendTextData client . encode $ QueryCurrentDelegateState
     -- DelegateState receiving thread
     withAsync (updateStateThread client currentDelegateStateRef tracer) $ \_ -> do
-      handleQueryAction client currentDelegateStateRef input
+      handleCliInput' client currentDelegateStateRef (cliOptions input)
   where
     updateStateThread client currentDelegateStateRef tracer = forever $ do
       mMessage <- eitherDecode <$> receiveData client
@@ -93,8 +94,8 @@ handleCliInput input = do
         Right response -> traceWith tracer (UnimplementedResponse response)
         Left err -> traceWith tracer (InvalidResponse err)
 
-handleQueryAction :: Connection -> IORef DelegateState -> CliInput -> IO ()
-handleQueryAction client currentDelegateStateRef input = case input of
+handleCliInput' :: Connection -> IORef DelegateState -> CliOptions -> IO ()
+handleCliInput' client currentDelegateStateRef input = case input of
   (Watch auctionName) -> watchAuction auctionName currentDelegateStateRef
   (InteractivePrompt MkPromptOptions {..}) -> do
     let hydraVerbosity = if cliVerbosity then Verbose "hydra-auction" else Quiet
