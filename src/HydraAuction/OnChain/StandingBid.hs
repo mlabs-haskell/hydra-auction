@@ -75,22 +75,22 @@ mkStandingBidValidator terms datum redeemer context =
     inOutsByAddress address =
       byAddress address $ txInInfoResolved <$> txInfoInputs info
     validNewBid :: StandingBidState -> StandingBidState -> Bool
-    validNewBid (StandingBidState oldApprovedBidders oldBid) (StandingBidState newApprovedBidders (Just newBidTerms)) =
+    validNewBid (StandingBidState _oldApprovedBidders oldBid) (StandingBidState _newApprovedBidders (Just newBidTerms)) =
       -- FIXME: disabled until M6
       -- traceIfFalse "Bidder not signed" (txSignedBy info (bidBidder newBidTerms))
       -- && traceIfFalse
       --   "Bidder is not approved"
       --   (bidBidder newBidTerms `elem` bidders oldApprovedBidders)
-      traceIfFalse
-        "Approved Bidders can not be modified"
-        (oldApprovedBidders == newApprovedBidders)
-        && case oldBid of
-          Just oldBidTerms ->
-            traceIfFalse "Bid increment is not greater than minimumBidIncrement" $
-              bidAmount oldBidTerms + minimumBidIncrement terms <= bidAmount newBidTerms
-          Nothing ->
-            traceIfFalse "Bid is not greater than startingBid" $
-              startingBid terms <= bidAmount newBidTerms
+      -- traceIfFalse
+      -- "Approved Bidders can not be modified"
+      -- (oldApprovedBidders == newApprovedBidders)
+      case oldBid of
+        Just oldBidTerms ->
+          traceIfFalse "Bid increment is not greater than minimumBidIncrement" $
+            bidAmount oldBidTerms + minimumBidIncrement terms <= bidAmount newBidTerms
+        Nothing ->
+          traceIfFalse "Bid is not greater than startingBid" $
+            startingBid terms <= bidAmount newBidTerms
     validNewBid _ (StandingBidState _ Nothing) = False
     checkCorrectNewBidOutput inputOut =
       case byAddress standingBidAddress $ txInfoOutputs info of
