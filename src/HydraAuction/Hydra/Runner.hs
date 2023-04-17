@@ -151,6 +151,16 @@ matchingHydraEvent value =
     Just "TxSeen" -> TxSeen <$> retrieveField "tx"
     Just "TxValid" -> TxValid <$> retrieveField "tx"
     Just "TxInvalid" -> TxInvalid <$> retrieveField "tx"
+    Just "InvlidInput" ->
+      InvlidInput <$> retrieveField "reason" <*> retrieveField "input"
+    Just "PostTxOnChainFailed" ->
+      PostTxOnChainFailed
+        <$> retrieveField' (key "postChainTx" . key "tag")
+        <*> retrieveField' (key "postTxError" . key "tag")
+    Just "CommandFailed" ->
+      CommandFailed
+        <$> retrieveField'
+          (key "clientInput" . key "tag")
     Just "SnapshotConfirmed" ->
       SnapshotConfirmed
         <$> retrieveField'
