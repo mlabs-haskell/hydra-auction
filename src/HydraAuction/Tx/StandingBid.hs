@@ -103,6 +103,7 @@ import HydraAuctionUtils.Tx.Utxo (
  )
 
 -- FIXME: change errors to cover Delegate caller case
+-- FIXME: make generic Datum decoder
 getStadingBidDatum :: UTxO.UTxO -> StandingBidDatum
 getStadingBidDatum standingBidUtxo =
   case UTxO.pairs standingBidUtxo of

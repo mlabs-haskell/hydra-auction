@@ -74,11 +74,11 @@ delegateFrontendRequestStep (clientId, request) = case request of
   QueryCurrentDelegateState -> do
     state <- get
     return [(PerClient clientId, CurrentDelegateState WasQueried state)]
-  -- FIXME: validate standing bid utxo and move it to hydra
   CommitStandingBid {auctionTerms, utxoToCommit} -> do
     state <- get
     case state of
       Initialized headId NotYetOpen -> do
+        -- FIXME: do not query
         standingBidUtxo <-
           lift $
             runL1RunnerInComposite $
@@ -93,7 +93,6 @@ delegateFrontendRequestStep (clientId, request) = case request of
                 && termsHaveSameHeadId
               then return [(PerClient clientId, RequestIgnored IncorrectData)]
               else do
-                -- FIXME: Waiting for support by
                 lift $
                   runL1RunnerInComposite $
                     moveToHydra headId auctionTerms standingBidSingleUtxo
