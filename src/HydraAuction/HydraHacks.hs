@@ -1,7 +1,7 @@
 -- Things that should be merged in Hydra repo later
 -- Copy-pasting `commitTx` and modifying it
 -- to support script witnessed commited Utxos
-module HydraAuction.HydraHacks (submitAndAwaitCommitTx) where
+module HydraAuction.HydraHacks (submitAndAwaitCommitTx, prepareScriptRegistry) where
 
 -- Prelude imports
 import Prelude
@@ -55,11 +55,13 @@ import Hydra.Cardano.Api (
   pattern TxOut,
  )
 import Hydra.Chain (HeadId (..))
-import Hydra.Chain.Direct.ScriptRegistry (ScriptRegistry (..))
+import Hydra.Chain.Direct.ScriptRegistry (ScriptRegistry (..), queryScriptRegistry)
 import Hydra.Chain.Direct.Tx (
   headIdToCurrencySymbol,
   mkCommitDatum,
  )
+import Hydra.Cluster.Faucet (publishHydraScriptsAs)
+import Hydra.Cluster.Fixture qualified as HydraFixture
 import Hydra.Contract.Commit qualified as Commit
 import Hydra.Contract.Initial qualified as Initial
 import Hydra.Ledger.Cardano (addReferenceInputs)
@@ -85,6 +87,12 @@ import HydraAuctionUtils.Monads (
  )
 import HydraAuctionUtils.Tx.AutoCreateTx (callBodyAutoBalance, makeSignedTransactionWithKeys)
 import HydraAuctionUtils.Tx.Utxo (filterAdaOnlyUtxo)
+
+prepareScriptRegistry :: RunningNode -> IO ScriptRegistry
+prepareScriptRegistry node@RunningNode {networkId, nodeSocket} = do
+  hydraScriptsTxId <-
+    liftIO $ publishHydraScriptsAs node HydraFixture.Faucet
+  queryScriptRegistry networkId nodeSocket hydraScriptsTxId
 
 -- | Craft a commit transaction which includes the "committed" utxo as a datum.
 commitTxBody ::

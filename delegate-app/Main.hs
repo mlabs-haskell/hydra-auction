@@ -21,6 +21,7 @@ import Control.Concurrent.STM (
   writeTQueue,
  )
 import Control.Monad (forever, when, (>=>))
+import Control.Monad.State (StateT, runStateT)
 import Control.Monad.Trans (MonadIO (liftIO))
 import Control.Tracer (Tracer, contramap, stdoutTracer)
 import Data.Aeson (ToJSON, eitherDecode, encode)
@@ -47,16 +48,11 @@ import HydraAuction.Delegate (
   ClientId,
   ClientResponseScope (Broadcast),
   DelegateEvent (..),
-  DelegateRunnerT,
   clientIsInScope,
   delegateEventStep,
   delegateFrontendRequestStep,
-  execDelegateRunnerT,
  )
-import HydraAuction.Delegate.Interface (
-  DelegateResponse (AuctionSet),
-  FrontendRequest,
- )
+import HydraAuction.Delegate.Interface (DelegateResponse (AuctionSet), DelegateState, FrontendRequest, initialState)
 import HydraAuction.Delegate.Server (
   DelegateError (FrontendNoParse),
   DelegateServerConfig (
@@ -78,7 +74,7 @@ import HydraAuction.Delegate.Server (
   QueueAuctionPhaseEvent (ReceivedAuctionSet),
   ServerAppT,
   ThreadEvent (ThreadCancelled, ThreadStarted),
-  ThreadSort (DelegateRunnerThread, QueueAuctionStageThread, WebsocketThread),
+  ThreadSort (DelegateLogicStepsThread, QueueAuctionStageThread, WebsocketThread),
  )
 import HydraAuction.OnChain.Common (secondsLeftInInterval, stageToInterval)
 import HydraAuction.Tx.Common (currentAuctionStage, currentTimeMilliseconds)
@@ -169,7 +165,7 @@ runDelegateLogicSteps ::
   TQueue (ClientId, FrontendRequest) ->
   -- | the broadcast queue of outgoing messages (write only)
   TChan (ClientResponseScope, DelegateResponse) ->
-  DelegateRunnerT (DelegateTracerT IO) void
+  StateT DelegateState (DelegateTracerT IO) void
 -- FIXME: we need to abort at some point but this doesn't seem
 -- to be implemented yet so we just go on
 runDelegateLogicSteps
@@ -233,13 +229,14 @@ runDelegateServer conf = do
                       (freshClientIdGenerator clientCounter)
                       frontendRequestQueue
                       toClientsChannel
-            DelegateRunnerThread ->
-              execDelegateRunnerT $
-                runDelegateLogicSteps
-                  (tick conf)
-                  eventQueue
-                  frontendRequestQueue
-                  toClientsChannel
+            DelegateLogicStepsThread ->
+              void $
+                flip runStateT initialState $
+                  runDelegateLogicSteps
+                    (tick conf)
+                    eventQueue
+                    frontendRequestQueue
+                    toClientsChannel
             QueueAuctionStageThread ->
               mbQueueAuctionPhases eventQueue toClientsChannel
 
@@ -248,7 +245,7 @@ runDelegateServer conf = do
       (runWithTracer' tracer . workerAction)
       [ WebsocketThread
       , QueueAuctionStageThread
-      , DelegateRunnerThread
+      , DelegateLogicStepsThread
       ]
   where
     freshClientIdGenerator clientCounter = do
