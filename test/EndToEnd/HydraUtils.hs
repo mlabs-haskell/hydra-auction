@@ -17,7 +17,7 @@ import Control.Concurrent (threadDelay)
 import Control.Exception (finally)
 import Control.Monad.Reader (MonadReader (..), ReaderT (..))
 import Control.Monad.State (StateT (..))
-import Control.Tracer (stdoutTracer)
+import Control.Tracer (nullTracer, stdoutTracer)
 import Data.IORef (IORef, newIORef, readIORef, writeIORef)
 import Data.Map (Map)
 import Data.Map qualified as Map
@@ -47,7 +47,7 @@ import HydraAuction.Delegate.CompositeRunner (
  )
 import HydraAuction.Delegate.Interface (DelegateState, initialState)
 import HydraAuction.Hydra.Runner (executeHydraRunnerFakingParams)
-import HydraAuction.Runner (ExecutionContext (MkExecutionContext, node, tracer), HydraAuctionLog (FromHydra), Runner, dockerNode, executeRunner, executeRunnerWithNodeAs)
+import HydraAuction.Runner (ExecutionContext (MkExecutionContext, node, tracer), Runner, dockerNode, executeRunner, executeRunnerWithNodeAs)
 import HydraAuctionUtils.BundledData (lookupProtocolParamPath)
 import HydraAuctionUtils.Fixture (
   Actor (..),
@@ -65,7 +65,7 @@ spinUpHeads clusterIx hydraScriptsTxId cont = do
     hydraDir <- lookupProtocolParamPath
     setEnv "HYDRA_CONFIG_DIR" hydraDir
   ctx@(MkExecutionContext {node, tracer}) <- ask
-  let hydraTracer = contramap FromHydra tracer
+  let hydraTracer = nullTracer
   liftIO $
     withTempDir "end-to-end-test" $ \tmpDir -> do
       oscarKeys@(oscarCardanoVk, _) <- keysFor Oscar

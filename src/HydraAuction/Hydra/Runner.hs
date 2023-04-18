@@ -65,7 +65,6 @@ import HydraAuctionUtils.Monads (
   MonadTrace (..),
  )
 
-{- HLINT ignore "Use newtype instead of data" -}
 data HydraRunnerLog
   = HydraRunnerStringMessage String
   | AwaitingHydraEvent AwaitedHydraEvent
