@@ -1,18 +1,17 @@
 module HydraAuction.Tx.StandingBid (
   newBid,
   cleanupTx,
-  getStadingBidDatum,
+  decodeInlineDatum,
+  queryStandingBidDatum,
   currentWinningBidder,
-  getApprovedBidders,
   newBid',
   createStandingBidDatum,
   moveToHydra,
 ) where
 
 -- Prelude imports
-
 -- Prelude imports
-import Hydra.Prelude (MonadIO, void)
+import Hydra.Prelude (MonadIO, rightToMaybe, void)
 import Prelude
 
 -- Haskell imports
@@ -22,7 +21,7 @@ import Control.Monad.Reader (MonadReader (ask))
 
 -- Plutus imports
 import Plutus.V1.Ledger.Value (assetClassValue)
-import Plutus.V2.Ledger.Api (PubKeyHash, fromData, getValidator)
+import Plutus.V2.Ledger.Api (FromData, PubKeyHash, fromData, getValidator)
 
 -- Hydra imports
 import Cardano.Api.UTxO qualified as UTxO
@@ -102,33 +101,39 @@ import HydraAuctionUtils.Tx.Utxo (
   filterAdaOnlyUtxo,
  )
 
--- FIXME: change errors to cover Delegate caller case
--- FIXME: make generic Datum decoder
-getStadingBidDatum :: UTxO.UTxO -> StandingBidDatum
-getStadingBidDatum standingBidUtxo =
-  case UTxO.pairs standingBidUtxo of
-    [(_, out)] -> case txOutDatum out of
-      TxOutDatumInline scriptData ->
-        case fromData $ toPlutusData scriptData of
-          Just standingBidDatum -> standingBidDatum
-          Nothing ->
-            error "Impossible happened: Cannot decode standing bid datum"
-      _ -> error "Impossible happened: No inline data for standing bid"
-    _ -> error "Wrong number of standing bid UTxOs found"
+data DatumDecodingError = CannotDecodeDatum | NoInlineDatum
+
+-- FIXME: move to utils
+decodeInlineDatum ::
+  forall a. FromData a => TxOut CtxUTxO -> Either DatumDecodingError a
+decodeInlineDatum out =
+  case txOutDatum out of
+    TxOutDatumInline scriptData ->
+      case fromData $ toPlutusData scriptData of
+        Just standingBidDatum -> Right standingBidDatum
+        Nothing -> Left CannotDecodeDatum
+    _ -> Left NoInlineDatum
+
+queryStandingBidDatum ::
+  (MonadNetworkId m, MonadQueryUtxo m) =>
+  AuctionTerms ->
+  m (Maybe StandingBidDatum)
+queryStandingBidDatum terms = do
+  standingBidUtxo <- scriptUtxos StandingBid terms
+  return $ case UTxO.pairs standingBidUtxo of
+    [] -> Nothing
+    [(_, txOut)] -> rightToMaybe $ decodeInlineDatum txOut
+    _ -> error "Impossible happened: more than one StandingBid exists"
 
 currentWinningBidder :: (MonadNetworkId m, MonadQueryUtxo m) => AuctionTerms -> m (Maybe PubKeyHash)
 currentWinningBidder terms = do
-  standingBidUtxo <- scriptUtxos StandingBid terms
-  let StandingBidDatum {standingBidState} = getStadingBidDatum standingBidUtxo
-  return $ case standingBid standingBidState of
-    (Just (BidTerms {bidBidder})) -> Just bidBidder
+  mDatum <- queryStandingBidDatum terms
+  return $ case mDatum of
+    Just (StandingBidDatum {standingBidState}) ->
+      case standingBid standingBidState of
+        (Just (BidTerms {bidBidder})) -> Just bidBidder
+        Nothing -> Nothing
     Nothing -> Nothing
-
-getApprovedBidders :: (MonadNetworkId m, MonadQueryUtxo m) => AuctionTerms -> m ApprovedBidders
-getApprovedBidders terms = do
-  standingBidUtxo <- scriptUtxos StandingBid terms
-  let StandingBidDatum {standingBidState} = getStadingBidDatum standingBidUtxo
-  pure $ approvedBidders standingBidState
 
 newBid :: AuctionTerms -> Natural -> Runner ()
 newBid terms bidAmount = do
