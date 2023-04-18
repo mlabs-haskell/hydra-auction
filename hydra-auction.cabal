@@ -265,7 +265,6 @@ test-suite hydra-auction-test
   type:           exitcode-stdio-1.0
   main-is:        Spec.hs
   other-modules:
-    EndToEnd.Hydra
     EndToEnd.HydraUtils
     EndToEnd.Ledger.Auction
     EndToEnd.Ledger.BidDeposit
