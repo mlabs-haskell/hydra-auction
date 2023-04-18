@@ -159,12 +159,12 @@ delegateEventStep event = case event of
     put $ Initialized headId NotYetOpen
     -- Yes, this is code duplication
     updateStateAndResponse NotYetOpen
-  HydraEvent HeadIsOpen -> do
+  HydraEvent HeadIsOpen {} -> do
     -- FIXME: acutally standing bid is not neccessarily Nothing
     updateStateAndResponse $ Open Nothing
   HydraEvent HeadIsClosed -> do
     updateStateAndResponse Closed
-  HydraEvent HeadIsFinalized ->
+  HydraEvent HeadIsFinalized {} ->
     updateStateAndResponse Finalized
   HydraEvent _ -> return []
   where

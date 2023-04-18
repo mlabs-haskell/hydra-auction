@@ -170,10 +170,10 @@ matchingHydraEvent value =
           ( key "snapshot" . key "utxo"
           )
     Just "Committed" -> Committed <$> retrieveField "utxo"
-    Just "HeadIsOpen" -> Just HeadIsOpen
+    Just "HeadIsOpen" -> HeadIsOpen <$> retrieveField "utxo"
     Just "HeadIsClosed" -> Just HeadIsClosed
     Just "ReadyToFanout" -> Just ReadyToFanout
-    Just "HeadIsFinalized" -> Just HeadIsFinalized
+    Just "HeadIsFinalized" -> HeadIsFinalized <$> retrieveField "utxo"
     _ -> Nothing
   where
     getUtxoValueHandler =
