@@ -74,8 +74,6 @@ main = do
 handleCliInput :: CliInput -> IO ()
 handleCliInput input = do
   -- Connect to delegate server
-  -- TODO: port change
-  -- FIXUP: parse actual adress and other params
   let settings = delegateSettings input
 
   runClient (show $ delegateIP settings) (fromIntegral $ delegatePort settings) "/" $ \client -> do

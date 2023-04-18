@@ -160,7 +160,7 @@ dlgtIP =
   option parseIP $
     mconcat
       [ short 'i'
-      , long "port"
+      , long "ip"
       , metavar "DELEGATE_IP"
       , help "the IP address of the delegate server"
       ]

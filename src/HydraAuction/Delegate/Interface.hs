@@ -83,7 +83,7 @@ instance Pretty RequestIgnoredReason where
     IncorrectData -> "data was incorrect"
     WrongDelegateState state ->
       vsep
-        [ "the wrong delegate was adressed"
+        [ "The delegate in current delegate state could not process request"
         , indent 2 $ viaShow state
         ]
 

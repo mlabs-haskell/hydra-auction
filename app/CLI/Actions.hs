@@ -5,7 +5,8 @@ module CLI.Actions (
 ) where
 
 -- Prelude imports
-import Hydra.Prelude (ask, liftIO)
+-- Prelude imports
+import Hydra.Prelude (MonadIO, ask, liftIO)
 import Prelude
 
 -- Haskell imports
@@ -24,6 +25,9 @@ import Hydra.Chain.Direct.Tx (headIdToCurrencySymbol)
 import Cardano.Api.UTxO qualified as UTxO
 
 -- Hydra auction imports
+
+import HydraAuction.Delegate.Interface (DelegateState (..))
+import HydraAuction.Delegate.Interface qualified as DelegateInterface
 import HydraAuction.OnChain (AuctionScript (..))
 import HydraAuction.Runner (
   ExecutionContext (..),
@@ -66,9 +70,6 @@ import CLI.Config (
   writeAuctionTermsDynamic,
  )
 import CLI.Prettyprinter (prettyPrintUtxo)
-import Cardano.Api.UTxO qualified as UTxO
-import HydraAuction.Delegate.Interface (DelegateState (..))
-import HydraAuction.Delegate.Interface qualified as DelegateInterface
 
 seedAmount :: Lovelace
 seedAmount = 10_000_000_000
@@ -118,8 +119,7 @@ handleCliAction sendRequestToDelegate currentDelegateStateRef userAction = do
   MkExecutionContext {actor} <- ask
   case userAction of
     ShowCurrentStage auctionName -> do
-      -- FIXME: proper error printing
-      Just terms <- liftIO $ readAuctionTerms auctionName
+      terms <- auctionTermsFor auctionName
       liftIO $ do
         stage <- currentAuctionStage terms
         putStrLn $ "Current stage: " <> show stage
@@ -146,8 +146,7 @@ handleCliAction sendRequestToDelegate currentDelegateStateRef userAction = do
           <> " script for auction"
           <> show auctionName
           <> "."
-      -- FIXME: proper error printing
-      Just terms <- liftIO $ readAuctionTerms auctionName
+      terms <- auctionTermsFor auctionName
       utxos <- scriptUtxos script terms
       liftIO $ prettyPrintUtxo utxos
     ShowUtxos -> do
@@ -166,16 +165,13 @@ handleCliAction sendRequestToDelegate currentDelegateStateRef userAction = do
         liftIO $ prettyPrintUtxo utxos
         liftIO $ putStrLn "\n"
     ShowCurrentWinningBidder auctionName -> do
-      -- FIXME: proper error printing
-      Just terms <- liftIO $ readAuctionTerms auctionName
+      terms <- auctionTermsFor auctionName
       winningActor <- do
         winningBidder <- currentWinningBidder terms
         liftIO $ sequence $ actorFromPkh <$> winningBidder
-
       liftIO $ print winningActor
     ShowActorsMinDeposit auctionName minDeposit -> do
-      -- FIXME: proper error printing
-      Just terms <- liftIO $ readAuctionTerms auctionName
+      terms <- auctionTermsFor auctionName
       allDeposits <- scriptUtxos Deposit terms
 
       let matchingDatums = (parseBidDepositDatum . snd <$>) . UTxO.pairs $ filterDepositGreaterThan minDeposit allDeposits
@@ -205,8 +201,10 @@ handleCliAction sendRequestToDelegate currentDelegateStateRef userAction = do
                     txIn
                     (headIdToCurrencySymbol headId)
               liftIO $ writeAuctionTermsDynamic auctionName dynamic
-              -- FIXME: proper error printing
-              Just config <- liftIO $ readAuctionTermsConfig auctionName
+              config <-
+                liftIO $
+                  noteM ("could not read auction terms config for " <> show auctionName) $
+                    readAuctionTermsConfig auctionName
               terms <- liftIO $ configToAuctionTerms config dynamic
               -- TODO
               liftIO . putStrLn $ show terms
@@ -219,7 +217,6 @@ handleCliAction sendRequestToDelegate currentDelegateStateRef userAction = do
             _ -> liftIO . putStrLn $ "Hydra is not initialized yet"
         Nothing -> liftIO . putStrLn $ "User doesn't have the \"Mona Lisa\" token.\nThis demo is configured to use this token as the auction lot."
     StartBidding auctionName actors -> do
-      -- FIXME: proper error printing
       Just terms <- liftIO $ readAuctionTerms auctionName
       actorsPkh <- liftIO $ getActorsPubKeyHash actors
       liftIO . putStrLn $
@@ -229,8 +226,10 @@ handleCliAction sendRequestToDelegate currentDelegateStateRef userAction = do
           <> "."
       startBidding terms (ApprovedBidders actorsPkh)
     MoveToL2 auctionName -> do
-      -- FIXME: proper error printing
-      Just CliEnhancedAuctionTerms {terms} <- liftIO $ readCliEnhancedAuctionTerms auctionName
+      CliEnhancedAuctionTerms {terms} <-
+        liftIO $
+          noteM ("could not read enhanced auction terms for " <> show auctionName) $
+            readCliEnhancedAuctionTerms auctionName
       doOnMatchingStage terms BiddingStartedStage $ do
         [(standingBidTxIn, _)] <- UTxO.pairs <$> scriptUtxos StandingBid terms
         liftIO $
@@ -240,8 +239,10 @@ handleCliAction sendRequestToDelegate currentDelegateStateRef userAction = do
               , utxoToCommit = standingBidTxIn
               }
     NewBid auctionName bidAmount -> do
-      -- FIXME: proper error printing
-      Just CliEnhancedAuctionTerms {terms, sellerActor} <- liftIO $ readCliEnhancedAuctionTerms auctionName
+      CliEnhancedAuctionTerms {terms, sellerActor} <-
+        liftIO $
+          noteM ("could not read enhanced auction terms for " <> show auctionName) $
+            readCliEnhancedAuctionTerms auctionName
       if actor == sellerActor
         then liftIO $ putStrLn "Seller cannot place a bid"
         else do
@@ -255,8 +256,10 @@ handleCliAction sendRequestToDelegate currentDelegateStateRef userAction = do
           doOnMatchingStage terms BiddingStartedStage $
             newBid terms bidAmount
     NewBidOnL2 auctionName bidAmount -> do
-      -- FIXME: proper error printingsellerActor
-      Just CliEnhancedAuctionTerms {terms, sellerActor} <- liftIO $ readCliEnhancedAuctionTerms auctionName
+      CliEnhancedAuctionTerms {terms, sellerActor} <-
+        liftIO $
+          noteM ("could not read enhanced auction terms for " <> show auctionName) $
+            readCliEnhancedAuctionTerms auctionName
       -- FIXME: deduplicate
       if actor == sellerActor
         then liftIO $ putStrLn "Seller cannot place a bid"
@@ -284,8 +287,7 @@ handleCliAction sendRequestToDelegate currentDelegateStateRef userAction = do
       doOnMatchingStage terms AnnouncedStage $
         mkDeposit terms depositAmount
     BidderBuys auctionName -> do
-      -- FIXME: proper error printing
-      Just terms <- liftIO $ readAuctionTerms auctionName
+      terms <- auctionTermsFor auctionName
       liftIO . putStrLn $
         show actor
           <> " buys the auction lot, as the winning bidder."
@@ -313,11 +315,10 @@ handleCliAction sendRequestToDelegate currentDelegateStateRef userAction = do
       utxos <- actorTipUtxo
       liftIO $ prettyPrintUtxo utxos
     SellerReclaims auctionName -> do
-      -- FIXME: proper error printing
       liftIO . putStrLn $
         show actor
           <> " reclaims the auction lot, as the seller."
-      Just terms <- liftIO $ readAuctionTerms auctionName
+      terms <- auctionTermsFor auctionName
       doOnMatchingStage terms VoucherExpiredStage $
         sellerReclaims terms
       liftIO . putStrLn $
@@ -327,10 +328,19 @@ handleCliAction sendRequestToDelegate currentDelegateStateRef userAction = do
       liftIO $ prettyPrintUtxo utxos
     Cleanup auctionName -> do
       -- FIXME: proper error printing
-      Just terms <- liftIO $ readAuctionTerms auctionName
+      terms <- auctionTermsFor auctionName
       liftIO . putStrLn $
         "Cleaning up all remaining script utxos for auction "
           <> show auctionName
           <> "."
       doOnMatchingStage terms CleanupStage $
         cleanupTx terms
+  where
+    noteM :: forall m a. MonadFail m => String -> m (Maybe a) -> m a
+    noteM s = (>>= maybe (fail s) pure)
+
+    auctionTermsFor :: forall m. MonadIO m => AuctionName -> m AuctionTerms
+    auctionTermsFor name =
+      liftIO $
+        noteM ("could not read auction terms for " <> show name) $
+          readAuctionTerms name
