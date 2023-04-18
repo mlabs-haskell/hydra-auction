@@ -1,6 +1,9 @@
 {-# OPTIONS_GHC -fno-specialise #-}
 
-module HydraAuction.OnChain.StandingBid (mkStandingBidValidator) where
+module HydraAuction.OnChain.StandingBid (
+  mkStandingBidValidator,
+  validNewBidTerms,
+) where
 
 -- Prelude imports
 import PlutusTx.Prelude
@@ -75,7 +78,7 @@ mkStandingBidValidator terms datum redeemer context =
     inOutsByAddress address =
       byAddress address $ txInInfoResolved <$> txInfoInputs info
     validNewBid :: StandingBidState -> StandingBidState -> Bool
-    validNewBid (StandingBidState _oldApprovedBidders oldBid) (StandingBidState _newApprovedBidders (Just newBidTerms)) =
+    validNewBid (StandingBidState _oldApprovedBidders oldBid) (StandingBidState _newApprovedBidders newBid) =
       -- FIXME: disabled until M6
       -- traceIfFalse "Bidder not signed" (txSignedBy info (bidBidder newBidTerms))
       -- && traceIfFalse
@@ -84,14 +87,7 @@ mkStandingBidValidator terms datum redeemer context =
       -- traceIfFalse
       -- "Approved Bidders can not be modified"
       -- (oldApprovedBidders == newApprovedBidders)
-      case oldBid of
-        Just oldBidTerms ->
-          traceIfFalse "Bid increment is not greater than minimumBidIncrement" $
-            bidAmount oldBidTerms + minimumBidIncrement terms <= bidAmount newBidTerms
-        Nothing ->
-          traceIfFalse "Bid is not greater than startingBid" $
-            startingBid terms <= bidAmount newBidTerms
-    validNewBid _ (StandingBidState _ Nothing) = False
+      validNewBidTerms terms oldBid newBid
     checkCorrectNewBidOutput inputOut =
       case byAddress standingBidAddress $ txInfoOutputs info of
         [out] ->
@@ -121,3 +117,15 @@ mkStandingBidValidator terms datum redeemer context =
               voucherAC = assetClass cs (stateTokenKindToTokenName Voucher)
            in assetClassValueOf (txInfoMint info) voucherAC == -1
         )
+
+validNewBidTerms :: AuctionTerms -> Maybe BidTerms -> Maybe BidTerms -> Bool
+validNewBidTerms terms oldBid (Just newBidTerms) =
+  case oldBid of
+    Just oldBidTerms ->
+      traceIfFalse "Bid increment is not greater than minimumBidIncrement" $
+        bidAmount oldBidTerms + minimumBidIncrement terms <= bidAmount newBidTerms
+    Nothing ->
+      traceIfFalse "Bid is not greater than startingBid" $
+        startingBid terms <= bidAmount newBidTerms
+validNewBidTerms _14 _ Nothing =
+  traceIfFalse "Bid cannot be empty" False
