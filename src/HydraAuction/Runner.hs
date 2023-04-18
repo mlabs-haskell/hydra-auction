@@ -33,7 +33,7 @@ import Prelude
 
 import Control.Monad (void)
 import Control.Monad.Catch (MonadCatch, MonadMask, MonadThrow)
-import Control.Tracer (stdoutTracer, traceWith)
+import Control.Tracer (nullTracer, stdoutTracer, traceWith)
 
 -- Cardano imports
 import CardanoClient (
@@ -201,11 +201,9 @@ withActor actor = local (\ctx -> ctx {actor = actor})
 executeTestRunner :: Runner () -> IO ()
 executeTestRunner runner = do
   withTempDir "test-hydra-auction" $ \tmpDir -> do
-    let stateDirectory = MkStateDirectory tmpDir
-    tracerForCardanoNode <- fileTracer stateDirectory
     let tracer = contramap show stdoutTracer
     withCardanoNodeDevnet
-      (contramap (FromHydra . FromCardanoNode) tracerForCardanoNode)
+      nullTracer
       tmpDir
       $ \node ->
         executeRunner
@@ -233,7 +231,7 @@ executeRunnerWithLocalNode runner = do
 -}
 initWallet :: Lovelace -> Actor -> Runner UTxO
 initWallet amount actor = do
-  MkExecutionContext {tracer, node} <- ask
+  MkExecutionContext {node} <- ask
   liftIO $ do
     (vk, _) <- keysFor actor
     seedFromFaucet
@@ -241,4 +239,4 @@ initWallet amount actor = do
       vk
       amount
       Normal
-      (contramap (FromHydra . FromFaucet) tracer)
+      nullTracer
