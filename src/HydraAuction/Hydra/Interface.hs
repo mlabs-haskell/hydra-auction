@@ -29,6 +29,7 @@ data HydraCommand
   | Commit UTxO.UTxO
   | Close
   | Fanout
+  | Abort
   deriving stock (Show)
 
 commandConstructorName :: HydraCommand -> Text
@@ -38,6 +39,7 @@ commandConstructorName (NewTx _) = "NewTx"
 commandConstructorName (Commit _) = "Commit"
 commandConstructorName Close = "Close"
 commandConstructorName Fanout = "Fanout"
+commandConstructorName Abort = "Abort"
 
 -- FIXME: Add UTxO to HeadIsFinalized
 data HydraEvent
@@ -58,6 +60,7 @@ data HydraEvent
   | HeadIsClosed
   | ReadyToFanout
   | HeadIsFinalized UTxO.UTxO
+  | HeadIsAborted
   deriving stock (Eq, Show)
 
 data HydraEventKind
@@ -75,6 +78,7 @@ data HydraEventKind
   | HeadIsClosedKind
   | ReadyToFanoutKind
   | HeadIsFinalizedKind
+  | HeadIsAbortedKind
   deriving stock (Eq, Show)
 
 getHydraEventKind :: HydraEvent -> HydraEventKind
@@ -93,3 +97,4 @@ getHydraEventKind event = case event of
   HeadIsClosed -> HeadIsClosedKind
   ReadyToFanout -> ReadyToFanoutKind
   HeadIsFinalized {} -> HeadIsFinalizedKind
+  HeadIsAborted -> HeadIsAbortedKind
