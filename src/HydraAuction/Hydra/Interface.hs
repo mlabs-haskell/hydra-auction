@@ -54,10 +54,10 @@ data HydraEvent
       }
   | Committed UTxO.UTxO
   | HeadIsInitializing HeadId
-  | HeadIsOpen
+  | HeadIsOpen UTxO.UTxO
   | HeadIsClosed
   | ReadyToFanout
-  | HeadIsFinalized
+  | HeadIsFinalized UTxO.UTxO
   deriving stock (Eq, Show)
 
 data HydraEventKind
@@ -89,7 +89,7 @@ getHydraEventKind event = case event of
   SnapshotConfirmed {} -> SnapshotConfirmedKind
   Committed _ -> CommittedKind
   HeadIsInitializing _ -> HeadIsInitializingKind
-  HeadIsOpen -> HeadIsOpenKind
+  HeadIsOpen {} -> HeadIsOpenKind
   HeadIsClosed -> HeadIsClosedKind
   ReadyToFanout -> ReadyToFanoutKind
-  HeadIsFinalized -> HeadIsFinalizedKind
+  HeadIsFinalized {} -> HeadIsFinalizedKind
