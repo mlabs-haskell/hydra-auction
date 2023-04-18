@@ -60,6 +60,7 @@ import Hydra.Chain.Direct.Tx (
   headIdToCurrencySymbol,
   mkCommitDatum,
  )
+import Hydra.Chain.Direct.Util (isMarkedOutput)
 import Hydra.Contract.Commit qualified as Commit
 import Hydra.Contract.Initial qualified as Initial
 import Hydra.Ledger.Cardano (addReferenceInputs)
@@ -216,7 +217,7 @@ submitAndAwaitCommitTx
       initialScriptRefUtxo <- findInitialScriptRefUtxo scriptRegistry
       (initialTxIn, initialTxOut) <- findInitialUtxo
 
-      commiterAdaUtxo <- filterAdaOnlyUtxo <$> actorTipUtxo
+      commiterAdaUtxo <- UTxO.filter (not . isMarkedOutput) . filterAdaOnlyUtxo <$> actorTipUtxo
       (commiterAdaTxIn, commiterAdaTxOut) : _ <-
         return $ UTxO.pairs commiterAdaUtxo
 

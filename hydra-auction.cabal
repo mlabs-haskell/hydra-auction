@@ -10,6 +10,7 @@ data-files:
   data/credentials/*.vk
   data/hydra-keys/*.sk
   data/hydra-keys/*.vk
+  data/protocol-parameters.json
   README.md
 
 source-repository head

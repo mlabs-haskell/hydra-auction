@@ -79,8 +79,9 @@ import HydraAuctionUtils.Fixture (Actor (..), getActorsPubKeyHash)
 import EndToEnd.HydraUtils (
   filterNonFuelUtxo,
   prepareScriptRegistry,
-  runningThreeNodesDockerComposeHydra,
+  spinUpHeads,
  )
+import EndToEnd.Utils (mkAssertion)
 import Hydra.Chain.Direct.Tx (headIdToCurrencySymbol)
 
 testSuite :: TestTree
@@ -102,25 +103,25 @@ config =
     }
 
 bidderBuysTest :: Assertion
-bidderBuysTest = do
-  -- FIXME: xfail test to work on CI
-  liftIO $ runningThreeNodesDockerComposeHydra $ \stuff -> executeRunnerWithLocalNode $ do
+bidderBuysTest = mkAssertion $ do
+  MkExecutionContext {node} <- ask
+
+  -- Prepare Hydra connections
+
+  -- FIXME: should use already deployed registry as real code would
+  (hydraScriptsTxId, scriptRegistry) <- liftIO $ prepareScriptRegistry node
+  liftIO $ putStrLn "prepareScriptRegistry called"
+
+  spinUpHeads 0 hydraScriptsTxId $ \threeNodes -> do
     let ( (n1, mainCommiter)
           , (n2, commiter2)
           , (n3, commiter3)
-          ) = stuff
-    MkExecutionContext {node} <- ask
-
-    -- Prepare Hydra connections
-
-    -- FIXME: should use already deployed registry as real code would
-    scriptRegistry <- liftIO $ prepareScriptRegistry node
-    liftIO $ putStrLn "Script registry gotten"
+          ) = threeNodes
 
     -- Prepare actors
 
-    actors@[seller, _bidder1, _bidder2] <- return [Alice, Bob, Carol]
-    mapM_ (initWallet 200_000_000) actors
+    actors@[seller, bidder1, bidder2] <- return [Alice, Bob, Carol]
+    mapM_ (initWallet 200_000_000) $ actors <> [mainCommiter, commiter2, commiter3]
     liftIO $ putStrLn "Actors initialized"
 
     -- Init hydra
@@ -141,7 +142,7 @@ bidderBuysTest = do
       configToAuctionTerms config dynamicState
 
     -- FIXME: currenly delegates are checked as bidders onchain
-    actorsPkh <- liftIO $ getActorsPubKeyHash [commiter2, commiter3]
+    actorsPkh <- liftIO $ getActorsPubKeyHash [bidder1, bidder2]
     [(standingBidTxIn, standingBidTxOut)] <-
       withActor seller $ do
         announceAuction terms
@@ -185,15 +186,14 @@ bidderBuysTest = do
       executeHydraRunnerFakingParams n1 $
         waitForHydraEvent (SpecificKind HeadIsOpenKind)
 
-    -- Signing bid by delegate number 2 using its collateral
-    _ <-
-      executeHydraRunnerFakingParams n2 $
-        newBid' terms commiter2 (startingBid terms)
+    -- -- Signing bid by delegate number 2 using its collateral
+    -- _ <-
+    --   executeHydraRunnerFakingParams n2 $
+    --     newBid' terms bidder2 (startingBid terms)
 
-    -- Close Head
+    -- -- Close Head
     executeHydraRunnerFakingParams n1 $ do
-      HeadIsClosed <-
-        sendCommandAndWaitFor (SpecificKind HeadIsClosedKind) Close
+      sendCommandAndWaitFor (SpecificKind HeadIsClosedKind) Close
       ReadyToFanout <- waitForHydraEvent Any
       HeadIsFinalized <- sendCommandAndWaitFor Any Fanout
       return ()

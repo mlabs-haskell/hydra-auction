@@ -58,8 +58,7 @@ import HydraAuction.Types (ApprovedBidders (..), AuctionTerms (..), intToNatural
 import HydraAuctionUtils.Fixture (Actor (..), getActorsPubKey)
 
 -- Hydra auction test imports
-runInDocker :: Runner () -> Assertion
-runInDocker = failAfter 120 . executeTestRunner
+import EndToEnd.Utils (mkAssertion)
 
 testSuite :: TestTree
 testSuite =
@@ -87,7 +86,7 @@ config =
     }
 
 bidderBuysTest :: Assertion
-bidderBuysTest = runInDocker $ do
+bidderBuysTest = mkAssertion $ do
   let seller = Alice
       buyer1 = Bob
       buyer2 = Carol
