@@ -30,7 +30,7 @@
     empty.url = "github:mlabs-haskell/empty-flake";
     iohk-nix.follows = "hydra/iohk-nix";
     CHaP.follows = "hydra/CHaP";
-    nixpkgs.follows = "hydra/nixpkgs";
+    nixpkgs.follows = "haskellNix/nixpkgs";
     flake-utils.follows = "hydra/flake-utils";
     pre-commit-hooks.url = "github:cachix/pre-commit-hooks.nix";
   };
@@ -70,7 +70,7 @@
               shell.tools = {
                 cabal = "3.8.1.0";
                 fourmolu = "0.9.0.0";
-                haskell-language-server = "latest";
+                haskell-language-server = "1.9.1.0";
               };
               shell.buildInputs = with final; [
                 nixpkgs-fmt
