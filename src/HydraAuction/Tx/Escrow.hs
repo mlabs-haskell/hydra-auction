@@ -217,6 +217,9 @@ bidderBuys terms = do
       pubKeyHashAddress $
         seller terms
 
+  -- FIXME: better error reporting
+  Just (StandingBidDatum {standingBidState}) <- queryStandingBidDatum terms
+
   let txOutSellerGotBid standingBidUtxo =
         TxOut
           sellerAddress
@@ -228,7 +231,6 @@ bidderBuys terms = do
             lovelaceToValue $
               Lovelace $
                 bidAmount' - calculateTotalFee terms
-          StandingBidDatum {standingBidState} = getStadingBidDatum standingBidUtxo
           bidAmount' = case standingBid standingBidState of
             (Just (BidTerms {bidAmount})) -> naturalToInt bidAmount
             Nothing -> error "Standing bid UTxO has no bid"
