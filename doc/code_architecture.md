@@ -2,6 +2,10 @@ No PAB is used here, we use Cardano-Api with custom helpers
 for transaction construction. On-chain scripts are written
 in pure Plutus.
 
+Terminology:
+
+* `Runner` - concrete monad with execution context over IO.
+
 Utilities:
 
 * `HydraAuction.Plutus.Extras` - extension of `PlutusExtra` package,

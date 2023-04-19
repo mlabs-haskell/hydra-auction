@@ -12,7 +12,10 @@ module HydraAuction.Hydra.Monad (
 import Prelude
 
 -- Haskell imports
+
 import Control.Monad (void)
+import Control.Monad.State (StateT)
+import Control.Monad.Trans (MonadTrans (lift))
 import GHC.Natural (Natural)
 
 -- Cardano imports
@@ -90,3 +93,7 @@ instance {-# OVERLAPPABLE #-} (Monad m, MonadHydra m) => MonadQueryUtxo m where
               address == addr
             ByronAddress _ -> error "didn't expect Byron address"
         ByTxIns txIns -> txIn `elem` txIns
+
+instance MonadHydra m => MonadHydra (StateT s m) where
+  sendCommand = lift . sendCommand
+  waitForHydraEvent' timeout = lift . waitForHydraEvent' timeout

@@ -116,6 +116,9 @@ common common-lang
     TypeSynonymInstances
     UndecidableInstances
 
+  if flag(dev)
+    default-extensions: PartialTypeSignatures
+
   default-language:   Haskell2010
 
 executable hydra-auction
@@ -178,10 +181,12 @@ executable hydra-auction
 executable hydra-auction-delegate
   import:         common-lang
   main-is:        Main.hs
+  other-modules:  HydraAuction.Delegate.Server
   hs-source-dirs: delegate-app
   ghc-options:    -threaded -rtsopts
   build-depends:
     , hydra-auction
+    , hydra-auction-utils
     , plutus-ledger-api
 
 library
@@ -193,6 +198,7 @@ library
     HydraAuction.Hydra.Interface
     HydraAuction.Hydra.Monad
     HydraAuction.Hydra.Runner
+    HydraAuction.HydraHacks
     HydraAuction.OnChain
     HydraAuction.OnChain.Common
     HydraAuction.OnChain.TestNFT
@@ -215,6 +221,7 @@ library
     HydraAuction.Runner.Tracer
 
   build-depends:
+    , cardano-api
     , directory
     , hydra-auction-utils
     , hydra-cardano-api
@@ -239,6 +246,7 @@ library hydra-auction-utils
     HydraAuctionUtils.Extras.PlutusOrphans
     HydraAuctionUtils.Fixture
     HydraAuctionUtils.Monads
+    HydraAuctionUtils.Tracing
     HydraAuctionUtils.Tx.AutoCreateTx
     HydraAuctionUtils.Tx.Utxo
     Paths_hydra_auction
@@ -253,8 +261,10 @@ test-suite hydra-auction-test
   main-is:        Spec.hs
   other-modules:
     EndToEnd.Hydra
+    EndToEnd.HydraUtils
     EndToEnd.Ledger.Auction
     EndToEnd.Ledger.BidDeposit
+    EndToEnd.Ledger.L2
     EndToEnd.Utils
     Unit.Common
 
@@ -274,6 +284,7 @@ test-suite hydra-auction-test
     , plutus-cbor
     , plutus-tx
     , plutus-tx-plugin
+    , process
     , QuickCheck
     , tasty
     , tasty-hspec

@@ -30,6 +30,7 @@ import HydraAuction.Tx.StandingBid (cleanupTx, newBid)
 import HydraAuction.Tx.TermsConfig (
   configToAuctionTerms,
   constructTermsDynamic,
+  nonExistentHeadIdStub,
  )
 import HydraAuction.Tx.TestNFT (mintOneTestNFT)
 import HydraAuction.Types (ApprovedBidders (..), AuctionTerms (..))
@@ -60,7 +61,7 @@ bidderBuysTest = mkAssertion $ do
   let utxoRef = mkTxIn nftTx 0
 
   terms <- liftIO $ do
-    dynamicState <- constructTermsDynamic seller utxoRef
+    dynamicState <- constructTermsDynamic seller utxoRef nonExistentHeadIdStub
     configToAuctionTerms config dynamicState
 
   assertNFTNumEquals seller 1
@@ -96,7 +97,7 @@ sellerReclaimsTest = mkAssertion $ do
   let utxoRef = mkTxIn nftTx 0
 
   terms <- liftIO $ do
-    dynamicState <- constructTermsDynamic seller utxoRef
+    dynamicState <- constructTermsDynamic seller utxoRef nonExistentHeadIdStub
     configToAuctionTerms config dynamicState
 
   assertNFTNumEquals seller 1
@@ -124,7 +125,7 @@ sellerBidsTest = mkAssertion $ do
   let utxoRef = mkTxIn nftTx 0
 
   terms <- liftIO $ do
-    dynamicState <- constructTermsDynamic seller utxoRef
+    dynamicState <- constructTermsDynamic seller utxoRef nonExistentHeadIdStub
     configToAuctionTerms config dynamicState
 
   assertNFTNumEquals seller 1
@@ -150,7 +151,7 @@ unauthorisedBidderTest = mkAssertion $ do
   let utxoRef = mkTxIn nftTx 0
 
   terms <- liftIO $ do
-    dynamicState <- constructTermsDynamic seller utxoRef
+    dynamicState <- constructTermsDynamic seller utxoRef nonExistentHeadIdStub
     configToAuctionTerms config dynamicState
 
   assertNFTNumEquals seller 1

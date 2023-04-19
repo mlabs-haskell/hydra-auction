@@ -33,8 +33,10 @@ import PlutusTx.Prelude
 import Prelude qualified
 
 -- Haskell imports
+
+import Control.Monad ((<=<))
 import Control.Monad.Fail (fail)
-import Data.Aeson (FromJSON (..), ToJSON)
+import Data.Aeson (FromJSON (parseJSON), ToJSON)
 import GHC.Generics (Generic)
 
 -- Plutus imports
@@ -47,6 +49,7 @@ import PlutusTx.IsData.Class (FromData (fromBuiltinData), ToData (toBuiltinData)
 
 -- Hydra auction imports
 import HydraAuction.Addresses (VoucherCS)
+import HydraAuctionUtils.Extras.PlutusOrphans ()
 
 -- Custom Natural
 
@@ -54,7 +57,7 @@ import HydraAuction.Addresses (VoucherCS)
 -- which are compatible with PlutusTx
 
 newtype Natural = Natural Integer
-  deriving stock (Generic, Prelude.Show, Prelude.Eq)
+  deriving stock (Generic, Prelude.Show, Prelude.Eq, Prelude.Ord)
   deriving newtype (Eq, Ord, AdditiveSemigroup, MultiplicativeSemigroup, ToJSON)
 
 instance UnsafeFromData Natural where
@@ -89,11 +92,7 @@ naturalToInt (Natural i) = i
 PlutusTx.makeLift ''Natural
 
 instance FromJSON Natural where
-  parseJSON x = do
-    int <- parseJSON x
-    case intToNatural int of
-      Just nat -> return nat
-      Nothing -> fail "Integer is not natural"
+  parseJSON = maybe (fail "Integer is not natural") return . intToNatural <=< parseJSON
 
 -- Base datatypes
 
@@ -145,7 +144,8 @@ data AuctionTerms = AuctionTerms
   -- ^ The seller consumed this utxo input in the transaction that
   -- announced this auction, to provide the auction lot to the auction.
   }
-  deriving stock (Generic, Prelude.Show, Prelude.Eq)
+  deriving stock (Generic, Prelude.Show, Prelude.Eq, Prelude.Ord)
+  deriving anyclass (ToJSON, FromJSON)
 
 PlutusTx.makeIsDataIndexed ''AuctionTerms [('AuctionTerms, 0)]
 PlutusTx.makeLift ''AuctionTerms
@@ -202,6 +202,7 @@ data BidTerms = BidTerms
   -- ^ Which amount did the bidder set to buy the auction lot?
   }
   deriving stock (Generic, Prelude.Show, Prelude.Eq)
+  deriving anyclass (FromJSON, ToJSON)
 
 instance Eq BidTerms where
   {-# INLINEABLE (==) #-}
