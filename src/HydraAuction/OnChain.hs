@@ -12,10 +12,12 @@ import PlutusTx qualified
 
 -- Hydra auction imports
 import HydraAuction.Addresses (
+  DepositAddress (..),
   EscrowAddress (..),
   FeeEscrowAddress (..),
   StandingBidAddress (..),
  )
+import HydraAuction.OnChain.Deposit (mkDepositValidator)
 import HydraAuction.OnChain.Escrow (mkEscrowValidator)
 import HydraAuction.OnChain.StandingBid (mkStandingBidValidator)
 import HydraAuction.OnChain.StateToken (
@@ -33,13 +35,14 @@ import HydraAuctionUtils.Extras.Plutus (
 
 -- Addresses
 
-data AuctionScript = Escrow | StandingBid | FeeEscrow
+data AuctionScript = Escrow | StandingBid | FeeEscrow | Deposit
   deriving stock (Prelude.Show)
 
 scriptValidatorForTerms :: AuctionScript -> AuctionTerms -> Validator
 scriptValidatorForTerms Escrow = escrowValidator
 scriptValidatorForTerms StandingBid = standingBidValidator
 scriptValidatorForTerms FeeEscrow = feeEscrowValidator
+scriptValidatorForTerms Deposit = depositValidator
 
 -- State Tokens
 
@@ -96,3 +99,16 @@ feeEscrowValidator terms =
 {-# INLINEABLE feeEscrowAddress #-}
 feeEscrowAddress :: AuctionTerms -> FeeEscrowAddress
 feeEscrowAddress = FeeEscrowAddress . validatorAddress . feeEscrowValidator
+
+-- Deposit
+
+{-# INLINEABLE depositValidator #-}
+depositValidator :: AuctionTerms -> Validator
+depositValidator terms =
+  mkValidatorScript $
+    $$(PlutusTx.compile [||wrapValidator . mkDepositValidator||])
+      `PlutusTx.applyCode` PlutusTx.liftCode (standingBidAddress terms, escrowAddress terms, terms)
+
+{-# INLINEABLE depositAddress #-}
+depositAddress :: AuctionTerms -> DepositAddress
+depositAddress = DepositAddress . validatorAddress . depositValidator

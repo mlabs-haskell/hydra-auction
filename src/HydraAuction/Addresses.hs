@@ -3,6 +3,7 @@ module HydraAuction.Addresses (
   EscrowAddress (..),
   StandingBidAddress (..),
   FeeEscrowAddress (..),
+  DepositAddress (..),
 ) where
 
 -- Prelude imports
@@ -35,3 +36,7 @@ PlutusTx.makeLift ''StandingBidAddress
 newtype FeeEscrowAddress = FeeEscrowAddress {unFeeEscrowAddress :: Address}
 
 PlutusTx.makeLift ''FeeEscrowAddress
+
+newtype DepositAddress = DepositAddress {unDepositAddress :: Address}
+
+PlutusTx.makeLift ''DepositAddress

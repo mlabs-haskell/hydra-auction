@@ -10,6 +10,8 @@ module HydraAuction.Types (
   Natural,
   ApprovedBiddersHash (..),
   BidTerms (..),
+  BidDepositDatum (..),
+  BidDepositRedeemer (..),
   StandingBidState (..),
   StandingBidDatum (..),
   AuctionTerms (..),
@@ -301,5 +303,5 @@ PlutusTx.makeIsDataIndexed ''StandingBidRedeemer [('MoveToHydra, 0), ('NewBid, 1
 data VoucherForgingRedeemer = MintVoucher | BurnVoucher
 PlutusTx.makeIsDataIndexed ''VoucherForgingRedeemer [('MintVoucher, 0), ('BurnVoucher, 1)]
 
-data BidDepositRedeemer = LosingBidder | WinningBidder | SellerClaimsDeposit
-PlutusTx.makeIsDataIndexed ''BidDepositRedeemer [('LosingBidder, 0), ('WinningBidder, 1), ('SellerClaimsDeposit, 2)]
+data BidDepositRedeemer = LosingBidder | WinningBidder | SellerClaimsDeposit | CleanupDeposit
+PlutusTx.makeIsDataIndexed ''BidDepositRedeemer [('LosingBidder, 0), ('WinningBidder, 1), ('SellerClaimsDeposit, 2), ('CleanupDeposit, 3)]

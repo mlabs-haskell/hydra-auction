@@ -1,4 +1,4 @@
-module EndToEnd.LedgerL2 (testSuite) where
+module EndToEnd.Ledger.L2 (testSuite) where
 
 -- Prelude imports
 import Hydra.Prelude (ask, liftIO)
