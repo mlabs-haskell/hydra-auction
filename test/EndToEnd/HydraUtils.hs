@@ -65,7 +65,7 @@ runningThreeNodesDockerComposeHydra cont = do
                   ]
            in finally
                 (cont threeClients)
-                (system "docker-compose down")
+                (system "./scripts/stop-demo.sh")
   where
     runHydraClientN n cont' = liftIO $
       runClient "127.0.0.1" (4000 + n) "/history=no" $

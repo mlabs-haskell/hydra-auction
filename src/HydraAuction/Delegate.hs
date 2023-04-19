@@ -39,7 +39,7 @@ import HydraAuction.Delegate.Interface (
 import HydraAuction.Hydra.Interface (HydraCommand (..), HydraEvent (..))
 import HydraAuction.Hydra.Monad (MonadHydra (..))
 import HydraAuction.OnChain.Common (validAuctionTerms)
-import HydraAuction.Tx.Common (actorTipUtxo, scriptUtxos)
+import HydraAuction.Tx.Common (actorTipUtxo)
 import HydraAuction.Tx.StandingBid (getStadingBidDatum, moveToHydra, newBid')
 import HydraAuction.Types (
   AuctionStage (..),
