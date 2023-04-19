@@ -352,9 +352,9 @@ main = do
   hydraNodeNumber <- read . fromJust <$> lookupEnv "HYDRA_NODE_NUMBER"
   putStrLn $ "With number: " <> show hydraNodeNumber
   let actor = case hydraNodeNumber of
-        1 -> Rupert
+        1 -> Oscar
         2 -> Patricia
-        3 -> Oscar
+        3 -> Rupert
         _ -> error "Wrong HYDRA_NODE_NUMBER"
   runHydraClientN hydraNodeNumber $ \hydraClient -> do
     liftIO $ putStrLn "Hydra connection opened"
