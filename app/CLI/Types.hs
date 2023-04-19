@@ -1,7 +1,7 @@
 module CLI.Types (CLIError (..), CLILog (..)) where
 
 import HydraAuction.Delegate.Interface (DelegateResponse)
-import Prettyprinter (Doc, Pretty (pretty), indent, line, (<+>))
+import Prettyprinter (Doc, Pretty (pretty), indent, line)
 import Prelude
 
 newtype CLILog

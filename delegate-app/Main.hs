@@ -28,7 +28,7 @@ import Control.Monad.State (evalStateT)
 import Control.Monad.Trans (MonadIO (liftIO))
 import Control.Tracer (Tracer, contramap, stdoutTracer)
 import Data.Aeson (ToJSON, eitherDecode, encode)
-import Data.Maybe (fromJust, fromMaybe)
+import Data.Maybe (fromMaybe)
 import Network.WebSockets (
   Connection,
   acceptRequest,
@@ -60,7 +60,11 @@ import HydraAuction.Delegate (
   delegateFrontendRequestStep,
  )
 import HydraAuction.Delegate.CompositeRunner (
-  CompositeExecutionContext (..), CompositeRunner, executeCompositeRunner, runHydraInComposite)
+  CompositeExecutionContext (..),
+  CompositeRunner,
+  executeCompositeRunner,
+  runHydraInComposite,
+ )
 import HydraAuction.Delegate.Interface (
   DelegateResponse (AuctionSet),
   FrontendRequest,

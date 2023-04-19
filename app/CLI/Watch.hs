@@ -3,8 +3,7 @@ module CLI.Watch (
 ) where
 
 -- Prelude
--- Prelude
-import Hydra.Prelude (MonadDelay (threadDelay), putStr)
+import Hydra.Prelude (MonadDelay (threadDelay))
 import Prelude
 
 -- Haskell imports
