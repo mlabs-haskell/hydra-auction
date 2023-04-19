@@ -20,15 +20,20 @@ import CLI.Config (
   CliEnhancedAuctionTerms (..),
   readCliEnhancedAuctionTerms,
  )
+import Data.IORef (IORef, readIORef)
+import HydraAuction.Delegate.Interface (DelegateState)
 import HydraAuction.OnChain.Common (secondsLeftInInterval, stageToInterval)
 import HydraAuction.Tx.Common (currentAuctionStage, currentTimeMilliseconds)
 
-watchAuction :: AuctionName -> IO ()
-watchAuction auctionName = do
+watchAuction :: AuctionName -> IORef DelegateState -> IO ()
+watchAuction auctionName currentDelegateStateRef = do
   clearScreen
   setCursorPosition 0 0
 
   mEnhancedTerms <- readCliEnhancedAuctionTerms auctionName
+
+  delegateState <- readIORef currentDelegateStateRef
+  putStrLn $ "Delegate state: " <> show delegateState
 
   case mEnhancedTerms of
     Nothing ->
@@ -50,4 +55,4 @@ watchAuction auctionName = do
             Just s -> "\n" <> show s <> " seconds left until next stage"
 
   threadDelay 0.2
-  watchAuction auctionName
+  watchAuction auctionName currentDelegateStateRef

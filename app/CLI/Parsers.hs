@@ -2,6 +2,8 @@ module CLI.Parsers (
   getCliInput,
   parseCliAction,
   CliInput (..),
+  CliOptions (..),
+  DelegateSettings (..),
   PromptOptions (..),
 ) where
 
@@ -9,7 +11,6 @@ module CLI.Parsers (
 import Prelude
 
 -- Haskell imports
-import Data.Maybe (fromJust)
 import Options.Applicative (
   Parser,
   ParserResult (..),
@@ -44,11 +45,18 @@ import HydraAuction.Types (Natural, intToNatural)
 import HydraAuctionUtils.Fixture (Actor (..))
 
 -- Hydra auction CLI imports
-import CLI.Actions (CliAction (..), seedAmount)
+import CLI.Actions (CliAction (..), Layer (..), seedAmount)
 import CLI.Config (AuctionName (..))
-import Cardano.Prelude (asum)
+import Cardano.Prelude (asum, guard, note, readMaybe)
+import Hydra.Network (IP, PortNumber)
+import Options.Applicative.Builder (ReadM, eitherReader, option, showDefaultWith, value)
 
-data CliInput
+data CliInput = CliInput
+  { cliOptions :: CliOptions
+  , delegateSettings :: DelegateSettings
+  }
+
+data CliOptions
   = Watch !AuctionName
   | InteractivePrompt !PromptOptions
 
@@ -69,7 +77,10 @@ getCliInput = customExecParser preferences options
     preferences = prefs (showHelpOnEmpty <> showHelpOnError)
 
 cliInputParser :: Parser CliInput
-cliInputParser =
+cliInputParser = CliInput <$> cliOptionsParser <*> delegate
+
+cliOptionsParser :: Parser CliOptions
+cliOptionsParser =
   asum
     [ Watch <$> watchAuction
     , InteractivePrompt
@@ -80,7 +91,7 @@ parseCliAction :: [String] -> Either String CliAction
 parseCliAction s = case execParserPure preferences options s of
   Success a -> Right a
   Failure failure -> Left $ fst $ renderFailure failure ""
-  _ -> Left "error"
+  CompletionInvoked _ -> Left "completion was invoked but is not supported"
   where
     options =
       info
@@ -90,27 +101,33 @@ parseCliAction s = case execParserPure preferences options s of
 
 cliActionParser :: Parser CliAction
 cliActionParser =
-  hsubparser
-    ( command "show-script-utxos" (info (ShowScriptUtxos <$> auctionName <*> script) (progDesc "Show utxos at a given script. Requires the seller and auction lot for the given script"))
-        <> command "show-utxos" (info (pure ShowUtxos) (progDesc "Shows utxos for a given actor"))
-        <> command
+  hsubparser $
+    mconcat
+      [ command "show-script-utxos" (info (ShowScriptUtxos <$> auctionName <*> script) (progDesc "Show utxos at a given script. Requires the seller and auction lot for the given script"))
+      , command "show-utxos" (info (pure ShowUtxos) (progDesc "Shows utxos for a given actor"))
+      , command
           "show-current-stage"
           ( info
               (ShowCurrentStage <$> auctionName)
               (progDesc "Show current auction stage - which depends on time since auction announcement")
           )
-        <> command "show-all-utxos" (info (pure ShowAllUtxos) (progDesc "Shows utxos for all actors"))
-        <> command "show-current-winner-bidder" (info (ShowCurrentWinningBidder <$> auctionName) (progDesc "Show current winning bidder for auction"))
-        <> command "seed" (info (pure Seed) (progDesc $ "Provides " <> show seedAmount <> " Lovelace for the given actor"))
-        <> command "prepare-for-demo" (info (Prepare <$> actor) (progDesc $ "Provides " <> show seedAmount <> " Lovelace for every actor and 1 Test NFT for given actor"))
-        <> command "mint-test-nft" (info (pure MintTestNFT) (progDesc "Mints an NFT that can be used as auction lot"))
-        <> command "announce-auction" (info (AuctionAnounce <$> auctionName) (progDesc "Create an auction"))
-        <> command "start-bidding" (info (StartBidding <$> auctionName <*> many actor) (progDesc "Open an auction for bidding"))
-        <> command "new-bid" (info (NewBid <$> auctionName <*> bidAmount) (progDesc "Actor places new bid after bidding is started"))
-        <> command "bidder-buys" (info (BidderBuys <$> auctionName) (progDesc "Pay and recieve a lot after auction end"))
-        <> command "seller-reclaims" (info (SellerReclaims <$> auctionName) (progDesc "Seller reclaims lot after voucher end time"))
-        <> command "cleanup" (info (Cleanup <$> auctionName) (progDesc "Remove standing bid UTxO after cleanup time"))
-    )
+      , command "show-all-utxos" (info (pure ShowAllUtxos) (progDesc "Shows utxos for all actors"))
+      , command "show-current-winner-bidder" (info (ShowCurrentWinningBidder <$> auctionName) (progDesc "Show current winning bidder for auction"))
+      , command "seed" (info (pure Seed) (progDesc $ "Provides " <> show seedAmount <> " Lovelace for the given actor"))
+      , command "prepare-for-demo" (info (Prepare <$> actor) (progDesc $ "Provides " <> show seedAmount <> " Lovelace for every actor and 1 Test NFT for given actor"))
+      , command "mint-test-nft" (info (pure MintTestNFT) (progDesc "Mints an NFT that can be used as auction lot"))
+      , command "announce-auction" (info (AuctionAnounce <$> auctionName) (progDesc "Create an auction"))
+      , command "start-bidding" (info (StartBidding <$> auctionName <*> many actor) (progDesc "Open an auction for bidding"))
+      , command "move-to-l2" (info (MoveToL2 <$> auctionName) (progDesc "Move Standing bid to L2"))
+      , command "new-bid" (info (NewBid <$> auctionName <*> bidAmount <*> pure L1) (progDesc "Actor places new bid after bidding is started"))
+      , command
+          "new-bid-on-l2"
+          ( info (NewBid <$> auctionName <*> bidAmount <*> pure L2) (progDesc "Actor places new bid on L2 after Standing Bid was moved on L2")
+          )
+      , command "bidder-buys" (info (BidderBuys <$> auctionName) (progDesc "Pay and recieve a lot after auction end"))
+      , command "seller-reclaims" (info (SellerReclaims <$> auctionName) (progDesc "Seller reclaims lot after voucher end time"))
+      , command "cleanup" (info (Cleanup <$> auctionName) (progDesc "Remove standing bid UTxO after cleanup time"))
+      ]
 
 auctionName :: Parser AuctionName
 auctionName =
@@ -123,30 +140,82 @@ auctionName =
 
 actor :: Parser Actor
 actor =
-  parseActor
-    <$> strOption
-      ( short 'a'
-          <> metavar "ACTOR"
-          <> help "Actor running the cli tool"
-      )
+  option
+    parseActor
+    ( short 'a'
+        <> metavar "ACTOR"
+        <> help "Actor running the cli tool"
+    )
+
+data DelegateSettings = DelegateSettings
+  { delegateIP :: IP
+  , delegatePort :: PortNumber
+  }
+
+delegate :: Parser DelegateSettings
+delegate = DelegateSettings <$> dlgtIP <*> (dlgtPort <*> dlgtNumber)
+
+dlgtIP :: Parser IP
+dlgtIP =
+  option parseIP $
+    mconcat
+      [ short 'i'
+      , long "ip"
+      , metavar "DELEGATE_IP"
+      , help "the IP address of the delegate server"
+      ]
+  where
+    parseIP :: ReadM IP
+    parseIP = eitherReader $ note "not a valid IP address" . readMaybe
+
+dlgtNumber :: Parser Int
+dlgtNumber =
+  option parseNumber $
+    mconcat
+      [ short 'd'
+      , long "delegate-number"
+      , metavar "DELEGATE_NUMBER"
+      , help "the number delegate-number"
+      ]
+  where
+    parseNumber :: ReadM Int
+    parseNumber = eitherReader $ \s -> do
+      num <- note "the input is not a number" $ readMaybe s
+      guard (num >= 0)
+      pure num
+
+dlgtPort :: Parser (Int -> PortNumber)
+dlgtPort =
+  option parsePort $
+    mconcat
+      [ short 'p'
+      , long "port"
+      , metavar "DELEGATE_PORT"
+      , help "the PORT of the delegate server"
+      , value $ fromIntegral . (8000 +)
+      , showDefaultWith (const "8000 + delegateNumber")
+      ]
+  where
+    parsePort :: ReadM (Int -> PortNumber)
+    parsePort = eitherReader $ fmap const . note "not a valid port number" . readMaybe
 
 script :: Parser AuctionScript
 script =
-  parseScript
-    <$> strOption
-      ( short 's'
-          <> metavar "SCRIPT"
-          <> help "Script to check. One of: escrow, standing-bid, fee-escrow"
-      )
+  option
+    parseScript
+    ( short 's'
+        <> metavar "SCRIPT"
+        <> help "Script to check. One of: escrow, standing-bid, fee-escrow"
+    )
 
 bidAmount :: Parser Natural
 bidAmount =
-  parseAda
-    <$> strOption
-      ( short 'b'
-          <> metavar "BID_AMOUNT"
-          <> help "Bid amount"
-      )
+  option
+    parseAda
+    ( short 'b'
+        <> metavar "BID_AMOUNT"
+        <> help "Bid amount"
+    )
 
 watchAuction :: Parser AuctionName
 watchAuction =
@@ -168,35 +237,42 @@ socketDir =
 
 networkMagic :: Parser NetworkMagic
 networkMagic =
-  parseNetworkMagic
-    <$> strOption
-      ( long "network-magic"
-          <> metavar "NETWORK_MAGIC"
-          <> help "Network magic for cardano"
-      )
+  option
+    parseNetworkMagic
+    ( long "network-magic"
+        <> metavar "NETWORK_MAGIC"
+        <> help "Network magic for cardano"
+    )
 
-parseActor :: String -> Actor
-parseActor "alice" = Alice
-parseActor "bob" = Bob
-parseActor "carol" = Carol
-parseActor "dave" = Dave
-parseActor "eve" = Eve
-parseActor "frank" = Frank
-parseActor "grace" = Grace
-parseActor "hans" = Hans
-parseActor _ = error "Actor parsing error"
+parseActor :: ReadM Actor
+parseActor = eitherReader $ \case
+  "alice" -> pure Alice
+  "bob" -> pure Bob
+  "carol" -> pure Carol
+  "dave" -> pure Dave
+  "eve" -> pure Eve
+  "frank" -> pure Frank
+  "grace" -> pure Grace
+  "hans" -> pure Hans
+  _ -> Left "Actor parsing error"
 
-parseScript :: String -> AuctionScript
-parseScript "escrow" = Escrow
-parseScript "standing-bid" = StandingBid
-parseScript "fee-escrow" = FeeEscrow
-parseScript _ = error "Escrow parsing error"
+parseScript :: ReadM AuctionScript
+parseScript = eitherReader $ \case
+  "escrow" -> pure Escrow
+  "standing-bid" -> pure StandingBid
+  "fee-escrow" -> pure FeeEscrow
+  _ -> Left "Escrow parsing error"
 
-parseAda :: String -> Natural
-parseAda = fromJust . intToNatural . (* 1_000_000) . read
+parseAda :: ReadM Natural
+parseAda = eitherReader $ \s -> note "failed to parse Ada" $ do
+  ada <- readMaybe s
+  let lovelace = ada * 1_000_000
+  intToNatural lovelace
 
-parseNetworkMagic :: String -> NetworkMagic
-parseNetworkMagic s = NetworkMagic $ read s
+parseNetworkMagic :: ReadM NetworkMagic
+parseNetworkMagic = eitherReader $ \s -> note "failed to parse network magic" $ do
+  magic <- readMaybe s
+  pure $ NetworkMagic magic
 
 verboseParser :: Parser Bool
 verboseParser = switch (long "verbose" <> short 'v')
