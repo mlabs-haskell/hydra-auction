@@ -54,7 +54,7 @@ import CLI.Parsers (
   getCliInput,
   parseCliAction,
  )
-import CLI.Types (CLIError (InvalidResponse, UnimplementedResponse))
+import CLI.Types (CLIError (..))
 import CLI.Watch (
   watchAuction,
  )
@@ -89,8 +89,9 @@ handleCliInput input = do
       case mMessage of
         Right (CurrentDelegateState _ state) ->
           writeIORef currentDelegateStateRef state
-        Right response -> traceWith tracer (UnimplementedResponse response)
-        Left err -> traceWith tracer (InvalidResponse err)
+        Right response ->
+          traceWith tracer (NotImplementedDelegateResponse response)
+        Left err -> traceWith tracer (InvalidDelegateResponse err)
 
 handleCliInput' :: Connection -> IORef DelegateState -> CliOptions -> IO ()
 handleCliInput' client currentDelegateStateRef input = case input of
