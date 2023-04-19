@@ -41,6 +41,7 @@ import Test.Hydra.Prelude (withTempDir)
 
 import Hydra.Cardano.Api (TxId, UTxO' (UTxO))
 import HydraAuction.Runner (ExecutionContext (MkExecutionContext, node, tracer), HydraAuctionLog (FromHydra), Runner, executeRunner)
+import HydraAuctionUtils.BundledData (lookupProtocolParamPath)
 import HydraAuctionUtils.Fixture (
   Actor (..),
   hydraKeysFor,
@@ -57,7 +58,9 @@ prepareScriptRegistry node@RunningNode {networkId, nodeSocket} = do
 
 spinUpHeads :: Int -> TxId -> (ThreeClients -> Runner ()) -> Runner ()
 spinUpHeads clusterIx hydraScriptsTxId cont = do
-  liftIO $ setEnv "HYDRA_CONFIG_DIR" "./data"
+  liftIO $ do
+    hydraDir <- lookupProtocolParamPath
+    setEnv "HYDRA_CONFIG_DIR" hydraDir
   ctx@(MkExecutionContext {node, tracer}) <- ask
   let hydraTracer = contramap FromHydra tracer
   liftIO $
