@@ -24,7 +24,7 @@ import Control.Concurrent.STM (
 import Control.Monad (forever, void, when, (>=>))
 import Control.Monad.Catch (MonadCatch (..))
 import Control.Monad.Reader (MonadReader (..))
-import Control.Monad.State (runStateT)
+import Control.Monad.State (evalStateT)
 import Control.Monad.Trans (MonadIO (liftIO))
 import Control.Tracer (Tracer, contramap, stdoutTracer)
 import Data.Aeson (ToJSON, eitherDecode, encode)
@@ -183,23 +183,21 @@ runDelegateLogicSteps
   eventQueue
   frontendRequestQueue
   broadcast = do
-    (voidResult, _) <-
-      flip runStateT initialState $ forever $ do
-        flushAndTraverseNewElements
-          eventQueue
-          ( delegateEventStep
-              -- All delegateEventStep responses should be brodcasted
-              >=> return . fmap (Broadcast,)
-              >=> putInToClientsQueue
-          )
-        flushAndTraverseNewElements
-          frontendRequestQueue
-          ( delegateFrontendRequestStep
-              >=> putInToClientsQueue
-          )
-        -- FIXME: log queues overload and make tick not-static
-        liftIO $ threadDelay tick
-    return voidResult
+    flip evalStateT initialState $ forever $ do
+      flushAndTraverseNewElements
+        eventQueue
+        ( delegateEventStep
+            -- All delegateEventStep responses should be brodcasted
+            >=> return . fmap (Broadcast,)
+            >=> putInToClientsQueue
+        )
+      flushAndTraverseNewElements
+        frontendRequestQueue
+        ( delegateFrontendRequestStep
+            >=> putInToClientsQueue
+        )
+      -- FIXME: log queues overload and make tick not-static
+      liftIO $ threadDelay tick
     where
       -- TODO: this is not actually broadcast now
       putInToClientsQueue responses = do
