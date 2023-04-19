@@ -74,6 +74,8 @@ import CLI.Prettyprinter (prettyPrintUtxo)
 seedAmount :: Lovelace
 seedAmount = 10_000_000_000
 
+data Layer = L1 | L2
+
 data CliAction
   = ShowCurrentStage !AuctionName
   | ShowScriptUtxos !AuctionName !AuctionScript
@@ -88,8 +90,7 @@ data CliAction
   | MakeDeposit !AuctionName !Natural
   | StartBidding !AuctionName ![Actor]
   | MoveToL2 !AuctionName
-  | NewBid !AuctionName !Natural
-  | NewBidOnL2 !AuctionName !Natural
+  | NewBid !AuctionName !Natural !Layer
   | BidderBuys !AuctionName
   | SellerReclaims !AuctionName
   | Cleanup !AuctionName
@@ -238,7 +239,7 @@ handleCliAction sendRequestToDelegate currentDelegateStateRef userAction = do
               { auctionTerms = terms
               , utxoToCommit = standingBidTxIn
               }
-    NewBid auctionName bidAmount -> do
+    NewBid auctionName bidAmount layer -> do
       CliEnhancedAuctionTerms {terms, sellerActor} <-
         liftIO $
           noteM ("could not read enhanced auction terms for " <> show auctionName) $
@@ -254,36 +255,20 @@ handleCliAction sendRequestToDelegate currentDelegateStateRef userAction = do
               <> show auctionName
               <> "."
           doOnMatchingStage terms BiddingStartedStage $
-            newBid terms bidAmount
-    NewBidOnL2 auctionName bidAmount -> do
-      CliEnhancedAuctionTerms {terms, sellerActor} <-
-        liftIO $
-          noteM ("could not read enhanced auction terms for " <> show auctionName) $
-            readCliEnhancedAuctionTerms auctionName
-      -- FIXME: deduplicate
-      if actor == sellerActor
-        then liftIO $ putStrLn "Seller cannot place a bid"
-        else do
-          liftIO . putStrLn $
-            show actor
-              <> " places a new bid of "
-              <> show (naturalToInt bidAmount `div` 1_000_000)
-              <> " ADA in auction "
-              <> show auctionName
-              <> "."
-          doOnMatchingStage terms BiddingStartedStage $ do
-            (_, bidderPublicKey, _) <- addressAndKeys
-            let bidDatum =
-                  createStandingBidDatum terms bidAmount bidderPublicKey
-            liftIO $
-              sendRequestToDelegate $
-                DelegateInterface.NewBid
-                  { auctionTerms = terms
-                  , datum = bidDatum
-                  }
+            case layer of
+              L1 -> newBid terms bidAmount
+              L2 -> do
+                (_, bidderPublicKey, _) <- addressAndKeys
+                let bidDatum =
+                      createStandingBidDatum terms bidAmount bidderPublicKey
+                liftIO $
+                  sendRequestToDelegate $
+                    DelegateInterface.NewBid
+                      { auctionTerms = terms
+                      , datum = bidDatum
+                      }
     MakeDeposit auctionName depositAmount -> do
-      -- FIXME: proper error printing
-      Just terms <- liftIO $ readAuctionTerms auctionName
+      terms <- auctionTermsFor auctionName
       doOnMatchingStage terms AnnouncedStage $
         mkDeposit terms depositAmount
     BidderBuys auctionName -> do
