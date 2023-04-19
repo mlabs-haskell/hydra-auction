@@ -8,15 +8,15 @@ newtype CLILog
   = CLIError CLIError
 
 data CLIError
-  = UnimplementedResponse DelegateResponse
-  | InvalidResponse String
+  = NotImplementedDelegateResponse DelegateResponse
+  | InvalidDelegateResponse String
 
 instance Pretty CLIError where
   pretty = \case
-    UnimplementedResponse response ->
+    NotImplementedDelegateResponse response ->
       "Cannot handle delegate response:"
         <> extraInfo (pretty response)
-    InvalidResponse str ->
+    InvalidDelegateResponse str ->
       "Delegate gave an invalid response:"
         <> extraInfo (pretty str)
 
