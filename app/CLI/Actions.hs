@@ -1,5 +1,6 @@
 module CLI.Actions (
   CliAction (..),
+  Layer (..),
   handleCliAction,
   seedAmount,
 ) where
@@ -74,7 +75,7 @@ import CLI.Prettyprinter (prettyPrintUtxo)
 seedAmount :: Lovelace
 seedAmount = 10_000_000_000
 
-data Layer = L1 | L2
+data Layer = L1 | L2 deriving stock (Show)
 
 data CliAction
   = ShowCurrentStage !AuctionName
