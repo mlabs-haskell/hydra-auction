@@ -194,7 +194,6 @@ handleCliAction sendRequestToDelegate currentDelegateStateRef userAction = do
           delegateState <- liftIO $ readIORef currentDelegateStateRef
           case delegateState of
             Initialized headId _ -> do
-              liftIO $ putStrLn $ "HeadId is: " <> show headId
               dynamic <-
                 liftIO $
                   constructTermsDynamic
@@ -207,8 +206,6 @@ handleCliAction sendRequestToDelegate currentDelegateStateRef userAction = do
                   noteM ("could not read auction terms config for " <> show auctionName) $
                     readAuctionTermsConfig auctionName
               terms <- liftIO $ configToAuctionTerms config dynamic
-              -- TODO
-              liftIO . putStrLn $ show terms
               liftIO . putStrLn $
                 show actor
                   <> " announces auction called "
@@ -312,7 +309,6 @@ handleCliAction sendRequestToDelegate currentDelegateStateRef userAction = do
       utxos <- actorTipUtxo
       liftIO $ prettyPrintUtxo utxos
     Cleanup auctionName -> do
-      -- FIXME: proper error printing
       terms <- auctionTermsFor auctionName
       liftIO . putStrLn $
         "Cleaning up all remaining script utxos for auction "
