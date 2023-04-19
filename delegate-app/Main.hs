@@ -20,7 +20,7 @@ import Control.Concurrent.STM (
   writeTChan,
   writeTQueue,
  )
-import Control.Monad (forever, when, (>=>))
+import Control.Monad (forever, void, when, (>=>))
 import Control.Monad.State (StateT, runStateT)
 import Control.Monad.Trans (MonadIO (liftIO))
 import Control.Tracer (Tracer, contramap, stdoutTracer)

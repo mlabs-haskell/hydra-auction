@@ -3,6 +3,8 @@ module HydraAuctionUtils.Fixture (
   keysFor,
   hydraNodeActors,
   partyFor,
+  allActors,
+  actorFromPkh,
   getActorPubKeyHash,
   getActorsPubKeyHash,
 ) where
@@ -11,7 +13,7 @@ module HydraAuctionUtils.Fixture (
 import Prelude
 
 -- Haskell imports
-import Control.Monad (unless)
+import Control.Monad.Extra (findM, unless)
 import Data.Aeson qualified as Aeson
 import Data.Bifunctor (first)
 import GHC.Generics (Generic)
@@ -94,6 +96,9 @@ partyFor actor = do
       fail $ "cannot decode text envelope from '" <> show bs <> "', error: " <> show err
     Right vk -> return $ Party vk
 
+allActors :: [Actor]
+allActors = [minBound .. maxBound]
+
 getActorPubKeyHash :: Actor -> IO PubKeyHash
 getActorPubKeyHash actor = do
   (actorVk, _) <- keysFor actor
@@ -101,6 +106,19 @@ getActorPubKeyHash actor = do
 
 getActorsPubKeyHash :: [Actor] -> IO [PubKeyHash]
 getActorsPubKeyHash actors = sequence $ getActorPubKeyHash <$> actors
+
+actorFromPkh :: PubKeyHash -> IO Actor
+actorFromPkh pkh = do
+  mbActor <-
+    findM
+      ( \actor -> do
+          actorPkh <- getActorPubKeyHash actor
+          pure $ actorPkh == pkh
+      )
+      allActors
+  case mbActor of
+    Just actor -> pure actor
+    Nothing -> fail $ "Unable to find actor matching key: " <> show pkh
 
 actorName :: Actor -> String
 actorName = \case
