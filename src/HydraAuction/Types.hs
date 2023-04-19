@@ -174,6 +174,7 @@ newtype ApprovedBidders = ApprovedBidders
   -- ^ Which bidders are approved to submit bids?
   }
   deriving stock (Generic, Prelude.Show, Prelude.Eq)
+  deriving anyclass (ToJSON, FromJSON)
 
 instance Eq ApprovedBidders where
   {-# INLINEABLE (==) #-}
@@ -190,6 +191,7 @@ data StandingBidState = StandingBidState
   , standingBid :: Maybe BidTerms
   }
   deriving stock (Generic, Prelude.Show, Prelude.Eq)
+  deriving anyclass (ToJSON, FromJSON)
 
 instance Eq StandingBidState where
   {-# INLINEABLE (==) #-}
@@ -268,6 +270,7 @@ data StandingBidDatum = StandingBidDatum
   , standingBidVoucherCS :: !VoucherCS
   }
   deriving stock (Generic, Prelude.Show, Prelude.Eq)
+  deriving anyclass (ToJSON, FromJSON)
 
 instance Eq StandingBidDatum where
   {-# INLINEABLE (==) #-}

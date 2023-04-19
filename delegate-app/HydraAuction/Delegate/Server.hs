@@ -33,11 +33,13 @@ import Prettyprinter (Doc, Pretty (pretty), indent, line, viaShow, (<+>))
 
 -- Cardano imports
 import Hydra.Network (IP, PortNumber)
+import HydraNode (HydraClient)
 
 -- Hydra auction imports
 import HydraAuction.Delegate (ClientId)
 import HydraAuction.Delegate.Interface (DelegateResponse, FrontendRequest)
 import HydraAuction.Types (AuctionTerms)
+import HydraAuctionUtils.Fixture (Actor)
 import HydraAuctionUtils.Tracing (TracerT)
 
 -- | The config for the delegate server
@@ -50,6 +52,8 @@ data DelegateServerConfig = DelegateServerConfig
   -- ^ the amount of milliseconds, the thread should wait
   , ping :: Int
   -- ^ the amount of seconds between pings for the client thread
+  , l1Actor :: Actor
+  , hydraClient :: HydraClient
   }
 
 -- | Representation of the Delegate Server's log
@@ -90,6 +94,7 @@ data ThreadSort
   = WebsocketThread
   | DelegateLogicStepsThread
   | QueueAuctionStageThread
+  | QueueHydraEventsThread
   deriving stock (Eq, Ord, Show)
   deriving (Pretty) via ViaShow ThreadSort
 

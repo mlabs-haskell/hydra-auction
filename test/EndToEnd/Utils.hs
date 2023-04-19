@@ -1,18 +1,25 @@
-module EndToEnd.Utils (mkAssertion, config, assertNFTNumEquals, assertUTxOsInScriptEquals) where
+module EndToEnd.Utils (
+  mkAssertion,
+  config,
+  assertNFTNumEquals,
+  assertUTxOsInScriptEquals,
+) where
 
 -- Prelude imports
 
-import Hydra.Prelude (MonadIO (liftIO))
 import PlutusTx.Prelude
 
 -- Cardano node imports
 import Cardano.Api.UTxO qualified as UTxO
 
+-- Haskell imports
+import Control.Monad.Trans (MonadIO (..))
+
 -- Haskell test imports
 
 import Data.Maybe (fromJust)
 import Test.Hydra.Prelude (failAfter)
-import Test.Tasty.HUnit (Assertion, (@?=))
+import Test.Tasty.HUnit (Assertion, (@=?), (@?=))
 
 -- Plutus imports
 import Plutus.V1.Ledger.Value (assetClassValueOf)
@@ -49,8 +56,10 @@ assertNFTNumEquals :: Actor -> Integer -> Runner ()
 assertNFTNumEquals actor expectedNum = do
   utxo <- withActor actor actorTipUtxo
   liftIO $ do
-    let value = mconcat [toPlutusValue $ txOutValue out | (_, out) <- UTxO.pairs utxo]
-    assetClassValueOf value testNftAssetClass @?= expectedNum
+    let value =
+          mconcat
+            [toPlutusValue $ txOutValue out | (_, out) <- UTxO.pairs utxo]
+    assetClassValueOf value testNftAssetClass @=? expectedNum
 
 assertUTxOsInScriptEquals :: AuctionScript -> AuctionTerms -> Integer -> Runner ()
 assertUTxOsInScriptEquals script terms expectedNum = do

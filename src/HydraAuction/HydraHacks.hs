@@ -42,6 +42,7 @@ import Hydra.Cardano.Api (
   mkScriptDatum,
   mkScriptReference,
   mkTxOutDatum,
+  toPlutusCurrencySymbol,
   toPlutusTxOutRef,
   toScriptData,
   txInsCollateral,
@@ -158,20 +159,20 @@ commitTxBody
           mkCommitDatum party (Just (scriptInput, scriptOutput)) (headIdToCurrencySymbol headId)
 
 -- | Find initial Utxo with Participation Token matchin our current actor
-findInitialUtxo :: Runner (TxIn, TxOut CtxUTxO)
-findInitialUtxo = do
+findInitialUtxo :: HeadId -> Runner (TxIn, TxOut CtxUTxO)
+findInitialUtxo headId = do
   (_, commitingNodeVk, _) <- addressAndKeys
   let vkh = verificationKeyHash commitingNodeVk
 
-  headAddress <- formInitialAddress
-  commiterUtxo <- queryUtxo (ByAddress headAddress)
-  let initialUtxo =
+  initialAddress <- formInitialAddress
+  initialUtxo <- queryUtxo (ByAddress initialAddress)
+  let initialUtxoForCommiter =
         filter
-          (hasMatchingPT vkh . txOutValue . snd)
-          (UTxO.pairs commiterUtxo)
+          (valueHasMatchingPT vkh . txOutValue . snd)
+          (UTxO.pairs initialUtxo)
 
   -- Node should be only in one
-  [(initialTxIn, initialTxOut)] <- return initialUtxo
+  [(initialTxIn, initialTxOut)] <- return initialUtxoForCommiter
   return (initialTxIn, initialTxOut)
   where
     formInitialAddress = do
@@ -181,12 +182,14 @@ findInitialUtxo = do
         buildScriptAddress
           (PlutusScript $ fromPlutusScript Initial.validatorScript)
           networkId
-    hasMatchingPT :: Hash PaymentKey -> Value -> Bool
-    hasMatchingPT vkh val =
-      any hasAssetNameMatchingPT $ valueToList val
+    valueHasMatchingPT :: Hash PaymentKey -> Value -> Bool
+    valueHasMatchingPT vkh val =
+      any isAssetWithMatchingPT $ valueToList val
       where
-        hasAssetNameMatchingPT (x, _) = case x of
-          (AssetId _ (AssetName bs)) -> bs == serialiseToRawBytes vkh
+        isAssetWithMatchingPT (x, _) = case x of
+          (AssetId policyId (AssetName bs)) ->
+            bs == serialiseToRawBytes vkh
+              && toPlutusCurrencySymbol policyId == headIdToCurrencySymbol headId
           _ -> False
 
 findInitialScriptRefUtxo :: MonadQueryUtxo m => ScriptRegistry -> m UTxO
@@ -210,7 +213,6 @@ submitAndAwaitCommitTx
   headId
   (scriptTxIn, scriptTxOut, scriptTxWitness) =
     do
-      -- FIXME: not properly tested on non-zero fees case, though should work
       MkExecutionContext {actor, node} <- ask
       let RunningNode {networkId} = node
 
@@ -222,7 +224,7 @@ submitAndAwaitCommitTx
       party <- liftIO $ partyFor actor
 
       initialScriptRefUtxo <- findInitialScriptRefUtxo scriptRegistry
-      (initialTxIn, initialTxOut) <- findInitialUtxo
+      (initialTxIn, initialTxOut) <- findInitialUtxo headId
 
       commiterAdaUtxo <- filterAdaOnlyUtxo <$> actorTipUtxo
       (commiterAdaTxIn, commiterAdaTxOut) : _ <-

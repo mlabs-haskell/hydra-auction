@@ -1,5 +1,6 @@
 module HydraAuction.Hydra.Runner (
   HydraRunner (..),
+  HydraExecutionContext (..),
   matchingHydraEvent,
   executeHydraRunnerFakingParams,
   executeHydraRunner,
@@ -154,6 +155,9 @@ matchingHydraEvent value =
       SnapshotConfirmed
         <$> retrieveField'
           ( key "snapshot" . key "confirmedTransactions"
+          )
+        <*> retrieveField'
+          ( key "snapshot" . key "utxo"
           )
     Just "Committed" -> Committed <$> retrieveField "utxo"
     Just "HeadIsOpen" -> Just HeadIsOpen

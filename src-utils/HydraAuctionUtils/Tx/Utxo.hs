@@ -2,6 +2,7 @@ module HydraAuctionUtils.Tx.Utxo (
   filterAdaOnlyUtxo,
   filterUtxoByCurrencySymbols,
   filterNonFuelUtxo,
+  filterNotAdaOnlyUtxo,
 ) where
 
 -- Prelude imports
@@ -18,25 +19,36 @@ import Plutus.V1.Ledger.Value (
   CurrencySymbol (..),
   symbols,
  )
-import Plutus.V2.Ledger.Api (TxOut (txOutValue))
+import Plutus.V2.Ledger.Api (txOutValue)
 
 -- Cardano imports
 import Cardano.Api.UTxO qualified as UTxO
 
 -- Hydra imports
-
-import Hydra.Cardano.Api (UTxO, UTxO' (UTxO), toPlutusTxOut)
+import Hydra.Cardano.Api (
+  CtxUTxO,
+  TxOut,
+  UTxO,
+  UTxO' (UTxO),
+  toPlutusTxOut,
+ )
 import Hydra.Chain.Direct.Util (isMarkedOutput)
+
+filterNotAdaOnlyUtxo :: UTxO -> UTxO
+filterNotAdaOnlyUtxo =
+  UTxO.filter (not . hasExactlySymbols [CurrencySymbol emptyByteString])
 
 filterAdaOnlyUtxo :: UTxO -> UTxO
 filterAdaOnlyUtxo = filterUtxoByCurrencySymbols [CurrencySymbol emptyByteString]
 
 filterUtxoByCurrencySymbols :: [CurrencySymbol] -> UTxO -> UTxO
-filterUtxoByCurrencySymbols symbolsToMatch = UTxO.filter hasExactlySymbols
-  where
-    hasExactlySymbols x =
-      (sort . symbols . txOutValue <$> toPlutusTxOut x)
-        == Just (sort symbolsToMatch)
+filterUtxoByCurrencySymbols symbolsToMatch =
+  UTxO.filter $ hasExactlySymbols symbolsToMatch
+
+hasExactlySymbols :: [CurrencySymbol] -> TxOut CtxUTxO -> Bool
+hasExactlySymbols symbolsToMatch x =
+  (sort . symbols . txOutValue <$> toPlutusTxOut x)
+    == Just (sort symbolsToMatch)
 
 -- | Fuel is Utxo mark used by Hydra Node
 filterNonFuelUtxo :: UTxO.UTxO -> UTxO.UTxO

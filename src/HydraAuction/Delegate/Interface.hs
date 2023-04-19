@@ -23,7 +23,7 @@ import Cardano.Api
 import Hydra.Chain (HeadId)
 
 -- HydraAuction imports
-import HydraAuction.Types (AuctionTerms (..), Natural)
+import HydraAuction.Types (AuctionTerms (..), BidTerms, StandingBidDatum)
 
 data FrontendRequest
   = -- FIXME: handle new client
@@ -33,7 +33,10 @@ data FrontendRequest
       , utxoToCommit :: TxIn
       }
   | -- FIXME: commit full datum
-    NewBid {bidAmount :: Natural}
+    NewBid
+      { auctionTerms :: AuctionTerms
+      , datum :: StandingBidDatum
+      }
   deriving stock (Eq, Show, Generic)
   deriving anyclass (ToJSON, FromJSON)
 
@@ -60,8 +63,7 @@ data InitializedState
   | -- FIXME: fix stanging bid address here?
     HasCommit
   | Open
-      { -- FIXME: other delegates may not know AuctionTerms, only standing bid
-        standingBidAmount :: Maybe Natural
+      { standingBidTerms :: Maybe BidTerms
       }
   | Closed
   | Finalized
