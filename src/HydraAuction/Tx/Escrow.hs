@@ -55,7 +55,7 @@ import HydraAuction.Tx.Common (
   toForgeStateToken,
  )
 import HydraAuction.Tx.Deposit (parseBidDepositDatum)
-import HydraAuction.Tx.StandingBid (getStadingBidDatum)
+import HydraAuction.Tx.StandingBid (queryStandingBidDatum)
 import HydraAuction.Types (
   ApprovedBidders (..),
   ApprovedBiddersHash (..),
@@ -220,7 +220,7 @@ bidderBuys terms = do
   -- FIXME: better error reporting
   Just (StandingBidDatum {standingBidState}) <- queryStandingBidDatum terms
 
-  let txOutSellerGotBid standingBidUtxo =
+  let txOutSellerGotBid =
         TxOut
           sellerAddress
           value
@@ -294,7 +294,7 @@ bidderBuys terms = do
         , collateral = Nothing
         , outs =
             [ txOutBidderGotLot bidderAddress
-            , txOutSellerGotBid standingBidUtxo
+            , txOutSellerGotBid
             , txOutFeeEscrow
             ]
         , toMint = TxMintValueNone
