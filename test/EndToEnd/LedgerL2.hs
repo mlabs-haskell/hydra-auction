@@ -32,11 +32,10 @@ import HydraAuction.Hydra.Monad (
   waitForHydraEvent,
  )
 import HydraAuction.Hydra.Runner (executeHydraRunnerFakingParams)
-import HydraAuction.HydraHacks (submitAndAwaitCommitTx)
+import HydraAuction.HydraHacks (prepareScriptRegistry, submitAndAwaitCommitTx)
 import HydraAuction.OnChain (AuctionScript (StandingBid), standingBidValidator)
 import HydraAuction.Runner (
   ExecutionContext (MkExecutionContext, node),
-  executeRunnerWithLocalNode,
   initWallet,
   withActor,
  )
@@ -73,12 +72,11 @@ import HydraAuction.Types (
   intToNatural,
  )
 import HydraAuctionUtils.Fixture (Actor (..), getActorsPubKeyHash)
+import HydraAuctionUtils.Tx.Utxo (filterNonFuelUtxo)
 
 -- Hydra auction test imports
 
 import EndToEnd.HydraUtils (
-  filterNonFuelUtxo,
-  prepareScriptRegistry,
   spinUpHeads,
  )
 import EndToEnd.Utils (mkAssertion)

@@ -88,7 +88,7 @@ instance Pretty ThreadEvent where
 -- | Which specific thrad the event originates from
 data ThreadSort
   = WebsocketThread
-  | DelegateRunnerThread
+  | DelegateLogicStepsThread
   | QueueAuctionStageThread
   deriving stock (Eq, Ord, Show)
   deriving (Pretty) via ViaShow ThreadSort

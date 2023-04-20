@@ -40,7 +40,6 @@ import System.Process.Typed (runProcess_)
 
 -- Cardano imports
 import CardanoClient (
-  CardanoClient (networkId),
   QueryPoint (QueryTip),
   awaitTransaction,
   queryEraHistory,
@@ -53,7 +52,6 @@ import CardanoClient (
  )
 
 import CardanoNode (
-  CardanoNodeArgs (nodeSocket),
   NodeLog (..),
   RunningNode (RunningNode, networkId, nodeSocket),
   withCardanoNodeDevnet,
@@ -226,7 +224,7 @@ localNode =
     , nodeSocket = "./devnet/node.socket"
     }
 
-executeRunnerWithLocalNode :: Runner () -> IO ()
+executeRunnerWithLocalNode :: forall x. Runner x -> IO x
 executeRunnerWithLocalNode runner = do
   let tracer = contramap show stdoutTracer
   executeRunner
