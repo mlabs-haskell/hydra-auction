@@ -5,3 +5,6 @@
 - ignore: {name: Use pure}
 - ignore: {name: Use print}
 - ignore: {name: Use null}
+- ignore: {name: Use notElem}
+- ignore: {name: Use unless}
+- ignore: {name: Use fmap}

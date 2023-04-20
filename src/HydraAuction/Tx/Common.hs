@@ -13,6 +13,7 @@ module HydraAuction.Tx.Common (
   currentTimeMilliseconds,
   currentAuctionStage,
   toForgeStateToken,
+  scriptSingleUtxo,
 ) where
 
 -- Prelude imports
@@ -20,6 +21,7 @@ import Hydra.Prelude (ask)
 import Prelude
 
 -- Haskell imports
+import Control.Monad (when)
 import Control.Monad.TimeMachine (MonadTime (getCurrentTime))
 import Data.Map qualified as Map
 import Data.Time.Clock.POSIX qualified as POSIXTime
@@ -49,6 +51,7 @@ import Hydra.Cardano.Api (
   AssetName,
   BuildTx,
   BuildTxWith,
+  CtxUTxO,
   Lovelace (..),
   PaymentKey,
   PlutusScript,
@@ -58,7 +61,9 @@ import Hydra.Cardano.Api (
   ShelleyAddr,
   SigningKey,
   ToScriptData,
+  TxIn,
   TxMintValue,
+  TxOut,
   TxOutDatum,
   VerificationKey,
   WitCtxMint,
@@ -83,7 +88,12 @@ import Hydra.Cardano.Api (
 
 -- Hydra auction imports
 
-import HydraAuction.OnChain (AuctionScript (..), policy, scriptValidatorForTerms)
+import HydraAuction.OnChain (
+  AuctionScript (..),
+  policy,
+  scriptValidatorForTerms,
+  singleUtxoScripts,
+ )
 import HydraAuction.OnChain.Common (stageToInterval)
 import HydraAuction.OnChain.StateToken (
   StateTokenKind (..),
@@ -121,7 +131,9 @@ currentAuctionStage terms = do
   let matchingStages = filter (member currentTime . stageToInterval terms) auctionStages
   return $ case matchingStages of
     [stage] -> stage
-    _ -> error "Impossible happend: more than one matching stage"
+    [_, stage] -> stage
+    [] -> error "Impossible happend: no matching stages"
+    _ -> error "Impossible happend: more than one matching stages"
 
 tokenToAsset :: TokenName -> AssetName
 tokenToAsset (TokenName t) = AssetName $ fromBuiltin t
@@ -196,3 +208,20 @@ scriptUtxos :: (MonadNetworkId m, MonadQueryUtxo m) => AuctionScript -> AuctionT
 scriptUtxos script terms = do
   scriptAddress' <- scriptAddress script terms
   queryUtxo (ByAddress scriptAddress')
+
+scriptSingleUtxo ::
+  (MonadNetworkId m, MonadQueryUtxo m, MonadFail m) =>
+  AuctionScript ->
+  AuctionTerms ->
+  m (Maybe (TxIn, TxOut CtxUTxO))
+scriptSingleUtxo script terms = do
+  when (not $ script `elem` singleUtxoScripts) $
+    fail $
+      "Precondition failed: not single-utxo script: " <> show script
+  utxos <- scriptUtxos script terms
+  case UTxO.pairs utxos of
+    [pair] -> return $ Just pair
+    [] -> return Nothing
+    _ ->
+      fail $
+        "Impossible happened: more than one UTxO for script " <> show script

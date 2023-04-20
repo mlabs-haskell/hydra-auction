@@ -67,6 +67,7 @@ import HydraAuction.Tx.Common (
   mkInlinedDatumScriptWitness,
   scriptAddress,
   scriptPlutusScript,
+  scriptSingleUtxo,
   scriptUtxos,
   toForgeStateToken,
  )
@@ -115,17 +116,17 @@ decodeInlineDatum out =
     _ -> Left NoInlineDatum
 
 queryStandingBidDatum ::
-  (MonadNetworkId m, MonadQueryUtxo m) =>
+  (MonadNetworkId m, MonadQueryUtxo m, MonadFail m) =>
   AuctionTerms ->
   m (Maybe StandingBidDatum)
 queryStandingBidDatum terms = do
-  standingBidUtxo <- scriptUtxos StandingBid terms
-  return $ case UTxO.pairs standingBidUtxo of
-    [] -> Nothing
-    [(_, txOut)] -> rightToMaybe $ decodeInlineDatum txOut
-    _ -> error "Impossible happened: more than one StandingBid exists"
+  mStandingBidUtxo <- scriptSingleUtxo StandingBid terms
+  return $ case mStandingBidUtxo of
+    Just (_, txOut) -> rightToMaybe $ decodeInlineDatum txOut
+    Nothing -> Nothing
 
-currentWinningBidder :: (MonadNetworkId m, MonadQueryUtxo m) => AuctionTerms -> m (Maybe PubKeyHash)
+currentWinningBidder ::
+  (MonadNetworkId m, MonadQueryUtxo m, MonadFail m) => AuctionTerms -> m (Maybe PubKeyHash)
 currentWinningBidder terms = do
   mDatum <- queryStandingBidDatum terms
   return $ case mDatum of
@@ -156,11 +157,12 @@ newBid' terms submitingActor bidDatum = do
 
   (submitterAddress, _, submitterSk) <- addressAndKeysForActor submitingActor
   submitterMoneyUtxo <- queryUtxo (ByAddress submitterAddress)
+  validateHasSingleUtxo submitterMoneyUtxo "submitterMoneyUtxo"
 
-  standingBidUtxo <- scriptUtxos StandingBid terms
-
-  validateHasSingleUtxo standingBidUtxo "standingBidUtxo"
-  validateHasSingleUtxo submitterMoneyUtxo "bidderMoneyUtxo"
+  mStandingBidUtxo <- scriptSingleUtxo StandingBid terms
+  standingBidSingleUtxo <- case mStandingBidUtxo of
+    Just x -> return x
+    Nothing -> fail "Standing bid cannot be found"
 
   standingBidAddress <- scriptAddress StandingBid terms
 
@@ -184,7 +186,7 @@ newBid' terms submitingActor bidDatum = do
       , additionalSigners = []
       , referenceUtxo = mempty
       , witnessedUtxos =
-          [ (standingBidWitness, standingBidUtxo)
+          [ (standingBidWitness, UTxO.fromPairs [standingBidSingleUtxo])
           ]
       , collateral = Nothing
       , outs = [txOutStandingBid]
