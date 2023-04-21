@@ -113,8 +113,7 @@ testSuite :: TestTree
 testSuite =
   testGroup
     "L2"
-    [ -- FIXME: Skiping.
-      -- Fails because of hydra-node having different version than cabal lib.
+    [
       testCase "basic-hydra-tx" basicHydraTxTest
     ]
 
