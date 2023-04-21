@@ -97,12 +97,13 @@ function publishReferenceScripts() {
     --cardano-signing-key devnet/credentials/faucet.sk
 }
 
-seedFaucet "oscar" 1000000000 # 1000 Ada to commit
+seedFaucet "oscar" 100000000 # 100 Ada to commit
 seedFaucet "oscar" 100000000 "fuel" # 100 Ada marked as "fuel"
-seedFaucet "patricia" 500000000 # 500 Ada to commit
+seedFaucet "patricia" 100000000 # 100 Ada to commit
 seedFaucet "patricia" 100000000 "fuel" # 100 Ada marked as "fuel"
-seedFaucet "rupert" 250000000 # 250 Ada to commit
+seedFaucet "rupert" 100000000 # 100 Ada to commit
 seedFaucet "rupert" 100000000 "fuel" # 100 Ada marked as "fuel"
+
 echo "HYDRA_SCRIPTS_TX_ID=$(publishReferenceScripts)" > .env
 echo >&2 "Environment variable stored in '.env'"
 echo >&2 -e "\n\t$(cat .env)\n"

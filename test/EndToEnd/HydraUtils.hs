@@ -123,7 +123,7 @@ runningThreeNodesDockerComposeHydra ::
   (EmulatorDelegateClients -> IO b) ->
   IO b
 runningThreeNodesDockerComposeHydra cont = do
-  _ <- system "./scripts/spin-up-new-devnet.sh"
+  _ <- system "./scripts/spin-up-new-devnet.sh 0"
 
   -- FIXME: more relaible wait (not sure for what, guess sockets opening)
   threadDelay 2_000_000
