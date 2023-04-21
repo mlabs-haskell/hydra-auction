@@ -140,7 +140,6 @@ services:
     depends_on:
       hydra-node-1:
         condition: service_started
-    restart: always
     volumes:
       - ./data/hydra-keys:/keys:ro
       - ./devnet:/devnet
@@ -148,6 +147,8 @@ services:
       - HYDRA_NODE_NUMBER=1
     ports:
       - "8001:8001"
+    networks:
+      hydra_net:
     command:
       [ "hydra-auction-delegate"
       , "--actor", "rupert"
@@ -162,7 +163,6 @@ services:
     depends_on:
       hydra-node-2:
         condition: service_started
-    restart: always
     volumes:
       - ./data/hydra-keys:/keys:ro
       - ./devnet:/devnet
@@ -170,6 +170,8 @@ services:
       - HYDRA_NODE_NUMBER=2
     ports:
       - "8002:8001"
+    networks:
+      hydra_net:
     command:
       [ "hydra-auction-delegate"
       , "--actor", "patricia"
@@ -184,7 +186,6 @@ services:
     depends_on:
       hydra-node-3:
         condition: service_started
-    restart: always
     volumes:
       - ./data/hydra-keys:/keys:ro
       - ./devnet:/devnet
@@ -192,6 +193,8 @@ services:
       - HYDRA_NODE_NUMBER=3
     ports:
       - "8003:8001"
+    networks:
+      hydra_net:
     command:
       [ "hydra-auction-delegate"
       , "--actor", "oscar"
