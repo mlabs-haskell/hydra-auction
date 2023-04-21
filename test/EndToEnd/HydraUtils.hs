@@ -56,6 +56,9 @@ import HydraAuctionUtils.Fixture (
   keysFor,
  )
 
+-- This function will set the HYDRA_CONFIG_DIR env var locally
+-- This is required so the hydra nodes pick up on the correct protocol-parameters.json
+-- file.
 spinUpHeads :: Int -> TxId -> (EmulatorDelegateClients -> Runner ()) -> Runner ()
 spinUpHeads clusterIx hydraScriptsTxId cont = do
   liftIO $ do

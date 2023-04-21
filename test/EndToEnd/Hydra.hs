@@ -113,8 +113,7 @@ testSuite :: TestTree
 testSuite =
   testGroup
     "L2"
-    [
-      testCase "basic-hydra-tx" basicHydraTxTest
+    [ testCase "basic-hydra-tx" basicHydraTxTest
     ]
 
 basicHydraTxTest :: Assertion
