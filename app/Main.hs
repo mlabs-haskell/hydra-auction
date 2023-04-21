@@ -63,7 +63,14 @@ import Control.Monad (forever)
 import Control.Tracer (contramap, stdoutTracer, traceWith)
 import Data.Aeson (eitherDecode, encode)
 import Data.IORef (IORef, newIORef, writeIORef)
-import HydraAuction.Delegate.Interface (DelegateResponse (..), DelegateState, FrontendRequest (QueryCurrentDelegateState), initialState)
+import HydraAuction.Delegate.Interface (
+  DelegateResponse (..),
+  DelegateState,
+  FrontendRequest (QueryCurrentDelegateState),
+  IncorrectRequestDataReason (..),
+  RequestIgnoredReason (..),
+  initialState,
+ )
 import Prettyprinter (Pretty (pretty))
 
 main :: IO ()
@@ -86,11 +93,27 @@ handleCliInput input = do
   where
     updateStateThread client currentDelegateStateRef tracer = forever $ do
       mMessage <- eitherDecode <$> receiveData client
+      -- FIXME: separate logic and messages
+      -- FIXME: concurrent stdout to REPL
       case mMessage of
-        Right (CurrentDelegateState _ state) ->
-          writeIORef currentDelegateStateRef state
         Right response ->
-          traceWith tracer (NotImplementedDelegateResponse response)
+          case response of
+            (CurrentDelegateState _ state) ->
+              writeIORef currentDelegateStateRef state
+            RequestIgnored reason -> case reason of
+              (IncorrectRequestData AuctionTermsAreInvalidOrNotMatchingHead) -> do
+                putStrLn "Delegate server says Auction Terms are incorrect."
+                putStrLn "Probably you are connected to wrong Hydra Head."
+              (IncorrectRequestData InvalidBidTerms) -> notExpectedResponse
+              (IncorrectRequestData TxIdDoesNotExist) -> notExpectedResponse
+              (WrongDelegateState _) -> notExpectedResponse
+            ClosingTxTemplate -> return ()
+            AuctionSet {} -> return ()
+          where
+            notExpectedResponse = do
+              putStrLn "Not expected response from delegate server."
+              putStrLn "That probably means Delegate state sync problem."
+              putStrLn "Or that is a bug in Frontend CLI."
         Left err -> traceWith tracer (InvalidDelegateResponse err)
 
 handleCliInput' :: Connection -> IORef DelegateState -> CliOptions -> IO ()
