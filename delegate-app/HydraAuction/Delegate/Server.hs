@@ -6,7 +6,6 @@ module HydraAuction.Delegate.Server (
 
   -- ** Server log types
   DelegateServerLog (..),
-  DelegateError (..),
   ThreadSort (..),
   ThreadEvent (..),
   QueueAuctionPhaseEvent (..),
@@ -26,17 +25,15 @@ module HydraAuction.Delegate.Server (
 import Prelude
 
 -- Haskell imports
-import Data.Aeson (FromJSON, ToJSON)
 import GHC.Generics (Generic)
 import Network.WebSockets (PendingConnection)
 import Prettyprinter (Doc, Pretty (pretty), indent, line, viaShow, (<+>))
 
 -- Cardano imports
 import Hydra.Network (IP, PortNumber)
-import HydraNode (HydraClient)
 
 -- Hydra auction imports
-import HydraAuction.Delegate (ClientId)
+import HydraAuction.Delegate (ClientId, ClientResponseScope)
 import HydraAuction.Delegate.Interface (DelegateResponse, FrontendRequest)
 import HydraAuction.Types (AuctionTerms)
 import HydraAuctionUtils.Fixture (Actor)
@@ -53,16 +50,15 @@ data DelegateServerConfig = DelegateServerConfig
   , ping :: Int
   -- ^ the amount of seconds between pings for the client thread
   , l1Actor :: Actor
-  , hydraClient :: HydraClient
+  , hydraServerNumber :: Int
   }
 
 -- | Representation of the Delegate Server's log
 data DelegateServerLog
   = Started PortNumber
-  | FrontendConnected ClientId
-  | FrontendInput FrontendRequest
-  | DelegateOutput DelegateResponse
-  | DelegateError DelegateError
+  | GotFrontendConnected ClientId
+  | GotFrontendRequest FrontendRequest
+  | ProducedDelegateResponse (ClientResponseScope, DelegateResponse)
   | ThreadEvent ThreadEvent ThreadSort
   | QueueAuctionPhaseEvent QueueAuctionPhaseEvent
   deriving stock (Eq, Show, Generic)
@@ -70,11 +66,10 @@ data DelegateServerLog
 instance Pretty DelegateServerLog where
   pretty = \case
     Started port -> "Started Server at Port" <+> viaShow port
-    FrontendConnected clientId ->
+    GotFrontendConnected clientId ->
       "Frontend with clientId " <> viaShow clientId <> "connected to Server"
-    DelegateOutput out -> "Delegate output" <> extraInfo (viaShow out)
-    FrontendInput inp -> "Frontend input" <> extraInfo (viaShow inp)
-    DelegateError err -> "Delegate runner error occured" <> extraInfo (pretty err)
+    ProducedDelegateResponse out -> "Delegate output" <> extraInfo (viaShow out)
+    GotFrontendRequest inp -> "Frontend input" <> extraInfo (viaShow inp)
     ThreadEvent ev info -> "Thread" <+> pretty info <> ":" <> extraInfo (pretty ev)
     QueueAuctionPhaseEvent ev -> "Auction phase queueing" <> extraInfo (pretty ev)
 
@@ -106,17 +101,6 @@ newtype QueueAuctionPhaseEvent
 instance Pretty QueueAuctionPhaseEvent where
   pretty = \case
     ReceivedAuctionSet terms -> "Received an AuctionSet" <> extraInfo (viaShow terms)
-
-{- | the error that can be thrown by the delegate server, before entering the Delegate
-   transformer
--}
-newtype DelegateError = FrontendNoParse String
-  deriving stock (Eq, Ord, Show, Generic)
-  deriving anyclass (FromJSON, ToJSON)
-
-instance Pretty DelegateError where
-  pretty = \case
-    FrontendNoParse err -> "Could not parse the input provided by the frontend" <> extraInfo (pretty err)
 
 -- | trace a 'DelegateServerLog'
 type DelegateTracerT = TracerT DelegateServerLog

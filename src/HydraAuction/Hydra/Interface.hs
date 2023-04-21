@@ -21,6 +21,7 @@ import Cardano.Api.UTxO qualified as UTxO
 
 import Hydra.Cardano.Api (Tx)
 import Hydra.Chain (HeadId)
+import Hydra.Party (Party)
 
 data HydraCommand
   = Init
@@ -54,7 +55,7 @@ data HydraEvent
       { txs :: [Tx]
       , utxo :: UTxO.UTxO
       }
-  | Committed UTxO.UTxO
+  | Committed {utxo :: UTxO.UTxO, party :: Party}
   | HeadIsInitializing HeadId
   | HeadIsOpen UTxO.UTxO
   | HeadIsClosed
@@ -91,7 +92,7 @@ getHydraEventKind event = case event of
   PostTxOnChainFailed {} -> PostTxOnChainFailedKind
   CommandFailed {} -> CommandFailedKind
   SnapshotConfirmed {} -> SnapshotConfirmedKind
-  Committed _ -> CommittedKind
+  Committed {} -> CommittedKind
   HeadIsInitializing _ -> HeadIsInitializingKind
   HeadIsOpen {} -> HeadIsOpenKind
   HeadIsClosed -> HeadIsClosedKind

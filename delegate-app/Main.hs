@@ -9,7 +9,6 @@ import Prelude
 import Control.Concurrent (newMVar, putMVar, takeMVar, threadDelay)
 import Control.Concurrent.Async (mapConcurrently_, race_)
 import Control.Concurrent.STM (
-  STM,
   TChan,
   TQueue,
   atomically,
@@ -22,11 +21,10 @@ import Control.Concurrent.STM (
   writeTQueue,
  )
 import Control.Monad (forever, void, when, (>=>))
-import Control.Monad.Catch (MonadCatch (..))
 import Control.Monad.Reader (MonadReader (..))
-import Control.Monad.State (evalStateT)
+import Control.Monad.State (StateT, evalStateT)
 import Control.Monad.Trans (MonadIO (liftIO))
-import Control.Tracer (Tracer, contramap, stdoutTracer)
+import Control.Tracer (Tracer, contramap, nullTracer, stdoutTracer)
 import Data.Aeson (ToJSON, eitherDecode, encode)
 import Data.Maybe (fromMaybe)
 import Network.WebSockets (
@@ -40,7 +38,6 @@ import Network.WebSockets (
  )
 import Prettyprinter (Pretty (pretty))
 import System.IO (BufferMode (LineBuffering), hSetBuffering, stderr, stdout)
-import Test.HUnit.Lang (HUnitFailure)
 
 -- Hydra imports
 import Hydra.Network (IP, PortNumber)
@@ -51,6 +48,7 @@ import Plutus.V2.Ledger.Api (POSIXTime (..))
 
 -- HydraAuction imports
 
+import GHC.Stack (HasCallStack)
 import HydraAuction.Delegate (
   ClientId,
   ClientResponseScope (Broadcast),
@@ -67,20 +65,13 @@ import HydraAuction.Delegate.CompositeRunner (
  )
 import HydraAuction.Delegate.Interface (
   DelegateResponse (AuctionSet),
+  DelegateState,
   FrontendRequest,
   initialState,
  )
 import HydraAuction.Delegate.Server (
-  DelegateError (FrontendNoParse),
   DelegateServerConfig (..),
-  DelegateServerLog (
-    DelegateError,
-    FrontendConnected,
-    FrontendInput,
-    QueueAuctionPhaseEvent,
-    Started,
-    ThreadEvent
-  ),
+  DelegateServerLog (..),
   DelegateTracerT,
   QueueAuctionPhaseEvent (ReceivedAuctionSet),
   ServerAppT,
@@ -150,10 +141,7 @@ websocketsServer
         runWithTracer' tracer $ do
           inp <- liftIO $ receiveData connection
           case eitherDecode @FrontendRequest inp of
-            Left msg -> do
-              let err = FrontendNoParse msg
-              trace (DelegateError err)
-              liftIO $ sendToClient connection err
+            Left msg -> return ()
             Right request -> do
               trace $ FrontendInput request
               liftIO . atomically $
@@ -189,27 +177,39 @@ runDelegateLogicSteps
   frontendRequestQueue
   broadcast = do
     flip evalStateT initialState $ forever $ do
-      flushAndTraverseNewElements
+      processQueueWith
         eventQueue
         ( delegateEventStep
             -- All delegateEventStep responses should be brodcasted
             >=> return . fmap (Broadcast,)
-            >=> putInToClientsQueue
         )
-      flushAndTraverseNewElements
+      processQueueWith
         frontendRequestQueue
-        ( delegateFrontendRequestStep
-            >=> putInToClientsQueue
-        )
+        delegateFrontendRequestStep
       -- FIXME: log queues overload and make tick not-static
       liftIO $ threadDelay tick
     where
-      -- TODO: this is not actually broadcast now
-      putInToClientsQueue responses = do
-        liftIO . atomically $
+      processQueueWith ::
+        forall req.
+        (Show req) =>
+        TQueue req ->
+        ( req ->
+          StateT
+            DelegateState
+            CompositeRunner
+            [(ClientResponseScope, DelegateResponse)]
+        ) ->
+        StateT DelegateState CompositeRunner ()
+      processQueueWith queue step =
+        flushAndTraverseNewElements queue $ \event -> do
+          -- FIXME: use logging
+          liftIO $ putStrLn $ "Delegate logic event: " <> show event
+          response <- step event
+          liftIO $ putStrLn $ "Delegate logic response: " <> show response
+          putInToClientsQueue response
+      putInToClientsQueue responses = liftIO $ do
+        atomically $
           traverse_ (writeTChan broadcast) responses
-      -- TODO: make work
-      -- lift $ traverse_ (trace . DelegateOutput) responses
       flushAndTraverseNewElements queue handler = do
         elements <- liftIO . atomically $ flushTQueue queue
         traverse_ handler elements
@@ -257,10 +257,9 @@ runDelegateServer conf = do
             QueueAuctionStageThread ->
               mbQueueAuctionPhases eventQueue toClientsChannel
             QueueHydraEventsThread ->
-              liftIO $ do
-                executeCompositeRunnerForConfig $
-                  runHydraInComposite $
-                    queueHydraEvents eventQueue
+              liftIO $
+                executeCompositeRunnerForConfig . runHydraInComposite $
+                  queueHydraEvents eventQueue
 
   liftIO $
     mapConcurrently_
@@ -275,24 +274,28 @@ runDelegateServer conf = do
       v <- takeMVar clientCounter
       putMVar clientCounter (v + 1)
       return v
-    executeCompositeRunnerForConfig action = do
-      context <- executeRunnerWithNodeAs dockerNode (l1Actor conf) $ do
-        l1Context <- ask
-        executeHydraRunnerFakingParams (hydraClient conf) $ do
-          hydraContext <- ask
-          return $
-            MkCompositeExecutionContext {hydraContext, l1Context}
-      executeCompositeRunner context action
+    executeCompositeRunnerForConfig action =
+      runHydraClientN (hydraServerNumber conf) $ \hydraClient -> do
+        context <- executeRunnerWithNodeAs dockerNode Alice $ do
+          l1Context <- ask
+          executeHydraRunnerFakingParams hydraClient $ do
+            hydraContext <- ask
+            return $
+              MkCompositeExecutionContext {hydraContext, l1Context}
+        executeCompositeRunner context action
 
-queueHydraEvents :: forall void. TQueue DelegateEvent -> HydraRunner void
-queueHydraEvents delegateEventQueue = forever $
-  ignoreExceptions $ do
-    event <- waitForHydraEvent Any
-    liftIO $ atomically $ writeTQueue delegateEventQueue $ HydraEvent event
-  where
-    handler :: forall m. Monad m => HUnitFailure -> m ()
-    handler _ = return ()
-    ignoreExceptions action = catch action handler
+queueHydraEvents ::
+  forall void. TQueue DelegateEvent -> HydraRunner void
+queueHydraEvents delegateEventQueue = forever $ do
+  mEvent <- waitForHydraEvent Any
+  case mEvent of
+    Just event ->
+      liftIO $
+        atomically $
+          writeTQueue delegateEventQueue $
+            HydraEvent event
+    Nothing ->
+      liftIO $ putStrLn "Not recieved Hydra events for waiting time"
 
 -- | start a worker and log it
 withStartStopTrace :: ThreadSort -> DelegateTracerT IO () -> DelegateTracerT IO ()
@@ -308,8 +311,8 @@ mbQueueAuctionPhases ::
   DelegateTracerT IO ()
 mbQueueAuctionPhases delegateEvents toClientsChannel = do
   terms <-
-    liftIO . atomically $
-      awaitForAuctionSetTerms =<< dupTChan toClientsChannel
+    liftIO $
+      awaitForAuctionSetTerms =<< atomically (dupTChan toClientsChannel)
   traceQueueEvent terms
   liftIO $ queueCurrentStageAndWaitForNextLoop terms
   where
@@ -317,12 +320,14 @@ mbQueueAuctionPhases delegateEvents toClientsChannel = do
     traceQueueEvent = trace . QueueAuctionPhaseEvent . ReceivedAuctionSet
 
     awaitForAuctionSetTerms ::
-      TChan (ClientResponseScope, DelegateResponse) -> STM AuctionTerms
+      TChan (ClientResponseScope, DelegateResponse) -> IO AuctionTerms
     awaitForAuctionSetTerms chan =
-      readTChan chan >>= \case
+      atomically (readTChan chan) >>= \case
         (Broadcast, AuctionSet terms) -> pure terms
-        -- FIXME: maybe thread wait?
-        _ -> awaitForAuctionSetTerms chan
+        _ -> do
+          -- TODO: use tick
+          threadDelay 1000
+          awaitForAuctionSetTerms chan
 
     queueCurrentStageAndWaitForNextLoop :: AuctionTerms -> IO ()
     queueCurrentStageAndWaitForNextLoop terms = do
@@ -335,17 +340,23 @@ mbQueueAuctionPhases delegateEvents toClientsChannel = do
             secondsLeftInInterval
               currentPosixTime
               (stageToInterval terms currentStage)
+      putStrLn $
+        "Current stage is "
+          <> show currentStage
+          <> " , awaiting "
+          <> show mSecsLeft
+          <> "until next stage."
       case mSecsLeft of
         Nothing -> pure ()
         Just s -> do
-          threadDelay (fromInteger s * 1000)
+          threadDelay (fromInteger s * 1_000_000)
           queueCurrentStageAndWaitForNextLoop terms
 
 {- | start a delegate server at a @$PORT@,
    it accepts incoming websocket connections
    and runs the delegate.
 -}
-main :: IO ()
+main :: HasCallStack => IO ()
 main = do
   --- XXX: this prevents logging issues in Docker
   hSetBuffering stdout LineBuffering
@@ -365,19 +376,17 @@ main = do
         2 -> Patricia
         3 -> Rupert
         _ -> error "Wrong HYDRA_NODE_NUMBER"
-  runHydraClientN hydraNodeNumber $ \hydraClient -> do
-    liftIO $ putStrLn "Hydra connection opened"
-    let conf :: DelegateServerConfig
-        conf =
-          DelegateServerConfig
-            { host
-            , port = fromMaybe portDefault $ port >>= readMaybe
-            , tick = tick
-            , ping = ping
-            , l1Actor = actor
-            , hydraClient = hydraClient
-            }
-    runWithTracer' tracer $ runDelegateServer conf
+  let conf :: DelegateServerConfig
+      conf =
+        DelegateServerConfig
+          { host
+          , port = fromMaybe portDefault $ port >>= readMaybe
+          , tick = tick
+          , ping = ping
+          , l1Actor = actor
+          , hydraServerNumber = hydraNodeNumber
+          }
+  runWithTracer' tracer $ runDelegateServer conf
   where
     tracer :: Tracer IO DelegateServerLog
     tracer = contramap (show . pretty) stdoutTracer
@@ -394,12 +403,14 @@ main = do
     portDefault :: PortNumber
     portDefault = 8001
 
-    runHydraClientN n cont' = liftIO $
-      runClient ("172.16.238." <> show (10 * n)) 4001 "/history=yes" $
-        \connection ->
-          cont' $
-            HydraClient
-              { hydraNodeId = n
-              , connection = connection
-              , tracer = contramap show stdoutTracer
-              }
+runHydraClientN :: HasCallStack => Int -> (HydraClient -> IO b) -> IO b
+runHydraClientN n cont' = do
+  putStrLn $ "Hydra connection opened for " <> show n
+  runClient ("172.16.238." <> show (10 * n)) 4001 "/history=yes" $
+    \connection ->
+      cont' $
+        HydraClient
+          { hydraNodeId = n
+          , connection = connection
+          , tracer = contramap show nullTracer
+          }

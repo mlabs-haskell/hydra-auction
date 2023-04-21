@@ -197,7 +197,6 @@ executable hydra-auction-delegate
   hs-source-dirs: delegate-app
   ghc-options:    -threaded -rtsopts
   build-depends:
-    , HUnit
     , hydra-auction
     , hydra-auction-utils
     , plutus-ledger-api
@@ -237,6 +236,7 @@ library
   build-depends:
     , cardano-api
     , directory
+    , HUnit
     , hydra-auction-utils
     , hydra-cardano-api
     , hydra-cluster

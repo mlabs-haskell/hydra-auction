@@ -51,22 +51,22 @@ instance Show EventMatcher where
 
 class Monad m => MonadHydra m where
   sendCommand :: HydraCommand -> m ()
-  waitForHydraEvent' :: Natural -> AwaitedHydraEvent -> m HydraEvent
+  waitForHydraEvent' :: Natural -> AwaitedHydraEvent -> m (Maybe HydraEvent)
 
 defaultTimeout :: Natural
 defaultTimeout = 30
 
-waitForHydraEvent :: MonadHydra m => AwaitedHydraEvent -> m HydraEvent
+waitForHydraEvent :: MonadHydra m => AwaitedHydraEvent -> m (Maybe HydraEvent)
 waitForHydraEvent = waitForHydraEvent' defaultTimeout
 
-sendCommandAndWaitFor :: MonadHydra m => AwaitedHydraEvent -> HydraCommand -> m HydraEvent
+sendCommandAndWaitFor ::
+  MonadHydra m => AwaitedHydraEvent -> HydraCommand -> m (Maybe HydraEvent)
 sendCommandAndWaitFor awaitedSpec command = do
   sendCommand command
   waitForHydraEvent awaitedSpec
 
 -- FIXME: this does not work without `Monad m`, do not know why
 instance {-# OVERLAPPABLE #-} (Monad m, MonadHydra m) => MonadSubmitTx m where
-  -- FIXME: handle TxValid/TxInvalid
   submitTx :: Tx -> m ()
   submitTx tx = do
     sendCommand $ NewTx tx
@@ -82,8 +82,9 @@ instance {-# OVERLAPPABLE #-} (Monad m, MonadHydra m) => MonadQueryUtxo m where
     response <-
       sendCommandAndWaitFor (SpecificKind GetUTxOResponseKind) GetUTxO
     let utxo = case response of
-          GetUTxOResponse utxo' -> utxo'
-          _ -> error "Impossible happened: incorrect response type awaited"
+          Just (GetUTxOResponse utxo') -> utxo'
+          Just _ -> error "Impossible happened: incorrect response type awaited"
+          Nothing -> error "Hydra server not answering"
     return $ UTxO.fromPairs $ filter predicate $ UTxO.pairs utxo
     where
       predicate (txIn, TxOut (AddressInEra _ txOutAddress) _ _ _) = case query of
