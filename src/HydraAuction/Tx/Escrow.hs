@@ -27,12 +27,17 @@ import Hydra.Cardano.Api (
   fromPlutusTxOutRef,
   fromPlutusValue,
   lovelaceToValue,
+  toPlutusKeyHash,
+  verificationKeyHash,
   pattern ReferenceScriptNone,
   pattern ShelleyAddressInEra,
   pattern TxMintValueNone,
   pattern TxOut,
   pattern TxOutDatumNone,
  )
+
+-- Cardano node imports
+import Cardano.Api.UTxO qualified as UTxO
 
 -- Hydra auction imports
 import HydraAuction.Addresses (VoucherCS (..))
@@ -49,6 +54,7 @@ import HydraAuction.Tx.Common (
   scriptUtxos,
   toForgeStateToken,
  )
+import HydraAuction.Tx.Deposit (parseBidDepositDatum)
 import HydraAuction.Tx.StandingBid (getStadingBidDatum)
 import HydraAuction.Types (
   ApprovedBidders (..),
@@ -56,6 +62,8 @@ import HydraAuction.Types (
   AuctionEscrowDatum (..),
   AuctionState (..),
   AuctionTerms (..),
+  BidDepositDatum (..),
+  BidDepositRedeemer (WinningBidder),
   BidTerms (..),
   EscrowRedeemer (..),
   StandingBidDatum (..),
@@ -246,7 +254,7 @@ bidderBuys terms = do
 
   logMsg "Doing Bidder Buy"
 
-  (bidderAddress, _, bidderSk) <- addressAndKeys
+  (bidderAddress, bidderVk, bidderSk) <- addressAndKeys
 
   bidderMoneyUtxo <- filterAdaOnlyUtxo <$> actorTipUtxo
 
@@ -262,8 +270,17 @@ bidderBuys terms = do
 
   standingBidUtxo <- scriptUtxos StandingBid terms
 
-  -- FIXME: cover not proper UTxOs
+  allDeposits <- scriptUtxos Deposit terms
 
+  let mp = policy terms
+      voucherCS = VoucherCS $ scriptCurrencySymbol mp
+      expectedDatum = BidDepositDatum (toPlutusKeyHash $ verificationKeyHash bidderVk) voucherCS
+      depositScript = scriptPlutusScript Deposit terms
+      depositWitness = mkInlinedDatumScriptWitness depositScript WinningBidder
+      bidderDeposit = case UTxO.find ((== expectedDatum) . parseBidDepositDatum) allDeposits of
+        Nothing -> []
+        Just deposit -> [(depositWitness, UTxO.singleton deposit)]
+  -- FIXME: cover not proper UTxOs
   void $
     autoSubmitAndAwaitTx $
       AutoCreateParams
@@ -271,8 +288,7 @@ bidderBuys terms = do
         , additionalSigners = []
         , referenceUtxo = standingBidUtxo
         , witnessedUtxos =
-            [ (escrowWitness, escrowBiddingStartedUtxo)
-            ]
+            (escrowWitness, escrowBiddingStartedUtxo) : bidderDeposit
         , collateral = Nothing
         , outs =
             [ txOutBidderGotLot bidderAddress

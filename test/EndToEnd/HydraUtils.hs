@@ -1,17 +1,26 @@
 module EndToEnd.HydraUtils (
   spinUpHeads,
   runningThreeNodesDockerComposeHydra,
+  runCompositeForDelegate,
+  EmulatorDelegate (..),
+  runCompositeForAllDelegates,
+  runEmulator,
 ) where
 
 -- Preludes import
-import Hydra.Prelude (MonadIO (liftIO), ask, contramap, toList)
+import Hydra.Prelude (MonadIO (liftIO), contramap, toList)
 import Prelude
 
 -- Haskell import
 
 import Control.Concurrent (threadDelay)
 import Control.Exception (finally)
+import Control.Monad.Reader (MonadReader (..), ReaderT (..))
+import Control.Monad.State (StateT (..))
 import Control.Tracer (stdoutTracer)
+import Data.IORef (IORef, newIORef, readIORef, writeIORef)
+import Data.Map (Map)
+import Data.Map qualified as Map
 import Network.WebSockets (runClient)
 import System.Environment (setEnv)
 import System.Process (system)
@@ -31,11 +40,15 @@ import Test.Hydra.Prelude (withTempDir)
 -- HydraAuction imports
 
 import Hydra.Cardano.Api (TxId)
-import HydraAuction.Runner (ExecutionContext (MkExecutionContext, node, tracer), HydraAuctionLog (FromHydra), Runner, executeRunner)
+import HydraAuction.Delegate.CompositeRunner (
+  CompositeExecutionContext (..),
+  CompositeRunner,
+  executeCompositeRunner,
+ )
+import HydraAuction.Delegate.Interface (DelegateState, initialState)
+import HydraAuction.Hydra.Runner (executeHydraRunnerFakingParams)
+import HydraAuction.Runner (ExecutionContext (MkExecutionContext, node, tracer), HydraAuctionLog (FromHydra), Runner, dockerNode, executeRunner, executeRunnerWithNodeAs)
 import HydraAuctionUtils.BundledData (lookupProtocolParamPath)
-
--- HydraAuction imports
-
 import HydraAuctionUtils.Fixture (
   Actor (..),
   hydraKeysFor,
@@ -43,7 +56,7 @@ import HydraAuctionUtils.Fixture (
   keysFor,
  )
 
-spinUpHeads :: Int -> TxId -> (ThreeClients -> Runner ()) -> Runner ()
+spinUpHeads :: Int -> TxId -> (EmulatorDelegateClients -> Runner ()) -> Runner ()
 spinUpHeads clusterIx hydraScriptsTxId cont = do
   liftIO $ do
     hydraDir <- lookupProtocolParamPath
@@ -77,18 +90,26 @@ spinUpHeads clusterIx hydraScriptsTxId cont = do
         $ \nodes -> do
           [n1, n2, n3] <- pure $ toList nodes
           waitForNodesConnected hydraTracer [n1, n2, n3]
-          -- Funds to be used as fuel by Hydra protocol transactions
+          -- Funds to be used as fuel by Hydra protocol transactions + some other ada to use as collateral to commit into the head
           let faucetTracer = contramap FromFaucet hydraTracer
           seedFromFaucet_ node oscarCardanoVk 100_000_000 Fuel faucetTracer
           seedFromFaucet_ node patriciaCardanoVk 100_000_000 Fuel faucetTracer
           seedFromFaucet_ node rupertCardanoVk 100_000_000 Fuel faucetTracer
-          executeRunner ctx $ cont ((n1, Oscar), (n2, Patricia), (n3, Rupert))
-
-type ThreeClients =
-  ((HydraClient, Actor), (HydraClient, Actor), (HydraClient, Actor))
+          seedFromFaucet_ node oscarCardanoVk 100_000_000 Normal faucetTracer
+          seedFromFaucet_ node patriciaCardanoVk 100_000_000 Normal faucetTracer
+          seedFromFaucet_ node rupertCardanoVk 100_000_000 Normal faucetTracer
+          executeRunner ctx $ do
+            let [actor1, actor2, actor3] = hydraNodeActors
+                threeClients =
+                  Map.fromList
+                    [ (Main, (n1, actor1))
+                    , (Second, (n2, actor2))
+                    , (Third, (n3, actor3))
+                    ]
+             in cont threeClients
 
 runningThreeNodesDockerComposeHydra ::
-  (ThreeClients -> IO b) ->
+  (EmulatorDelegateClients -> IO b) ->
   IO b
 runningThreeNodesDockerComposeHydra cont = do
   _ <- system "./scripts/spin-up-new-devnet.sh"
@@ -96,16 +117,21 @@ runningThreeNodesDockerComposeHydra cont = do
   -- FIXME: more relaible wait (not sure for what, guess sockets opening)
   threadDelay 2_000_000
 
-  [actor1, actor2, actor3] <- return hydraNodeActors
+  let [actor1, actor2, actor3] = hydraNodeActors
 
   runHydraClientN 1 $
     \n1 -> runHydraClientN 2 $
       \n2 -> runHydraClientN 3 $
         \n3 ->
-          let threeClients = ((n1, actor1), (n2, actor2), (n3, actor3))
+          let threeClients =
+                Map.fromList
+                  [ (Main, (n1, actor1))
+                  , (Second, (n2, actor2))
+                  , (Third, (n3, actor3))
+                  ]
            in finally
                 (cont threeClients)
-                (system "docker-compose down")
+                (system "./scripts/stop-demo.sh")
   where
     runHydraClientN n cont' = liftIO $
       runClient "127.0.0.1" (4000 + n) "/history=no" $
@@ -120,3 +146,82 @@ runningThreeNodesDockerComposeHydra cont = do
       contramap
         (\x -> "Hydra client for node " <> show n <> " :" <> show x)
         stdoutTracer
+
+data EmulatorDelegate = Main | Second | Third
+  deriving stock (Eq, Show, Enum, Bounded, Ord)
+
+allDelegates :: [EmulatorDelegate]
+allDelegates = [Main, Second, Third]
+
+data EmulatorContext = MkEmulatorContext
+  { clients :: EmulatorDelegateClients
+  , delegateStatesRef :: IORef (Map EmulatorDelegate DelegateState)
+  }
+
+type EmulatorDelegateClients = Map EmulatorDelegate (HydraClient, Actor)
+
+newtype DelegatesClusterEmulator a = DelegatesClusterEmulator
+  { unDelegatesClusterEmulator :: ReaderT EmulatorContext IO a
+  }
+  deriving newtype
+    ( Functor
+    , Applicative
+    , Monad
+    , MonadFail
+    , MonadIO
+    , MonadReader EmulatorContext
+    )
+
+runEmulatorUsingDockerCompose :: DelegatesClusterEmulator a -> IO a
+runEmulatorUsingDockerCompose action = runningThreeNodesDockerComposeHydra $ executeRunnerWithNodeAs dockerNode Alice . flip runEmulator action
+
+runEmulator :: EmulatorDelegateClients -> DelegatesClusterEmulator a -> Runner a
+runEmulator clients action = do
+  intialStatesRef <-
+    liftIO $
+      newIORef $
+        Map.fromList [(name, initialState) | name <- allDelegates]
+  let context =
+        MkEmulatorContext
+          { clients = clients
+          , delegateStatesRef = intialStatesRef
+          }
+  liftIO $ flip runReaderT context $ unDelegatesClusterEmulator action
+
+runCompositeForDelegate ::
+  forall x.
+  RunningNode ->
+  EmulatorDelegate ->
+  StateT DelegateState CompositeRunner x ->
+  DelegatesClusterEmulator x
+runCompositeForDelegate node name action = do
+  MkEmulatorContext {clients, delegateStatesRef} <- ask
+
+  -- Get state
+  states <- liftIO $ readIORef delegateStatesRef
+  let state = (Map.!) states name
+
+  -- Run
+  let (hydraClient, actor) = (Map.!) clients name
+  (result, newState) <-
+    liftIO $ do
+      context <- executeRunnerWithNodeAs node actor $ do
+        l1Context <- ask
+        executeHydraRunnerFakingParams hydraClient $ do
+          hydraContext <- ask
+          return $ MkCompositeExecutionContext {hydraContext, l1Context}
+      executeCompositeRunner context (runStateT action state)
+
+  -- Update state
+  liftIO $ writeIORef delegateStatesRef $ Map.insert name newState states
+
+  -- Return
+  return result
+
+runCompositeForAllDelegates ::
+  forall x.
+  RunningNode ->
+  StateT DelegateState CompositeRunner x ->
+  DelegatesClusterEmulator [x]
+runCompositeForAllDelegates node action =
+  mapM (\delegate -> runCompositeForDelegate node delegate action) allDelegates

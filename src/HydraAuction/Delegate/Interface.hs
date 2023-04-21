@@ -23,7 +23,8 @@ import Cardano.Api
 import Hydra.Chain (HeadId)
 
 -- HydraAuction imports
-import HydraAuction.Types (AuctionTerms (..), Natural)
+import HydraAuction.Types (AuctionTerms (..), BidTerms, StandingBidDatum)
+import Prettyprinter (Pretty (pretty), indent, viaShow, vsep, (<+>))
 
 data FrontendRequest
   = -- FIXME: handle new client
@@ -33,7 +34,10 @@ data FrontendRequest
       , utxoToCommit :: TxIn
       }
   | -- FIXME: commit full datum
-    NewBid {bidAmount :: Natural}
+    NewBid
+      { auctionTerms :: AuctionTerms
+      , datum :: StandingBidDatum
+      }
   deriving stock (Eq, Show, Generic)
   deriving anyclass (ToJSON, FromJSON)
 
@@ -60,8 +64,7 @@ data InitializedState
   | -- FIXME: fix stanging bid address here?
     HasCommit
   | Open
-      { -- FIXME: other delegates may not know AuctionTerms, only standing bid
-        standingBidAmount :: Maybe Natural
+      { standingBidTerms :: Maybe BidTerms
       }
   | Closed
   | Finalized
@@ -75,9 +78,24 @@ data RequestIgnoredReason
   deriving stock (Eq, Show, Generic)
   deriving anyclass (FromJSON, ToJSON)
 
+instance Pretty RequestIgnoredReason where
+  pretty = \case
+    IncorrectData -> "data was incorrect"
+    WrongDelegateState state ->
+      vsep
+        [ "The delegate in current delegate state could not process request"
+        , indent 2 $ viaShow state
+        ]
+
 data ResponseReason = Greeting | WasQueried | Updated
   deriving stock (Eq, Show, Generic)
   deriving anyclass (FromJSON, ToJSON)
+
+instance Pretty ResponseReason where
+  pretty = \case
+    Greeting -> "delegate sends a greeting"
+    WasQueried -> "delegate was queried"
+    Updated -> "delegate state was updated"
 
 data DelegateResponse
   = ClosingTxTemplate
@@ -87,3 +105,28 @@ data DelegateResponse
     AuctionSet AuctionTerms
   deriving stock (Eq, Show, Generic)
   deriving anyclass (FromJSON, ToJSON)
+
+instance Pretty DelegateResponse where
+  pretty = \case
+    ClosingTxTemplate -> "ClosingTxTemplate"
+    RequestIgnored reason ->
+      vsep
+        [ "The request was ignored because"
+        , indent 2 $ pretty reason
+        ]
+    CurrentDelegateState reason state ->
+      "Delegate State Answer"
+        <> indent
+          2
+          ( vsep
+              [ "Responding because" <+> pretty reason
+              , -- FIXME: proper implementation for pretty printing the
+                -- DelegateState
+                "Current state:" <+> viaShow state
+              ]
+          )
+    AuctionSet terms ->
+      vsep
+        [ "Auction set"
+        , indent 2 $ viaShow terms
+        ]

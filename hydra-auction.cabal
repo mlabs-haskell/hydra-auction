@@ -8,6 +8,15 @@ maintainer:    giovanni@mlabs.city
 data-files:
   data/credentials/*.sk
   data/credentials/*.vk
+  data/devnet/byron-delegate.key
+  data/devnet/byron-delegation.cert
+  data/devnet/cardano-node.json
+  data/devnet/genesis-alonzo.json
+  data/devnet/genesis-byron.json
+  data/devnet/genesis-shelley.json
+  data/devnet/kes.skey
+  data/devnet/opcert.cert
+  data/devnet/vrf.skey
   data/hydra-keys/*.sk
   data/hydra-keys/*.vk
   data/protocol-parameters.json
@@ -76,6 +85,7 @@ common common-lang
     , time
     , time-machine
     , transformers
+    , unix
     , websockets
 
   default-extensions:
@@ -131,6 +141,7 @@ executable hydra-auction
     CLI.Parsers
     CLI.Parsers.TxIn
     CLI.Prettyprinter
+    CLI.Types
     CLI.Watch
 
   build-depends:
@@ -186,6 +197,7 @@ executable hydra-auction-delegate
   hs-source-dirs: delegate-app
   ghc-options:    -threaded -rtsopts
   build-depends:
+    , HUnit
     , hydra-auction
     , hydra-auction-utils
     , plutus-ledger-api
@@ -195,6 +207,7 @@ library
   exposed-modules:
     HydraAuction.Addresses
     HydraAuction.Delegate
+    HydraAuction.Delegate.CompositeRunner
     HydraAuction.Delegate.Interface
     HydraAuction.Hydra.Interface
     HydraAuction.Hydra.Monad
@@ -206,6 +219,7 @@ library
     HydraAuction.Runner
     HydraAuction.Runner.Time
     HydraAuction.Tx.Common
+    HydraAuction.Tx.Deposit
     HydraAuction.Tx.Escrow
     HydraAuction.Tx.StandingBid
     HydraAuction.Tx.TermsConfig
@@ -214,6 +228,7 @@ library
     Paths_hydra_auction
 
   other-modules:
+    HydraAuction.OnChain.Deposit
     HydraAuction.OnChain.Escrow
     HydraAuction.OnChain.StandingBid
     HydraAuction.OnChain.StateToken
@@ -262,8 +277,9 @@ test-suite hydra-auction-test
   other-modules:
     EndToEnd.Hydra
     EndToEnd.HydraUtils
-    EndToEnd.Ledger
-    EndToEnd.LedgerL2
+    EndToEnd.Ledger.Auction
+    EndToEnd.Ledger.BidDeposit
+    EndToEnd.Ledger.L2
     EndToEnd.Utils
     Unit.Common
 

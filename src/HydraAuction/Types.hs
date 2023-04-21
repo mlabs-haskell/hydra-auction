@@ -10,6 +10,8 @@ module HydraAuction.Types (
   Natural,
   ApprovedBiddersHash (..),
   BidTerms (..),
+  BidDepositDatum (..),
+  BidDepositRedeemer (..),
   StandingBidState (..),
   StandingBidDatum (..),
   AuctionTerms (..),
@@ -172,6 +174,7 @@ newtype ApprovedBidders = ApprovedBidders
   -- ^ Which bidders are approved to submit bids?
   }
   deriving stock (Generic, Prelude.Show, Prelude.Eq)
+  deriving anyclass (ToJSON, FromJSON)
 
 instance Eq ApprovedBidders where
   {-# INLINEABLE (==) #-}
@@ -188,6 +191,7 @@ data StandingBidState = StandingBidState
   , standingBid :: Maybe BidTerms
   }
   deriving stock (Generic, Prelude.Show, Prelude.Eq)
+  deriving anyclass (ToJSON, FromJSON)
 
 instance Eq StandingBidState where
   {-# INLINEABLE (==) #-}
@@ -266,6 +270,7 @@ data StandingBidDatum = StandingBidDatum
   , standingBidVoucherCS :: !VoucherCS
   }
   deriving stock (Generic, Prelude.Show, Prelude.Eq)
+  deriving anyclass (ToJSON, FromJSON)
 
 instance Eq StandingBidDatum where
   {-# INLINEABLE (==) #-}
@@ -301,5 +306,5 @@ PlutusTx.makeIsDataIndexed ''StandingBidRedeemer [('MoveToHydra, 0), ('NewBid, 1
 data VoucherForgingRedeemer = MintVoucher | BurnVoucher
 PlutusTx.makeIsDataIndexed ''VoucherForgingRedeemer [('MintVoucher, 0), ('BurnVoucher, 1)]
 
-data BidDepositRedeemer = LosingBidder | WinningBidder | SellerClaimsDeposit
-PlutusTx.makeIsDataIndexed ''BidDepositRedeemer [('LosingBidder, 0), ('WinningBidder, 1), ('SellerClaimsDeposit, 2)]
+data BidDepositRedeemer = LosingBidder | WinningBidder | SellerClaimsDeposit | CleanupDeposit
+PlutusTx.makeIsDataIndexed ''BidDepositRedeemer [('LosingBidder, 0), ('WinningBidder, 1), ('SellerClaimsDeposit, 2), ('CleanupDeposit, 3)]

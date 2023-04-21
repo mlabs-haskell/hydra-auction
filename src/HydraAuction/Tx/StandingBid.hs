@@ -5,15 +5,20 @@ module HydraAuction.Tx.StandingBid (
   currentWinningBidder,
   getApprovedBidders,
   newBid',
+  createStandingBidDatum,
+  moveToHydra,
 ) where
 
 -- Prelude imports
 
+-- Prelude imports
 import Hydra.Prelude (MonadIO, void)
 import Prelude
 
 -- Haskell imports
 import Control.Monad (when)
+import Control.Monad.IO.Class (MonadIO (..))
+import Control.Monad.Reader (MonadReader (ask))
 
 -- Plutus imports
 import Plutus.V1.Ledger.Value (assetClassValue)
@@ -22,7 +27,13 @@ import Plutus.V2.Ledger.Api (PubKeyHash, fromData, getValidator)
 -- Hydra imports
 import Cardano.Api.UTxO qualified as UTxO
 import Hydra.Cardano.Api (
+  CtxUTxO,
+  Key (..),
+  PaymentKey,
   PlutusScriptV2,
+  Tx,
+  TxIn,
+  TxOut,
   fromPlutusScript,
   fromPlutusValue,
   lovelaceToValue,
@@ -36,11 +47,12 @@ import Hydra.Cardano.Api (
   pattern TxOut,
   pattern TxOutDatumInline,
  )
+import Hydra.Chain (HeadId)
 
 -- Hydra auction imports
 
-import Control.Monad.Reader (MonadReader (ask))
 import HydraAuction.Addresses (VoucherCS (..))
+import HydraAuction.HydraHacks (prepareScriptRegistry, submitAndAwaitCommitTx)
 import HydraAuction.OnChain (
   AuctionScript (StandingBid),
   policy,
@@ -60,12 +72,12 @@ import HydraAuction.Tx.Common (
   toForgeStateToken,
  )
 import HydraAuction.Types (
-  ApprovedBidders,
+  ApprovedBidders (..),
   AuctionTerms (..),
   BidTerms (..),
   Natural,
   StandingBidDatum (..),
-  StandingBidRedeemer (Cleanup, NewBid),
+  StandingBidRedeemer (..),
   StandingBidState (..),
   VoucherForgingRedeemer (BurnVoucher),
  )
@@ -79,15 +91,19 @@ import HydraAuctionUtils.Monads (
   UtxoQuery (..),
   addressAndKeysForActor,
   logMsg,
+  submitAndAwaitTx,
  )
 import HydraAuctionUtils.Tx.AutoCreateTx (
   AutoCreateParams (..),
+  autoCreateTx,
   autoSubmitAndAwaitTx,
  )
 import HydraAuctionUtils.Tx.Utxo (
   filterAdaOnlyUtxo,
  )
 
+-- FIXME: change errors to cover Delegate caller case
+-- FIXME: make generic Datum decoder
 getStadingBidDatum :: UTxO.UTxO -> StandingBidDatum
 getStadingBidDatum standingBidUtxo =
   case UTxO.pairs standingBidUtxo of
@@ -117,15 +133,23 @@ getApprovedBidders terms = do
 newBid :: AuctionTerms -> Natural -> Runner ()
 newBid terms bidAmount = do
   MkExecutionContext {actor} <- ask
-  newBid' terms actor bidAmount
+  (_, submitterVk, _) <- addressAndKeysForActor actor
+  -- FIXME: reflect bidder vs submitter missmatch in API
+  let datum = createStandingBidDatum terms bidAmount submitterVk
+  tx <- newBid' terms actor datum
+  submitAndAwaitTx tx
 
 newBid' ::
-  (MonadIO m, MonadFail m, MonadCardanoClient m, MonadTrace m) => AuctionTerms -> Actor -> Natural -> m ()
-newBid' terms submitingActor bidAmount = do
+  (MonadIO m, MonadFail m, MonadCardanoClient m, MonadTrace m) =>
+  AuctionTerms ->
+  Actor ->
+  StandingBidDatum ->
+  m Tx
+newBid' terms submitingActor bidDatum = do
   -- Actor is not neccesary bidder, on L2 it may be commiter
   logMsg "Doing new bid"
 
-  (submitterAddress, submitterVk, submitterSk) <- addressAndKeysForActor submitingActor
+  (submitterAddress, _, submitterSk) <- addressAndKeysForActor submitingActor
   submitterMoneyUtxo <- queryUtxo (ByAddress submitterAddress)
 
   standingBidUtxo <- scriptUtxos StandingBid terms
@@ -134,29 +158,14 @@ newBid' terms submitingActor bidAmount = do
   validateHasSingleUtxo submitterMoneyUtxo "bidderMoneyUtxo"
 
   standingBidAddress <- scriptAddress StandingBid terms
-  approvedBidders <- getApprovedBidders terms
 
   let txOutStandingBid =
         TxOut
           (ShelleyAddressInEra standingBidAddress)
           valueStandingBid
-          (mkInlineDatum datum)
+          (mkInlineDatum bidDatum)
           ReferenceScriptNone
         where
-          mp = policy terms
-          voucherCS = VoucherCS $ scriptCurrencySymbol mp
-          datum =
-            StandingBidDatum
-              ( StandingBidState
-                  { standingBid =
-                      Just $
-                        BidTerms
-                          (toPlutusKeyHash $ verificationKeyHash submitterVk)
-                          bidAmount
-                  , approvedBidders = approvedBidders
-                  }
-              )
-              voucherCS
           valueStandingBid =
             fromPlutusValue (assetClassValue (voucherAssetClass terms) 1)
               <> lovelaceToValue minLovelace
@@ -164,21 +173,67 @@ newBid' terms submitingActor bidAmount = do
         where
           script = scriptPlutusScript StandingBid terms
 
-  void $
-    autoSubmitAndAwaitTx $
-      AutoCreateParams
-        { signedUtxos = [(submitterSk, submitterMoneyUtxo)]
-        , additionalSigners = []
-        , referenceUtxo = mempty
-        , witnessedUtxos =
-            [ (standingBidWitness, standingBidUtxo)
-            ]
-        , collateral = Nothing
-        , outs = [txOutStandingBid]
-        , toMint = TxMintValueNone
-        , changeAddress = submitterAddress
-        , validityBound = (Just $ biddingStart terms, Just $ biddingEnd terms)
+  autoCreateTx $
+    AutoCreateParams
+      { signedUtxos = [(submitterSk, submitterMoneyUtxo)]
+      , additionalSigners = []
+      , referenceUtxo = mempty
+      , witnessedUtxos =
+          [ (standingBidWitness, standingBidUtxo)
+          ]
+      , collateral = Nothing
+      , outs = [txOutStandingBid]
+      , toMint = TxMintValueNone
+      , changeAddress = submitterAddress
+      , validityBound = (Just $ biddingStart terms, Just $ biddingEnd terms)
+      }
+
+createStandingBidDatum ::
+  AuctionTerms ->
+  Natural ->
+  VerificationKey PaymentKey ->
+  StandingBidDatum
+createStandingBidDatum terms bidAmount bidderVk =
+  -- FIXME: approved bidders disabled until M6
+  StandingBidDatum
+    ( StandingBidState
+        { standingBid =
+            Just $
+              BidTerms
+                (toPlutusKeyHash $ verificationKeyHash bidderVk)
+                bidAmount
+        , approvedBidders = emptyBidders
         }
+    )
+    voucherCS
+  where
+    emptyBidders = ApprovedBidders []
+    mp = policy terms
+    voucherCS = VoucherCS $ scriptCurrencySymbol mp
+
+moveToHydra ::
+  HeadId ->
+  AuctionTerms ->
+  (TxIn, TxOut CtxUTxO) ->
+  Runner ()
+moveToHydra headId terms (standingBidTxIn, standingBidTxOut) = do
+  -- FIXME: get headId from AuctionTerms
+  -- FIXME: should use already deployed registry
+  (_, scriptRegistry) <- do
+    MkExecutionContext {node} <- ask
+    liftIO $ prepareScriptRegistry node
+
+  void $
+    submitAndAwaitCommitTx
+      scriptRegistry
+      headId
+      (standingBidTxIn, standingBidTxOut, standingBidWitness)
+  where
+    script =
+      fromPlutusScript @PlutusScriptV2 $
+        getValidator $
+          standingBidValidator terms
+    standingBidWitness = mkInlinedDatumScriptWitness script MoveToHydra
 
 validateHasSingleUtxo :: MonadFail m => UTxO.UTxO -> String -> m ()
 validateHasSingleUtxo utxo utxoName =

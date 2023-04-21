@@ -13,6 +13,7 @@ module HydraAuctionUtils.Monads (
   submitAndAwaitTx,
   fromPlutusAddressInMonad,
   addressAndKeysForActor,
+  MonadHasActor (..),
 ) where
 
 -- Prelude imports
@@ -125,6 +126,9 @@ data BlockchainParams = MkBlockchainParams
 class Monad m => MonadBlockchainParams m where
   queryBlockchainParams :: m BlockchainParams
   toSlotNo :: POSIXTime -> m SlotNo
+
+class Monad m => MonadHasActor m where
+  askActor :: m Actor
 
 -- Complex constraint synonims
 
