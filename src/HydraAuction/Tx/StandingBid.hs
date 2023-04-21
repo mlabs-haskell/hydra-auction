@@ -4,7 +4,7 @@ module HydraAuction.Tx.StandingBid (
   decodeInlineDatum,
   queryStandingBidDatum,
   currentWinningBidder,
-  newBid',
+  createNewBidTx,
   createStandingBidDatum,
   moveToHydra,
 ) where
@@ -140,20 +140,19 @@ newBid :: AuctionTerms -> Natural -> Runner ()
 newBid terms bidAmount = do
   MkExecutionContext {actor} <- ask
   (_, submitterVk, _) <- addressAndKeysForActor actor
-  -- FIXME: reflect bidder vs submitter missmatch in API
   let datum = createStandingBidDatum terms bidAmount submitterVk
-  tx <- newBid' terms actor datum
+  tx <- createNewBidTx terms actor datum
   submitAndAwaitTx tx
 
-newBid' ::
+createNewBidTx ::
   (MonadIO m, MonadFail m, MonadCardanoClient m, MonadTrace m) =>
   AuctionTerms ->
   Actor ->
   StandingBidDatum ->
   m Tx
-newBid' terms submitingActor bidDatum = do
+createNewBidTx terms submitingActor bidDatum = do
   -- Actor is not neccesary bidder, on L2 it may be commiter
-  logMsg "Doing new bid"
+  logMsg "Creating new bid transaction"
 
   (submitterAddress, _, submitterSk) <- addressAndKeysForActor submitingActor
   submitterMoneyUtxo <- queryUtxo (ByAddress submitterAddress)
