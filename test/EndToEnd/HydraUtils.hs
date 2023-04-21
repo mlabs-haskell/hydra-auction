@@ -1,8 +1,10 @@
+-- FIXME: rename to Emulator
 module EndToEnd.HydraUtils (
   spinUpHeads,
   runningThreeNodesDockerComposeHydra,
   runCompositeForDelegate,
   EmulatorDelegate (..),
+  DelegatesClusterEmulator,
   runCompositeForAllDelegates,
   runEmulator,
 ) where
@@ -14,11 +16,17 @@ import Prelude
 -- Haskell import
 
 import Control.Concurrent (threadDelay)
+import Control.Concurrent.Async (mapConcurrently)
+import Control.Concurrent.MVar (
+  MVar,
+  newMVar,
+  putMVar,
+  takeMVar,
+ )
 import Control.Exception (finally)
 import Control.Monad.Reader (MonadReader (..), ReaderT (..))
 import Control.Monad.State (StateT (..))
-import Control.Tracer (nullTracer, stdoutTracer)
-import Data.IORef (IORef, newIORef, readIORef, writeIORef)
+import Control.Tracer (nullTracer)
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Network.WebSockets (runClient)
@@ -143,12 +151,8 @@ runningThreeNodesDockerComposeHydra cont = do
             HydraClient
               { hydraNodeId = n
               , connection = connection
-              , tracer = hydraTracerN n
+              , tracer = contramap show nullTracer
               }
-    hydraTracerN n =
-      contramap
-        (\x -> "Hydra client for node " <> show n <> " :" <> show x)
-        stdoutTracer
 
 data EmulatorDelegate = Main | Second | Third
   deriving stock (Eq, Show, Enum, Bounded, Ord)
@@ -158,7 +162,7 @@ allDelegates = [Main, Second, Third]
 
 data EmulatorContext = MkEmulatorContext
   { clients :: EmulatorDelegateClients
-  , delegateStatesRef :: IORef (Map EmulatorDelegate DelegateState)
+  , delegateStatesRef :: MVar (Map EmulatorDelegate DelegateState)
   }
 
 type EmulatorDelegateClients = Map EmulatorDelegate (HydraClient, Actor)
@@ -182,7 +186,7 @@ runEmulator :: EmulatorDelegateClients -> DelegatesClusterEmulator a -> Runner a
 runEmulator clients action = do
   intialStatesRef <-
     liftIO $
-      newIORef $
+      newMVar $
         Map.fromList [(name, initialState) | name <- allDelegates]
   let context =
         MkEmulatorContext
@@ -199,32 +203,42 @@ runCompositeForDelegate ::
   DelegatesClusterEmulator x
 runCompositeForDelegate node name action = do
   MkEmulatorContext {clients, delegateStatesRef} <- ask
+  context <- liftIO $ createContext clients
 
   -- Get state
-  states <- liftIO $ readIORef delegateStatesRef
+  states <- liftIO $ takeMVar delegateStatesRef
   let state = (Map.!) states name
 
   -- Run
-  let (hydraClient, actor) = (Map.!) clients name
   (result, newState) <-
-    liftIO $ do
-      context <- executeRunnerWithNodeAs node actor $ do
+    liftIO $
+      executeCompositeRunner
+        context
+        (runStateT action state)
+
+  -- Update state
+  liftIO $ putMVar delegateStatesRef $ Map.insert name newState states
+
+  -- Return
+  return result
+  where
+    createContext clients = do
+      let (hydraClient, actor) = (Map.!) clients name
+      executeRunnerWithNodeAs node actor $ do
         l1Context <- ask
         executeHydraRunnerFakingParams hydraClient $ do
           hydraContext <- ask
           return $ MkCompositeExecutionContext {hydraContext, l1Context}
-      executeCompositeRunner context (runStateT action state)
-
-  -- Update state
-  liftIO $ writeIORef delegateStatesRef $ Map.insert name newState states
-
-  -- Return
-  return result
 
 runCompositeForAllDelegates ::
   forall x.
   RunningNode ->
   StateT DelegateState CompositeRunner x ->
   DelegatesClusterEmulator [x]
-runCompositeForAllDelegates node action =
-  mapM (\delegate -> runCompositeForDelegate node delegate action) allDelegates
+runCompositeForAllDelegates node action = do
+  context <- ask
+  let runActionInIO delegate = do
+        flip runReaderT context $
+          unDelegatesClusterEmulator $
+            runCompositeForDelegate node delegate action
+  liftIO $ mapConcurrently runActionInIO allDelegates
