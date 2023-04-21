@@ -1,8 +1,8 @@
 {
     "configDiffBiddingStart":            10,
-    "configDiffBiddingEnd":              60,
-    "configDiffVoucherExpiry":           80,
-    "configDiffCleanup":                 85,
+    "configDiffBiddingEnd":              120,
+    "configDiffVoucherExpiry":           140,
+    "configDiffCleanup":                 160,
     "configStartingBid":          100000000,
     "configMinimumBidIncrement":   20000000,
     "configAuctionFeePerDelegate":  4000000
