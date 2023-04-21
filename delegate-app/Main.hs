@@ -114,7 +114,7 @@ websocketsServer
     connection <- liftIO $ acceptRequest pending
     clientId <- liftIO genFreshClientId
 
-    trace $ FrontendConnected clientId
+    trace $ GotFrontendConnected clientId
     tracer <- askTracer
 
     liftIO $ do
@@ -141,9 +141,9 @@ websocketsServer
         runWithTracer' tracer $ do
           inp <- liftIO $ receiveData connection
           case eitherDecode @FrontendRequest inp of
-            Left msg -> return ()
+            Left _ -> return ()
             Right request -> do
-              trace $ FrontendInput request
+              trace $ GotFrontendRequest request
               liftIO . atomically $
                 writeTQueue frontendRequestQueue (clientId, request)
       sendFromChannel ::
@@ -403,7 +403,7 @@ main = do
     portDefault :: PortNumber
     portDefault = 8001
 
-runHydraClientN :: HasCallStack => Int -> (HydraClient -> IO b) -> IO b
+runHydraClientN :: Int -> (HydraClient -> IO b) -> IO b
 runHydraClientN n cont' = do
   putStrLn $ "Hydra connection opened for " <> show n
   runClient ("172.16.238." <> show (10 * n)) 4001 "/history=yes" $
