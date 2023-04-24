@@ -48,7 +48,6 @@ import HydraAuction.Runner (
   ExecutionContext (MkExecutionContext, node),
   executeRunnerWithNodeAs,
   initWallet,
-  withActor,
  )
 import HydraAuction.Runner.Time (waitUntil)
 import HydraAuction.Tx.Common (scriptUtxos)
@@ -119,13 +118,13 @@ bidderBuysTest :: Assertion
 bidderBuysTest = mkAssertion $ do
   MkExecutionContext {node} <- ask
   -- FIXME: should use already deployed registry as real code would
-  (hydraScriptsTxId, scriptRegistry) <- liftIO $ prepareScriptRegistry node
+  (hydraScriptsTxId, _) <- liftIO $ prepareScriptRegistry node
   liftIO $ putStrLn "prepareScriptRegistry called"
 
   spinUpHeads 0 hydraScriptsTxId $ \clients -> runEmulator clients $ do
     -- Prepare Frontend CLI actors
 
-    let actors@[seller, bidder1, bidder2] = [Alice, Bob, Carol]
+    actors@[seller, bidder1, bidder2] <- return [Alice, Bob, Carol]
 
     liftIO $
       executeRunnerWithNodeAs node seller $

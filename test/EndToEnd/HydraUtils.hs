@@ -55,7 +55,7 @@ import HydraAuction.Delegate.CompositeRunner (
  )
 import HydraAuction.Delegate.Interface (DelegateState, initialState)
 import HydraAuction.Hydra.Runner (executeHydraRunnerFakingParams)
-import HydraAuction.Runner (ExecutionContext (MkExecutionContext, node, tracer), Runner, dockerNode, executeRunner, executeRunnerWithNodeAs)
+import HydraAuction.Runner (ExecutionContext (..), Runner, executeRunner, executeRunnerWithNodeAs)
 import HydraAuctionUtils.BundledData (lookupProtocolParamPath)
 import HydraAuctionUtils.Fixture (
   Actor (..),
@@ -72,7 +72,7 @@ spinUpHeads clusterIx hydraScriptsTxId cont = do
   liftIO $ do
     hydraDir <- lookupProtocolParamPath
     setEnv "HYDRA_CONFIG_DIR" hydraDir
-  ctx@(MkExecutionContext {node, tracer}) <- ask
+  ctx@(MkExecutionContext {node}) <- ask
   let hydraTracer = nullTracer
   liftIO $
     withTempDir "end-to-end-test" $ \tmpDir -> do
@@ -109,9 +109,9 @@ spinUpHeads clusterIx hydraScriptsTxId cont = do
           seedFromFaucet_ node oscarCardanoVk 100_000_000 Normal faucetTracer
           seedFromFaucet_ node patriciaCardanoVk 100_000_000 Normal faucetTracer
           seedFromFaucet_ node rupertCardanoVk 100_000_000 Normal faucetTracer
+          [actor1, actor2, actor3] <- return hydraNodeActors
           executeRunner ctx $ do
-            let [actor1, actor2, actor3] = hydraNodeActors
-                threeClients =
+            let threeClients =
                   Map.fromList
                     [ (Main, (n1, actor1))
                     , (Second, (n2, actor2))
@@ -128,7 +128,7 @@ runningThreeNodesDockerComposeHydra cont = do
   -- FIXME: more relaible wait (not sure for what, guess sockets opening)
   threadDelay 2_000_000
 
-  let [actor1, actor2, actor3] = hydraNodeActors
+  [actor1, actor2, actor3] <- return hydraNodeActors
 
   runHydraClientN 1 $
     \n1 -> runHydraClientN 2 $
@@ -179,8 +179,11 @@ newtype DelegatesClusterEmulator a = DelegatesClusterEmulator
     , MonadReader EmulatorContext
     )
 
+{-
+- FIXME: docker-compose not working now
 runEmulatorUsingDockerCompose :: DelegatesClusterEmulator a -> IO a
 runEmulatorUsingDockerCompose action = runningThreeNodesDockerComposeHydra $ executeRunnerWithNodeAs dockerNode Alice . flip runEmulator action
+-}
 
 runEmulator :: EmulatorDelegateClients -> DelegatesClusterEmulator a -> Runner a
 runEmulator clients action = do
