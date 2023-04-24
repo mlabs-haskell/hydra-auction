@@ -29,6 +29,7 @@ data HydraCommand
   | Commit UTxO.UTxO
   | Close
   | Fanout
+  | Abort
   deriving stock (Show)
 
 commandConstructorName :: HydraCommand -> Text
@@ -38,6 +39,7 @@ commandConstructorName (NewTx _) = "NewTx"
 commandConstructorName (Commit _) = "Commit"
 commandConstructorName Close = "Close"
 commandConstructorName Fanout = "Fanout"
+commandConstructorName Abort = "Abort"
 
 -- FIXME: Add UTxO to HeadIsFinalized
 data HydraEvent
@@ -45,16 +47,20 @@ data HydraEvent
   | TxSeen Tx
   | TxValid Tx
   | TxInvalid Tx
+  | InvlidInput {reason :: String, invalidInput :: String}
+  | PostTxOnChainFailed {txTag :: String, errorTag :: String}
+  | CommandFailed {clientInputTag :: String}
   | SnapshotConfirmed
       { txs :: [Tx]
       , utxo :: UTxO.UTxO
       }
   | Committed UTxO.UTxO
   | HeadIsInitializing HeadId
-  | HeadIsOpen
+  | HeadIsOpen UTxO.UTxO
   | HeadIsClosed
   | ReadyToFanout
-  | HeadIsFinalized
+  | HeadIsFinalized UTxO.UTxO
+  | HeadIsAborted
   deriving stock (Eq, Show)
 
 data HydraEventKind
@@ -62,6 +68,9 @@ data HydraEventKind
   | TxSeenKind
   | TxValidKind
   | TxInvalidKind
+  | InvlidInputKind
+  | PostTxOnChainFailedKind
+  | CommandFailedKind
   | SnapshotConfirmedKind
   | CommittedKind
   | HeadIsInitializingKind
@@ -69,6 +78,7 @@ data HydraEventKind
   | HeadIsClosedKind
   | ReadyToFanoutKind
   | HeadIsFinalizedKind
+  | HeadIsAbortedKind
   deriving stock (Eq, Show)
 
 getHydraEventKind :: HydraEvent -> HydraEventKind
@@ -77,10 +87,14 @@ getHydraEventKind event = case event of
   TxSeen _ -> TxSeenKind
   TxValid _ -> TxValidKind
   TxInvalid _ -> TxInvalidKind
+  InvlidInput {} -> InvlidInputKind
+  PostTxOnChainFailed {} -> PostTxOnChainFailedKind
+  CommandFailed {} -> CommandFailedKind
   SnapshotConfirmed {} -> SnapshotConfirmedKind
   Committed _ -> CommittedKind
   HeadIsInitializing _ -> HeadIsInitializingKind
-  HeadIsOpen -> HeadIsOpenKind
+  HeadIsOpen {} -> HeadIsOpenKind
   HeadIsClosed -> HeadIsClosedKind
   ReadyToFanout -> ReadyToFanoutKind
-  HeadIsFinalized -> HeadIsFinalizedKind
+  HeadIsFinalized {} -> HeadIsFinalizedKind
+  HeadIsAborted -> HeadIsAbortedKind
