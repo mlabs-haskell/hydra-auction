@@ -40,14 +40,17 @@ import HydraAuction.Hydra.Interface (HydraCommand (..), HydraEvent (..))
 import HydraAuction.Hydra.Monad (MonadHydra (..))
 import HydraAuction.OnChain.Common (validAuctionTerms)
 import HydraAuction.Tx.Common (actorTipUtxo)
-import HydraAuction.Tx.StandingBid (decodeInlineDatum, moveToHydra, newBid')
+import HydraAuction.Tx.StandingBid (
+  createNewBidTx,
+  decodeInlineDatum,
+  moveToHydra,
+ )
 import HydraAuction.Types (
   AuctionStage (..),
   AuctionTerms (..),
  )
 import HydraAuctionUtils.Monads (MonadHasActor (askActor), MonadQueryUtxo (..), MonadSubmitTx (..), UtxoQuery (..))
 import HydraAuctionUtils.Tx.Utxo (
-  extractSingleUtxo,
   filterNonFuelUtxo,
   filterNotAdaOnlyUtxo,
  )
@@ -115,7 +118,7 @@ delegateFrontendRequestStep (clientId, request) = case request of
         _ <- lift $ do
           actor <- askActor
           runHydraInComposite $ do
-            tx <- newBid' auctionTerms actor datum
+            tx <- createNewBidTx auctionTerms actor datum
             submitTx tx
         -- FIXME: return closing transaction
         return [(PerClient clientId, ClosingTxTemplate)]
