@@ -18,8 +18,10 @@ import Test.Tasty.HUnit (Assertion, assertEqual, testCase)
 import Cardano.Api.UTxO qualified as UTxO
 
 -- Hydra imports
+
 import Hydra.Cardano.Api (mkTxIn)
 import Hydra.Chain.Direct.Tx (headIdToCurrencySymbol)
+import Hydra.Prelude (ask)
 
 -- Hydra auction imports
 
@@ -41,8 +43,10 @@ import HydraAuction.Hydra.Monad (
   AwaitedHydraEvent (..),
   waitForHydraEvent,
  )
+import HydraAuction.HydraHacks (prepareScriptRegistry)
 import HydraAuction.Runner (
-  executeRunnerWithLocalNode,
+  ExecutionContext (MkExecutionContext, node),
+  executeRunnerWithNodeAs,
   initWallet,
   withActor,
  )
@@ -84,9 +88,10 @@ import EndToEnd.HydraUtils (
   EmulatorDelegate (..),
   runCompositeForAllDelegates,
   runCompositeForDelegate,
-  runEmulatorUsingDockerCompose,
+  runEmulator,
+  spinUpHeads,
  )
-import EndToEnd.Utils (assertNFTNumEquals)
+import EndToEnd.Utils (assertNFTNumEquals, mkAssertion)
 import HydraAuction.Delegate.CompositeRunner (runHydraInComposite)
 import HydraAuction.OnChain (AuctionScript (..))
 import HydraAuction.Tx.StandingBid (createStandingBidDatum)
@@ -111,24 +116,29 @@ config =
     }
 
 bidderBuysTest :: Assertion
-bidderBuysTest =
-  liftIO $ runEmulatorUsingDockerCompose $ do
+bidderBuysTest = mkAssertion $ do
+  MkExecutionContext {node} <- ask
+  -- FIXME: should use already deployed registry as real code would
+  (hydraScriptsTxId, scriptRegistry) <- liftIO $ prepareScriptRegistry node
+  liftIO $ putStrLn "prepareScriptRegistry called"
+
+  spinUpHeads 0 hydraScriptsTxId $ \clients -> runEmulator clients $ do
     -- Prepare Frontend CLI actors
 
-    actors@[seller, bidder1, bidder2] <- return [Alice, Bob, Carol]
+    let actors@[seller, bidder1, bidder2] = [Alice, Bob, Carol]
 
     liftIO $
-      executeRunnerWithLocalNode $
+      executeRunnerWithNodeAs node seller $
         mapM_ (initWallet 200_000_000) actors
     liftIO $ putStrLn "Actors initialized"
 
     -- Init hydra
 
-    runCompositeForDelegate Main $ do
+    runCompositeForDelegate node Main $ do
       [] <- delegateEventStep Start
       return ()
 
-    headId : _ <- runCompositeForAllDelegates $ do
+    headId : _ <- runCompositeForAllDelegates node $ do
       event@(HeadIsInitializing headId) <- waitForHydraEvent Any
       responses <- delegateEventStep $ HydraEvent event
       liftIO $
@@ -140,7 +150,7 @@ bidderBuysTest =
 
     -- Create
 
-    utxoRef <- liftIO $ executeRunnerWithLocalNode $ withActor seller $ do
+    utxoRef <- liftIO $ executeRunnerWithNodeAs node seller $ do
       nftTx <- mintOneTestNFT
       return $ mkTxIn nftTx 0
 
@@ -151,22 +161,20 @@ bidderBuysTest =
 
     [(standingBidTxIn, _)] <-
       liftIO $
-        executeRunnerWithLocalNode $
-          do
-            withActor seller $ do
-              announceAuction terms
+        executeRunnerWithNodeAs node seller $ do
+          announceAuction terms
 
-              waitUntil $ biddingStart terms
+          waitUntil $ biddingStart terms
 
-              -- FIXME: checks are disabled until M5
-              actorsPkh <- liftIO $ getActorsPubKeyHash []
-              startBidding terms (ApprovedBidders actorsPkh)
+          -- FIXME: checks are disabled until M5
+          actorsPkh <- liftIO $ getActorsPubKeyHash []
+          startBidding terms (ApprovedBidders actorsPkh)
 
-              UTxO.pairs <$> scriptUtxos StandingBid terms
+          UTxO.pairs <$> scriptUtxos StandingBid terms
 
     -- Move and commit
 
-    runCompositeForDelegate Main $ do
+    runCompositeForDelegate node Main $ do
       responses <-
         delegateFrontendRequestStep
           ( 1
@@ -178,58 +186,58 @@ bidderBuysTest =
       liftIO $
         assertEqual "Commit Main" responses [(Broadcast, AuctionSet terms)]
 
-    forM_ [Second, Third] $ flip runCompositeForDelegate $ do
+    forM_ [Second, Third] $ flip (runCompositeForDelegate node) $ do
       delegateStepOnHydraEvent
         (SpecificKind CommittedKind)
         [CurrentDelegateState Updated (Initialized headId HasCommit)]
 
     _ <-
-      runCompositeForAllDelegates $
+      runCompositeForAllDelegates node $
         delegateStepOnHydraEvent
           (SpecificKind HeadIsOpenKind)
           [CurrentDelegateState Updated (Initialized headId $ Open Nothing)]
 
     -- Placing bid by delegates
 
-    placeNewBidAndCheck headId terms Second bidder1 $ startingBid terms
-    placeNewBidAndCheck headId terms Third bidder2 $
+    placeNewBidAndCheck node headId terms Second bidder1 $ startingBid terms
+    placeNewBidAndCheck node headId terms Third bidder2 $
       startingBid terms + minimumBidIncrement terms
-    placeNewBidAndCheck headId terms Second bidder1 $
+    placeNewBidAndCheck node headId terms Second bidder1 $
       startingBid terms
         + fromJust (intToNatural 2) * minimumBidIncrement terms
 
     -- Close Head
 
-    liftIO $ executeRunnerWithLocalNode $ waitUntil $ biddingEnd terms
+    liftIO $ executeRunnerWithNodeAs node seller $ waitUntil $ biddingEnd terms
     [] <-
-      runCompositeForDelegate Main $
+      runCompositeForDelegate node Main $
         delegateEventStep $
           AuctionStageStarted BiddingEndedStage
 
     _ <-
-      runCompositeForAllDelegates $
+      runCompositeForAllDelegates node $
         delegateStepOnHydraEvent
           (SpecificKind HeadIsClosedKind)
           [CurrentDelegateState Updated (Initialized headId Closed)]
     _ <-
-      runCompositeForAllDelegates $
+      runCompositeForAllDelegates node $
         delegateStepOnHydraEvent
           (SpecificKind ReadyToFanoutKind)
           []
     _ <-
-      runCompositeForAllDelegates $
+      runCompositeForAllDelegates node $
         delegateStepOnHydraEvent
           (SpecificKind HeadIsFinalizedKind)
           [CurrentDelegateState Updated (Initialized headId Finalized)]
 
     -- Got lot
 
-    liftIO $ executeRunnerWithLocalNode $ do
-      withActor bidder1 $ bidderBuys terms
+    liftIO $ executeRunnerWithNodeAs node bidder1 $ do
+      bidderBuys terms
       assertNFTNumEquals bidder1 1
   where
-    placeNewBidAndCheck headId terms delegate bidder amount =
-      runCompositeForDelegate delegate $ do
+    placeNewBidAndCheck node headId terms delegate bidder amount =
+      runCompositeForDelegate node delegate $ do
         let clientId = fromEnum delegate
         (bidderPublicKey, _) <- liftIO $ keysFor bidder
 

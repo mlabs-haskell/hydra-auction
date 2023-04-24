@@ -8,9 +8,18 @@ maintainer:    giovanni@mlabs.city
 data-files:
   data/credentials/*.sk
   data/credentials/*.vk
-  data/devnet-source/protocol-parameters.json
+  data/devnet/byron-delegate.key
+  data/devnet/byron-delegation.cert
+  data/devnet/cardano-node.json
+  data/devnet/genesis-alonzo.json
+  data/devnet/genesis-byron.json
+  data/devnet/genesis-shelley.json
+  data/devnet/kes.skey
+  data/devnet/opcert.cert
+  data/devnet/vrf.skey
   data/hydra-keys/*.sk
   data/hydra-keys/*.vk
+  data/protocol-parameters.json
   README.md
 
 source-repository head
@@ -238,6 +247,7 @@ library
     , natural-numbers
     , plutus-tx
     , time
+    , typed-process
 
   hs-source-dirs:  src
 

@@ -219,7 +219,7 @@ moveToHydra ::
 moveToHydra headId terms (standingBidTxIn, standingBidTxOut) = do
   -- FIXME: get headId from AuctionTerms
   -- FIXME: should use already deployed registry
-  scriptRegistry <- do
+  (_, scriptRegistry) <- do
     MkExecutionContext {node} <- ask
     liftIO $ prepareScriptRegistry node
 

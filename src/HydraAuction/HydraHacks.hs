@@ -31,6 +31,7 @@ import Hydra.Cardano.Api (
   PlutusScriptV2,
   SerialiseAsRawBytes (serialiseToRawBytes),
   TxBodyContent,
+  TxId,
   TxIn,
   TxOut,
   UTxO,
@@ -61,6 +62,7 @@ import Hydra.Chain.Direct.Tx (
   headIdToCurrencySymbol,
   mkCommitDatum,
  )
+import Hydra.Chain.Direct.Util (isMarkedOutput)
 import Hydra.Cluster.Faucet (publishHydraScriptsAs)
 import Hydra.Cluster.Fixture qualified as HydraFixture
 import Hydra.Contract.Commit qualified as Commit
@@ -89,11 +91,12 @@ import HydraAuctionUtils.Monads (
 import HydraAuctionUtils.Tx.AutoCreateTx (callBodyAutoBalance, makeSignedTransactionWithKeys)
 import HydraAuctionUtils.Tx.Utxo (filterAdaOnlyUtxo)
 
-prepareScriptRegistry :: RunningNode -> IO ScriptRegistry
+prepareScriptRegistry :: RunningNode -> IO (TxId, ScriptRegistry)
 prepareScriptRegistry node@RunningNode {networkId, nodeSocket} = do
   hydraScriptsTxId <-
     liftIO $ publishHydraScriptsAs node HydraFixture.Faucet
-  queryScriptRegistry networkId nodeSocket hydraScriptsTxId
+  scriptRegistry <- queryScriptRegistry networkId nodeSocket hydraScriptsTxId
+  pure (hydraScriptsTxId, scriptRegistry)
 
 -- | Craft a commit transaction which includes the "committed" utxo as a datum.
 commitTxBody ::
@@ -226,7 +229,7 @@ submitAndAwaitCommitTx
       initialScriptRefUtxo <- findInitialScriptRefUtxo scriptRegistry
       (initialTxIn, initialTxOut) <- findInitialUtxo headId
 
-      commiterAdaUtxo <- filterAdaOnlyUtxo <$> actorTipUtxo
+      commiterAdaUtxo <- UTxO.filter (not . isMarkedOutput) . filterAdaOnlyUtxo <$> actorTipUtxo
       (commiterAdaTxIn, commiterAdaTxOut) : _ <-
         return $ UTxO.pairs commiterAdaUtxo
 

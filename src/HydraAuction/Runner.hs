@@ -4,8 +4,10 @@ module HydraAuction.Runner (
   NodeLog (..),
   Runner,
   executeRunner,
-  executeRunnerWithLocalNode,
+  executeRunnerWithNodeAs,
   executeTestRunner,
+  executeDockerRunner,
+  dockerNode,
   StateDirectory (..),
   ExecutionContext (..),
   withActor,
@@ -34,6 +36,8 @@ import Prelude
 import Control.Monad (void)
 import Control.Monad.Catch (MonadCatch, MonadMask, MonadThrow)
 import Control.Tracer (stdoutTracer, traceWith)
+import System.FilePath (FilePath)
+import System.Process.Typed (runProcess_)
 
 -- Cardano imports
 import CardanoClient (
@@ -203,27 +207,29 @@ executeTestRunner runner = do
   withTempDir "test-hydra-auction" $ \tmpDir -> do
     let stateDirectory = MkStateDirectory tmpDir
     tracerForCardanoNode <- fileTracer stateDirectory
-    let tracer = contramap show stdoutTracer
     withCardanoNodeDevnet
       (contramap (FromHydra . FromCardanoNode) tracerForCardanoNode)
       tmpDir
       $ \node ->
-        executeRunner
-          (MkExecutionContext {tracer = tracer, node = node, actor = Alice})
-          runner
+        executeRunnerWithNodeAs node Alice runner
 
-localNode :: RunningNode
-localNode =
+dockerNode :: RunningNode
+dockerNode =
   RunningNode
     { networkId = Testnet $ NetworkMagic 42
     , nodeSocket = "./devnet/node.socket"
     }
 
-executeRunnerWithLocalNode :: forall x. Runner x -> IO x
-executeRunnerWithLocalNode runner = do
+executeDockerRunner :: Runner () -> IO ()
+executeDockerRunner runner = do
+  runProcess_ "make start-docker"
+  executeRunnerWithNodeAs dockerNode Alice runner
+
+executeRunnerWithNodeAs :: forall x. RunningNode -> Actor -> Runner x -> IO x
+executeRunnerWithNodeAs node actor runner = do
   let tracer = contramap show stdoutTracer
   executeRunner
-    (MkExecutionContext {tracer = tracer, node = localNode, actor = Alice})
+    (MkExecutionContext {tracer = tracer, node, actor})
     runner
 
 -- * Utils

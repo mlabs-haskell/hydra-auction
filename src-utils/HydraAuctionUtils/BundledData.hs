@@ -1,6 +1,7 @@
 module HydraAuctionUtils.BundledData (
   readDataFile,
   readHydraNodeProtocolParams,
+  lookupProtocolParamPath,
 ) where
 
 -- Prelude imports
@@ -10,7 +11,7 @@ import Prelude
 import Data.Aeson qualified as Aeson
 import Data.ByteString qualified as BS
 import Paths_hydra_auction qualified as Pkg
-import System.FilePath ((</>))
+import System.FilePath (dropFileName, (<.>), (</>))
 
 -- Hydra imports
 import Hydra.Cardano.Api (ProtocolParameters)
@@ -23,9 +24,12 @@ readDataFile source = do
 
 readHydraNodeProtocolParams :: IO ProtocolParameters
 readHydraNodeProtocolParams = do
-  bytes <- readDataFile "devnet-source/protocol-parameters.json"
+  bytes <- readDataFile "protocol-parameters.json"
   case Aeson.eitherDecodeStrict bytes of
     Left errorMsg ->
       fail $
         "Cannot decode protocol-parameters.json, error: " <> show errorMsg
     Right protocolParams -> return protocolParams
+
+lookupProtocolParamPath :: IO FilePath
+lookupProtocolParamPath = dropFileName <$> Pkg.getDataFileName ("data" </> "protocol-parameters" <.> "json")

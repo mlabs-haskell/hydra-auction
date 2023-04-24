@@ -1,6 +1,7 @@
 module HydraAuctionUtils.Fixture (
   Actor (..),
   keysFor,
+  hydraKeysFor,
   hydraNodeActors,
   partyFor,
   allActors,
@@ -36,8 +37,8 @@ import Hydra.Cardano.Api (
 import Plutus.V1.Ledger.Crypto (PubKeyHash)
 
 -- Hydra Auction imports
-import Hydra.Crypto (AsType (AsHydraKey))
-import Hydra.Party (Party (Party))
+import Hydra.Crypto (AsType (AsHydraKey), HydraKey)
+import Hydra.Party (Party (Party), deriveParty)
 import HydraAuctionUtils.BundledData (readDataFile)
 
 -- | Enumeration of known actors for which we can get the 'keysFor' and 'writeKeysFor'.
@@ -83,18 +84,23 @@ keysFor actor = do
 
 partyFor :: Actor -> IO Party
 partyFor actor = do
+  (_, sk) <- hydraKeysFor actor
+  pure $ deriveParty sk
+
+hydraKeysFor :: Actor -> IO (VerificationKey HydraKey, SigningKey HydraKey)
+hydraKeysFor actor = do
   unless (actor `elem` hydraNodeActors) $
-    fail "Only Hydra Node actors do have hydra keys and party"
+    fail "Only Hydra Node actors do have hydra keys"
   bs <-
     readDataFile $
-      "hydra-keys" </> actorName actor <.> "vk"
+      "hydra-keys" </> actorName actor <.> "sk"
   let res =
         first TextEnvelopeAesonDecodeError (Aeson.eitherDecodeStrict bs)
-          >>= deserialiseFromTextEnvelope (AsVerificationKey AsHydraKey)
+          >>= deserialiseFromTextEnvelope (AsSigningKey AsHydraKey)
   case res of
     Left err ->
       fail $ "cannot decode text envelope from '" <> show bs <> "', error: " <> show err
-    Right vk -> return $ Party vk
+    Right sk -> return (getVerificationKey sk, sk)
 
 allActors :: [Actor]
 allActors = [minBound .. maxBound]

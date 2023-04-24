@@ -79,6 +79,7 @@ import Hydra.Cluster.Faucet (
 import Hydra.Cluster.Fixture (
   Actor (Faucet),
  )
+import Hydra.Cluster.Scenarios (headIsInitializingWith)
 import Hydra.ContestationPeriod (
   ContestationPeriod (UnsafeContestationPeriod),
  )
@@ -91,6 +92,7 @@ import HydraNode (
   output,
   send,
   waitFor,
+  waitForAllMatch,
   waitForNodesConnected,
   waitMatch,
   withHydraCluster,
@@ -111,11 +113,7 @@ testSuite :: TestTree
 testSuite =
   testGroup
     "L2"
-    [ -- FIXME: Skiping.
-      -- Fails because of hydra-node having different version than cabal lib.
-      testCase "basic-hydra-tx" $
-        {- HLINT ignore "Evaluate" -}
-        const (return ()) basicHydraTxTest
+    [ testCase "basic-hydra-tx" basicHydraTxTest
     ]
 
 basicHydraTxTest :: Assertion
@@ -167,10 +165,9 @@ initAndClose clusterIx hydraScriptsTxId = do
           seedFromFaucet_ node carolCardanoVk 100_000_000 Fuel faucetTracer
 
           send n1 $ input "Init" []
-          waitFor hydraTracer 10 [n1, n2, n3] $
-            output
-              "ReadyToCommit"
-              ["parties" .= Set.fromList [alice, bob, carol]]
+          headId <-
+            waitForAllMatch 10 [n1, n2, n3] $
+              headIsInitializingWith (Set.fromList [alice, bob, carol])
 
           -- Get some UTXOs to commit to a head
           committedUTxOByAlice <-
@@ -185,7 +182,9 @@ initAndClose clusterIx hydraScriptsTxId = do
           waitFor hydraTracer 10 [n1, n2, n3] $
             output
               "HeadIsOpen"
-              ["utxo" .= (committedUTxOByAlice <> committedUTxOByBob)]
+              [ "utxo" .= (committedUTxOByAlice <> committedUTxOByBob)
+              , "headId" .= headId
+              ]
 
           -- NOTE(AB): this is partial and will fail if we are not able to
           -- generate a payment
@@ -200,7 +199,7 @@ initAndClose clusterIx hydraScriptsTxId = do
 
           send n1 $ input "NewTx" ["transaction" .= tx]
           waitFor hydraTracer 10 [n1, n2, n3] $
-            output "TxSeen" ["transaction" .= tx]
+            output "TxValid" ["transaction" .= tx, "headId" .= headId]
 
           -- The expected new utxo set is the created payment to bob,
           -- alice's remaining utxo in head and whatever bot has
@@ -252,7 +251,7 @@ initAndClose clusterIx hydraScriptsTxId = do
             guard $ snapshot == expectedSnapshot
 
           send n1 $ input "GetUTxO" []
-          waitFor hydraTracer 10 [n1] $ output "GetUTxOResponse" ["utxo" .= newUTxO]
+          waitFor hydraTracer 10 [n1] $ output "GetUTxOResponse" ["utxo" .= newUTxO, "headId" .= headId]
 
           send n1 $ input "Close" []
           deadline <- waitMatch 3 n1 $ \v -> do
@@ -264,11 +263,11 @@ initAndClose clusterIx hydraScriptsTxId = do
           -- Expect to see ReadyToFanout within 3 seconds after deadline
           remainingTime <- diffUTCTime deadline <$> getCurrentTime
           waitFor hydraTracer (truncate $ remainingTime + 3) [n1] $
-            output "ReadyToFanout" []
+            output "ReadyToFanout" ["headId" .= headId]
 
           send n1 $ input "Fanout" []
           waitFor hydraTracer 3 [n1] $
-            output "HeadIsFinalized" ["utxo" .= newUTxO]
+            output "HeadIsFinalized" ["utxo" .= newUTxO, "headId" .= headId]
 
           case fromJSON $ toJSON newUTxO of
             Error err ->

@@ -90,7 +90,7 @@ import HydraAuction.Delegate.Server (
 import HydraAuction.Hydra.Monad (AwaitedHydraEvent (..), waitForHydraEvent)
 import HydraAuction.Hydra.Runner (HydraRunner, executeHydraRunnerFakingParams)
 import HydraAuction.OnChain.Common (secondsLeftInInterval, stageToInterval)
-import HydraAuction.Runner (executeRunnerWithLocalNode, withActor)
+import HydraAuction.Runner (dockerNode, executeRunnerWithNodeAs)
 import HydraAuction.Tx.Common (currentAuctionStage, currentTimeMilliseconds)
 import HydraAuction.Types (AuctionTerms)
 import HydraAuctionUtils.Fixture (Actor (..))
@@ -276,13 +276,12 @@ runDelegateServer conf = do
       putMVar clientCounter (v + 1)
       return v
     executeCompositeRunnerForConfig action = do
-      context <- executeRunnerWithLocalNode $
-        withActor (l1Actor conf) $ do
-          l1Context <- ask
-          executeHydraRunnerFakingParams (hydraClient conf) $ do
-            hydraContext <- ask
-            return $
-              MkCompositeExecutionContext {hydraContext, l1Context}
+      context <- executeRunnerWithNodeAs dockerNode (l1Actor conf) $ do
+        l1Context <- ask
+        executeHydraRunnerFakingParams (hydraClient conf) $ do
+          hydraContext <- ask
+          return $
+            MkCompositeExecutionContext {hydraContext, l1Context}
       executeCompositeRunner context action
 
 queueHydraEvents :: forall void. TQueue DelegateEvent -> HydraRunner void
