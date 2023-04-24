@@ -127,5 +127,5 @@ validNewBidTerms terms oldBid (Just newBidTerms) =
     Nothing ->
       traceIfFalse "Bid is not greater than startingBid" $
         startingBid terms <= bidAmount newBidTerms
-validNewBidTerms _14 _ Nothing =
+validNewBidTerms _ _ Nothing =
   traceIfFalse "Bid cannot be empty" False
