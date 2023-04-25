@@ -345,7 +345,7 @@ mbQueueAuctionPhases delegateEvents toClientsChannel = do
           <> show currentStage
           <> " , awaiting "
           <> show mSecsLeft
-          <> "until next stage."
+          <> " until next stage."
       case mSecsLeft of
         Nothing -> pure ()
         Just s -> do
