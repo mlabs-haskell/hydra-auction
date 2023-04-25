@@ -14,7 +14,7 @@ import Prelude
 import Control.Lens ((^?))
 import Control.Lens.Getter (Getting)
 import Control.Monad (guard)
-import Control.Monad.Catch (MonadCatch, MonadMask, MonadThrow)
+import Control.Monad.Catch (MonadCatch, MonadMask, MonadThrow, try)
 import Control.Monad.Reader (MonadReader, ReaderT (runReaderT), ask)
 import Control.Monad.Trans (MonadIO (liftIO))
 import Control.Tracer (Tracer, contramap, stdoutTracer, traceWith)
@@ -30,6 +30,7 @@ import Data.Aeson.Types (parseMaybe)
 import Data.Map qualified as Map
 import Data.Monoid (First)
 import GHC.Natural (Natural)
+import Test.HUnit.Lang (HUnitFailure)
 
 -- Cardano imports
 import Cardano.Api.UTxO qualified as UTxO
@@ -67,6 +68,7 @@ import HydraAuctionUtils.Monads (
 
 data HydraRunnerLog
   = HydraRunnerStringMessage String
+  | SendCommand HydraCommand
   | AwaitingHydraEvent AwaitedHydraEvent
   | AwaitedHydraEvent HydraEvent
   deriving stock (Show)
@@ -95,6 +97,7 @@ instance MonadHydra HydraRunner where
   sendCommand :: HydraCommand -> HydraRunner ()
   sendCommand command = do
     MkHydraExecutionContext {node} <- ask
+    traceMessage $ SendCommand command
     liftIO $ send node $ input commandText commandArguments
     where
       commandText = commandConstructorName command
@@ -103,14 +106,18 @@ instance MonadHydra HydraRunner where
         NewTx tx -> ["transaction" .= tx]
         _ -> []
 
-  waitForHydraEvent' :: Natural -> AwaitedHydraEvent -> HydraRunner HydraEvent
+  waitForHydraEvent' ::
+    Natural -> AwaitedHydraEvent -> HydraRunner (Maybe HydraEvent)
   waitForHydraEvent' timeout awaitedSpec = do
     MkHydraExecutionContext {node} <- ask
     traceMessage $ AwaitingHydraEvent awaitedSpec
     -- FIXME: raise custom errors
-    event <- liftIO $ waitMatch timeout node matchingHandler
-    traceMessage $ AwaitedHydraEvent event
-    return event
+    mEvent <- liftIO $ try $ waitMatch timeout node matchingHandler
+    case mEvent of
+      Left (_ :: HUnitFailure) -> return Nothing
+      Right event -> do
+        traceMessage $ AwaitedHydraEvent event
+        return $ Just event
     where
       matchingHandler value = do
         event <- matchingHydraEvent value
@@ -168,7 +175,8 @@ matchingHydraEvent value =
         <*> retrieveField'
           ( key "snapshot" . key "utxo"
           )
-    Just "Committed" -> Committed <$> retrieveField "utxo"
+    Just "Committed" ->
+      Committed <$> retrieveField "utxo" <*> retrieveField "party"
     Just "HeadIsOpen" -> HeadIsOpen <$> retrieveField "utxo"
     Just "HeadIsClosed" -> Just HeadIsClosed
     Just "ReadyToFanout" -> Just ReadyToFanout

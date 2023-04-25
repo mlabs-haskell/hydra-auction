@@ -71,7 +71,9 @@ checkVoucherExpiredOrLater terms info =
    Note that this function is not and should not be used on-chain
 -}
 secondsLeftInInterval :: POSIXTime -> Interval POSIXTime -> Maybe Integer
-secondsLeftInInterval (POSIXTime now) (Interval _ (UpperBound (Finite (POSIXTime t)) inclusive)) | now < t = Just $ (t - now - if inclusive then 0 else 1) `div` 1000
+secondsLeftInInterval (POSIXTime now) (Interval _ (UpperBound (Finite (POSIXTime t)) inclusive))
+  | now < t =
+      Just $ (t - now - if inclusive then 0 else 1) `div` 1000
 secondsLeftInInterval _ _ = Nothing
 
 {-# INLINEABLE validAuctionTerms #-}

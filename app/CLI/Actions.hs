@@ -40,6 +40,7 @@ import HydraAuction.Tx.Common (
   actorTipUtxo,
   addressAndKeys,
   currentAuctionStage,
+  scriptSingleUtxo,
   scriptUtxos,
  )
 import HydraAuction.Tx.Deposit (
@@ -216,21 +217,22 @@ handleCliAction sendRequestToDelegate currentDelegateStateRef userAction = do
             _ -> liftIO . putStrLn $ "Hydra is not initialized yet"
         Nothing -> liftIO . putStrLn $ "User doesn't have the \"Mona Lisa\" token.\nThis demo is configured to use this token as the auction lot."
     StartBidding auctionName actors -> do
-      Just terms <- liftIO $ readAuctionTerms auctionName
-      actorsPkh <- liftIO $ getActorsPubKeyHash actors
-      liftIO . putStrLn $
-        show actor
-          <> " starts the bidding phase of auction "
-          <> show auctionName
-          <> "."
-      startBidding terms (ApprovedBidders actorsPkh)
-    MoveToL2 auctionName -> do
-      CliEnhancedAuctionTerms {terms} <-
-        liftIO $
-          noteM ("could not read enhanced auction terms for " <> show auctionName) $
-            readCliEnhancedAuctionTerms auctionName
+      terms <- auctionTermsFor auctionName
       doOnMatchingStage terms BiddingStartedStage $ do
-        [(standingBidTxIn, _)] <- UTxO.pairs <$> scriptUtxos StandingBid terms
+        actorsPkh <- liftIO $ getActorsPubKeyHash actors
+        liftIO . putStrLn $
+          show actor
+            <> " starts the bidding phase of auction "
+            <> show auctionName
+            <> "."
+        startBidding terms (ApprovedBidders actorsPkh)
+    MoveToL2 auctionName -> do
+      terms <- auctionTermsFor auctionName
+      doOnMatchingStage terms BiddingStartedStage $ do
+        mUtxo <- scriptSingleUtxo StandingBid terms
+        (standingBidTxIn, _) <- case mUtxo of
+          Just x -> return x
+          Nothing -> fail "No Standing bid found"
         liftIO $
           sendRequestToDelegate $
             DelegateInterface.CommitStandingBid

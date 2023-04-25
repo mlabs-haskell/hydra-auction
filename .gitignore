@@ -73,3 +73,6 @@ auction-state
 
 # hydra-node
 .env
+
+# Ignoring `./devnet` but not `./data/devnet`
+/devnet/

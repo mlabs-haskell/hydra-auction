@@ -9,7 +9,8 @@ TARGETDIR="$ROOTDIR/devnet"
 
 [ -d "$TARGETDIR" ] && { echo "Cleaning up directory $TARGETDIR" ; sudo rm -r $TARGETDIR ; }
 
-cp -af "$ROOTDIR/data/devnet-source/" "$TARGETDIR"
+cp -af "$ROOTDIR/data/devnet/" "$TARGETDIR"
+cp "$ROOTDIR/data/protocol-parameters.json" "$TARGETDIR/"
 cp -af "$ROOTDIR/data/credentials" "$TARGETDIR"
 
 echo '{"Producers": []}' > "$TARGETDIR/topology.json"

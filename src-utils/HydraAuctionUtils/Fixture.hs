@@ -22,7 +22,7 @@ import System.FilePath ((<.>), (</>))
 
 -- Hydra imports
 import Hydra.Cardano.Api (
-  AsType (AsPaymentKey, AsSigningKey, AsVerificationKey),
+  AsType (AsPaymentKey, AsSigningKey),
   HasTypeProxy (AsType),
   Key (VerificationKey, getVerificationKey),
   PaymentKey,
@@ -38,7 +38,7 @@ import Plutus.V1.Ledger.Crypto (PubKeyHash)
 
 -- Hydra Auction imports
 import Hydra.Crypto (AsType (AsHydraKey), HydraKey)
-import Hydra.Party (Party (Party), deriveParty)
+import Hydra.Party (Party, deriveParty)
 import HydraAuctionUtils.BundledData (readDataFile)
 
 -- | Enumeration of known actors for which we can get the 'keysFor' and 'writeKeysFor'.

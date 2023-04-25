@@ -21,7 +21,7 @@ import CLI.Config (
   readCliEnhancedAuctionTerms,
  )
 import Data.IORef (IORef, readIORef)
-import HydraAuction.Delegate.Interface (DelegateState)
+import HydraAuction.Delegate.Interface (DelegateState (..))
 import HydraAuction.OnChain.Common (secondsLeftInInterval, stageToInterval)
 import HydraAuction.Tx.Common (currentAuctionStage, currentTimeMilliseconds)
 
@@ -33,7 +33,10 @@ watchAuction auctionName currentDelegateStateRef = do
   mEnhancedTerms <- readCliEnhancedAuctionTerms auctionName
 
   delegateState <- readIORef currentDelegateStateRef
-  putStrLn $ "Delegate state: " <> show delegateState
+  case delegateState of
+    Initialized _ initializedState ->
+      putStrLn $ "Delegate state: " <> show initializedState
+    _ -> putStrLn "Delegate is not initialized yet"
 
   case mEnhancedTerms of
     Nothing ->

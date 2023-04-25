@@ -4,9 +4,11 @@ module EndToEnd.HydraUtils (
   runningThreeNodesDockerComposeHydra,
   runCompositeForDelegate,
   EmulatorDelegate (..),
+  EmulatorContext (..),
   DelegatesClusterEmulator,
   runCompositeForAllDelegates,
   runEmulator,
+  runEmulatorInTest,
 ) where
 
 -- Preludes import
@@ -29,9 +31,11 @@ import Control.Monad.State (StateT (..))
 import Control.Tracer (nullTracer)
 import Data.Map (Map)
 import Data.Map qualified as Map
+import Data.Maybe (fromMaybe)
 import Network.WebSockets (runClient)
-import System.Environment (setEnv)
+import System.Environment (lookupEnv, setEnv)
 import System.Process (system)
+import Text.Read (readMaybe)
 
 -- Hydra imports
 
@@ -55,7 +59,14 @@ import HydraAuction.Delegate.CompositeRunner (
  )
 import HydraAuction.Delegate.Interface (DelegateState, initialState)
 import HydraAuction.Hydra.Runner (executeHydraRunnerFakingParams)
-import HydraAuction.Runner (ExecutionContext (..), Runner, executeRunner, executeRunnerWithNodeAs)
+import HydraAuction.HydraHacks (prepareScriptRegistry)
+import HydraAuction.Runner (
+  ExecutionContext (..),
+  Runner,
+  dockerNode,
+  executeRunner,
+  executeRunnerWithNodeAs,
+ )
 import HydraAuctionUtils.BundledData (lookupProtocolParamPath)
 import HydraAuctionUtils.Fixture (
   Actor (..),
@@ -120,7 +131,7 @@ spinUpHeads clusterIx hydraScriptsTxId cont = do
              in cont threeClients
 
 runningThreeNodesDockerComposeHydra ::
-  (EmulatorDelegateClients -> IO b) ->
+  (EmulatorDelegateClients -> Runner b) ->
   IO b
 runningThreeNodesDockerComposeHydra cont = do
   _ <- system "./scripts/spin-up-new-devnet.sh 0"
@@ -141,7 +152,8 @@ runningThreeNodesDockerComposeHydra cont = do
                   , (Third, (n3, actor3))
                   ]
            in finally
-                (cont threeClients)
+                -- FIXME
+                (executeRunnerWithNodeAs dockerNode Alice (cont threeClients))
                 (system "./scripts/stop-demo.sh")
   where
     runHydraClientN n cont' = liftIO $
@@ -161,12 +173,12 @@ allDelegates :: [EmulatorDelegate]
 allDelegates = [Main, Second, Third]
 
 data EmulatorContext = MkEmulatorContext
-  { clients :: EmulatorDelegateClients
+  { l1Node :: RunningNode
+  , clients :: EmulatorDelegateClients
   , delegateStatesRef :: MVar (Map EmulatorDelegate DelegateState)
   }
 
 type EmulatorDelegateClients = Map EmulatorDelegate (HydraClient, Actor)
-
 newtype DelegatesClusterEmulator a = DelegatesClusterEmulator
   { unDelegatesClusterEmulator :: ReaderT EmulatorContext IO a
   }
@@ -179,6 +191,22 @@ newtype DelegatesClusterEmulator a = DelegatesClusterEmulator
     , MonadReader EmulatorContext
     )
 
+runEmulatorInTest :: DelegatesClusterEmulator () -> Runner ()
+runEmulatorInTest action = do
+  mEnvStr <- liftIO $ lookupEnv "USE_DOCKER_FOR_TESTS"
+  let useDockerForTests =
+        fromMaybe False $ readMaybe =<< mEnvStr
+  if useDockerForTests
+    then
+      liftIO $
+        runningThreeNodesDockerComposeHydra $
+          flip runEmulator action
+    else do
+      MkExecutionContext {node} <- ask
+      (hydraScriptsTxId, _) <- liftIO $ prepareScriptRegistry node
+      spinUpHeads 0 hydraScriptsTxId $
+        flip runEmulator action
+
 {-
 - FIXME: docker-compose not working now
 runEmulatorUsingDockerCompose :: DelegatesClusterEmulator a -> IO a
@@ -187,26 +215,27 @@ runEmulatorUsingDockerCompose action = runningThreeNodesDockerComposeHydra $ exe
 
 runEmulator :: EmulatorDelegateClients -> DelegatesClusterEmulator a -> Runner a
 runEmulator clients action = do
+  MkExecutionContext {node} <- ask
   intialStatesRef <-
     liftIO $
       newMVar $
         Map.fromList [(name, initialState) | name <- allDelegates]
   let context =
         MkEmulatorContext
-          { clients = clients
+          { l1Node = node
+          , clients = clients
           , delegateStatesRef = intialStatesRef
           }
   liftIO $ flip runReaderT context $ unDelegatesClusterEmulator action
 
 runCompositeForDelegate ::
   forall x.
-  RunningNode ->
   EmulatorDelegate ->
   StateT DelegateState CompositeRunner x ->
   DelegatesClusterEmulator x
-runCompositeForDelegate node name action = do
-  MkEmulatorContext {clients, delegateStatesRef} <- ask
-  context <- liftIO $ createContext clients
+runCompositeForDelegate name action = do
+  MkEmulatorContext {l1Node, clients, delegateStatesRef} <- ask
+  context <- liftIO $ createContext l1Node clients
 
   -- Get state
   states <- liftIO $ takeMVar delegateStatesRef
@@ -225,9 +254,9 @@ runCompositeForDelegate node name action = do
   -- Return
   return result
   where
-    createContext clients = do
+    createContext l1Node clients = do
       let (hydraClient, actor) = (Map.!) clients name
-      executeRunnerWithNodeAs node actor $ do
+      executeRunnerWithNodeAs l1Node actor $ do
         l1Context <- ask
         executeHydraRunnerFakingParams hydraClient $ do
           hydraContext <- ask
@@ -235,13 +264,12 @@ runCompositeForDelegate node name action = do
 
 runCompositeForAllDelegates ::
   forall x.
-  RunningNode ->
   StateT DelegateState CompositeRunner x ->
   DelegatesClusterEmulator [x]
-runCompositeForAllDelegates node action = do
+runCompositeForAllDelegates action = do
   context <- ask
   let runActionInIO delegate = do
         flip runReaderT context $
           unDelegatesClusterEmulator $
-            runCompositeForDelegate node delegate action
+            runCompositeForDelegate delegate action
   liftIO $ mapConcurrently runActionInIO allDelegates
