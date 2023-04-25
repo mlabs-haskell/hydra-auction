@@ -1,8 +1,10 @@
 module HydraAuctionUtils.Tx.Utxo (
+  txOutIsAdaOnly,
   filterAdaOnlyUtxo,
   filterUtxoByCurrencySymbols,
   filterNonFuelUtxo,
   filterNotAdaOnlyUtxo,
+  extractSingleUtxo,
 ) where
 
 -- Prelude imports
@@ -25,6 +27,8 @@ import Plutus.V2.Ledger.Api (txOutValue)
 import Cardano.Api.UTxO qualified as UTxO
 
 -- Hydra imports
+
+import Data.Maybe (listToMaybe)
 import Hydra.Cardano.Api (
   CtxUTxO,
   TxOut,
@@ -36,7 +40,10 @@ import Hydra.Chain.Direct.Util (isMarkedOutput)
 
 filterNotAdaOnlyUtxo :: UTxO -> UTxO
 filterNotAdaOnlyUtxo =
-  UTxO.filter (not . hasExactlySymbols [CurrencySymbol emptyByteString])
+  UTxO.filter (not . txOutIsAdaOnly)
+
+txOutIsAdaOnly :: TxOut CtxUTxO -> Bool
+txOutIsAdaOnly = hasExactlySymbols [CurrencySymbol emptyByteString]
 
 filterAdaOnlyUtxo :: UTxO -> UTxO
 filterAdaOnlyUtxo = filterUtxoByCurrencySymbols [CurrencySymbol emptyByteString]
@@ -54,3 +61,8 @@ hasExactlySymbols symbolsToMatch x =
 filterNonFuelUtxo :: UTxO.UTxO -> UTxO.UTxO
 filterNonFuelUtxo =
   UTxO . snd . Map.partition isMarkedOutput . UTxO.toMap
+
+extractSingleUtxo :: UTxO.UTxO -> Maybe UTxO.UTxO
+extractSingleUtxo utxo = do
+  pair <- listToMaybe $ UTxO.pairs utxo
+  return $ UTxO.fromPairs [pair]

@@ -40,15 +40,20 @@ import HydraAuction.Hydra.Interface (HydraCommand (..), HydraEvent (..))
 import HydraAuction.Hydra.Monad (MonadHydra (..))
 import HydraAuction.OnChain.Common (validAuctionTerms)
 import HydraAuction.Tx.Common (actorTipUtxo)
-import HydraAuction.Tx.StandingBid (getStadingBidDatum, moveToHydra, newBid')
+import HydraAuction.Tx.StandingBid (
+  createNewBidTx,
+  decodeInlineDatum,
+  moveToHydra,
+ )
 import HydraAuction.Types (
   AuctionStage (..),
   AuctionTerms (..),
-  StandingBidDatum (StandingBidDatum, standingBidState),
-  StandingBidState (..),
  )
 import HydraAuctionUtils.Monads (MonadHasActor (askActor), MonadQueryUtxo (..), MonadSubmitTx (..), UtxoQuery (..))
-import HydraAuctionUtils.Tx.Utxo (filterNonFuelUtxo, filterNotAdaOnlyUtxo)
+import HydraAuctionUtils.Tx.Utxo (
+  filterNonFuelUtxo,
+  filterNotAdaOnlyUtxo,
+ )
 
 data DelegateEvent
   = Start
@@ -113,7 +118,7 @@ delegateFrontendRequestStep (clientId, request) = case request of
         _ <- lift $ do
           actor <- askActor
           runHydraInComposite $ do
-            tx <- newBid' auctionTerms actor datum
+            tx <- createNewBidTx auctionTerms actor datum
             submitTx tx
         -- FIXME: return closing transaction
         return [(PerClient clientId, ClosingTxTemplate)]
@@ -146,12 +151,11 @@ delegateEventStep event = case event of
     sendCommand (Commit forCollateralUtxo)
     updateStateAndResponse HasCommit
   HydraEvent (SnapshotConfirmed _txs utxo) -> do
-    let -- FIXME: more robust filtering
-        standingBidUtxo = filterNotAdaOnlyUtxo utxo
-        StandingBidDatum {standingBidState} =
-          getStadingBidDatum standingBidUtxo
-        StandingBidState {standingBid} = standingBidState
-    updateStateAndResponse $ Open standingBid
+    case UTxO.pairs $ filterNotAdaOnlyUtxo utxo of
+      [(_, txOut)] -> case decodeInlineDatum txOut of
+        Right standingBid -> updateStateAndResponse $ Open standingBid
+        Left _ -> return [] -- TODO: abort and log
+      _ -> return [] -- TODO: abort and log
   HydraEvent ReadyToFanout -> do
     sendCommand Fanout
     return []

@@ -38,8 +38,8 @@ services:
       , "--api-host", "0.0.0.0"
       , "--host", "172.16.238.10"
       , "--monitoring-port", "6001"
-      , "--peer", "hydra-node-2:5001"
-      , "--peer", "hydra-node-3:5001"
+      , "--peer", "172.16.238.20:5001"
+      , "--peer", "172.16.238.30:5001"
       , "--hydra-scripts-tx-id", "${HYDRA_SCRIPTS_TX_ID}"
       , "--contestation-period", "1"
       , "--hydra-signing-key", "/keys/oscar.sk"
@@ -76,8 +76,8 @@ services:
       , "--api-host", "0.0.0.0"
       , "--host", "172.16.238.20"
       , "--monitoring-port", "6001"
-      , "--peer", "hydra-node-1:5001"
-      , "--peer", "hydra-node-3:5001"
+      , "--peer", "172.16.238.10:5001"
+      , "--peer", "172.16.238.30:5001"
       , "--hydra-scripts-tx-id", "${HYDRA_SCRIPTS_TX_ID}"
       , "--contestation-period", "1"
       , "--hydra-signing-key", "/keys/patricia.sk"
@@ -113,8 +113,8 @@ services:
       , "--api-host", "0.0.0.0"
       , "--host", "172.16.238.30"
       , "--monitoring-port", "6001"
-      , "--peer", "hydra-node-1:5001"
-      , "--peer", "hydra-node-2:5001"
+      , "--peer", "172.16.238.10:5001"
+      , "--peer", "172.16.238.20:5001"
       , "--hydra-scripts-tx-id", "${HYDRA_SCRIPTS_TX_ID}"
       , "--contestation-period", "1"
       , "--hydra-signing-key", "/keys/rupert.sk"
@@ -140,7 +140,6 @@ services:
     depends_on:
       hydra-node-1:
         condition: service_started
-    restart: always
     volumes:
       - ./data/hydra-keys:/keys:ro
       - ./devnet:/devnet
@@ -148,6 +147,8 @@ services:
       - HYDRA_NODE_NUMBER=1
     ports:
       - "8001:8001"
+    networks:
+      hydra_net:
     command:
       [ "hydra-auction-delegate"
       , "--actor", "rupert"
@@ -162,7 +163,6 @@ services:
     depends_on:
       hydra-node-2:
         condition: service_started
-    restart: always
     volumes:
       - ./data/hydra-keys:/keys:ro
       - ./devnet:/devnet
@@ -170,6 +170,8 @@ services:
       - HYDRA_NODE_NUMBER=2
     ports:
       - "8002:8001"
+    networks:
+      hydra_net:
     command:
       [ "hydra-auction-delegate"
       , "--actor", "patricia"
@@ -184,7 +186,6 @@ services:
     depends_on:
       hydra-node-3:
         condition: service_started
-    restart: always
     volumes:
       - ./data/hydra-keys:/keys:ro
       - ./devnet:/devnet
@@ -192,6 +193,8 @@ services:
       - HYDRA_NODE_NUMBER=3
     ports:
       - "8003:8001"
+    networks:
+      hydra_net:
     command:
       [ "hydra-auction-delegate"
       , "--actor", "oscar"

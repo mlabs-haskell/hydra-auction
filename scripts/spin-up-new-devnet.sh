@@ -28,8 +28,13 @@ echo "Seeding hydra node actors with fuel and publish reference scripts"
 echo "Starting hydra nodes"
 docker-compose --profile hydra-node up -d
 
-echo "Starting delegate servers"
-docker-compose --profile delegate-server up -d
+start_delegate_servers="${1:-1}";
+
+if [ "$start_delegate_servers" = "1" ];
+then
+  echo "Starting delegate servers"
+  docker-compose --profile delegate-server up -d
+fi;
 
 echo "Changing node.socket owner to current user"
 sudo chown $USER:$USER ./devnet/node.socket

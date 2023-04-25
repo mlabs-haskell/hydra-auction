@@ -27,14 +27,12 @@ import HydraAuction.Types (AuctionTerms (..), BidTerms, StandingBidDatum)
 import Prettyprinter (Pretty (pretty), indent, viaShow, vsep, (<+>))
 
 data FrontendRequest
-  = -- FIXME: handle new client
-    QueryCurrentDelegateState
+  = QueryCurrentDelegateState
   | CommitStandingBid
       { auctionTerms :: AuctionTerms
       , utxoToCommit :: TxIn
       }
-  | -- FIXME: commit full datum
-    NewBid
+  | NewBid
       { auctionTerms :: AuctionTerms
       , datum :: StandingBidDatum
       }
@@ -87,13 +85,12 @@ instance Pretty RequestIgnoredReason where
         , indent 2 $ viaShow state
         ]
 
-data ResponseReason = Greeting | WasQueried | Updated
+data ResponseReason = WasQueried | Updated
   deriving stock (Eq, Show, Generic)
   deriving anyclass (FromJSON, ToJSON)
 
 instance Pretty ResponseReason where
   pretty = \case
-    Greeting -> "delegate sends a greeting"
     WasQueried -> "delegate was queried"
     Updated -> "delegate state was updated"
 

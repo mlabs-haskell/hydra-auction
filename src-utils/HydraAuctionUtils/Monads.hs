@@ -51,6 +51,7 @@ import Plutus.V1.Ledger.Address qualified as PlutusAddress
 -- HydraAuction imports
 import CardanoClient (buildAddress)
 import Control.Monad.IO.Class (MonadIO (liftIO))
+import Control.Monad.Trans (MonadTrans (lift))
 import HydraAuctionUtils.Extras.CardanoApi (networkIdToNetwork)
 import HydraAuctionUtils.Fixture (Actor, keysFor)
 import Plutus.V1.Ledger.Api (POSIXTime)
@@ -129,6 +130,9 @@ class Monad m => MonadBlockchainParams m where
 
 class Monad m => MonadHasActor m where
   askActor :: m Actor
+
+instance (MonadHasActor m, MonadTrans t, Monad (t m)) => MonadHasActor (t m) where
+  askActor = lift askActor
 
 -- Complex constraint synonims
 

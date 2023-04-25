@@ -55,7 +55,7 @@ import HydraAuction.Tx.Common (
   toForgeStateToken,
  )
 import HydraAuction.Tx.Deposit (parseBidDepositDatum)
-import HydraAuction.Tx.StandingBid (getStadingBidDatum)
+import HydraAuction.Tx.StandingBid (queryStandingBidDatum)
 import HydraAuction.Types (
   ApprovedBidders (..),
   ApprovedBiddersHash (..),
@@ -217,7 +217,10 @@ bidderBuys terms = do
       pubKeyHashAddress $
         seller terms
 
-  let txOutSellerGotBid standingBidUtxo =
+  -- FIXME: better error reporting
+  Just (StandingBidDatum {standingBidState}) <- queryStandingBidDatum terms
+
+  let txOutSellerGotBid =
         TxOut
           sellerAddress
           value
@@ -228,7 +231,6 @@ bidderBuys terms = do
             lovelaceToValue $
               Lovelace $
                 bidAmount' - calculateTotalFee terms
-          StandingBidDatum {standingBidState} = getStadingBidDatum standingBidUtxo
           bidAmount' = case standingBid standingBidState of
             (Just (BidTerms {bidAmount})) -> naturalToInt bidAmount
             Nothing -> error "Standing bid UTxO has no bid"
@@ -292,7 +294,7 @@ bidderBuys terms = do
         , collateral = Nothing
         , outs =
             [ txOutBidderGotLot bidderAddress
-            , txOutSellerGotBid standingBidUtxo
+            , txOutSellerGotBid
             , txOutFeeEscrow
             ]
         , toMint = TxMintValueNone

@@ -1,18 +1,17 @@
 module HydraAuction.Tx.StandingBid (
   newBid,
   cleanupTx,
-  getStadingBidDatum,
+  decodeInlineDatum,
+  queryStandingBidDatum,
   currentWinningBidder,
-  getApprovedBidders,
-  newBid',
+  createNewBidTx,
   createStandingBidDatum,
   moveToHydra,
 ) where
 
 -- Prelude imports
-
 -- Prelude imports
-import Hydra.Prelude (MonadIO, void)
+import Hydra.Prelude (MonadIO, rightToMaybe, void)
 import Prelude
 
 -- Haskell imports
@@ -22,7 +21,7 @@ import Control.Monad.Reader (MonadReader (ask))
 
 -- Plutus imports
 import Plutus.V1.Ledger.Value (assetClassValue)
-import Plutus.V2.Ledger.Api (PubKeyHash, fromData, getValidator)
+import Plutus.V2.Ledger.Api (FromData, PubKeyHash, fromData, getValidator)
 
 -- Hydra imports
 import Cardano.Api.UTxO qualified as UTxO
@@ -68,6 +67,7 @@ import HydraAuction.Tx.Common (
   mkInlinedDatumScriptWitness,
   scriptAddress,
   scriptPlutusScript,
+  scriptSingleUtxo,
   scriptUtxos,
   toForgeStateToken,
  )
@@ -102,60 +102,66 @@ import HydraAuctionUtils.Tx.Utxo (
   filterAdaOnlyUtxo,
  )
 
--- FIXME: change errors to cover Delegate caller case
--- FIXME: make generic Datum decoder
-getStadingBidDatum :: UTxO.UTxO -> StandingBidDatum
-getStadingBidDatum standingBidUtxo =
-  case UTxO.pairs standingBidUtxo of
-    [(_, out)] -> case txOutDatum out of
-      TxOutDatumInline scriptData ->
-        case fromData $ toPlutusData scriptData of
-          Just standingBidDatum -> standingBidDatum
-          Nothing ->
-            error "Impossible happened: Cannot decode standing bid datum"
-      _ -> error "Impossible happened: No inline data for standing bid"
-    _ -> error "Wrong number of standing bid UTxOs found"
+data DatumDecodingError = CannotDecodeDatum | NoInlineDatum
 
-currentWinningBidder :: (MonadNetworkId m, MonadQueryUtxo m) => AuctionTerms -> m (Maybe PubKeyHash)
-currentWinningBidder terms = do
-  standingBidUtxo <- scriptUtxos StandingBid terms
-  let StandingBidDatum {standingBidState} = getStadingBidDatum standingBidUtxo
-  return $ case standingBid standingBidState of
-    (Just (BidTerms {bidBidder})) -> Just bidBidder
+-- FIXME: move to utils
+decodeInlineDatum ::
+  forall a. FromData a => TxOut CtxUTxO -> Either DatumDecodingError a
+decodeInlineDatum out =
+  case txOutDatum out of
+    TxOutDatumInline scriptData ->
+      case fromData $ toPlutusData scriptData of
+        Just standingBidDatum -> Right standingBidDatum
+        Nothing -> Left CannotDecodeDatum
+    _ -> Left NoInlineDatum
+
+queryStandingBidDatum ::
+  (MonadNetworkId m, MonadQueryUtxo m, MonadFail m) =>
+  AuctionTerms ->
+  m (Maybe StandingBidDatum)
+queryStandingBidDatum terms = do
+  mStandingBidUtxo <- scriptSingleUtxo StandingBid terms
+  return $ case mStandingBidUtxo of
+    Just (_, txOut) -> rightToMaybe $ decodeInlineDatum txOut
     Nothing -> Nothing
 
-getApprovedBidders :: (MonadNetworkId m, MonadQueryUtxo m) => AuctionTerms -> m ApprovedBidders
-getApprovedBidders terms = do
-  standingBidUtxo <- scriptUtxos StandingBid terms
-  let StandingBidDatum {standingBidState} = getStadingBidDatum standingBidUtxo
-  pure $ approvedBidders standingBidState
+currentWinningBidder ::
+  (MonadNetworkId m, MonadQueryUtxo m, MonadFail m) => AuctionTerms -> m (Maybe PubKeyHash)
+currentWinningBidder terms = do
+  mDatum <- queryStandingBidDatum terms
+  return $ case mDatum of
+    Just (StandingBidDatum {standingBidState}) ->
+      case standingBid standingBidState of
+        (Just (BidTerms {bidBidder})) -> Just bidBidder
+        Nothing -> Nothing
+    Nothing -> Nothing
 
 newBid :: AuctionTerms -> Natural -> Runner ()
 newBid terms bidAmount = do
   MkExecutionContext {actor} <- ask
   (_, submitterVk, _) <- addressAndKeysForActor actor
-  -- FIXME: reflect bidder vs submitter missmatch in API
   let datum = createStandingBidDatum terms bidAmount submitterVk
-  tx <- newBid' terms actor datum
+  tx <- createNewBidTx terms actor datum
   submitAndAwaitTx tx
 
-newBid' ::
+createNewBidTx ::
   (MonadIO m, MonadFail m, MonadCardanoClient m, MonadTrace m) =>
   AuctionTerms ->
   Actor ->
   StandingBidDatum ->
   m Tx
-newBid' terms submitingActor bidDatum = do
+createNewBidTx terms submitingActor bidDatum = do
   -- Actor is not neccesary bidder, on L2 it may be commiter
-  logMsg "Doing new bid"
+  logMsg "Creating new bid transaction"
 
   (submitterAddress, _, submitterSk) <- addressAndKeysForActor submitingActor
   submitterMoneyUtxo <- queryUtxo (ByAddress submitterAddress)
+  validateHasSingleUtxo submitterMoneyUtxo "submitterMoneyUtxo"
 
-  standingBidUtxo <- scriptUtxos StandingBid terms
-
-  validateHasSingleUtxo standingBidUtxo "standingBidUtxo"
-  validateHasSingleUtxo submitterMoneyUtxo "bidderMoneyUtxo"
+  mStandingBidUtxo <- scriptSingleUtxo StandingBid terms
+  standingBidSingleUtxo <- case mStandingBidUtxo of
+    Just x -> return x
+    Nothing -> fail "Standing bid cannot be found"
 
   standingBidAddress <- scriptAddress StandingBid terms
 
@@ -179,7 +185,7 @@ newBid' terms submitingActor bidDatum = do
       , additionalSigners = []
       , referenceUtxo = mempty
       , witnessedUtxos =
-          [ (standingBidWitness, standingBidUtxo)
+          [ (standingBidWitness, UTxO.fromPairs [standingBidSingleUtxo])
           ]
       , collateral = Nothing
       , outs = [txOutStandingBid]

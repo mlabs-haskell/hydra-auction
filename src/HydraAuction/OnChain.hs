@@ -1,4 +1,17 @@
-module HydraAuction.OnChain (feeEscrowValidator, voucherAssetClass, scriptValidatorForTerms, AuctionScript (..), policy, standingBidValidator, escrowValidator, voucherCurrencySymbol, mkEscrowValidator, escrowAddress, standingBidAddress) where
+module HydraAuction.OnChain (
+  feeEscrowValidator,
+  voucherAssetClass,
+  scriptValidatorForTerms,
+  AuctionScript (..),
+  policy,
+  standingBidValidator,
+  escrowValidator,
+  voucherCurrencySymbol,
+  mkEscrowValidator,
+  escrowAddress,
+  standingBidAddress,
+  singleUtxoScripts,
+) where
 
 -- Prelude imports
 
@@ -36,7 +49,12 @@ import HydraAuctionUtils.Extras.Plutus (
 -- Addresses
 
 data AuctionScript = Escrow | StandingBid | FeeEscrow | Deposit
-  deriving stock (Prelude.Show)
+  deriving stock (Prelude.Show, Prelude.Eq)
+
+-- This is scripts for which on-chain script ensure that
+-- no more than single UTxO exists for given AuctionTerms
+singleUtxoScripts :: [AuctionScript]
+singleUtxoScripts = [Escrow, StandingBid, FeeEscrow]
 
 scriptValidatorForTerms :: AuctionScript -> AuctionTerms -> Validator
 scriptValidatorForTerms Escrow = escrowValidator
