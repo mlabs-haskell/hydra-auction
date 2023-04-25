@@ -182,6 +182,7 @@ matchingHydraEvent value =
     Just "HeadIsClosed" -> Just HeadIsClosed
     Just "ReadyToFanout" -> Just ReadyToFanout
     Just "HeadIsFinalized" -> HeadIsFinalized <$> retrieveField "utxo"
+    Just "HeadIsAborted" -> Just HeadIsAborted
     _ -> Nothing
   where
     getUtxoValueHandler =

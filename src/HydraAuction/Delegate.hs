@@ -8,6 +8,7 @@ module HydraAuction.Delegate (
   ClientResponseScope (..),
   ClientId,
   clientIsInScope,
+  abort,
 ) where
 
 -- Prelude imports
@@ -34,6 +35,7 @@ import HydraAuction.Delegate.Interface (
   MissingPrerequisite (..),
   RequestIgnoredReason (..),
   ResponseReason (..),
+  wasOpened,
  )
 import HydraAuction.OnChain.Common (validAuctionTerms)
 import HydraAuction.OnChain.StandingBid (validNewBidTerms)
@@ -189,12 +191,13 @@ delegateEventStep event = case event of
         return []
   AuctionStageStarted _ -> return []
   HydraEvent (CommandFailed commandName)
-    -- This is okay cuz of concurrent requests,
+    -- This is okay cuz these are concurrent requests,
     -- only one of which will be fulfilled
     | commandName `elem` ["Init", "Fanout"] -> return []
-    | commandName == "Abort" -> do
-        -- FIXME
-        liftIO $ putStrLn "Abort failed"
+    -- Preventing infinite loop of Abortions
+    | commandName `elem` ["Abort", "Close"] -> do
+        -- TODO: use logs
+        liftIO $ putStrLn "Abort/Close failed"
         return []
     | otherwise -> abort RequiredHydraRequestFailed
   HydraEvent hydraEvent
@@ -287,7 +290,9 @@ abort ::
   AbortReason ->
   t CompositeRunner [DelegateResponse]
 abort reason = do
-  lift $ runHydraInComposite $ sendCommand Abort
+  state <- get
+  let command = if wasOpened state then Close else Abort
+  lift $ runHydraInComposite $ sendCommand command
   updateStateAndResponse $ AbortRequested reason
 
 updateStateAndResponse ::
