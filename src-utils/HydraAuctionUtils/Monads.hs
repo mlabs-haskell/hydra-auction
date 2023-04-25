@@ -39,6 +39,8 @@ import Hydra.Cardano.Api (
   SystemStart,
   Tx,
   TxIn,
+  TxValidityLowerBound,
+  TxValidityUpperBound,
   VerificationKey,
   fromPlutusAddress,
   getTxId,
@@ -126,7 +128,9 @@ data BlockchainParams = MkBlockchainParams
 
 class Monad m => MonadBlockchainParams m where
   queryBlockchainParams :: m BlockchainParams
-  toSlotNo :: POSIXTime -> m SlotNo
+  convertValidityBound ::
+    (Maybe POSIXTime, Maybe POSIXTime) ->
+    m (TxValidityLowerBound, TxValidityUpperBound)
 
 class Monad m => MonadHasActor m where
   askActor :: m Actor

@@ -12,6 +12,7 @@ module HydraAuction.Runner (
   ExecutionContext (..),
   withActor,
   fileTracer,
+  toSlotNo,
   initWallet,
   stdoutOrNullTracer,
 ) where
@@ -68,8 +69,13 @@ import Hydra.Cardano.Api (
   Lovelace,
   NetworkId (Testnet),
   NetworkMagic (NetworkMagic),
+  SlotNo,
   Tx,
   UTxO,
+  pattern TxValidityLowerBound,
+  pattern TxValidityNoLowerBound,
+  pattern TxValidityNoUpperBound,
+  pattern TxValidityUpperBound,
  )
 import Hydra.Cluster.Faucet (Marked (Normal), seedFromFaucet)
 import Hydra.Logging (Tracer)
@@ -149,16 +155,26 @@ instance MonadBlockchainParams Runner where
         <*> queryEraHistory networkId nodeSocket QueryTip
         <*> queryStakePools networkId nodeSocket QueryTip
 
-  toSlotNo ptime = do
-    MkExecutionContext {node} <- ask
-    let RunningNode {networkId, nodeSocket} = node
-    timeHandle <-
-      liftIO $ queryTimeHandle networkId nodeSocket
-    let timeInSeconds = getPOSIXTime ptime `div` 1000
-        ndtime = secondsToNominalDiffTime $ fromInteger timeInSeconds
-        utcTime = posixSecondsToUTCTime ndtime
-    either (error . show) return $
-      slotFromUTCTime timeHandle utcTime
+  convertValidityBound (lowerBound', upperBound') = do
+    lowerBound <- case lowerBound' of
+      Nothing -> pure TxValidityNoLowerBound
+      Just x -> TxValidityLowerBound <$> toSlotNo x
+    upperBound <- case upperBound' of
+      Nothing -> pure TxValidityNoUpperBound
+      Just x -> TxValidityUpperBound <$> toSlotNo x
+    return (lowerBound, upperBound)
+
+toSlotNo :: POSIXTime -> Runner SlotNo
+toSlotNo ptime = do
+  MkExecutionContext {node} <- ask
+  let RunningNode {networkId, nodeSocket} = node
+  timeHandle <-
+    liftIO $ queryTimeHandle networkId nodeSocket
+  let timeInSeconds = getPOSIXTime ptime `div` 1000
+      ndtime = secondsToNominalDiffTime $ fromInteger timeInSeconds
+      utcTime = posixSecondsToUTCTime ndtime
+  either (error . show) return $
+    slotFromUTCTime timeHandle utcTime
 
 callWithTx ::
   (MonadReader ExecutionContext m, MonadIO m) =>

@@ -21,8 +21,7 @@ import CardanoNode (RunningNode (..))
 import Hydra.Cardano.Api (ChainPoint (..), SlotNo (..))
 
 -- Hydra auction imports
-import HydraAuction.Runner (ExecutionContext (..), Runner)
-import HydraAuctionUtils.Monads (MonadBlockchainParams (toSlotNo))
+import HydraAuction.Runner (ExecutionContext (..), Runner, toSlotNo)
 
 waitUntil :: POSIXTime -> Runner ()
 waitUntil time = do
