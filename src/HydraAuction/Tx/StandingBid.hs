@@ -75,7 +75,6 @@ import HydraAuction.Types (
   ApprovedBidders (..),
   AuctionTerms (..),
   BidTerms (..),
-  Natural,
   StandingBidDatum (..),
   StandingBidRedeemer (..),
   StandingBidState (..),
@@ -101,6 +100,7 @@ import HydraAuctionUtils.Tx.AutoCreateTx (
 import HydraAuctionUtils.Tx.Utxo (
   filterAdaOnlyUtxo,
  )
+import HydraAuctionUtils.Types.Natural (Natural)
 
 data DatumDecodingError = CannotDecodeDatum | NoInlineDatum
 
