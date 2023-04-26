@@ -257,6 +257,7 @@ library hydra-auction-utils
     HydraAuctionUtils.L1.Runner.Time
     HydraAuctionUtils.Monads
     HydraAuctionUtils.Monads.Actors
+    HydraAuctionUtils.Parsers
     HydraAuctionUtils.Plutus
     HydraAuctionUtils.PrettyPrinting
     HydraAuctionUtils.Time
@@ -272,7 +273,9 @@ library hydra-auction-utils
     , HUnit
     , hydra-plutus
     , hydra-test-utils
+    , optparse-applicative
     , plutus-tx
+    , protolude
 
 test-suite hydra-auction-test
   import:         common-lang
