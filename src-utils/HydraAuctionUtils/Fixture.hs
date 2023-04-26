@@ -1,13 +1,15 @@
 module HydraAuctionUtils.Fixture (
   Actor (..),
+  ActorKind (..),
   keysFor,
   hydraKeysFor,
-  hydraNodeActors,
+  actorsByKind,
   partyFor,
   allActors,
   actorFromPkh,
   getActorPubKeyHash,
   getActorsPubKeyHash,
+  getActorKind,
 ) where
 
 -- Prelude imports
@@ -17,6 +19,8 @@ import Prelude
 import Control.Monad.Extra (findM, unless)
 import Data.Aeson qualified as Aeson
 import Data.Bifunctor (first)
+import Data.Map (Map)
+import Data.Map qualified as Map
 import GHC.Generics (Generic)
 import System.FilePath ((<.>), (</>))
 
@@ -59,9 +63,25 @@ data Actor
 instance Aeson.FromJSON Actor
 instance Aeson.ToJSON Actor
 
--- These actors are supposed to be used as Hydra node admins
-hydraNodeActors :: [Actor]
-hydraNodeActors = [Oscar, Patricia, Rupert]
+allActors :: [Actor]
+allActors = [minBound .. maxBound]
+
+-- HydraNodeActor are supposed to be used as Hydra node admins
+data ActorKind = RegularActor | HydraNodeActor
+  deriving stock (Show, Eq, Ord, Enum, Bounded)
+
+actorsByKind :: Map ActorKind [Actor]
+actorsByKind =
+  Map.fromList
+    [ (RegularActor, [minBound .. Hans])
+    , (HydraNodeActor, [Oscar, Patricia, Rupert])
+    ]
+
+getActorKind :: Actor -> ActorKind
+getActorKind actor
+  | actor `elem` (Map.!) actorsByKind RegularActor =
+      RegularActor
+  | otherwise = HydraNodeActor
 
 -- | Get the "well-known" keys for given actor.
 keysFor :: Actor -> IO (VerificationKey PaymentKey, SigningKey PaymentKey)
@@ -89,7 +109,7 @@ partyFor actor = do
 
 hydraKeysFor :: Actor -> IO (VerificationKey HydraKey, SigningKey HydraKey)
 hydraKeysFor actor = do
-  unless (actor `elem` hydraNodeActors) $
+  unless (getActorKind actor == HydraNodeActor) $
     fail "Only Hydra Node actors do have hydra keys"
   bs <-
     readDataFile $
@@ -101,9 +121,6 @@ hydraKeysFor actor = do
     Left err ->
       fail $ "cannot decode text envelope from '" <> show bs <> "', error: " <> show err
     Right sk -> return (getVerificationKey sk, sk)
-
-allActors :: [Actor]
-allActors = [minBound .. maxBound]
 
 getActorPubKeyHash :: Actor -> IO PubKeyHash
 getActorPubKeyHash actor = do
