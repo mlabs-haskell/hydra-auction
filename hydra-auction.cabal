@@ -140,7 +140,6 @@ executable hydra-auction
     CLI.Config
     CLI.Parsers
     CLI.Parsers.TxIn
-    CLI.Prettyprinter
     CLI.Types
     CLI.Watch
 
@@ -259,6 +258,7 @@ library hydra-auction-utils
     HydraAuctionUtils.Monads
     HydraAuctionUtils.Monads.Actors
     HydraAuctionUtils.Plutus
+    HydraAuctionUtils.PrettyPrinting
     HydraAuctionUtils.Time
     HydraAuctionUtils.Tracing
     HydraAuctionUtils.Tx.AutoCreateTx
