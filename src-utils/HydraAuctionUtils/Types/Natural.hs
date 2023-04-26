@@ -35,7 +35,8 @@ newtype Natural = Natural Integer
 
 instance UnsafeFromData Natural where
   {-# INLINEABLE unsafeFromBuiltinData #-}
-  unsafeFromBuiltinData = fromJust . intToNatural . unsafeFromBuiltinData
+  unsafeFromBuiltinData =
+    maybe (error ()) id . intToNatural . unsafeFromBuiltinData
 
 instance ToData Natural where
   {-# INLINEABLE toBuiltinData #-}
@@ -46,11 +47,6 @@ instance FromData Natural where
   fromBuiltinData d = do
     i <- fromBuiltinData d
     intToNatural i
-
-{-# INLINEABLE fromJust #-}
-fromJust :: Maybe a -> a
-fromJust (Just a) = a
-fromJust _ = error ()
 
 {-# INLINEABLE intToNatural #-}
 intToNatural :: Integer -> Maybe Natural
