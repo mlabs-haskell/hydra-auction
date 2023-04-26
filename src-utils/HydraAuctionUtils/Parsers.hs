@@ -18,7 +18,7 @@ import Text.Read (readMaybe)
 import Cardano.Api (NetworkMagic (..))
 
 -- HydraAuction imports
-import HydraAuctionUtils.Fixture (Actor (..))
+import HydraAuctionUtils.Fixture (Actor (..), actorName)
 import HydraAuctionUtils.Types.Natural (Natural, intToNatural)
 
 parseActor :: ReadM Actor
@@ -29,7 +29,7 @@ parseActor =
     parseToMaybe = flip Map.lookup nameToActor . fmap toLower
     nameToActor =
       Map.fromList
-        [ (toLower <$> show actor, actor)
+        [ (actorName actor, actor)
         | actor <- [minBound .. maxBound]
         ]
 

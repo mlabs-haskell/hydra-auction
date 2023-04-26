@@ -1,6 +1,7 @@
 module HydraAuctionUtils.Fixture (
   Actor (..),
   ActorKind (..),
+  actorName,
   keysFor,
   hydraKeysFor,
   actorsByKind,
@@ -19,6 +20,7 @@ import Prelude
 import Control.Monad.Extra (findM, unless)
 import Data.Aeson qualified as Aeson
 import Data.Bifunctor (first)
+import Data.Char (toLower)
 import Data.Map (Map)
 import Data.Map qualified as Map
 import GHC.Generics (Generic)
@@ -144,15 +146,4 @@ actorFromPkh pkh = do
     Nothing -> fail $ "Unable to find actor matching key: " <> show pkh
 
 actorName :: Actor -> String
-actorName = \case
-  Alice -> "alice"
-  Bob -> "bob"
-  Carol -> "carol"
-  Dave -> "dave"
-  Eve -> "eve"
-  Frank -> "frank"
-  Grace -> "grace"
-  Hans -> "hans"
-  Oscar -> "oscar"
-  Patricia -> "patricia"
-  Rupert -> "rupert"
+actorName = map toLower . show
