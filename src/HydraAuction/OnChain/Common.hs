@@ -37,7 +37,8 @@ import Plutus.V2.Ledger.Contexts (TxInfo, TxOut, findDatum, txInfoMint, txOutAdd
 import PlutusTx qualified
 
 -- Hydra auction imports
-import HydraAuction.Types (AuctionStage (..), AuctionTerms (..), naturalToInt)
+import HydraAuction.Types (AuctionStage (..), AuctionTerms (..))
+import HydraAuctionUtils.Types.Natural (naturalToInt)
 
 {-# INLINEABLE minAuctionFee #-}
 minAuctionFee :: Integer

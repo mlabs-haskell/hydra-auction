@@ -54,8 +54,6 @@ import HydraAuction.Types (
   AuctionTerms (..),
   BidDepositDatum (..),
   BidDepositRedeemer (..),
-  Natural,
-  naturalToInt,
  )
 import HydraAuctionUtils.Extras.Plutus (scriptCurrencySymbol)
 import HydraAuctionUtils.Monads (
@@ -67,6 +65,10 @@ import HydraAuctionUtils.Tx.AutoCreateTx (
  )
 import HydraAuctionUtils.Tx.Utxo (
   filterAdaOnlyUtxo,
+ )
+import HydraAuctionUtils.Types.Natural (
+  Natural,
+  naturalToInt,
  )
 
 parseBidDepositDatum :: TxOut ctx -> BidDepositDatum

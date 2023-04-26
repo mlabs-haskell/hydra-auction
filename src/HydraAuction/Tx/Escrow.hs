@@ -70,7 +70,6 @@ import HydraAuction.Types (
   StandingBidState (..),
   VoucherForgingRedeemer (MintVoucher),
   calculateTotalFee,
-  naturalToInt,
  )
 import HydraAuctionUtils.Extras.Plutus (scriptCurrencySymbol)
 import HydraAuctionUtils.Monads (
@@ -87,6 +86,7 @@ import HydraAuctionUtils.Tx.Utxo (
   filterAdaOnlyUtxo,
   filterUtxoByCurrencySymbols,
  )
+import HydraAuctionUtils.Types.Natural (naturalToInt)
 
 announceAuction :: AuctionTerms -> Runner ()
 announceAuction terms = do

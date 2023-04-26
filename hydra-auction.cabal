@@ -177,7 +177,6 @@ executable hydra-auction
     , hydra-cardano-api
     , hydra-plutus
     , hydra-test-utils
-    , natural-numbers
     , optparse-applicative
     , ouroboros-network               ==0.1.0.1
     , parsec
@@ -244,7 +243,6 @@ library
     , hydra-plutus
     , hydra-prelude
     , hydra-test-utils
-    , natural-numbers
     , plutus-tx
     , time
     , typed-process
@@ -264,6 +262,7 @@ library hydra-auction-utils
     HydraAuctionUtils.Tracing
     HydraAuctionUtils.Tx.AutoCreateTx
     HydraAuctionUtils.Tx.Utxo
+    HydraAuctionUtils.Types.Natural
     Paths_hydra_auction
 
   build-depends:
