@@ -8,6 +8,8 @@ module HydraAuctionUtils.Parsers (
 import Prelude
 
 -- Haskell imports
+import Data.Char (toLower)
+import Data.Map qualified as Map
 import Options.Applicative.Builder (ReadM, eitherReader)
 import Protolude.Exceptions (note)
 import Text.Read (readMaybe)
@@ -20,17 +22,18 @@ import HydraAuctionUtils.Fixture (Actor (..))
 import HydraAuctionUtils.Types.Natural (Natural, intToNatural)
 
 parseActor :: ReadM Actor
-parseActor = eitherReader $ \case
-  "alice" -> pure Alice
-  "bob" -> pure Bob
-  "carol" -> pure Carol
-  "dave" -> pure Dave
-  "eve" -> pure Eve
-  "frank" -> pure Frank
-  "grace" -> pure Grace
-  "hans" -> pure Hans
-  _ -> Left "Actor parsing error"
+parseActor =
+  eitherReader $
+    note "failed to parse actor" . parseToMaybe
+  where
+    parseToMaybe = flip Map.lookup nameToActor . fmap toLower
+    nameToActor =
+      Map.fromList
+        [ (toLower <$> show actor, actor)
+        | actor <- [minBound .. maxBound]
+        ]
 
+-- FIXME: use Lovelace type
 parseAda :: ReadM Natural
 parseAda = eitherReader $ \s -> note "failed to parse Ada" $ do
   ada <- readMaybe s
