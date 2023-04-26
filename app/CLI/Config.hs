@@ -10,6 +10,7 @@ module CLI.Config (
   writeAuctionTermsConfig,
   writeAuctionTermsDynamic,
   configToAuctionTerms,
+  toJsonFileName,
 ) where
 
 -- Prelude imports
@@ -23,6 +24,7 @@ import Data.Aeson (FromJSON, ToJSON)
 import Data.Aeson qualified as Aeson
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as LBS
+import Data.String (IsString)
 import System.Directory (
   createDirectoryIfMissing,
   doesFileExist,
@@ -42,7 +44,7 @@ import HydraAuctionUtils.Fixture (Actor (..))
 -- =============================================================================
 -- Auction config and state directories
 newtype AuctionName = AuctionName String
-  deriving newtype (Prelude.Show, Prelude.Eq)
+  deriving newtype (Prelude.Show, Prelude.Eq, IsString)
 
 getRelativeDirectory :: FilePath -> IO FilePath
 getRelativeDirectory filepath = do

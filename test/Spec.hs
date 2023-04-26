@@ -10,6 +10,8 @@ import GHC.IO.Encoding (setLocaleEncoding, utf8)
 import Test.Tasty (TestTree, defaultMain, testGroup)
 
 -- Hydra auction test imports
+
+import EndToEnd.CLI qualified as CLI
 import EndToEnd.Ledger.Auction qualified as Ledger.Auction
 import EndToEnd.Ledger.BidDeposit qualified as Ledger.BidDeposit
 import EndToEnd.Ledger.L2 qualified as LedgerL2
@@ -28,4 +30,5 @@ testSuite =
     , Ledger.BidDeposit.testSuite
     , LedgerL2.testSuite
     , UnitCommon.testSuite
+    , CLI.testSuite
     ]

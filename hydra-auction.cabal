@@ -275,6 +275,10 @@ test-suite hydra-auction-test
   type:           exitcode-stdio-1.0
   main-is:        Spec.hs
   other-modules:
+    CLI.Actions
+    CLI.Config
+    CLI.Prettyprinter
+    EndToEnd.CLI
     EndToEnd.HydraUtils
     EndToEnd.Ledger.Auction
     EndToEnd.Ledger.BidDeposit
@@ -307,5 +311,5 @@ test-suite hydra-auction-test
     , tasty-hunit
     , text
 
-  hs-source-dirs: test
+  hs-source-dirs: test app
   ghc-options:    -threaded -rtsopts
