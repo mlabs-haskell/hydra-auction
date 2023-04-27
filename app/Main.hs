@@ -6,14 +6,21 @@ module Main (main) where
 import Prelude
 
 -- Haskell imports
+
+import Control.Concurrent.Async (withAsync)
+import Control.Monad (forever)
 import Control.Monad.Catch (try)
 import Control.Monad.Trans.Class (lift)
+import Control.Tracer (contramap, stdoutTracer, traceWith)
+import Data.Aeson (eitherDecode, encode)
+import Data.IORef (IORef, newIORef, writeIORef)
 import Network.WebSockets (
   Connection,
   receiveData,
   runClient,
   sendTextData,
  )
+import Prettyprinter (Pretty (pretty))
 import System.Console.Haskeline (
   InputT,
   defaultSettings,
@@ -21,24 +28,34 @@ import System.Console.Haskeline (
   runInputT,
  )
 
--- Hydra imports
-import Hydra.Logging (Verbosity (Quiet, Verbose))
-import Hydra.Prelude (SomeException, ask, liftIO)
-
--- Hydra auction imports
-import HydraAuctionUtils.L1.Runner (
-  ExecutionContext (..),
-  L1Runner,
-  executeL1Runner,
-  stdoutOrNullTracer,
- )
-
+-- Cardano imports
 import CardanoNode (
   RunningNode (
     RunningNode,
     networkId,
     nodeSocket
   ),
+ )
+
+-- Hydra imports
+import Hydra.Logging (Verbosity (Quiet, Verbose))
+import Hydra.Prelude (SomeException, ask, liftIO)
+
+-- Hydra auction imports
+
+import HydraAuction.Delegate.Interface (
+  DelegateResponse (..),
+  DelegateState,
+  FrontendRequest (QueryCurrentDelegateState),
+  IncorrectRequestDataReason (..),
+  RequestIgnoredReason (..),
+  initialState,
+ )
+import HydraAuctionUtils.L1.Runner (
+  ExecutionContext (..),
+  L1Runner,
+  executeL1Runner,
+  stdoutOrNullTracer,
  )
 
 -- Hydra auction CLI imports
@@ -58,20 +75,6 @@ import CLI.Types (CLIError (..))
 import CLI.Watch (
   watchAuction,
  )
-import Control.Concurrent.Async (withAsync)
-import Control.Monad (forever)
-import Control.Tracer (contramap, stdoutTracer, traceWith)
-import Data.Aeson (eitherDecode, encode)
-import Data.IORef (IORef, newIORef, writeIORef)
-import HydraAuction.Delegate.Interface (
-  DelegateResponse (..),
-  DelegateState,
-  FrontendRequest (QueryCurrentDelegateState),
-  IncorrectRequestDataReason (..),
-  RequestIgnoredReason (..),
-  initialState,
- )
-import Prettyprinter (Pretty (pretty))
 
 main :: IO ()
 main = do

@@ -30,13 +30,15 @@ import HydraAuction.Tx.TestNFT (mintOneTestNFT)
 import HydraAuction.Types (
   ApprovedBidders (..),
   AuctionTerms (..),
-  Natural,
-  intToNatural,
-  naturalToInt,
  )
 import HydraAuctionUtils.Fixture (getActorsPubKeyHash)
 import HydraAuctionUtils.L1.Runner (L1Runner)
 import HydraAuctionUtils.L1.Runner.Time (waitUntil)
+import HydraAuctionUtils.Types.Natural (
+  Natural,
+  intToNatural,
+  naturalToInt,
+ )
 
 -- HydraAuction test imports
 

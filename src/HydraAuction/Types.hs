@@ -5,9 +5,6 @@
 -- FIXME: Use template Haskell to derive Eq instances
 module HydraAuction.Types (
   isStarted,
-  intToNatural,
-  naturalToInt,
-  Natural,
   ApprovedBiddersHash (..),
   BidTerms (..),
   BidDepositDatum (..),
@@ -48,7 +45,7 @@ import PlutusTx.IsData.Class (FromData, ToData, UnsafeFromData)
 -- Hydra auction imports
 import HydraAuction.Addresses (VoucherCS)
 import HydraAuctionUtils.Extras.PlutusOrphans ()
-import HydraAuctionUtils.Types.Natural (Natural, intToNatural, naturalToInt)
+import HydraAuctionUtils.Types.Natural (Natural, naturalToInt)
 
 -- Base datatypes
 data AuctionStage

@@ -6,7 +6,6 @@ module CLI.Actions (
 ) where
 
 -- Prelude imports
--- Prelude imports
 import Hydra.Prelude (MonadIO, ask, liftIO)
 import Prelude
 
@@ -49,7 +48,12 @@ import HydraAuction.Tx.Escrow (
 import HydraAuction.Tx.StandingBid (cleanupTx, createStandingBidDatum, currentWinningBidder, newBid)
 import HydraAuction.Tx.TermsConfig (constructTermsDynamic)
 import HydraAuction.Tx.TestNFT (findTestNFT, mintOneTestNFT)
-import HydraAuction.Types (ApprovedBidders (..), AuctionStage (..), AuctionTerms, BidDepositDatum (..), Natural, naturalToInt)
+import HydraAuction.Types (
+  ApprovedBidders (..),
+  AuctionStage (..),
+  AuctionTerms,
+  BidDepositDatum (..),
+ )
 import HydraAuctionUtils.Fixture (Actor (..), actorFromPkh, allActors, getActorsPubKeyHash)
 import HydraAuctionUtils.L1.Runner (
   ExecutionContext (..),
@@ -63,6 +67,7 @@ import HydraAuctionUtils.Monads.Actors (
   addressAndKeys,
  )
 import HydraAuctionUtils.PrettyPrinting (prettyPrintUtxo)
+import HydraAuctionUtils.Types.Natural (Natural, naturalToInt)
 
 -- Hydra auction CLI imports
 import CLI.Config (
