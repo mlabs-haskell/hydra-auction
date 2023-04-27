@@ -2,8 +2,6 @@ module HydraAuction.Tx.Common (
   scriptUtxos,
   scriptAddress,
   scriptPlutusScript,
-  currentTimeSeconds,
-  currentTimeMilliseconds,
   currentAuctionStage,
   toForgeStateToken,
   scriptSingleUtxo,
@@ -14,13 +12,11 @@ import Prelude
 
 -- Haskell imports
 import Control.Monad (when)
-import Control.Monad.TimeMachine (MonadTime (getCurrentTime))
-import Data.Time.Clock.POSIX qualified as POSIXTime
+import Control.Monad.TimeMachine (MonadTime)
 
 -- Plutus imports
 import Plutus.V1.Ledger.Interval (member)
 import Plutus.V2.Ledger.Api (
-  POSIXTime (..),
   getMintingPolicy,
   getValidator,
  )
@@ -66,20 +62,13 @@ import HydraAuctionUtils.Monads (
   MonadQueryUtxo (..),
   UtxoQuery (..),
  )
+import HydraAuctionUtils.Time (currentPlutusPOSIXTime)
 import HydraAuctionUtils.Tx.Build (mintedTokens, tokenToAsset)
-
-currentTimeSeconds :: MonadTime timedMonad => timedMonad Integer
-currentTimeSeconds =
-  round . POSIXTime.utcTimeToPOSIXSeconds <$> getCurrentTime
-
-currentTimeMilliseconds :: MonadTime timedMonad => timedMonad Integer
-currentTimeMilliseconds =
-  round . (* 1000) . POSIXTime.utcTimeToPOSIXSeconds <$> getCurrentTime
 
 currentAuctionStage ::
   (MonadTime timedMonad) => AuctionTerms -> timedMonad AuctionStage
 currentAuctionStage terms = do
-  currentTime <- POSIXTime <$> currentTimeMilliseconds
+  currentTime <- currentPlutusPOSIXTime
   let matchingStages = filter (member currentTime . stageToInterval terms) auctionStages
   return $ case matchingStages of
     [stage] -> stage

@@ -261,6 +261,7 @@ library hydra-auction-utils
     HydraAuctionUtils.Monads
     HydraAuctionUtils.Monads.Actors
     HydraAuctionUtils.Plutus
+    HydraAuctionUtils.Time
     HydraAuctionUtils.Tracing
     HydraAuctionUtils.Tx.AutoCreateTx
     HydraAuctionUtils.Tx.Build

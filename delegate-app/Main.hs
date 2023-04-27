@@ -82,9 +82,10 @@ import HydraAuction.Hydra.Monad (AwaitedHydraEvent (..), waitForHydraEvent)
 import HydraAuction.Hydra.Runner (HydraRunner, executeHydraRunnerFakingParams)
 import HydraAuction.OnChain.Common (secondsLeftInInterval, stageToInterval)
 import HydraAuction.Runner (dockerNode, executeRunnerWithNodeAs)
-import HydraAuction.Tx.Common (currentAuctionStage, currentTimeMilliseconds)
+import HydraAuction.Tx.Common (currentAuctionStage)
 import HydraAuction.Types (AuctionTerms)
 import HydraAuctionUtils.Fixture (Actor (..))
+import HydraAuctionUtils.Time (currentPlutusPOSIXTime)
 import HydraAuctionUtils.Tracing (
   MonadTracer (trace),
   askTracer,
@@ -335,7 +336,7 @@ mbQueueAuctionPhases delegateEvents toClientsChannel = do
       atomically $
         writeTQueue delegateEvents $
           AuctionStageStarted currentStage
-      currentPosixTime <- POSIXTime <$> currentTimeMilliseconds
+      currentPosixTime <- currentPlutusPOSIXTime
       let mSecsLeft =
             secondsLeftInInterval
               currentPosixTime
