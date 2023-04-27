@@ -59,9 +59,12 @@ import HydraAuction.OnChain (
   voucherAssetClass,
  )
 import HydraAuction.Runner (ExecutionContext (..), Runner)
-import HydraAuction.Tx.Common (
+import HydraAuctionUtils.Monads.Actors (
   actorTipUtxo,
   addressAndKeys,
+ )
+
+import HydraAuction.Tx.Common (
   scriptAddress,
   scriptPlutusScript,
   scriptSingleUtxo,

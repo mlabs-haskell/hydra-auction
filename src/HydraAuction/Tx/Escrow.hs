@@ -44,8 +44,6 @@ import HydraAuction.Addresses (VoucherCS (..))
 import HydraAuction.OnChain (AuctionScript (..), policy, voucherAssetClass)
 import HydraAuction.Runner (Runner)
 import HydraAuction.Tx.Common (
-  actorTipUtxo,
-  addressAndKeys,
   scriptAddress,
   scriptPlutusScript,
   scriptUtxos,
@@ -74,6 +72,10 @@ import HydraAuctionUtils.Monads (
   UtxoQuery (ByTxIns),
   fromPlutusAddressInMonad,
   logMsg,
+ )
+import HydraAuctionUtils.Monads.Actors (
+  actorTipUtxo,
+  addressAndKeys,
  )
 import HydraAuctionUtils.Tx.AutoCreateTx (
   AutoCreateParams (..),

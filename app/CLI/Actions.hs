@@ -37,8 +37,6 @@ import HydraAuction.Runner (
   withActor,
  )
 import HydraAuction.Tx.Common (
-  actorTipUtxo,
-  addressAndKeys,
   currentAuctionStage,
   scriptSingleUtxo,
   scriptUtxos,
@@ -60,6 +58,10 @@ import HydraAuction.Tx.TestNFT (findTestNFT, mintOneTestNFT)
 import HydraAuction.Types (ApprovedBidders (..), AuctionStage (..), AuctionTerms, BidDepositDatum (..), Natural, naturalToInt)
 import HydraAuctionUtils.Fixture (Actor (..), actorFromPkh, allActors, getActorsPubKeyHash)
 import HydraAuctionUtils.Monads (fromPlutusAddressInMonad)
+import HydraAuctionUtils.Monads.Actors (
+  actorTipUtxo,
+  addressAndKeys,
+ )
 
 -- Hydra auction CLI imports
 import CLI.Config (

@@ -1,6 +1,4 @@
 module HydraAuction.Tx.Common (
-  actorTipUtxo,
-  addressAndKeys,
   scriptUtxos,
   scriptAddress,
   scriptPlutusScript,
@@ -12,7 +10,6 @@ module HydraAuction.Tx.Common (
 ) where
 
 -- Prelude imports
-import Hydra.Prelude (ask)
 import Prelude
 
 -- Haskell imports
@@ -36,14 +33,11 @@ import Hydra.Cardano.Api (
   Address,
   BuildTx,
   CtxUTxO,
-  PaymentKey,
   PlutusScript,
   ShelleyAddr,
-  SigningKey,
   TxIn,
   TxMintValue,
   TxOut,
-  VerificationKey,
   fromPlutusScript,
   pattern PlutusScript,
  )
@@ -61,7 +55,6 @@ import HydraAuction.OnChain.StateToken (
   StateTokenKind (..),
   stateTokenKindToTokenName,
  )
-import HydraAuction.Runner (ExecutionContext (..), Runner)
 import HydraAuction.Types (
   AuctionStage,
   AuctionTerms,
@@ -72,7 +65,6 @@ import HydraAuctionUtils.Monads (
   MonadNetworkId (..),
   MonadQueryUtxo (..),
   UtxoQuery (..),
-  addressAndKeysForActor,
  )
 import HydraAuctionUtils.Tx.Build (mintedTokens, tokenToAsset)
 
@@ -105,21 +97,6 @@ toForgeStateToken terms redeemer =
     num = case redeemer of
       MintVoucher -> 1
       BurnVoucher -> -1
-
-addressAndKeys ::
-  Runner
-    ( Address ShelleyAddr
-    , VerificationKey PaymentKey
-    , SigningKey PaymentKey
-    )
-addressAndKeys = do
-  MkExecutionContext {actor} <- ask
-  addressAndKeysForActor actor
-
-actorTipUtxo :: Runner UTxO.UTxO
-actorTipUtxo = do
-  (address, _, _) <- addressAndKeys
-  queryUtxo (ByAddress address)
 
 scriptPlutusScript :: AuctionScript -> AuctionTerms -> PlutusScript
 scriptPlutusScript script terms = fromPlutusScript $ getValidator $ scriptValidatorForTerms script terms

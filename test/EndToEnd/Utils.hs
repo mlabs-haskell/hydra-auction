@@ -31,10 +31,11 @@ import Hydra.Cardano.Api (toPlutusValue, txOutValue)
 import HydraAuction.OnChain (AuctionScript (..))
 import HydraAuction.OnChain.TestNFT (testNftAssetClass)
 import HydraAuction.Runner (Runner, executeTestRunner, withActor)
-import HydraAuction.Tx.Common (actorTipUtxo, scriptUtxos)
+import HydraAuction.Tx.Common (scriptUtxos)
 import HydraAuction.Tx.TermsConfig (AuctionTermsConfig (..))
 import HydraAuction.Types (AuctionTerms (..), intToNatural)
 import HydraAuctionUtils.Fixture (Actor)
+import HydraAuctionUtils.Monads.Actors (actorTipUtxo)
 
 config :: AuctionTermsConfig
 config =
