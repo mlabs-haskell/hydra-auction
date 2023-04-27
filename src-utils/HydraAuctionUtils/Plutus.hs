@@ -1,4 +1,10 @@
-module HydraAuctionUtils.Plutus where
+module HydraAuctionUtils.Plutus (
+  byAddress,
+  decodeOutputDatum,
+  isNotAdaOnlyOutput,
+  lovelaceOfOutput,
+  nothingForged,
+) where
 
 -- Prelude imports
 import PlutusTx.Prelude
