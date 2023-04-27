@@ -11,9 +11,6 @@ import Data.Time.Clock (getCurrentTime)
 import Data.Time.Format (defaultTimeLocale, formatTime)
 import System.Console.ANSI
 
--- Plutus imports
-import Plutus.V2.Ledger.Api (POSIXTime (..))
-
 -- Hydra auction
 import CLI.Config (
   AuctionName (..),

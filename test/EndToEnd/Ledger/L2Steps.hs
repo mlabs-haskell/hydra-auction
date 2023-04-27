@@ -33,13 +33,13 @@ import HydraAuction.Delegate.Interface (
   InitializedState (..),
   ResponseReason (..),
  )
-import HydraAuction.Hydra.Interface (HydraEvent (..), HydraEventKind (..))
-import HydraAuction.Hydra.Monad (AwaitedHydraEvent (..), waitForHydraEvent)
 import HydraAuction.OnChain (AuctionScript (..))
 import HydraAuction.Tx.Common (scriptSingleUtxo)
 import HydraAuction.Tx.StandingBid (createStandingBidDatum, queryStandingBidDatum)
 import HydraAuction.Types (AuctionStage (..), AuctionTerms, Natural, standingBid, standingBidState)
 import HydraAuctionUtils.Fixture (Actor, keysFor)
+import HydraAuctionUtils.Hydra.Interface (HydraEvent (..), HydraEventKind (..))
+import HydraAuctionUtils.Hydra.Monad (AwaitedHydraEvent (..), waitForHydraEvent)
 import HydraAuctionUtils.Monads.Actors (MonadHasActor (..))
 
 -- HydraAuction test imports

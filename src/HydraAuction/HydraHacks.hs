@@ -78,8 +78,9 @@ import Hydra.Ledger.Cardano.Builder (
 import Hydra.Party (Party)
 
 -- HydraAuction imports
-import HydraAuction.Runner (ExecutionContext (..), Runner)
+
 import HydraAuctionUtils.Fixture (partyFor)
+import HydraAuctionUtils.L1.Runner (ExecutionContext (..), Runner)
 import HydraAuctionUtils.Monads (
   BlockchainParams (..),
   MonadBlockchainParams (..),

@@ -1,4 +1,4 @@
-module HydraAuction.Runner (
+module HydraAuctionUtils.L1.Runner (
   HydraAuctionLog (..),
   EndToEndLog (..),
   NodeLog (..),
@@ -6,7 +6,6 @@ module HydraAuction.Runner (
   executeRunner,
   executeRunnerWithNodeAs,
   executeTestRunner,
-  executeDockerRunner,
   dockerNode,
   StateDirectory (..),
   ExecutionContext (..),
@@ -36,7 +35,6 @@ import Prelude
 import Control.Monad (void)
 import Control.Monad.Catch (MonadCatch, MonadMask, MonadThrow)
 import Control.Tracer (nullTracer, stdoutTracer, traceWith)
-import System.Process.Typed (runProcess_)
 
 -- Cardano imports
 import CardanoClient (
@@ -76,13 +74,14 @@ import Hydra.Logging (Tracer)
 import HydraNode (EndToEndLog (FromCardanoNode, FromFaucet))
 
 -- Hydra auction imports
-import HydraAuction.Runner.Tracer (
+
+import HydraAuctionUtils.Fixture (Actor (..), keysFor)
+import HydraAuctionUtils.L1.Runner.Tracer (
   HydraAuctionLog (..),
   StateDirectory (..),
   fileTracer,
   stdoutOrNullTracer,
  )
-import HydraAuctionUtils.Fixture (Actor (..), keysFor)
 import HydraAuctionUtils.Monads (
   BlockchainParams (..),
   MonadBlockchainParams (..),
@@ -216,11 +215,6 @@ dockerNode =
     { networkId = Testnet $ NetworkMagic 42
     , nodeSocket = "./devnet/node.socket"
     }
-
-executeDockerRunner :: Runner () -> IO ()
-executeDockerRunner runner = do
-  runProcess_ "make start-docker"
-  executeRunnerWithNodeAs dockerNode Alice runner
 
 executeRunnerWithNodeAs :: forall x. RunningNode -> Actor -> Runner x -> IO x
 executeRunnerWithNodeAs node actor runner = do

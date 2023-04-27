@@ -32,7 +32,7 @@ import HydraAuction.OnChain.TestNFT (
   testNftPolicy,
   testNftTokenName,
  )
-import HydraAuction.Runner (Runner)
+import HydraAuctionUtils.L1.Runner (Runner)
 import HydraAuctionUtils.Monads.Actors (
   actorTipUtxo,
   addressAndKeys,

@@ -40,7 +40,6 @@ import Hydra.Cardano.Api (
 -- Hydra auction imports
 import HydraAuction.Addresses (VoucherCS (..))
 import HydraAuction.OnChain (AuctionScript (..), policy)
-import HydraAuction.Runner (Runner)
 import HydraAuctionUtils.Monads.Actors (
   actorTipUtxo,
   addressAndKeys,
@@ -57,6 +56,7 @@ import HydraAuction.Types (
   BidDepositRedeemer (..),
  )
 import HydraAuctionUtils.Extras.Plutus (scriptCurrencySymbol)
+import HydraAuctionUtils.L1.Runner (Runner)
 import HydraAuctionUtils.Monads (
   logMsg,
  )

@@ -15,13 +15,13 @@ import Control.Monad.Reader (MonadReader, ReaderT (runReaderT), ask)
 import Control.Monad.Trans (MonadIO (liftIO))
 
 -- HydraAuction imports
-import HydraAuction.Hydra.Monad (MonadHydra (..))
-import HydraAuction.Hydra.Runner (
+import HydraAuctionUtils.Hydra.Monad (MonadHydra (..))
+import HydraAuctionUtils.Hydra.Runner (
   HydraExecutionContext,
   HydraRunner,
   executeHydraRunner,
  )
-import HydraAuction.Runner (ExecutionContext, Runner, executeRunner)
+import HydraAuctionUtils.L1.Runner (ExecutionContext, Runner, executeRunner)
 import HydraAuctionUtils.Monads.Actors (MonadHasActor (..))
 
 -- | Contexts should use same actor internally

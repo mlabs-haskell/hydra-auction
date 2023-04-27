@@ -15,11 +15,7 @@ import Test.Tasty.HUnit (Assertion, testCase)
 import Hydra.Prelude (ask)
 
 -- Hydra auction imports
-import HydraAuction.Runner (
-  executeRunnerWithNodeAs,
-  initWallet,
- )
-import HydraAuction.Runner.Time (waitUntil)
+
 import HydraAuction.Tx.Escrow (
   bidderBuys,
  )
@@ -27,6 +23,11 @@ import HydraAuction.Tx.StandingBid (newBid)
 import HydraAuction.Tx.TermsConfig (AuctionTermsConfig (..))
 import HydraAuction.Types (AuctionTerms (..))
 import HydraAuctionUtils.Fixture (Actor (..), hydraNodeActors)
+import HydraAuctionUtils.L1.Runner (
+  executeRunnerWithNodeAs,
+  initWallet,
+ )
+import HydraAuctionUtils.L1.Runner.Time (waitUntil)
 
 -- Hydra auction test imports
 import EndToEnd.HydraUtils (
