@@ -32,10 +32,11 @@ import HydraAuction.OnChain (AuctionScript (..))
 import HydraAuction.OnChain.TestNFT (testNftAssetClass)
 import HydraAuction.Tx.Common (scriptUtxos)
 import HydraAuction.Tx.TermsConfig (AuctionTermsConfig (..))
-import HydraAuction.Types (AuctionTerms (..), intToNatural)
+import HydraAuction.Types (AuctionTerms (..))
 import HydraAuctionUtils.Fixture (Actor)
 import HydraAuctionUtils.L1.Runner (L1Runner, executeTestL1Runner, withActor)
 import HydraAuctionUtils.Monads.Actors (actorTipUtxo)
+import HydraAuctionUtils.Types.Natural (intToNatural)
 
 config :: AuctionTermsConfig
 config =

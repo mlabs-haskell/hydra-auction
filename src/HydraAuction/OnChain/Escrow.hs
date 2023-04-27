@@ -34,7 +34,6 @@ import HydraAuction.Types (
   StandingBidState (..),
   calculateTotalFee,
   isStarted,
-  naturalToInt,
  )
 import HydraAuctionUtils.Plutus (
   byAddress,
@@ -42,6 +41,7 @@ import HydraAuctionUtils.Plutus (
   lovelaceOfOutput,
   nothingForged,
  )
+import HydraAuctionUtils.Types.Natural (naturalToInt)
 
 {-# INLINEABLE mkEscrowValidator #-}
 mkEscrowValidator :: (StandingBidAddress, FeeEscrowAddress, AuctionTerms) -> AuctionEscrowDatum -> EscrowRedeemer -> ScriptContext -> Bool

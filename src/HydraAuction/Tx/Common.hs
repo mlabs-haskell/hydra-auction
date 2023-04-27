@@ -21,8 +21,7 @@ import Plutus.V2.Ledger.Api (
   getValidator,
  )
 
--- Hydra imports
-
+-- Cardano imports
 import Cardano.Api.UTxO qualified as UTxO
 import CardanoClient (buildScriptAddress)
 import Hydra.Cardano.Api (
