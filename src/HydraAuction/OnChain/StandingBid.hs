@@ -30,7 +30,6 @@ import Hydra.Contract.Head (hasPT)
 
 -- Hydra auction imports
 import HydraAuction.Addresses (VoucherCS (..))
-import HydraAuction.OnChain.Common (byAddress, decodeOutputDatum, isNotAdaOnlyOutput, nothingForged)
 import HydraAuction.OnChain.StateToken (StateTokenKind (..), stateTokenKindToTokenName)
 import HydraAuction.Types (
   AuctionTerms (..),
@@ -38,6 +37,12 @@ import HydraAuction.Types (
   StandingBidDatum (..),
   StandingBidRedeemer (..),
   StandingBidState (..),
+ )
+import HydraAuctionUtils.Plutus (
+  byAddress,
+  decodeOutputDatum,
+  isNotAdaOnlyOutput,
+  nothingForged,
  )
 
 {-# INLINEABLE mkStandingBidValidator #-}

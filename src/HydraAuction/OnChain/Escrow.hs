@@ -16,12 +16,8 @@ import HydraAuction.Addresses (
   VoucherCS (..),
  )
 import HydraAuction.OnChain.Common (
-  byAddress,
   checkInterval,
   checkVoucherExpiredOrLater,
-  decodeOutputDatum,
-  lovelaceOfOutput,
-  nothingForged,
  )
 import HydraAuction.OnChain.StateToken (
   StateTokenKind (..),
@@ -39,6 +35,12 @@ import HydraAuction.Types (
   calculateTotalFee,
   isStarted,
   naturalToInt,
+ )
+import HydraAuctionUtils.Plutus (
+  byAddress,
+  decodeOutputDatum,
+  lovelaceOfOutput,
+  nothingForged,
  )
 
 {-# INLINEABLE mkEscrowValidator #-}

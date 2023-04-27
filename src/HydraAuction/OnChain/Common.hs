@@ -4,15 +4,10 @@
 module HydraAuction.OnChain.Common (
   minAuctionFee,
   validAuctionTerms,
-  decodeOutputDatum,
-  byAddress,
   checkVoucherExpiredOrLater,
-  lovelaceOfOutput,
-  nothingForged,
   checkInterval,
   secondsLeftInInterval,
   stageToInterval,
-  isNotAdaOnlyOutput,
 ) where
 
 -- Prelude imports
@@ -22,19 +17,7 @@ import Prelude (div)
 -- Plutus imports
 import Plutus.V1.Ledger.Interval (Extended (..), Interval (..), UpperBound (..), contains, from, interval, to)
 import Plutus.V1.Ledger.Time (POSIXTime (..))
-import Plutus.V1.Ledger.Value (assetClass, assetClassValueOf, isZero)
-import Plutus.V2.Ledger.Api (
-  Address,
-  CurrencySymbol (..),
-  OutputDatum (..),
-  TokenName (..),
-  Value (..),
-  fromBuiltinData,
-  getDatum,
-  txInfoValidRange,
- )
-import Plutus.V2.Ledger.Contexts (TxInfo, TxOut, findDatum, txInfoMint, txOutAddress, txOutDatum, txOutValue)
-import PlutusTx qualified
+import Plutus.V2.Ledger.Contexts (TxInfo (..))
 
 -- Hydra auction imports
 import HydraAuction.Types (AuctionStage (..), AuctionTerms (..))
@@ -88,35 +71,3 @@ validAuctionTerms AuctionTerms {..} =
     && traceIfFalse "VAT6" (naturalToInt startingBid > naturalToInt auctionFeePerDelegate * length delegates)
     && traceIfFalse "VAT7" (naturalToInt auctionFeePerDelegate > minAuctionFee)
     && traceIfFalse "VAT8" (length delegates > 0)
-
-{-# INLINEABLE decodeOutputDatum #-}
-decodeOutputDatum :: PlutusTx.FromData a => TxInfo -> TxOut -> Maybe a
-decodeOutputDatum info output = do
-  datum <- case txOutDatum output of
-    NoOutputDatum ->
-      Nothing
-    OutputDatumHash hash ->
-      findDatum hash info
-    OutputDatum d ->
-      Just d
-  fromBuiltinData $ getDatum datum
-
-{-# INLINEABLE byAddress #-}
-byAddress :: Address -> [TxOut] -> [TxOut]
-byAddress address = filter (\o -> txOutAddress o == address)
-
-{-# INLINEABLE isNotAdaOnlyOutput #-}
-isNotAdaOnlyOutput :: TxOut -> Bool
-isNotAdaOnlyOutput output =
-  let value = txOutValue output
-   in length (getValue value) > 1
-
--- XXX: Plutus.V1.Ledger.Ada module requires more dependencies
-lovelaceOfOutput :: TxOut -> Integer
-lovelaceOfOutput output = assetClassValueOf (txOutValue output) ac
-  where
-    ac = assetClass (CurrencySymbol emptyByteString) (TokenName emptyByteString)
-
-{-# INLINEABLE nothingForged #-}
-nothingForged :: TxInfo -> Bool
-nothingForged info = traceIfFalse "Something was forged" (isZero $ txInfoMint info)
