@@ -140,7 +140,6 @@ executable hydra-auction
     CLI.Config
     CLI.Parsers
     CLI.Parsers.TxIn
-    CLI.Prettyprinter
     CLI.Types
     CLI.Watch
 
@@ -258,7 +257,9 @@ library hydra-auction-utils
     HydraAuctionUtils.L1.Runner.Time
     HydraAuctionUtils.Monads
     HydraAuctionUtils.Monads.Actors
+    HydraAuctionUtils.Parsers
     HydraAuctionUtils.Plutus
+    HydraAuctionUtils.PrettyPrinting
     HydraAuctionUtils.Time
     HydraAuctionUtils.Tracing
     HydraAuctionUtils.Tx.AutoCreateTx
@@ -272,7 +273,9 @@ library hydra-auction-utils
     , HUnit
     , hydra-plutus
     , hydra-test-utils
+    , optparse-applicative
     , plutus-tx
+    , protolude
 
 test-suite hydra-auction-test
   import:         common-lang

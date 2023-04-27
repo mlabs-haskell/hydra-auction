@@ -62,6 +62,7 @@ import HydraAuctionUtils.Monads.Actors (
   actorTipUtxo,
   addressAndKeys,
  )
+import HydraAuctionUtils.PrettyPrinting (prettyPrintUtxo)
 
 -- Hydra auction CLI imports
 import CLI.Config (
@@ -73,7 +74,6 @@ import CLI.Config (
   readCliEnhancedAuctionTerms,
   writeAuctionTermsDynamic,
  )
-import CLI.Prettyprinter (prettyPrintUtxo)
 
 seedAmount :: Lovelace
 seedAmount = 10_000_000_000

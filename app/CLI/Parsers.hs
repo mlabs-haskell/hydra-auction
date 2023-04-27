@@ -8,6 +8,8 @@ module CLI.Parsers (
 ) where
 
 -- Prelude imports
+
+import Cardano.Prelude (asum, guard, note, readMaybe)
 import Prelude
 
 -- Haskell imports
@@ -35,6 +37,13 @@ import Options.Applicative (
   switch,
   (<**>),
  )
+import Options.Applicative.Builder (
+  ReadM,
+  eitherReader,
+  option,
+  showDefaultWith,
+  value,
+ )
 
 -- Cardano node imports
 import Cardano.Api (NetworkId, NetworkMagic (..), fromNetworkMagic)
@@ -42,14 +51,13 @@ import Cardano.Api (NetworkId, NetworkMagic (..), fromNetworkMagic)
 -- Hydra auction imports
 import HydraAuction.OnChain (AuctionScript (..))
 import HydraAuctionUtils.Fixture (Actor (..))
-import HydraAuctionUtils.Types.Natural (Natural, intToNatural)
+import HydraAuctionUtils.Parsers (parseActor, parseAda, parseNetworkMagic)
+import HydraAuctionUtils.Types.Natural (Natural)
 
 -- Hydra auction CLI imports
 import CLI.Actions (CliAction (..), Layer (..), seedAmount)
 import CLI.Config (AuctionName (..))
-import Cardano.Prelude (asum, guard, note, readMaybe)
 import Hydra.Network (IP, PortNumber)
-import Options.Applicative.Builder (ReadM, eitherReader, option, showDefaultWith, value)
 
 data CliInput = CliInput
   { cliOptions :: CliOptions
@@ -244,35 +252,12 @@ networkMagic =
         <> help "Network magic for cardano"
     )
 
-parseActor :: ReadM Actor
-parseActor = eitherReader $ \case
-  "alice" -> pure Alice
-  "bob" -> pure Bob
-  "carol" -> pure Carol
-  "dave" -> pure Dave
-  "eve" -> pure Eve
-  "frank" -> pure Frank
-  "grace" -> pure Grace
-  "hans" -> pure Hans
-  _ -> Left "Actor parsing error"
-
 parseScript :: ReadM AuctionScript
 parseScript = eitherReader $ \case
   "escrow" -> pure Escrow
   "standing-bid" -> pure StandingBid
   "fee-escrow" -> pure FeeEscrow
   _ -> Left "Escrow parsing error"
-
-parseAda :: ReadM Natural
-parseAda = eitherReader $ \s -> note "failed to parse Ada" $ do
-  ada <- readMaybe s
-  let lovelace = ada * 1_000_000
-  intToNatural lovelace
-
-parseNetworkMagic :: ReadM NetworkMagic
-parseNetworkMagic = eitherReader $ \s -> note "failed to parse network magic" $ do
-  magic <- readMaybe s
-  pure $ NetworkMagic magic
 
 verboseParser :: Parser Bool
 verboseParser = switch (long "verbose" <> short 'v')
