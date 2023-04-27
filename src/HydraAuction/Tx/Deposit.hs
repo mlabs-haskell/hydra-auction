@@ -56,7 +56,7 @@ import HydraAuction.Types (
   BidDepositRedeemer (..),
  )
 import HydraAuctionUtils.Extras.Plutus (scriptCurrencySymbol)
-import HydraAuctionUtils.L1.Runner (Runner)
+import HydraAuctionUtils.L1.Runner (L1Runner)
 import HydraAuctionUtils.Monads (
   logMsg,
  )
@@ -93,7 +93,7 @@ filterDepositGreaterThan minAmt =
         Nothing -> False
     )
 
-findDepositMatchingPubKeyHash :: AuctionTerms -> PubKeyHash -> UTxO.UTxO -> Runner UTxO.UTxO
+findDepositMatchingPubKeyHash :: AuctionTerms -> PubKeyHash -> UTxO.UTxO -> L1Runner UTxO.UTxO
 findDepositMatchingPubKeyHash terms pkh allDeposits =
   case UTxO.find ((== expectedDatum) . parseBidDepositDatum) allDeposits of
     Nothing -> fail "Unable to find matching deposit"
@@ -103,7 +103,7 @@ findDepositMatchingPubKeyHash terms pkh allDeposits =
     voucherCS = VoucherCS $ scriptCurrencySymbol mp
     expectedDatum = BidDepositDatum pkh voucherCS
 
-mkDeposit :: AuctionTerms -> Natural -> Runner ()
+mkDeposit :: AuctionTerms -> Natural -> L1Runner ()
 mkDeposit terms depositAmount = do
   logMsg "Doing bidder deposit"
 
@@ -138,7 +138,7 @@ mkDeposit terms depositAmount = do
         , validityBound = (Nothing, Just $ biddingStart terms)
         }
 
-losingBidderClaimDeposit :: AuctionTerms -> Runner ()
+losingBidderClaimDeposit :: AuctionTerms -> L1Runner ()
 losingBidderClaimDeposit terms = do
   logMsg "Claiming bidder deposit"
 
@@ -167,7 +167,7 @@ losingBidderClaimDeposit terms = do
     depositScript = scriptPlutusScript Deposit terms
     depositWitness = mkInlinedDatumScriptWitness depositScript LosingBidder
 
-sellerClaimDepositFor :: AuctionTerms -> PubKeyHash -> Runner ()
+sellerClaimDepositFor :: AuctionTerms -> PubKeyHash -> L1Runner ()
 sellerClaimDepositFor terms bidderPkh = do
   logMsg "Seller claiming bidder deposit"
 
@@ -198,7 +198,7 @@ sellerClaimDepositFor terms bidderPkh = do
     depositScript = scriptPlutusScript Deposit terms
     depositWitness = mkInlinedDatumScriptWitness depositScript SellerClaimsDeposit
 
-cleanupDeposit :: AuctionTerms -> Runner ()
+cleanupDeposit :: AuctionTerms -> L1Runner ()
 cleanupDeposit terms = do
   logMsg "Cleanup bidder deposit"
 

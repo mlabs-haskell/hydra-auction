@@ -66,7 +66,7 @@ import HydraAuction.Types (
   calculateTotalFee,
  )
 import HydraAuctionUtils.Extras.Plutus (scriptCurrencySymbol)
-import HydraAuctionUtils.L1.Runner (Runner)
+import HydraAuctionUtils.L1.Runner (L1Runner)
 import HydraAuctionUtils.Monads (
   MonadQueryUtxo (queryUtxo),
   UtxoQuery (ByTxIns),
@@ -92,7 +92,7 @@ import HydraAuctionUtils.Tx.Utxo (
  )
 import HydraAuctionUtils.Types.Natural (naturalToInt)
 
-announceAuction :: AuctionTerms -> Runner ()
+announceAuction :: AuctionTerms -> L1Runner ()
 announceAuction terms = do
   logMsg "Doing announce auction"
 
@@ -138,7 +138,7 @@ announceAuction terms = do
         , validityBound = (Nothing, Just $ biddingStart terms)
         }
 
-startBidding :: AuctionTerms -> ApprovedBidders -> Runner ()
+startBidding :: AuctionTerms -> ApprovedBidders -> L1Runner ()
 startBidding terms approvedBidders = do
   logMsg "Doing start bidding"
 
@@ -213,7 +213,7 @@ startBidding terms approvedBidders = do
         , validityBound = (Just $ biddingStart terms, Just $ biddingEnd terms)
         }
 
-bidderBuys :: AuctionTerms -> Runner ()
+bidderBuys :: AuctionTerms -> L1Runner ()
 bidderBuys terms = do
   feeEscrowAddress <- scriptAddress FeeEscrow terms
   sellerAddress <-
@@ -306,7 +306,7 @@ bidderBuys terms = do
         , validityBound = (Just $ biddingEnd terms, Just $ voucherExpiry terms)
         }
 
-sellerReclaims :: AuctionTerms -> Runner ()
+sellerReclaims :: AuctionTerms -> L1Runner ()
 sellerReclaims terms = do
   feeEscrowAddress <- scriptAddress FeeEscrow terms
 

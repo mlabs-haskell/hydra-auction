@@ -32,7 +32,7 @@ import HydraAuction.OnChain.TestNFT (
   testNftPolicy,
   testNftTokenName,
  )
-import HydraAuctionUtils.L1.Runner (Runner)
+import HydraAuctionUtils.L1.Runner (L1Runner)
 import HydraAuctionUtils.Monads.Actors (
   actorTipUtxo,
   addressAndKeys,
@@ -59,7 +59,7 @@ findTestNFT (UTxO.UTxO m) = Map.foldrWithKey isTestNFT Nothing m
         then pure k
         else acc
 
-mintOneTestNFT :: Runner Tx
+mintOneTestNFT :: L1Runner Tx
 mintOneTestNFT = do
   (actorAddress, _, actorSk) <- addressAndKeys
 

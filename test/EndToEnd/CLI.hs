@@ -51,7 +51,7 @@ import HydraAuction.Tx.TestNFT (mintOneTestNFT)
 import HydraAuction.Types (ApprovedBidders (..), AuctionTerms (..), intToNatural)
 import HydraAuctionUtils.Fixture (Actor (..), getActorsPubKey)
 import HydraAuctionUtils.L1.Runner (
-  Runner,
+  L1Runner,
   initWallet,
   withActor,
  )
@@ -66,7 +66,7 @@ testSuite =
     "L1 - CLI"
     [testCase "bidder-buys" bidderBuysTest]
 
-assertNFTNumEquals :: Actor -> Integer -> Runner ()
+assertNFTNumEquals :: Actor -> Integer -> L1Runner ()
 assertNFTNumEquals actor expectedNum = do
   utxo <- withActor actor actorTipUtxo
   liftIO $ do
