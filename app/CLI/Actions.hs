@@ -6,7 +6,6 @@ module CLI.Actions (
 ) where
 
 -- Prelude imports
--- Prelude imports
 import Hydra.Prelude (MonadIO, ask, liftIO)
 import Prelude
 

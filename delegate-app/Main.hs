@@ -27,6 +27,7 @@ import Control.Monad.Trans (MonadIO (liftIO))
 import Control.Tracer (Tracer, contramap, nullTracer, stdoutTracer)
 import Data.Aeson (ToJSON, eitherDecode, encode)
 import Data.Maybe (fromMaybe)
+import GHC.Stack (HasCallStack)
 import Network.WebSockets (
   Connection,
   acceptRequest,
@@ -45,7 +46,6 @@ import HydraNode (HydraClient (..))
 
 -- HydraAuction imports
 
-import GHC.Stack (HasCallStack)
 import HydraAuction.Delegate (
   ClientId,
   ClientResponseScope (Broadcast),
