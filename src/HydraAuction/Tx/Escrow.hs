@@ -44,11 +44,6 @@ import HydraAuction.Addresses (VoucherCS (..))
 import HydraAuction.OnChain (AuctionScript (..), policy, voucherAssetClass)
 import HydraAuction.Runner (Runner)
 import HydraAuction.Tx.Common (
-  actorTipUtxo,
-  addressAndKeys,
-  minLovelace,
-  mkInlineDatum,
-  mkInlinedDatumScriptWitness,
   scriptAddress,
   scriptPlutusScript,
   scriptUtxos,
@@ -78,9 +73,18 @@ import HydraAuctionUtils.Monads (
   fromPlutusAddressInMonad,
   logMsg,
  )
+import HydraAuctionUtils.Monads.Actors (
+  actorTipUtxo,
+  addressAndKeys,
+ )
 import HydraAuctionUtils.Tx.AutoCreateTx (
   AutoCreateParams (..),
   autoSubmitAndAwaitTx,
+ )
+import HydraAuctionUtils.Tx.Build (
+  minLovelace,
+  mkInlineDatum,
+  mkInlinedDatumScriptWitness,
  )
 import HydraAuctionUtils.Tx.Utxo (
   filterAdaOnlyUtxo,

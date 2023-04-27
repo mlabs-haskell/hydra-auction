@@ -33,16 +33,18 @@ import HydraAuction.OnChain.TestNFT (
   testNftTokenName,
  )
 import HydraAuction.Runner (Runner)
-import HydraAuction.Tx.Common (
+import HydraAuctionUtils.Monads.Actors (
   actorTipUtxo,
   addressAndKeys,
-  minLovelace,
-  mintedTokens,
-  tokenToAsset,
  )
 import HydraAuctionUtils.Tx.AutoCreateTx (
   AutoCreateParams (..),
   autoSubmitAndAwaitTx,
+ )
+import HydraAuctionUtils.Tx.Build (
+  minLovelace,
+  mintedTokens,
+  tokenToAsset,
  )
 import HydraAuctionUtils.Tx.Utxo (
   filterAdaOnlyUtxo,

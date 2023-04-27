@@ -41,11 +41,12 @@ import Hydra.Cardano.Api (
 import HydraAuction.Addresses (VoucherCS (..))
 import HydraAuction.OnChain (AuctionScript (..), policy)
 import HydraAuction.Runner (Runner)
-import HydraAuction.Tx.Common (
+import HydraAuctionUtils.Monads.Actors (
   actorTipUtxo,
   addressAndKeys,
-  mkInlineDatum,
-  mkInlinedDatumScriptWitness,
+ )
+
+import HydraAuction.Tx.Common (
   scriptAddress,
   scriptPlutusScript,
   scriptUtxos,
@@ -62,6 +63,10 @@ import HydraAuctionUtils.Monads (
 import HydraAuctionUtils.Tx.AutoCreateTx (
   AutoCreateParams (..),
   autoSubmitAndAwaitTx,
+ )
+import HydraAuctionUtils.Tx.Build (
+  mkInlineDatum,
+  mkInlinedDatumScriptWitness,
  )
 import HydraAuctionUtils.Tx.Utxo (
   filterAdaOnlyUtxo,

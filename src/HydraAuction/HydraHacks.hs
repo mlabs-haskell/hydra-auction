@@ -79,7 +79,6 @@ import Hydra.Party (Party)
 
 -- HydraAuction imports
 import HydraAuction.Runner (ExecutionContext (..), Runner)
-import HydraAuction.Tx.Common (actorTipUtxo, addressAndKeys)
 import HydraAuctionUtils.Fixture (partyFor)
 import HydraAuctionUtils.Monads (
   BlockchainParams (..),
@@ -88,6 +87,7 @@ import HydraAuctionUtils.Monads (
   UtxoQuery (..),
   submitAndAwaitTx,
  )
+import HydraAuctionUtils.Monads.Actors (actorTipUtxo, addressAndKeys)
 import HydraAuctionUtils.Tx.AutoCreateTx (callBodyAutoBalance, makeSignedTransactionWithKeys)
 import HydraAuctionUtils.Tx.Utxo (filterAdaOnlyUtxo)
 

@@ -44,7 +44,6 @@ import HydraAuction.Hydra.Interface (HydraCommand (..), HydraEvent (..))
 import HydraAuction.Hydra.Monad (MonadHydra (..))
 import HydraAuction.OnChain.Common (validAuctionTerms)
 import HydraAuction.OnChain.StandingBid (validNewBidTerms)
-import HydraAuction.Tx.Common (actorTipUtxo)
 import HydraAuction.Tx.StandingBid (
   createNewBidTx,
   decodeInlineDatum,
@@ -57,7 +56,12 @@ import HydraAuction.Types (
   StandingBidState (..),
  )
 import HydraAuctionUtils.Fixture (partyFor)
-import HydraAuctionUtils.Monads (MonadHasActor (askActor), MonadQueryUtxo (..), MonadSubmitTx (..), UtxoQuery (..))
+import HydraAuctionUtils.Monads (
+  MonadQueryUtxo (..),
+  MonadSubmitTx (..),
+  UtxoQuery (..),
+ )
+import HydraAuctionUtils.Monads.Actors (MonadHasActor (askActor), actorTipUtxo)
 import HydraAuctionUtils.Tx.Utxo (
   extractSingleUtxo,
   filterAdaOnlyUtxo,

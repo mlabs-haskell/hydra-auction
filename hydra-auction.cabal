@@ -259,9 +259,12 @@ library hydra-auction-utils
     HydraAuctionUtils.Extras.PlutusOrphans
     HydraAuctionUtils.Fixture
     HydraAuctionUtils.Monads
+    HydraAuctionUtils.Monads.Actors
     HydraAuctionUtils.Plutus
+    HydraAuctionUtils.Time
     HydraAuctionUtils.Tracing
     HydraAuctionUtils.Tx.AutoCreateTx
+    HydraAuctionUtils.Tx.Build
     HydraAuctionUtils.Tx.Utxo
     HydraAuctionUtils.Types.Natural
     Paths_hydra_auction
