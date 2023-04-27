@@ -57,7 +57,12 @@ import HydraAuction.Types (
   StandingBidState (..),
  )
 import HydraAuctionUtils.Fixture (partyFor)
-import HydraAuctionUtils.Monads (MonadHasActor (askActor), MonadQueryUtxo (..), MonadSubmitTx (..), UtxoQuery (..))
+import HydraAuctionUtils.Monads (
+  MonadQueryUtxo (..),
+  MonadSubmitTx (..),
+  UtxoQuery (..),
+ )
+import HydraAuctionUtils.Monads.Actors (MonadHasActor (askActor))
 import HydraAuctionUtils.Tx.Utxo (
   extractSingleUtxo,
   filterAdaOnlyUtxo,

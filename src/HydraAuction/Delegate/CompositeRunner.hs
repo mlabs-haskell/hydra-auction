@@ -22,7 +22,7 @@ import HydraAuction.Hydra.Runner (
   executeHydraRunner,
  )
 import HydraAuction.Runner (ExecutionContext, Runner, executeRunner)
-import HydraAuctionUtils.Monads (MonadHasActor (..))
+import HydraAuctionUtils.Monads.Actors (MonadHasActor (..))
 
 -- | Contexts should use same actor internally
 data CompositeExecutionContext = MkCompositeExecutionContext

@@ -86,13 +86,13 @@ import HydraAuctionUtils.Fixture (Actor (..), keysFor)
 import HydraAuctionUtils.Monads (
   BlockchainParams (..),
   MonadBlockchainParams (..),
-  MonadHasActor (..),
   MonadNetworkId (..),
   MonadQueryUtxo (..),
   MonadSubmitTx (..),
   MonadTrace (..),
   UtxoQuery (..),
  )
+import HydraAuctionUtils.Monads.Actors (MonadHasActor (..))
 
 {- | Execution context holding the current tracer,
  as well as the running node.

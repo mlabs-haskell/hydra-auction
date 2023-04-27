@@ -40,7 +40,7 @@ import HydraAuction.Tx.Common (scriptSingleUtxo)
 import HydraAuction.Tx.StandingBid (createStandingBidDatum, queryStandingBidDatum)
 import HydraAuction.Types (AuctionStage (..), AuctionTerms, Natural, standingBid, standingBidState)
 import HydraAuctionUtils.Fixture (Actor, keysFor)
-import HydraAuctionUtils.Monads (MonadHasActor (..))
+import HydraAuctionUtils.Monads.Actors (MonadHasActor (..))
 
 -- HydraAuction test imports
 import EndToEnd.HydraUtils (DelegatesClusterEmulator, EmulatorDelegate (..), runCompositeForAllDelegates, runCompositeForDelegate)

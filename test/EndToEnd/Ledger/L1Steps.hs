@@ -40,7 +40,7 @@ import HydraAuctionUtils.Fixture (getActorsPubKeyHash)
 -- HydraAuction test imports
 
 import EndToEnd.Utils (assertNFTNumEquals)
-import HydraAuctionUtils.Monads (MonadHasActor (..))
+import HydraAuctionUtils.Monads.Actors (MonadHasActor (..))
 
 correctBidNo :: AuctionTerms -> Integer -> Natural
 correctBidNo terms n =
