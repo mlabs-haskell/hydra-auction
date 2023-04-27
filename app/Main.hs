@@ -28,7 +28,7 @@ import Hydra.Prelude (SomeException, ask, liftIO)
 -- Hydra auction imports
 import HydraAuctionUtils.L1.Runner (
   ExecutionContext (..),
-  Runner,
+  L1Runner,
   executeRunner,
   stdoutOrNullTracer,
  )
@@ -134,12 +134,12 @@ handleCliInput' client currentDelegateStateRef input = case input of
 
     executeRunner runnerContext (loopCLI client currentDelegateStateRef)
 
-loopCLI :: Connection -> IORef DelegateState -> Runner ()
+loopCLI :: Connection -> IORef DelegateState -> L1Runner ()
 loopCLI client currentDelegateStateRef = do
   ctx <- ask
   let promptString = show (actor ctx) <> "> "
 
-      loop :: InputT Runner ()
+      loop :: InputT L1Runner ()
       loop = do
         minput <- getInputLine promptString
         case minput of
@@ -152,11 +152,11 @@ loopCLI client currentDelegateStateRef = do
   runInputT defaultSettings loop
   where
     sendRequestToDelegate = sendTextData client . encode
-    handleInput :: String -> Runner ()
+    handleInput :: String -> L1Runner ()
     handleInput input = case parseCliAction $ words input of
       Left e -> liftIO $ putStrLn e
       Right cmd -> handleCliAction' cmd
-    handleCliAction' :: CliAction -> Runner ()
+    handleCliAction' :: CliAction -> L1Runner ()
     handleCliAction' cmd = do
       result <-
         try $

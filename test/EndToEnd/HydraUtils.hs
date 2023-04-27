@@ -69,7 +69,7 @@ import HydraAuctionUtils.Fixture (
 import HydraAuctionUtils.Hydra.Runner (executeHydraRunnerFakingParams)
 import HydraAuctionUtils.L1.Runner (
   ExecutionContext (..),
-  Runner,
+  L1Runner,
   dockerNode,
   executeRunner,
   executeRunnerWithNodeAs,
@@ -78,7 +78,7 @@ import HydraAuctionUtils.L1.Runner (
 -- This function will set the HYDRA_CONFIG_DIR env var locally
 -- This is required so the hydra nodes pick up on the correct protocol-parameters.json
 -- file.
-spinUpHeads :: Int -> TxId -> (EmulatorDelegateClients -> Runner ()) -> Runner ()
+spinUpHeads :: Int -> TxId -> (EmulatorDelegateClients -> L1Runner ()) -> L1Runner ()
 spinUpHeads clusterIx hydraScriptsTxId cont = do
   liftIO $ do
     hydraDir <- lookupProtocolParamPath
@@ -131,7 +131,7 @@ spinUpHeads clusterIx hydraScriptsTxId cont = do
              in cont threeClients
 
 runningThreeNodesDockerComposeHydra ::
-  (EmulatorDelegateClients -> Runner b) ->
+  (EmulatorDelegateClients -> L1Runner b) ->
   IO b
 runningThreeNodesDockerComposeHydra cont = do
   _ <- system "./scripts/spin-up-new-devnet.sh 0"
@@ -191,7 +191,7 @@ newtype DelegatesClusterEmulator a = DelegatesClusterEmulator
     , MonadReader EmulatorContext
     )
 
-runEmulatorInTest :: DelegatesClusterEmulator () -> Runner ()
+runEmulatorInTest :: DelegatesClusterEmulator () -> L1Runner ()
 runEmulatorInTest action = do
   mEnvStr <- liftIO $ lookupEnv "USE_DOCKER_FOR_TESTS"
   let useDockerForTests =
@@ -213,7 +213,7 @@ runEmulatorUsingDockerCompose :: DelegatesClusterEmulator a -> IO a
 runEmulatorUsingDockerCompose action = runningThreeNodesDockerComposeHydra $ executeRunnerWithNodeAs dockerNode Alice . flip runEmulator action
 -}
 
-runEmulator :: EmulatorDelegateClients -> DelegatesClusterEmulator a -> Runner a
+runEmulator :: EmulatorDelegateClients -> DelegatesClusterEmulator a -> L1Runner a
 runEmulator clients action = do
   MkExecutionContext {node} <- ask
   intialStatesRef <-

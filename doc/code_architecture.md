@@ -29,7 +29,7 @@ Library code:
     * `HydraAuction.OnChain` itself contains their compilation,
        and defunctionalization - `scriptValidatorForTerms`.
 * `HydraAuction.Tx.*` is for transaction construction
-    * `HydraAuction.Runner` defines the Runner monad, which we use to interact with the Cardano-node
+    * `HydraAuction.Runner` defines the L1Runner monad, which we use to interact with the Cardano-node
 
 Exec code:
 

@@ -2,7 +2,7 @@ module HydraAuctionUtils.L1.Runner (
   HydraAuctionLog (..),
   EndToEndLog (..),
   NodeLog (..),
-  Runner,
+  L1Runner,
   executeRunner,
   executeRunnerWithNodeAs,
   executeTestRunner,
@@ -105,7 +105,7 @@ data ExecutionContext = MkExecutionContext
 {- | HydraAuction specific L1 computation executor.
      Knows about L1 connection and current actor.
 -}
-newtype Runner a = MkRunner
+newtype L1Runner a = MkRunner
   {run :: ReaderT ExecutionContext IO a}
   deriving
     ( Functor
@@ -120,7 +120,7 @@ newtype Runner a = MkRunner
     )
     via ReaderT ExecutionContext IO
 
-instance MonadQueryUtxo Runner where
+instance MonadQueryUtxo L1Runner where
   queryUtxo query = do
     MkExecutionContext {node} <- ask
     let RunningNode {networkId, nodeSocket} = node
@@ -130,14 +130,14 @@ instance MonadQueryUtxo Runner where
       ByAddress address ->
         queryUTxO networkId nodeSocket QueryTip [address]
 
-instance MonadNetworkId Runner where
+instance MonadNetworkId L1Runner where
   askNetworkId = do
     MkExecutionContext {node} <- ask
     let RunningNode {networkId} = node
     return networkId
 
-instance MonadBlockchainParams Runner where
-  queryBlockchainParams :: Runner BlockchainParams
+instance MonadBlockchainParams L1Runner where
+  queryBlockchainParams :: L1Runner BlockchainParams
   queryBlockchainParams = do
     MkExecutionContext {node} <- ask
     let RunningNode {networkId, nodeSocket} = node
@@ -173,34 +173,34 @@ callWithTx call tx = do
       nodeSocket
       tx
 
-instance MonadSubmitTx Runner where
+instance MonadSubmitTx L1Runner where
   submitTx = callWithTx submitTransaction
   awaitTx = callWithTx (\nId nS tx -> void $ awaitTransaction nId nS tx)
 
-instance MonadTrace Runner where
-  type TracerMessage Runner = HydraAuctionLog
+instance MonadTrace L1Runner where
+  type TracerMessage L1Runner = HydraAuctionLog
   stringToMessage = FromHydraAuction
   traceMessage message = do
     MkExecutionContext {tracer} <- ask
     liftIO $ traceWith tracer message
 
-instance MonadHasActor Runner where
+instance MonadHasActor L1Runner where
   askActor = do
     MkExecutionContext {actor} <- ask
     return actor
 
 executeRunner ::
   ExecutionContext ->
-  Runner a ->
+  L1Runner a ->
   IO a
 executeRunner context runner =
   runReaderT (run runner) context
 
-withActor :: Actor -> Runner a -> Runner a
+withActor :: Actor -> L1Runner a -> L1Runner a
 withActor actor = local (\ctx -> ctx {actor = actor})
 
 -- | Executes a test runner using a temporary directory as the @StateDirectory@.
-executeTestRunner :: Runner () -> IO ()
+executeTestRunner :: L1Runner () -> IO ()
 executeTestRunner runner = do
   withTempDir "test-hydra-auction" $ \tmpDir -> do
     withCardanoNodeDevnet
@@ -216,7 +216,7 @@ dockerNode =
     , nodeSocket = "./devnet/node.socket"
     }
 
-executeRunnerWithNodeAs :: forall x. RunningNode -> Actor -> Runner x -> IO x
+executeRunnerWithNodeAs :: forall x. RunningNode -> Actor -> L1Runner x -> IO x
 executeRunnerWithNodeAs node actor runner = do
   let tracer = contramap show stdoutTracer
   executeRunner
@@ -228,7 +228,7 @@ executeRunnerWithNodeAs node actor runner = do
 {- | Initiates the actor's wallet using the prescribed amount of faucet
  @Lovelace@.
 -}
-initWallet :: Lovelace -> Actor -> Runner UTxO
+initWallet :: Lovelace -> Actor -> L1Runner UTxO
 initWallet amount actor = do
   MkExecutionContext {node} <- ask
   liftIO $ do

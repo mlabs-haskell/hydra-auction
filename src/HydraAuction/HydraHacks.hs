@@ -80,7 +80,7 @@ import Hydra.Party (Party)
 -- HydraAuction imports
 
 import HydraAuctionUtils.Fixture (partyFor)
-import HydraAuctionUtils.L1.Runner (ExecutionContext (..), Runner)
+import HydraAuctionUtils.L1.Runner (ExecutionContext (..), L1Runner)
 import HydraAuctionUtils.Monads (
   BlockchainParams (..),
   MonadBlockchainParams (..),
@@ -163,7 +163,7 @@ commitTxBody
           mkCommitDatum party (Just (scriptInput, scriptOutput)) (headIdToCurrencySymbol headId)
 
 -- | Find initial Utxo with Participation Token matchin our current actor
-findInitialUtxo :: HeadId -> Runner (TxIn, TxOut CtxUTxO)
+findInitialUtxo :: HeadId -> L1Runner (TxIn, TxOut CtxUTxO)
 findInitialUtxo headId = do
   (_, commitingNodeVk, _) <- addressAndKeys
   let vkh = verificationKeyHash commitingNodeVk
@@ -209,9 +209,9 @@ submitAndAwaitCommitTx ::
   , TxOut CtxUTxO
   , BuildTxWith BuildTx (Witness WitCtxTxIn)
   ) ->
-  Runner ()
+  L1Runner ()
 
--- | Runner Actor should represent one which runs Hydra Node
+-- | L1Runner Actor should represent one which runs Hydra Node
 submitAndAwaitCommitTx
   scriptRegistry
   headId

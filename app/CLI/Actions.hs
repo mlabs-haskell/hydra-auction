@@ -53,7 +53,7 @@ import HydraAuction.Types (ApprovedBidders (..), AuctionStage (..), AuctionTerms
 import HydraAuctionUtils.Fixture (Actor (..), actorFromPkh, allActors, getActorsPubKeyHash)
 import HydraAuctionUtils.L1.Runner (
   ExecutionContext (..),
-  Runner,
+  L1Runner,
   initWallet,
   withActor,
  )
@@ -100,7 +100,7 @@ data CliAction
   | Cleanup !AuctionName
   deriving stock (Show)
 
-doOnMatchingStage :: AuctionTerms -> AuctionStage -> Runner () -> Runner ()
+doOnMatchingStage :: AuctionTerms -> AuctionStage -> L1Runner () -> L1Runner ()
 doOnMatchingStage terms requiredStage action = do
   stage <- liftIO $ currentAuctionStage terms
   if requiredStage == stage
@@ -118,7 +118,7 @@ handleCliAction ::
   (DelegateInterface.FrontendRequest -> IO ()) ->
   IORef DelegateState ->
   CliAction ->
-  Runner ()
+  L1Runner ()
 handleCliAction sendRequestToDelegate currentDelegateStateRef userAction = do
   -- Await for initialized DelegateState
   MkExecutionContext {actor} <- ask

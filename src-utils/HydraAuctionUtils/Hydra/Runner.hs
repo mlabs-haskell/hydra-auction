@@ -59,7 +59,7 @@ import HydraAuctionUtils.Hydra.Monad (
   EventMatcher (..),
   MonadHydra (..),
  )
-import HydraAuctionUtils.L1.Runner (Runner)
+import HydraAuctionUtils.L1.Runner (L1Runner)
 import HydraAuctionUtils.Monads (
   BlockchainParams (..),
   MonadBlockchainParams (..),
@@ -203,7 +203,7 @@ executeHydraRunner ::
 executeHydraRunner context runner =
   runReaderT (unHydraRunner runner) context
 
-executeHydraRunnerFakingParams :: HydraClient -> HydraRunner a -> Runner a
+executeHydraRunnerFakingParams :: HydraClient -> HydraRunner a -> L1Runner a
 executeHydraRunnerFakingParams node monad = do
   params <- queryBlockchainParams
   protocolParameters <- liftIO readHydraNodeProtocolParams
