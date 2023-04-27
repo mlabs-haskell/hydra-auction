@@ -17,7 +17,7 @@ import Test.Tasty.HUnit (Assertion, testCase)
 import Hydra.Cardano.Api (mkTxIn)
 
 -- Hydra auction imports
-
+import HydraAuction.OnChain (AuctionScript (..))
 import HydraAuction.Tx.Escrow (
   announceAuction,
   bidderBuys,
@@ -40,7 +40,8 @@ import HydraAuctionUtils.L1.Runner (
 import HydraAuctionUtils.L1.Runner.Time (waitUntil)
 
 -- Hydra auction test imports
-import EndToEnd.Utils (assertNFTNumEquals, config, mkAssertion)
+import EndToEnd.Ledger.L1Steps (createTermsWithTestNFT)
+import EndToEnd.Utils (assertNFTNumEquals, assertUTxOsInScriptEquals, config, mkAssertion)
 
 testSuite :: TestTree
 testSuite =
@@ -61,14 +62,7 @@ bidderBuysTest = mkAssertion $ do
 
   mapM_ (initWallet 100_000_000) [seller, buyer1, buyer2]
 
-  nftTx <- mintOneTestNFT
-  let utxoRef = mkTxIn nftTx 0
-
-  terms <- liftIO $ do
-    dynamicState <- constructTermsDynamic seller utxoRef nonExistentHeadIdStub
-    configToAuctionTerms config dynamicState
-
-  assertNFTNumEquals seller 1
+  terms <- createTermsWithTestNFT config nonExistentHeadIdStub
 
   announceAuction terms
 
@@ -84,6 +78,8 @@ bidderBuysTest = mkAssertion $ do
   waitUntil $ biddingEnd terms
   withActor buyer2 $ bidderBuys terms
 
+  assertUTxOsInScriptEquals FeeEscrow terms 1
+
   assertNFTNumEquals seller 0
   assertNFTNumEquals buyer1 0
   assertNFTNumEquals buyer2 1
@@ -97,14 +93,8 @@ sellerReclaimsTest = mkAssertion $ do
 
   void $ initWallet 100_000_000 seller
 
-  nftTx <- mintOneTestNFT
-  let utxoRef = mkTxIn nftTx 0
+  terms <- createTermsWithTestNFT config nonExistentHeadIdStub
 
-  terms <- liftIO $ do
-    dynamicState <- constructTermsDynamic seller utxoRef nonExistentHeadIdStub
-    configToAuctionTerms config dynamicState
-
-  assertNFTNumEquals seller 1
   announceAuction terms
 
   waitUntil $ biddingStart terms
@@ -115,6 +105,7 @@ sellerReclaimsTest = mkAssertion $ do
   sellerReclaims terms
 
   assertNFTNumEquals seller 1
+  assertUTxOsInScriptEquals FeeEscrow terms 1
 
   waitUntil $ cleanup terms
   cleanupTx terms
@@ -125,14 +116,8 @@ sellerBidsTest = mkAssertion $ do
 
   void $ initWallet 100_000_000 seller
 
-  nftTx <- mintOneTestNFT
-  let utxoRef = mkTxIn nftTx 0
+  terms <- createTermsWithTestNFT config nonExistentHeadIdStub
 
-  terms <- liftIO $ do
-    dynamicState <- constructTermsDynamic seller utxoRef nonExistentHeadIdStub
-    configToAuctionTerms config dynamicState
-
-  assertNFTNumEquals seller 1
   announceAuction terms
 
   waitUntil $ biddingStart terms

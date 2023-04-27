@@ -21,19 +21,21 @@ import GHC.Generics (Generic)
 -- Plutus imports
 import Plutus.V1.Ledger.Crypto (PubKeyHash)
 import Plutus.V1.Ledger.Time (POSIXTime (..))
-import Plutus.V1.Ledger.Value (AssetClass, CurrencySymbol (..))
+import Plutus.V1.Ledger.Value (AssetClass, CurrencySymbol (..), unCurrencySymbol)
+import Plutus.V2.Ledger.Api (fromBuiltin)
 import Plutus.V2.Ledger.Contexts (TxOutRef)
 
 -- Hydra imports
 import Hydra.Cardano.Api (TxIn, toPlutusTxOutRef)
+import Hydra.Chain (HeadId (..))
 
 -- Hydra auction imports
 import HydraAuction.OnChain.TestNFT (testNftAssetClass)
 import HydraAuction.Types (AuctionTerms (..))
 import HydraAuctionUtils.Extras.PlutusOrphans ()
-import HydraAuctionUtils.Fixture (Actor, getActorPubKeyHash)
 import HydraAuctionUtils.Time (currentTimeSeconds)
 import HydraAuctionUtils.Types.Natural (Natural)
+import HydraAuctionUtils.Fixture (Actor, getActorPubKeyHash, getActorsPubKeyHash, hydraNodeActors)
 
 data AuctionTermsConfig = AuctionTermsConfig
   { configDiffBiddingStart :: !Integer
@@ -67,8 +69,8 @@ instance ToJSON AuctionTermsDynamic
 instance FromJSON AuctionTermsDynamic
 
 -- | Stub for tests not checking MoveToHyda. Something not existent.
-nonExistentHeadIdStub :: CurrencySymbol
-nonExistentHeadIdStub = "DEADBEEF"
+nonExistentHeadIdStub :: HeadId
+nonExistentHeadIdStub = HeadId . fromBuiltin . unCurrencySymbol $ "DEADBEEF"
 
 constructTermsDynamic ::
   forall (timedMonad :: Type -> Type).
@@ -79,14 +81,13 @@ constructTermsDynamic ::
   timedMonad AuctionTermsDynamic
 constructTermsDynamic sellerActor utxoNonce headId = do
   currentTimeSeconds' <- currentTimeSeconds
-  sellerVkHash <- liftIO $ getActorPubKeyHash sellerActor
+  configDelegates <- liftIO $ getActorsPubKeyHash hydraNodeActors
   return $
     AuctionTermsDynamic
       { configAuctionLot = testNftAssetClass
       , configSellerActor = sellerActor
       , configHeadId = headId
-      , -- FIXME: get actual list of delegates
-        configDelegates = [sellerVkHash]
+      , configDelegates
       , configUtxoNonce = toPlutusTxOutRef utxoNonce
       , -- Convert to miliseconds and add one more second to have some time for submiting Tx
         configAnnouncementTime = POSIXTime $ currentTimeSeconds' * 1000 + 1000

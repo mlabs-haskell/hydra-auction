@@ -221,6 +221,7 @@ library
   other-modules:
     HydraAuction.OnChain.Deposit
     HydraAuction.OnChain.Escrow
+    HydraAuction.OnChain.FeeEscrow
     HydraAuction.OnChain.StandingBid
     HydraAuction.OnChain.StateToken
 

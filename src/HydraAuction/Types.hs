@@ -17,7 +17,8 @@ module HydraAuction.Types (
   AuctionEscrowDatum (..),
   EscrowRedeemer (..),
   StandingBidRedeemer (..),
-  AuctionFeeEscrowDatum,
+  FeeEscrowDatum,
+  FeeEscrowRedeemer (..),
   VoucherForgingRedeemer (..),
   calculateTotalFee,
   AuctionStage (..),
@@ -245,7 +246,7 @@ instance Eq BidDepositDatum where
 PlutusTx.makeIsDataIndexed ''BidDepositDatum [('BidDepositDatum, 0)]
 PlutusTx.makeLift ''BidDepositDatum
 
-type AuctionFeeEscrowDatum = ()
+type FeeEscrowDatum = ()
 
 -- Redeemers
 
@@ -260,3 +261,6 @@ PlutusTx.makeIsDataIndexed ''VoucherForgingRedeemer [('MintVoucher, 0), ('BurnVo
 
 data BidDepositRedeemer = LosingBidder | WinningBidder | SellerClaimsDeposit | CleanupDeposit
 PlutusTx.makeIsDataIndexed ''BidDepositRedeemer [('LosingBidder, 0), ('WinningBidder, 1), ('SellerClaimsDeposit, 2), ('CleanupDeposit, 3)]
+
+data FeeEscrowRedeemer = DistributeFees
+PlutusTx.makeIsDataIndexed ''FeeEscrowRedeemer [('DistributeFees, 0)]
