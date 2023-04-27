@@ -15,11 +15,6 @@ import PlutusTx qualified
 
 -- Hydra auction imports
 import HydraAuction.Addresses (EscrowAddress (..), StandingBidAddress (..))
-import HydraAuction.OnChain.Common (
-  byAddress,
-  decodeOutputDatum,
-  nothingForged,
- )
 import HydraAuction.Types (
   AuctionEscrowDatum (..),
   AuctionTerms (..),
@@ -28,6 +23,11 @@ import HydraAuction.Types (
   BidTerms (..),
   StandingBidDatum (..),
   StandingBidState (..),
+ )
+import HydraAuctionUtils.Plutus (
+  byAddress,
+  decodeOutputDatum,
+  nothingForged,
  )
 
 {-# INLINEABLE mkDepositValidator #-}
