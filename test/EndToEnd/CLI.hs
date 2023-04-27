@@ -25,12 +25,6 @@ import Hydra.Cardano.Api (mkTxIn, toPlutusValue, txOutValue)
 
 -- Hydra auction imports
 import HydraAuction.OnChain.TestNFT (testNftAssetClass)
-import HydraAuction.Runner (
-  Runner,
-  initWallet,
-  withActor,
- )
-import HydraAuction.Runner.Time (waitUntil)
 import HydraAuction.Tx.Common (actorTipUtxo)
 import HydraAuction.Tx.Escrow (
   announceAuction,
@@ -56,6 +50,12 @@ import HydraAuction.Tx.TermsConfig (
 import HydraAuction.Tx.TestNFT (mintOneTestNFT)
 import HydraAuction.Types (ApprovedBidders (..), AuctionTerms (..), intToNatural)
 import HydraAuctionUtils.Fixture (Actor (..), getActorsPubKey)
+import HydraAuctionUtils.L1.Runner (
+  Runner,
+  initWallet,
+  withActor,
+ )
+import HydraAuctionUtils.L1.Runner.Time (waitUntil)
 
 -- Hydra auction test imports
 import EndToEnd.Utils (mkAssertion)

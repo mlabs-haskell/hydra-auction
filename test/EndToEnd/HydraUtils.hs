@@ -52,27 +52,27 @@ import Test.Hydra.Prelude (withTempDir)
 -- HydraAuction imports
 
 import Hydra.Cardano.Api (TxId)
-import HydraAuction.Delegate.CompositeRunner (
+import HydraAuction.Delegate.Interface (DelegateState, initialState)
+import HydraAuction.HydraHacks (prepareScriptRegistry)
+import HydraAuctionUtils.BundledData (lookupProtocolParamPath)
+import HydraAuctionUtils.Composite.Runner (
   CompositeExecutionContext (..),
   CompositeRunner,
   executeCompositeRunner,
  )
-import HydraAuction.Delegate.Interface (DelegateState, initialState)
-import HydraAuction.Hydra.Runner (executeHydraRunnerFakingParams)
-import HydraAuction.HydraHacks (prepareScriptRegistry)
-import HydraAuction.Runner (
-  ExecutionContext (..),
-  Runner,
-  dockerNode,
-  executeRunner,
-  executeRunnerWithNodeAs,
- )
-import HydraAuctionUtils.BundledData (lookupProtocolParamPath)
 import HydraAuctionUtils.Fixture (
   Actor (..),
   hydraKeysFor,
   hydraNodeActors,
   keysFor,
+ )
+import HydraAuctionUtils.Hydra.Runner (executeHydraRunnerFakingParams)
+import HydraAuctionUtils.L1.Runner (
+  ExecutionContext (..),
+  Runner,
+  dockerNode,
+  executeRunner,
+  executeRunnerWithNodeAs,
  )
 
 -- This function will set the HYDRA_CONFIG_DIR env var locally

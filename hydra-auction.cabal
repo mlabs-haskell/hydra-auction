@@ -205,17 +205,11 @@ library
   exposed-modules:
     HydraAuction.Addresses
     HydraAuction.Delegate
-    HydraAuction.Delegate.CompositeRunner
     HydraAuction.Delegate.Interface
-    HydraAuction.Hydra.Interface
-    HydraAuction.Hydra.Monad
-    HydraAuction.Hydra.Runner
     HydraAuction.HydraHacks
     HydraAuction.OnChain
     HydraAuction.OnChain.Common
     HydraAuction.OnChain.TestNFT
-    HydraAuction.Runner
-    HydraAuction.Runner.Time
     HydraAuction.Tx.Common
     HydraAuction.Tx.Deposit
     HydraAuction.Tx.Escrow
@@ -230,12 +224,10 @@ library
     HydraAuction.OnChain.Escrow
     HydraAuction.OnChain.StandingBid
     HydraAuction.OnChain.StateToken
-    HydraAuction.Runner.Tracer
 
   build-depends:
     , cardano-api
     , directory
-    , HUnit
     , hydra-auction-utils
     , hydra-cardano-api
     , hydra-cluster
@@ -254,10 +246,16 @@ library hydra-auction-utils
   hs-source-dirs:  src-utils
   exposed-modules:
     HydraAuctionUtils.BundledData
+    HydraAuctionUtils.Composite.Runner
     HydraAuctionUtils.Extras.CardanoApi
     HydraAuctionUtils.Extras.Plutus
     HydraAuctionUtils.Extras.PlutusOrphans
     HydraAuctionUtils.Fixture
+    HydraAuctionUtils.Hydra.Interface
+    HydraAuctionUtils.Hydra.Monad
+    HydraAuctionUtils.Hydra.Runner
+    HydraAuctionUtils.L1.Runner
+    HydraAuctionUtils.L1.Runner.Time
     HydraAuctionUtils.Monads
     HydraAuctionUtils.Monads.Actors
     HydraAuctionUtils.Plutus
@@ -269,8 +267,11 @@ library hydra-auction-utils
     HydraAuctionUtils.Types.Natural
     Paths_hydra_auction
 
+  other-modules:   HydraAuctionUtils.L1.Runner.Tracer
   build-depends:
+    , HUnit
     , hydra-plutus
+    , hydra-test-utils
     , plutus-tx
 
 test-suite hydra-auction-test

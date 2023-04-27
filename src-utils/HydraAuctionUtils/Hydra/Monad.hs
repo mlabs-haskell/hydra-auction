@@ -1,6 +1,6 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
 
-module HydraAuction.Hydra.Monad (
+module HydraAuctionUtils.Hydra.Monad (
   MonadHydra (..),
   EventMatcher (..),
   AwaitedHydraEvent (..),
@@ -26,7 +26,7 @@ import Cardano.Api.UTxO qualified as UTxO
 import Hydra.Cardano.Api (Address (ByronAddress, ShelleyAddress), Tx, pattern TxOut)
 
 -- HydraAuction imports
-import HydraAuction.Hydra.Interface (
+import HydraAuctionUtils.Hydra.Interface (
   HydraCommand (GetUTxO, NewTx),
   HydraEvent (..),
   HydraEventKind (GetUTxOResponseKind),

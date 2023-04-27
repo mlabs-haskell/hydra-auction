@@ -26,7 +26,7 @@ import Hydra.Logging (Verbosity (Quiet, Verbose))
 import Hydra.Prelude (SomeException, ask, liftIO)
 
 -- Hydra auction imports
-import HydraAuction.Runner (
+import HydraAuctionUtils.L1.Runner (
   ExecutionContext (..),
   Runner,
   executeRunner,

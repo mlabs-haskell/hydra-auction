@@ -19,8 +19,7 @@ import Hydra.Chain (HeadId)
 import Hydra.Chain.Direct.Tx (headIdToCurrencySymbol)
 
 -- HydraAuction imports
-import HydraAuction.Runner (Runner)
-import HydraAuction.Runner.Time (waitUntil)
+
 import HydraAuction.Tx.Escrow (announceAuction, startBidding)
 import HydraAuction.Tx.TermsConfig (
   AuctionTermsConfig,
@@ -36,6 +35,8 @@ import HydraAuction.Types (
   naturalToInt,
  )
 import HydraAuctionUtils.Fixture (getActorsPubKeyHash)
+import HydraAuctionUtils.L1.Runner (Runner)
+import HydraAuctionUtils.L1.Runner.Time (waitUntil)
 
 -- HydraAuction test imports
 

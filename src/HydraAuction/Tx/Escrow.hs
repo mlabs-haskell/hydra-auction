@@ -42,7 +42,6 @@ import Cardano.Api.UTxO qualified as UTxO
 -- Hydra auction imports
 import HydraAuction.Addresses (VoucherCS (..))
 import HydraAuction.OnChain (AuctionScript (..), policy, voucherAssetClass)
-import HydraAuction.Runner (Runner)
 import HydraAuction.Tx.Common (
   scriptAddress,
   scriptPlutusScript,
@@ -67,6 +66,7 @@ import HydraAuction.Types (
   calculateTotalFee,
  )
 import HydraAuctionUtils.Extras.Plutus (scriptCurrencySymbol)
+import HydraAuctionUtils.L1.Runner (Runner)
 import HydraAuctionUtils.Monads (
   MonadQueryUtxo (queryUtxo),
   UtxoQuery (ByTxIns),

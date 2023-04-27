@@ -30,12 +30,6 @@ import Cardano.Api.UTxO qualified as UTxO
 import HydraAuction.Delegate.Interface (DelegateState (..))
 import HydraAuction.Delegate.Interface qualified as DelegateInterface
 import HydraAuction.OnChain (AuctionScript (..))
-import HydraAuction.Runner (
-  ExecutionContext (..),
-  Runner,
-  initWallet,
-  withActor,
- )
 import HydraAuction.Tx.Common (
   currentAuctionStage,
   scriptSingleUtxo,
@@ -57,6 +51,12 @@ import HydraAuction.Tx.TermsConfig (constructTermsDynamic)
 import HydraAuction.Tx.TestNFT (findTestNFT, mintOneTestNFT)
 import HydraAuction.Types (ApprovedBidders (..), AuctionStage (..), AuctionTerms, BidDepositDatum (..), Natural, naturalToInt)
 import HydraAuctionUtils.Fixture (Actor (..), actorFromPkh, allActors, getActorsPubKeyHash)
+import HydraAuctionUtils.L1.Runner (
+  ExecutionContext (..),
+  Runner,
+  initWallet,
+  withActor,
+ )
 import HydraAuctionUtils.Monads (fromPlutusAddressInMonad)
 import HydraAuctionUtils.Monads.Actors (
   actorTipUtxo,

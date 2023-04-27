@@ -58,7 +58,6 @@ import HydraAuction.OnChain (
   standingBidValidator,
   voucherAssetClass,
  )
-import HydraAuction.Runner (ExecutionContext (..), Runner)
 import HydraAuctionUtils.Monads.Actors (
   actorTipUtxo,
   addressAndKeys,
@@ -82,6 +81,7 @@ import HydraAuction.Types (
  )
 import HydraAuctionUtils.Extras.Plutus (scriptCurrencySymbol)
 import HydraAuctionUtils.Fixture (Actor)
+import HydraAuctionUtils.L1.Runner (ExecutionContext (..), Runner)
 import HydraAuctionUtils.Monads (
   MonadCardanoClient,
   MonadNetworkId,

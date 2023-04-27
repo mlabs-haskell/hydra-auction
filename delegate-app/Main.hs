@@ -43,9 +43,6 @@ import System.IO (BufferMode (LineBuffering), hSetBuffering, stderr, stdout)
 import Hydra.Network (IP, PortNumber)
 import HydraNode (HydraClient (..))
 
--- Plutus imports
-import Plutus.V2.Ledger.Api (POSIXTime (..))
-
 -- HydraAuction imports
 
 import GHC.Stack (HasCallStack)
@@ -56,12 +53,6 @@ import HydraAuction.Delegate (
   clientIsInScope,
   delegateEventStep,
   delegateFrontendRequestStep,
- )
-import HydraAuction.Delegate.CompositeRunner (
-  CompositeExecutionContext (..),
-  CompositeRunner,
-  executeCompositeRunner,
-  runHydraInComposite,
  )
 import HydraAuction.Delegate.Interface (
   DelegateResponse (AuctionSet),
@@ -78,13 +69,19 @@ import HydraAuction.Delegate.Server (
   ThreadEvent (ThreadCancelled, ThreadStarted),
   ThreadSort (..),
  )
-import HydraAuction.Hydra.Monad (AwaitedHydraEvent (..), waitForHydraEvent)
-import HydraAuction.Hydra.Runner (HydraRunner, executeHydraRunnerFakingParams)
 import HydraAuction.OnChain.Common (secondsLeftInInterval, stageToInterval)
-import HydraAuction.Runner (dockerNode, executeRunnerWithNodeAs)
 import HydraAuction.Tx.Common (currentAuctionStage)
 import HydraAuction.Types (AuctionTerms)
+import HydraAuctionUtils.Composite.Runner (
+  CompositeExecutionContext (..),
+  CompositeRunner,
+  executeCompositeRunner,
+  runHydraInComposite,
+ )
 import HydraAuctionUtils.Fixture (Actor (..))
+import HydraAuctionUtils.Hydra.Monad (AwaitedHydraEvent (..), waitForHydraEvent)
+import HydraAuctionUtils.Hydra.Runner (HydraRunner, executeHydraRunnerFakingParams)
+import HydraAuctionUtils.L1.Runner (dockerNode, executeRunnerWithNodeAs)
 import HydraAuctionUtils.Time (currentPlutusPOSIXTime)
 import HydraAuctionUtils.Tracing (
   MonadTracer (trace),
