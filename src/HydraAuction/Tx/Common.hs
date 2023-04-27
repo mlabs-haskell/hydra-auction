@@ -1,11 +1,6 @@
 module HydraAuction.Tx.Common (
   actorTipUtxo,
   addressAndKeys,
-  minLovelace,
-  mkInlineDatum,
-  mkInlinedDatumScriptWitness,
-  tokenToAsset,
-  mintedTokens,
   scriptUtxos,
   scriptAddress,
   scriptPlutusScript,
@@ -23,23 +18,14 @@ import Prelude
 -- Haskell imports
 import Control.Monad (when)
 import Control.Monad.TimeMachine (MonadTime (getCurrentTime))
-import Data.Map qualified as Map
 import Data.Time.Clock.POSIX qualified as POSIXTime
-import Data.Tuple.Extra (first)
 
 -- Plutus imports
 import Plutus.V1.Ledger.Interval (member)
-import Plutus.V1.Ledger.Value (
-  TokenName (..),
- )
 import Plutus.V2.Ledger.Api (
   POSIXTime (..),
-  ToData,
-  fromBuiltin,
   getMintingPolicy,
   getValidator,
-  toBuiltinData,
-  toData,
  )
 
 -- Hydra imports
@@ -48,42 +34,18 @@ import Cardano.Api.UTxO qualified as UTxO
 import CardanoClient (buildScriptAddress)
 import Hydra.Cardano.Api (
   Address,
-  AssetName,
   BuildTx,
-  BuildTxWith,
   CtxUTxO,
-  Lovelace (..),
   PaymentKey,
   PlutusScript,
-  Quantity,
-  ScriptDatum (..),
-  ScriptWitness,
   ShelleyAddr,
   SigningKey,
-  ToScriptData,
   TxIn,
   TxMintValue,
   TxOut,
-  TxOutDatum,
   VerificationKey,
-  WitCtxMint,
-  WitCtxTxIn,
-  Witness,
-  fromPlutusData,
   fromPlutusScript,
-  hashScript,
-  mkScriptWitness,
-  scriptWitnessCtx,
-  toScriptData,
-  valueFromList,
-  pattern AssetId,
-  pattern AssetName,
-  pattern BuildTxWith,
   pattern PlutusScript,
-  pattern PolicyId,
-  pattern ScriptWitness,
-  pattern TxMintValue,
-  pattern TxOutDatumInline,
  )
 
 -- Hydra auction imports
@@ -112,9 +74,7 @@ import HydraAuctionUtils.Monads (
   UtxoQuery (..),
   addressAndKeysForActor,
  )
-
-minLovelace :: Lovelace
-minLovelace = 2_000_000
+import HydraAuctionUtils.Tx.Build (mintedTokens, tokenToAsset)
 
 currentTimeSeconds :: MonadTime timedMonad => timedMonad Integer
 currentTimeSeconds =
@@ -135,9 +95,6 @@ currentAuctionStage terms = do
     [] -> error "Impossible happend: no matching stages"
     _ -> error "Impossible happend: more than one matching stages"
 
-tokenToAsset :: TokenName -> AssetName
-tokenToAsset (TokenName t) = AssetName $ fromBuiltin t
-
 toForgeStateToken :: AuctionTerms -> VoucherForgingRedeemer -> TxMintValue BuildTx
 toForgeStateToken terms redeemer =
   mintedTokens
@@ -148,37 +105,6 @@ toForgeStateToken terms redeemer =
     num = case redeemer of
       MintVoucher -> 1
       BurnVoucher -> -1
-
-mintedTokens ::
-  ToScriptData redeemer =>
-  PlutusScript ->
-  redeemer ->
-  [(AssetName, Quantity)] ->
-  TxMintValue BuildTx
-mintedTokens script redeemer assets =
-  TxMintValue mintedTokens' mintedWitnesses'
-  where
-    mintedTokens' = valueFromList (fmap (first (AssetId policyId)) assets)
-    mintedWitnesses' =
-      BuildTxWith $ Map.singleton policyId mintingWitness
-    mintingWitness :: ScriptWitness WitCtxMint
-    mintingWitness =
-      mkScriptWitness script NoScriptDatumForMint (toScriptData redeemer)
-    policyId =
-      PolicyId $ hashScript $ PlutusScript script
-
-mkInlineDatum :: ToScriptData datum => datum -> TxOutDatum ctx
-mkInlineDatum x = TxOutDatumInline $ fromPlutusData $ toData $ toBuiltinData x
-
-mkInlinedDatumScriptWitness ::
-  (ToData a) =>
-  PlutusScript ->
-  a ->
-  BuildTxWith BuildTx (Witness WitCtxTxIn)
-mkInlinedDatumScriptWitness script redeemer =
-  BuildTxWith $
-    ScriptWitness scriptWitnessCtx $
-      mkScriptWitness script InlineScriptDatum (toScriptData redeemer)
 
 addressAndKeys ::
   Runner

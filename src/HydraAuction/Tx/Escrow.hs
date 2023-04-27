@@ -46,9 +46,6 @@ import HydraAuction.Runner (Runner)
 import HydraAuction.Tx.Common (
   actorTipUtxo,
   addressAndKeys,
-  minLovelace,
-  mkInlineDatum,
-  mkInlinedDatumScriptWitness,
   scriptAddress,
   scriptPlutusScript,
   scriptUtxos,
@@ -81,6 +78,11 @@ import HydraAuctionUtils.Monads (
 import HydraAuctionUtils.Tx.AutoCreateTx (
   AutoCreateParams (..),
   autoSubmitAndAwaitTx,
+ )
+import HydraAuctionUtils.Tx.Build (
+  minLovelace,
+  mkInlineDatum,
+  mkInlinedDatumScriptWitness,
  )
 import HydraAuctionUtils.Tx.Utxo (
   filterAdaOnlyUtxo,

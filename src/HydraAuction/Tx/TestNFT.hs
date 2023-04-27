@@ -36,13 +36,15 @@ import HydraAuction.Runner (Runner)
 import HydraAuction.Tx.Common (
   actorTipUtxo,
   addressAndKeys,
-  minLovelace,
-  mintedTokens,
-  tokenToAsset,
  )
 import HydraAuctionUtils.Tx.AutoCreateTx (
   AutoCreateParams (..),
   autoSubmitAndAwaitTx,
+ )
+import HydraAuctionUtils.Tx.Build (
+  minLovelace,
+  mintedTokens,
+  tokenToAsset,
  )
 import HydraAuctionUtils.Tx.Utxo (
   filterAdaOnlyUtxo,
