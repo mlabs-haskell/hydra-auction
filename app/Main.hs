@@ -29,7 +29,7 @@ import Hydra.Prelude (SomeException, ask, liftIO)
 import HydraAuctionUtils.L1.Runner (
   ExecutionContext (..),
   L1Runner,
-  executeRunner,
+  executeL1Runner,
   stdoutOrNullTracer,
  )
 
@@ -132,7 +132,7 @@ handleCliInput' client currentDelegateStateRef input = case input of
             , actor = cliActor
             }
 
-    executeRunner runnerContext (loopCLI client currentDelegateStateRef)
+    executeL1Runner runnerContext (loopCLI client currentDelegateStateRef)
 
 loopCLI :: Connection -> IORef DelegateState -> L1Runner ()
 loopCLI client currentDelegateStateRef = do

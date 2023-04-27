@@ -34,7 +34,7 @@ import HydraAuction.Tx.Common (scriptUtxos)
 import HydraAuction.Tx.TermsConfig (AuctionTermsConfig (..))
 import HydraAuction.Types (AuctionTerms (..), intToNatural)
 import HydraAuctionUtils.Fixture (Actor)
-import HydraAuctionUtils.L1.Runner (L1Runner, executeTestRunner, withActor)
+import HydraAuctionUtils.L1.Runner (L1Runner, executeTestL1Runner, withActor)
 import HydraAuctionUtils.Monads.Actors (actorTipUtxo)
 
 config :: AuctionTermsConfig
@@ -50,7 +50,7 @@ config =
     }
 
 mkAssertion :: L1Runner () -> Assertion
-mkAssertion = failAfter 60 . executeTestRunner
+mkAssertion = failAfter 60 . executeTestL1Runner
 
 assertNFTNumEquals :: Actor -> Integer -> L1Runner ()
 assertNFTNumEquals actor expectedNum = do

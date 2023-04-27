@@ -3,9 +3,9 @@ module HydraAuctionUtils.L1.Runner (
   EndToEndLog (..),
   NodeLog (..),
   L1Runner,
-  executeRunner,
-  executeRunnerWithNodeAs,
-  executeTestRunner,
+  executeL1Runner,
+  executeL1RunnerWithNodeAs,
+  executeTestL1Runner,
   dockerNode,
   StateDirectory (..),
   ExecutionContext (..),
@@ -189,25 +189,25 @@ instance MonadHasActor L1Runner where
     MkExecutionContext {actor} <- ask
     return actor
 
-executeRunner ::
+executeL1Runner ::
   ExecutionContext ->
   L1Runner a ->
   IO a
-executeRunner context runner =
+executeL1Runner context runner =
   runReaderT (run runner) context
 
 withActor :: Actor -> L1Runner a -> L1Runner a
 withActor actor = local (\ctx -> ctx {actor = actor})
 
 -- | Executes a test runner using a temporary directory as the @StateDirectory@.
-executeTestRunner :: L1Runner () -> IO ()
-executeTestRunner runner = do
+executeTestL1Runner :: L1Runner () -> IO ()
+executeTestL1Runner runner = do
   withTempDir "test-hydra-auction" $ \tmpDir -> do
     withCardanoNodeDevnet
       nullTracer
       tmpDir
       $ \node ->
-        executeRunnerWithNodeAs node Alice runner
+        executeL1RunnerWithNodeAs node Alice runner
 
 dockerNode :: RunningNode
 dockerNode =
@@ -216,10 +216,10 @@ dockerNode =
     , nodeSocket = "./devnet/node.socket"
     }
 
-executeRunnerWithNodeAs :: forall x. RunningNode -> Actor -> L1Runner x -> IO x
-executeRunnerWithNodeAs node actor runner = do
+executeL1RunnerWithNodeAs :: forall x. RunningNode -> Actor -> L1Runner x -> IO x
+executeL1RunnerWithNodeAs node actor runner = do
   let tracer = contramap show stdoutTracer
-  executeRunner
+  executeL1Runner
     (MkExecutionContext {tracer = tracer, node, actor})
     runner
 

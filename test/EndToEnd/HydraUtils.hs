@@ -71,8 +71,8 @@ import HydraAuctionUtils.L1.Runner (
   ExecutionContext (..),
   L1Runner,
   dockerNode,
-  executeRunner,
-  executeRunnerWithNodeAs,
+  executeL1Runner,
+  executeL1RunnerWithNodeAs,
  )
 
 -- This function will set the HYDRA_CONFIG_DIR env var locally
@@ -121,7 +121,7 @@ spinUpHeads clusterIx hydraScriptsTxId cont = do
           seedFromFaucet_ node patriciaCardanoVk 100_000_000 Normal faucetTracer
           seedFromFaucet_ node rupertCardanoVk 100_000_000 Normal faucetTracer
           [actor1, actor2, actor3] <- return hydraNodeActors
-          executeRunner ctx $ do
+          executeL1Runner ctx $ do
             let threeClients =
                   Map.fromList
                     [ (Main, (n1, actor1))
@@ -153,7 +153,7 @@ runningThreeNodesDockerComposeHydra cont = do
                   ]
            in finally
                 -- FIXME
-                (executeRunnerWithNodeAs dockerNode Alice (cont threeClients))
+                (executeL1RunnerWithNodeAs dockerNode Alice (cont threeClients))
                 (system "./scripts/stop-demo.sh")
   where
     runHydraClientN n cont' = liftIO $
@@ -210,7 +210,7 @@ runEmulatorInTest action = do
 {-
 - FIXME: docker-compose not working now
 runEmulatorUsingDockerCompose :: DelegatesClusterEmulator a -> IO a
-runEmulatorUsingDockerCompose action = runningThreeNodesDockerComposeHydra $ executeRunnerWithNodeAs dockerNode Alice . flip runEmulator action
+runEmulatorUsingDockerCompose action = runningThreeNodesDockerComposeHydra $ executeL1RunnerWithNodeAs dockerNode Alice . flip runEmulator action
 -}
 
 runEmulator :: EmulatorDelegateClients -> DelegatesClusterEmulator a -> L1Runner a
@@ -256,7 +256,7 @@ runCompositeForDelegate name action = do
   where
     createContext l1Node clients = do
       let (hydraClient, actor) = (Map.!) clients name
-      executeRunnerWithNodeAs l1Node actor $ do
+      executeL1RunnerWithNodeAs l1Node actor $ do
         l1Context <- ask
         executeHydraRunnerFakingParams hydraClient $ do
           hydraContext <- ask
