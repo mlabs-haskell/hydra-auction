@@ -23,11 +23,6 @@ import Cardano.Api.UTxO qualified as UTxO
 -- HydraAuction imports
 
 import Hydra.Chain.Direct.Tx (headIdToCurrencySymbol)
-import HydraAuction.Delegate.CompositeRunner (
-  CompositeRunner,
-  runHydraInComposite,
-  runL1RunnerInComposite,
- )
 import HydraAuction.Delegate.Interface (
   AbortReason (..),
   DelegateResponse (..),
@@ -52,6 +47,11 @@ import HydraAuction.Types (
   AuctionTerms (..),
   StandingBidDatum (..),
   StandingBidState (..),
+ )
+import HydraAuctionUtils.Composite.Runner (
+  CompositeRunner,
+  runHydraInComposite,
+  runL1RunnerInComposite,
  )
 import HydraAuctionUtils.Fixture (partyFor)
 import HydraAuctionUtils.Hydra.Interface (HydraCommand (..), HydraEvent (..))

@@ -205,7 +205,6 @@ library
   exposed-modules:
     HydraAuction.Addresses
     HydraAuction.Delegate
-    HydraAuction.Delegate.CompositeRunner
     HydraAuction.Delegate.Interface
     HydraAuction.HydraHacks
     HydraAuction.OnChain
@@ -247,6 +246,7 @@ library hydra-auction-utils
   hs-source-dirs:  src-utils
   exposed-modules:
     HydraAuctionUtils.BundledData
+    HydraAuctionUtils.Composite.Runner
     HydraAuctionUtils.Extras.CardanoApi
     HydraAuctionUtils.Extras.Plutus
     HydraAuctionUtils.Extras.PlutusOrphans

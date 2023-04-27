@@ -54,12 +54,6 @@ import HydraAuction.Delegate (
   delegateEventStep,
   delegateFrontendRequestStep,
  )
-import HydraAuction.Delegate.CompositeRunner (
-  CompositeExecutionContext (..),
-  CompositeRunner,
-  executeCompositeRunner,
-  runHydraInComposite,
- )
 import HydraAuction.Delegate.Interface (
   DelegateResponse (AuctionSet),
   DelegateState,
@@ -78,6 +72,12 @@ import HydraAuction.Delegate.Server (
 import HydraAuction.OnChain.Common (secondsLeftInInterval, stageToInterval)
 import HydraAuction.Tx.Common (currentAuctionStage)
 import HydraAuction.Types (AuctionTerms)
+import HydraAuctionUtils.Composite.Runner (
+  CompositeExecutionContext (..),
+  CompositeRunner,
+  executeCompositeRunner,
+  runHydraInComposite,
+ )
 import HydraAuctionUtils.Fixture (Actor (..))
 import HydraAuctionUtils.Hydra.Monad (AwaitedHydraEvent (..), waitForHydraEvent)
 import HydraAuctionUtils.Hydra.Runner (HydraRunner, executeHydraRunnerFakingParams)

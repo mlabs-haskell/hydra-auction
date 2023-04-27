@@ -1,4 +1,4 @@
-module HydraAuction.Delegate.CompositeRunner (
+module HydraAuctionUtils.Composite.Runner (
   CompositeRunner,
   CompositeExecutionContext (..),
   executeCompositeRunner,
