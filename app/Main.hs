@@ -14,6 +14,7 @@ import Control.Monad.Trans.Class (lift)
 import Control.Tracer (contramap, stdoutTracer, traceWith)
 import Data.Aeson (eitherDecode, encode)
 import Data.IORef (IORef, newIORef, writeIORef)
+import Data.Text qualified as Text
 import Network.WebSockets (
   Connection,
   receiveData,
@@ -39,6 +40,7 @@ import CardanoNode (
 
 -- Hydra imports
 import Hydra.Logging (Verbosity (Quiet, Verbose))
+import Hydra.Network (Host (..))
 import Hydra.Prelude (SomeException, ask, liftIO)
 
 -- Hydra auction imports
@@ -65,8 +67,6 @@ import CLI.Parsers (
   CliOptions (InteractivePrompt, Watch),
   PromptOptions (..),
   cliOptions,
-  delegateIP,
-  delegatePort,
   delegateSettings,
   getCliInput,
   parseCliAction,
@@ -86,7 +86,7 @@ handleCliInput input = do
   -- Connect to delegate server
   let settings = delegateSettings input
 
-  runClient (show $ delegateIP settings) (fromIntegral $ delegatePort settings) "/" $ \client -> do
+  runClient (Text.unpack $ hostname settings) (fromIntegral $ port settings) "/" $ \client -> do
     currentDelegateStateRef <- newIORef initialState
     let tracer = contramap (show . pretty) stdoutTracer
     sendTextData client . encode $ QueryCurrentDelegateState
