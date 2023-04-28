@@ -140,6 +140,7 @@ executable hydra-auction
     CLI.Config
     CLI.Parsers
     CLI.Parsers.TxIn
+    CLI.Printing
     CLI.Types
     CLI.Watch
 
@@ -284,6 +285,8 @@ test-suite hydra-auction-test
   other-modules:
     CLI.Actions
     CLI.Config
+    CLI.Printing
+    CLI.Types
     EndToEnd.CLI
     EndToEnd.HydraUtils
     EndToEnd.Ledger.Auction
