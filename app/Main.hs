@@ -29,15 +29,6 @@ import System.Console.Haskeline (
   runInputT,
  )
 
--- Cardano imports
-import CardanoNode (
-  RunningNode (
-    RunningNode,
-    networkId,
-    nodeSocket
-  ),
- )
-
 -- Hydra imports
 import Hydra.Logging (Verbosity (Quiet, Verbose))
 import Hydra.Network (Host (..))
@@ -126,12 +117,10 @@ handleCliInput' client currentDelegateStateRef input = case input of
     let hydraVerbosity = if cliVerbosity then Verbose "hydra-auction" else Quiet
     tracer <- stdoutOrNullTracer hydraVerbosity
 
-    let node = RunningNode {nodeSocket = cliNodeSocket, networkId = cliNetworkId}
-
-        runnerContext =
+    let runnerContext =
           MkExecutionContext
             { tracer = tracer
-            , node = node
+            , node = cliCardanoNode
             , actor = cliActor
             }
 

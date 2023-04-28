@@ -43,7 +43,7 @@ import Options.Applicative.Builder (
  )
 
 -- Cardano node imports
-import Cardano.Api (NetworkId, NetworkMagic (..), fromNetworkMagic)
+import CardanoNode (RunningNode (..))
 
 -- Hydra imports
 import Hydra.Network (Host)
@@ -52,10 +52,10 @@ import Hydra.Network (Host)
 import HydraAuction.OnChain (AuctionScript (..))
 import HydraAuctionUtils.Fixture (Actor (..))
 import HydraAuctionUtils.Parsers (
+  cardanoRunningNodeParser,
   parseActor,
   parseAda,
   parseHost,
-  parseNetworkMagic,
  )
 import HydraAuctionUtils.Types.Natural (Natural)
 
@@ -75,8 +75,7 @@ data CliOptions
 data PromptOptions = MkPromptOptions
   { cliActor :: !Actor
   , cliVerbosity :: !Bool
-  , cliNodeSocket :: !String
-  , cliNetworkId :: !NetworkId
+  , cliCardanoNode :: !RunningNode
   }
 
 getCliInput :: IO CliInput
@@ -96,7 +95,7 @@ cliOptionsParser =
   asum
     [ Watch <$> watchAuction
     , InteractivePrompt
-        <$> (MkPromptOptions <$> actor <*> verboseParser <*> socketDir <*> (fromNetworkMagic <$> networkMagic))
+        <$> (MkPromptOptions <$> actor <*> verboseParser <*> cardanoRunningNodeParser)
     ]
 
 parseCliAction :: [String] -> Either String CliAction
@@ -195,23 +194,6 @@ watchAuction =
           <> metavar "AUCTION"
           <> help "Watch the status of the given auction"
       )
-
-socketDir :: Parser String
-socketDir =
-  strOption
-    ( long "cardano-node-socket"
-        <> metavar "CARDANO_NODE_SOCKET"
-        <> help "Absolute path to the cardano node socket"
-    )
-
-networkMagic :: Parser NetworkMagic
-networkMagic =
-  option
-    parseNetworkMagic
-    ( long "network-magic"
-        <> metavar "NETWORK_MAGIC"
-        <> help "Network magic for cardano"
-    )
 
 parseScript :: ReadM AuctionScript
 parseScript = eitherReader $ \case
