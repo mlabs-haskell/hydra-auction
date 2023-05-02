@@ -13,9 +13,6 @@ import Control.Monad.Catch (try)
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (Assertion, testCase)
 
--- Hydra imports
-import Hydra.Cardano.Api (mkTxIn)
-
 -- Hydra auction imports
 import HydraAuction.OnChain (AuctionScript (..))
 import HydraAuction.Tx.Escrow (
@@ -24,15 +21,13 @@ import HydraAuction.Tx.Escrow (
   sellerReclaims,
   startBidding,
  )
+import HydraAuction.Tx.FeeEscrow (distributeFee)
 import HydraAuction.Tx.StandingBid (cleanupTx, newBid)
 import HydraAuction.Tx.TermsConfig (
-  configToAuctionTerms,
-  constructTermsDynamic,
   nonExistentHeadIdStub,
  )
-import HydraAuction.Tx.TestNFT (mintOneTestNFT)
 import HydraAuction.Types (ApprovedBidders (..), AuctionTerms (..))
-import HydraAuctionUtils.Fixture (Actor (..), getActorsPubKeyHash)
+import HydraAuctionUtils.Fixture (Actor (..), getActorsPubKeyHash, hydraNodeActors)
 import HydraAuctionUtils.L1.Runner (
   initWallet,
   withActor,
@@ -50,6 +45,7 @@ testSuite =
     [ testCase "bidder-buys" bidderBuysTest
     , testCase "seller-reclaims" sellerReclaimsTest
     , testCase "seller-bids" sellerBidsTest
+    , testCase "distribute-fees" distributeFeeTest
     -- FIXME: disabled until M6
     -- , testCase "unauthorised-bidder" unauthorisedBidderTest
     ]
@@ -127,6 +123,42 @@ sellerBidsTest = mkAssertion $ do
   case result of
     Left (_ :: SomeException) -> return ()
     Right _ -> fail "Start bidding should fail"
+
+distributeFeeTest :: Assertion
+distributeFeeTest = mkAssertion $ do
+  let seller = Alice
+      buyer1 = Bob
+      buyer2 = Carol
+
+  mapM_ (initWallet 100_000_000) $ [seller, buyer1, buyer2] <> hydraNodeActors
+
+  terms <- createTermsWithTestNFT config nonExistentHeadIdStub
+
+  announceAuction terms
+
+  waitUntil $ biddingStart terms
+  actorsPkh <- liftIO $ getActorsPubKeyHash [buyer1, buyer2]
+  startBidding terms (ApprovedBidders actorsPkh)
+
+  assertNFTNumEquals seller 0
+
+  withActor buyer2 $ newBid terms $ startingBid terms + minimumBidIncrement terms
+
+  waitUntil $ biddingEnd terms
+  withActor buyer2 $ bidderBuys terms
+
+  assertUTxOsInScriptEquals FeeEscrow terms 1
+
+  withActor Oscar $ distributeFee terms
+
+  assertNFTNumEquals seller 0
+  assertNFTNumEquals buyer1 0
+  assertNFTNumEquals buyer2 1
+
+  assertUTxOsInScriptEquals FeeEscrow terms 0
+
+  waitUntil $ cleanup terms
+  cleanupTx terms
 
 {-
 unauthorisedBidderTest :: Assertion

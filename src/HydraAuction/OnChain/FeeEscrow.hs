@@ -4,30 +4,31 @@ module HydraAuction.OnChain.FeeEscrow (mkFeeEscrowValidator) where
 
 -- Prelude imports
 import PlutusTx.Prelude
-import Prelude (maximum, minimum)
+
+-- import Prelude (quot)
 
 -- Plutus imports
-
+import Plutus.V1.Ledger.Address (pubKeyHashAddress, scriptHashAddress)
 import Plutus.V1.Ledger.Value (valueOf)
-import Plutus.V2.Ledger.Api (ScriptContext, TxInfo (..), TxOut (..), Value, adaSymbol, adaToken, scriptContextTxInfo, txInInfoResolved)
+import Plutus.V2.Ledger.Api (TxInfo (..), TxOut (..), Value, adaSymbol, adaToken, scriptContextTxInfo, txInInfoResolved)
+import Plutus.V2.Ledger.Contexts (ScriptContext, ownHash)
 
 -- Hydra auction imports
 import HydraAuction.Types (
   AuctionTerms (..),
   FeeEscrowDatum,
   FeeEscrowRedeemer (..),
-  )
-import HydraAuctionUtils.Types.Natural (naturalToInt)
+ )
 import HydraAuctionUtils.Plutus (
+  byAddress,
   nothingForged,
  )
 
 {-# INLINEABLE mkFeeEscrowValidator #-}
 mkFeeEscrowValidator :: AuctionTerms -> FeeEscrowDatum -> FeeEscrowRedeemer -> ScriptContext -> Bool
 mkFeeEscrowValidator terms () DistributeFees context =
-  -- There is one output per delegate. The conditions in validFeeDistribution are satisfied when applied to these outputs and the transaction fee.
-  length outputs == length (delegates terms)
-    && validFeeDistribution outputs singleFeeInputValue
+  -- Every delegate is payed at least the expected proportion of fee
+  all receivesProportionOfFee (delegates terms)
     -- No tokens are minted or burned.
     && nothingForged info
   where
@@ -37,26 +38,20 @@ mkFeeEscrowValidator terms () DistributeFees context =
     outputs :: [TxOut]
     outputs = txInfoOutputs info
 
-    validFeeDistribution :: [TxOut] -> Value -> Bool
-    validFeeDistribution outputsToDelegates txFee =
-      allAdaDistributed
-        && adaDistributedEvenly
-      where
-        -- Each delegate received the `auctionFeePerDelegate`,
-        -- after deducting the transaction fees from the total.
-        allAdaDistributed = actualTotalAda == expectedTotalAda
-        actualTotalAda = sum actualAdaValues + adaValueOf txFee
-        expectedTotalAda = length (delegates terms) * naturalToInt (auctionFeePerDelegate terms)
+    adaValueOf v = valueOf v adaSymbol adaToken
 
-        -- The amount received by any delegate differs by at most one lovelace
-        -- from what any other delegate received.
-        adaDistributedEvenly = True -- 1 > (maximum actualAdaValues - minimum actualAdaValues)
-        adaValueOf v = valueOf v adaSymbol adaToken
-        actualAdaValues = adaValueOf . txOutValue <$> outputsToDelegates
+    expectedValuePerDelegate :: Integer
+    expectedValuePerDelegate = adaValueOf singleFeeInputValue `quotient` length (delegates terms)
+
+    receivesProportionOfFee delegatePKH = case byAddress (pubKeyHashAddress delegatePKH) outputs of
+      [] -> traceError "Delegate does not receive proportion of fee"
+      outsToDelegate ->
+        traceIfFalse "Delegate does not receive proportion of fee" $
+          any (\txOut -> adaValueOf (txOutValue txOut) >= expectedValuePerDelegate) outsToDelegate
 
     -- There is one input spent from the fee escrow validator.
     singleFeeInputValue :: Value
-    singleFeeInputValue = case txInInfoResolved <$> txInfoInputs info of
+    singleFeeInputValue = case byAddress (scriptHashAddress $ ownHash context) $ txInInfoResolved <$> txInfoInputs info of
       [] -> traceError "Missing input for fee escrow"
       [feeOut] -> txOutValue feeOut
       _ : _ -> traceError "More than single input from fee escrow validator"

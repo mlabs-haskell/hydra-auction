@@ -33,9 +33,9 @@ import Hydra.Chain (HeadId (..))
 import HydraAuction.OnChain.TestNFT (testNftAssetClass)
 import HydraAuction.Types (AuctionTerms (..))
 import HydraAuctionUtils.Extras.PlutusOrphans ()
+import HydraAuctionUtils.Fixture (Actor, getActorPubKeyHash, getActorsPubKeyHash, hydraNodeActors)
 import HydraAuctionUtils.Time (currentTimeSeconds)
 import HydraAuctionUtils.Types.Natural (Natural)
-import HydraAuctionUtils.Fixture (Actor, getActorPubKeyHash, getActorsPubKeyHash, hydraNodeActors)
 
 data AuctionTermsConfig = AuctionTermsConfig
   { configDiffBiddingStart :: !Integer

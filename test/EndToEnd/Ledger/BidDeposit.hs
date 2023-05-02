@@ -12,9 +12,6 @@ import Data.Maybe (fromJust)
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (Assertion, testCase)
 
--- Hydra imports
-import Hydra.Cardano.Api (mkTxIn)
-
 -- Hydra auction imports
 import HydraAuction.OnChain (AuctionScript (..))
 import HydraAuction.Tx.Deposit (cleanupDeposit, losingBidderClaimDeposit, mkDeposit, sellerClaimDepositFor)
@@ -25,11 +22,8 @@ import HydraAuction.Tx.Escrow (
  )
 import HydraAuction.Tx.StandingBid (cleanupTx, newBid)
 import HydraAuction.Tx.TermsConfig (
-  configToAuctionTerms,
-  constructTermsDynamic,
   nonExistentHeadIdStub,
  )
-import HydraAuction.Tx.TestNFT (mintOneTestNFT)
 import HydraAuction.Types (ApprovedBidders (..), AuctionTerms (..))
 import HydraAuctionUtils.Fixture (Actor (..), getActorsPubKeyHash)
 import HydraAuctionUtils.L1.Runner (

@@ -212,6 +212,7 @@ library
     HydraAuction.Tx.Common
     HydraAuction.Tx.Deposit
     HydraAuction.Tx.Escrow
+    HydraAuction.Tx.FeeEscrow
     HydraAuction.Tx.StandingBid
     HydraAuction.Tx.TermsConfig
     HydraAuction.Tx.TestNFT
