@@ -15,11 +15,7 @@ import Test.Tasty.HUnit (Assertion, testCase)
 import Hydra.Prelude (ask)
 
 -- Hydra auction imports
-import HydraAuction.Runner (
-  executeRunnerWithNodeAs,
-  initWallet,
- )
-import HydraAuction.Runner.Time (waitUntil)
+
 import HydraAuction.Tx.Escrow (
   bidderBuys,
  )
@@ -27,6 +23,11 @@ import HydraAuction.Tx.StandingBid (newBid)
 import HydraAuction.Tx.TermsConfig (AuctionTermsConfig (..))
 import HydraAuction.Types (AuctionTerms (..))
 import HydraAuctionUtils.Fixture (Actor (..), hydraNodeActors)
+import HydraAuctionUtils.L1.Runner (
+  executeL1RunnerWithNodeAs,
+  initWallet,
+ )
+import HydraAuctionUtils.L1.Runner.Time (waitUntil)
 
 -- Hydra auction test imports
 import EndToEnd.HydraUtils (
@@ -72,7 +73,7 @@ bidderBuysTest = mkAssertion $ do
     actors@[seller, bidder1, bidder2] <- return [Alice, Bob, Carol]
 
     liftIO $
-      executeRunnerWithNodeAs node seller $
+      executeL1RunnerWithNodeAs node seller $
         mapM_ (initWallet 200_000_000) actors
     liftIO $ putStrLn "Actors initialized"
 
@@ -84,17 +85,17 @@ bidderBuysTest = mkAssertion $ do
 
     terms <-
       liftIO $
-        executeRunnerWithNodeAs node seller $
+        executeL1RunnerWithNodeAs node seller $
           createTermsWithTestNFT config headId
     _ <-
       liftIO $
-        executeRunnerWithNodeAs node seller $
+        executeL1RunnerWithNodeAs node seller $
           announceAndStartBidding terms
 
     -- Place bid on L1
 
     liftIO $
-      executeRunnerWithNodeAs node bidder1 $
+      executeL1RunnerWithNodeAs node bidder1 $
         newBid terms $
           correctBidNo terms 0
 
@@ -121,13 +122,13 @@ bidderBuysTest = mkAssertion $ do
     -- Place bid after return to L1
 
     liftIO $
-      executeRunnerWithNodeAs node bidder2 $
+      executeL1RunnerWithNodeAs node bidder2 $
         newBid terms $
           correctBidNo terms 4
 
     -- Got lot
 
-    liftIO $ executeRunnerWithNodeAs node bidder2 $ do
+    liftIO $ executeL1RunnerWithNodeAs node bidder2 $ do
       waitUntil $ biddingEnd terms
       bidderBuys terms
       assertNFTNumEquals bidder2 1
@@ -142,14 +143,14 @@ multipleUtxosToCommitTest = mkAssertion $ do
 
     actors@[seller, _bidder1, _bidder2] <- return [Alice, Bob, Carol]
     liftIO $
-      executeRunnerWithNodeAs node seller $
+      executeL1RunnerWithNodeAs node seller $
         mapM_ (initWallet 200_000_000) actors
 
     -- Ensure that delgates have multiple utxo
 
     replicateM_ 3 $
       liftIO $
-        executeRunnerWithNodeAs node seller $
+        executeL1RunnerWithNodeAs node seller $
           mapM_ (initWallet 200_000_000) hydraNodeActors
 
     -- Init hydra
@@ -160,11 +161,11 @@ multipleUtxosToCommitTest = mkAssertion $ do
 
     terms <-
       liftIO $
-        executeRunnerWithNodeAs node seller $
+        executeL1RunnerWithNodeAs node seller $
           createTermsWithTestNFT config headId
     _ <-
       liftIO $
-        executeRunnerWithNodeAs node seller $
+        executeL1RunnerWithNodeAs node seller $
           announceAndStartBidding terms
 
     -- Move and commit

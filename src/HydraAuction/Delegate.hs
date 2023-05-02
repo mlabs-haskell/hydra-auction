@@ -23,11 +23,6 @@ import Cardano.Api.UTxO qualified as UTxO
 -- HydraAuction imports
 
 import Hydra.Chain.Direct.Tx (headIdToCurrencySymbol)
-import HydraAuction.Delegate.CompositeRunner (
-  CompositeRunner,
-  runHydraInComposite,
-  runL1RunnerInComposite,
- )
 import HydraAuction.Delegate.Interface (
   AbortReason (..),
   DelegateResponse (..),
@@ -40,11 +35,8 @@ import HydraAuction.Delegate.Interface (
   RequestIgnoredReason (..),
   ResponseReason (..),
  )
-import HydraAuction.Hydra.Interface (HydraCommand (..), HydraEvent (..))
-import HydraAuction.Hydra.Monad (MonadHydra (..))
 import HydraAuction.OnChain.Common (validAuctionTerms)
 import HydraAuction.OnChain.StandingBid (validNewBidTerms)
-import HydraAuction.Tx.Common (actorTipUtxo)
 import HydraAuction.Tx.StandingBid (
   createNewBidTx,
   decodeInlineDatum,
@@ -56,8 +48,20 @@ import HydraAuction.Types (
   StandingBidDatum (..),
   StandingBidState (..),
  )
+import HydraAuctionUtils.Composite.Runner (
+  CompositeRunner,
+  runHydraInComposite,
+  runL1RunnerInComposite,
+ )
 import HydraAuctionUtils.Fixture (partyFor)
-import HydraAuctionUtils.Monads (MonadHasActor (askActor), MonadQueryUtxo (..), MonadSubmitTx (..), UtxoQuery (..))
+import HydraAuctionUtils.Hydra.Interface (HydraCommand (..), HydraEvent (..))
+import HydraAuctionUtils.Hydra.Monad (MonadHydra (..))
+import HydraAuctionUtils.Monads (
+  MonadQueryUtxo (..),
+  MonadSubmitTx (..),
+  UtxoQuery (..),
+ )
+import HydraAuctionUtils.Monads.Actors (MonadHasActor (askActor), actorTipUtxo)
 import HydraAuctionUtils.Tx.Utxo (
   extractSingleUtxo,
   filterAdaOnlyUtxo,

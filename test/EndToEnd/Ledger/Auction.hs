@@ -17,11 +17,7 @@ import Test.Tasty.HUnit (Assertion, testCase)
 import Hydra.Cardano.Api (mkTxIn)
 
 -- Hydra auction imports
-import HydraAuction.Runner (
-  initWallet,
-  withActor,
- )
-import HydraAuction.Runner.Time (waitUntil)
+
 import HydraAuction.Tx.Escrow (
   announceAuction,
   bidderBuys,
@@ -37,6 +33,11 @@ import HydraAuction.Tx.TermsConfig (
 import HydraAuction.Tx.TestNFT (mintOneTestNFT)
 import HydraAuction.Types (ApprovedBidders (..), AuctionTerms (..))
 import HydraAuctionUtils.Fixture (Actor (..), getActorsPubKeyHash)
+import HydraAuctionUtils.L1.Runner (
+  initWallet,
+  withActor,
+ )
+import HydraAuctionUtils.L1.Runner.Time (waitUntil)
 
 -- Hydra auction test imports
 import EndToEnd.Utils (assertNFTNumEquals, config, mkAssertion)

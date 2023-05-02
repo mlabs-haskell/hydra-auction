@@ -30,11 +30,13 @@ import Hydra.Cardano.Api (toPlutusValue, txOutValue)
 -- Hydra auction imports
 import HydraAuction.OnChain (AuctionScript (..))
 import HydraAuction.OnChain.TestNFT (testNftAssetClass)
-import HydraAuction.Runner (Runner, executeTestRunner, withActor)
-import HydraAuction.Tx.Common (actorTipUtxo, scriptUtxos)
+import HydraAuction.Tx.Common (scriptUtxos)
 import HydraAuction.Tx.TermsConfig (AuctionTermsConfig (..))
-import HydraAuction.Types (AuctionTerms (..), intToNatural)
+import HydraAuction.Types (AuctionTerms (..))
 import HydraAuctionUtils.Fixture (Actor)
+import HydraAuctionUtils.L1.Runner (L1Runner, executeTestL1Runner, withActor)
+import HydraAuctionUtils.Monads.Actors (actorTipUtxo)
+import HydraAuctionUtils.Types.Natural (intToNatural)
 
 config :: AuctionTermsConfig
 config =
@@ -48,10 +50,10 @@ config =
     , configMinimumBidIncrement = fromJust $ intToNatural 8_000_000
     }
 
-mkAssertion :: Runner () -> Assertion
-mkAssertion = failAfter 60 . executeTestRunner
+mkAssertion :: L1Runner () -> Assertion
+mkAssertion = failAfter 60 . executeTestL1Runner
 
-assertNFTNumEquals :: Actor -> Integer -> Runner ()
+assertNFTNumEquals :: Actor -> Integer -> L1Runner ()
 assertNFTNumEquals actor expectedNum = do
   utxo <- withActor actor actorTipUtxo
   liftIO $ do
@@ -60,7 +62,7 @@ assertNFTNumEquals actor expectedNum = do
             [toPlutusValue $ txOutValue out | (_, out) <- UTxO.pairs utxo]
     assetClassValueOf value testNftAssetClass @=? expectedNum
 
-assertUTxOsInScriptEquals :: AuctionScript -> AuctionTerms -> Integer -> Runner ()
+assertUTxOsInScriptEquals :: AuctionScript -> AuctionTerms -> Integer -> L1Runner ()
 assertUTxOsInScriptEquals script terms expectedNum = do
   utxo <- scriptUtxos script terms
   liftIO $ length (UTxO.pairs utxo) @?= expectedNum

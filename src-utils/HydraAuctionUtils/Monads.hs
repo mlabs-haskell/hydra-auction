@@ -13,7 +13,6 @@ module HydraAuctionUtils.Monads (
   submitAndAwaitTx,
   fromPlutusAddressInMonad,
   addressAndKeysForActor,
-  MonadHasActor (..),
 ) where
 
 -- Prelude imports
@@ -51,7 +50,6 @@ import Plutus.V1.Ledger.Address qualified as PlutusAddress
 -- HydraAuction imports
 import CardanoClient (buildAddress)
 import Control.Monad.IO.Class (MonadIO (liftIO))
-import Control.Monad.Trans (MonadTrans (lift))
 import HydraAuctionUtils.Extras.CardanoApi (networkIdToNetwork)
 import HydraAuctionUtils.Fixture (Actor, keysFor)
 import Plutus.V1.Ledger.Api (POSIXTime)
@@ -127,12 +125,6 @@ data BlockchainParams = MkBlockchainParams
 class Monad m => MonadBlockchainParams m where
   queryBlockchainParams :: m BlockchainParams
   toSlotNo :: POSIXTime -> m SlotNo
-
-class Monad m => MonadHasActor m where
-  askActor :: m Actor
-
-instance (MonadHasActor m, MonadTrans t, Monad (t m)) => MonadHasActor (t m) where
-  askActor = lift askActor
 
 -- Complex constraint synonims
 

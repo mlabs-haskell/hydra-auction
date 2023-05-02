@@ -5,9 +5,6 @@
 -- FIXME: Use template Haskell to derive Eq instances
 module HydraAuction.Types (
   isStarted,
-  intToNatural,
-  naturalToInt,
-  Natural,
   ApprovedBiddersHash (..),
   BidTerms (..),
   BidDepositDatum (..),
@@ -34,9 +31,7 @@ import Prelude qualified
 
 -- Haskell imports
 
-import Control.Monad ((<=<))
-import Control.Monad.Fail (fail)
-import Data.Aeson (FromJSON (parseJSON), ToJSON)
+import Data.Aeson (FromJSON, ToJSON)
 import GHC.Generics (Generic)
 
 -- Plutus imports
@@ -45,57 +40,14 @@ import Plutus.V1.Ledger.Time (POSIXTime)
 import Plutus.V1.Ledger.Value (AssetClass, CurrencySymbol)
 import Plutus.V2.Ledger.Contexts (TxOutRef)
 import PlutusTx qualified
-import PlutusTx.IsData.Class (FromData (fromBuiltinData), ToData (toBuiltinData), UnsafeFromData (unsafeFromBuiltinData))
+import PlutusTx.IsData.Class (FromData, ToData, UnsafeFromData)
 
 -- Hydra auction imports
 import HydraAuction.Addresses (VoucherCS)
 import HydraAuctionUtils.Extras.PlutusOrphans ()
-
--- Custom Natural
-
--- Not using natural-numbers package, cuz it does not provide Integer conversion methods,
--- which are compatible with PlutusTx
-
-newtype Natural = Natural Integer
-  deriving stock (Generic, Prelude.Show, Prelude.Eq, Prelude.Ord)
-  deriving newtype (Eq, Ord, AdditiveSemigroup, MultiplicativeSemigroup, ToJSON)
-
-instance UnsafeFromData Natural where
-  {-# INLINEABLE unsafeFromBuiltinData #-}
-  unsafeFromBuiltinData = fromJust . intToNatural . unsafeFromBuiltinData
-
-instance ToData Natural where
-  {-# INLINEABLE toBuiltinData #-}
-  toBuiltinData = toBuiltinData . naturalToInt
-
-instance FromData Natural where
-  {-# INLINEABLE fromBuiltinData #-}
-  fromBuiltinData d = do
-    i <- fromBuiltinData d
-    intToNatural i
-
-{-# INLINEABLE fromJust #-}
-fromJust :: Maybe a -> a
-fromJust (Just a) = a
-fromJust _ = error ()
-
-{-# INLINEABLE intToNatural #-}
-intToNatural :: Integer -> Maybe Natural
-intToNatural x
-  | x > 0 = Just $ Natural x
-  | otherwise = Nothing
-
-{-# INLINEABLE naturalToInt #-}
-naturalToInt :: Natural -> Integer
-naturalToInt (Natural i) = i
-
-PlutusTx.makeLift ''Natural
-
-instance FromJSON Natural where
-  parseJSON = maybe (fail "Integer is not natural") return . intToNatural <=< parseJSON
+import HydraAuctionUtils.Types.Natural (Natural, naturalToInt)
 
 -- Base datatypes
-
 data AuctionStage
   = AnnouncedStage
   | BiddingStartedStage

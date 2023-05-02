@@ -24,14 +24,15 @@ import Hydra.Chain (HeadId (..))
 
 import HydraAuction.Delegate.Interface (DelegateState (..), InitializedState (..))
 import HydraAuction.OnChain (AuctionScript (..))
-import HydraAuction.Runner (
-  Runner,
+import HydraAuction.Tx.TermsConfig (nonExistentHeadIdStub)
+import HydraAuction.Types (AuctionTerms (..))
+import HydraAuctionUtils.Fixture (Actor (..))
+import HydraAuctionUtils.L1.Runner (
+  L1Runner,
   withActor,
  )
-import HydraAuction.Runner.Time (waitUntil)
-import HydraAuction.Tx.TermsConfig (nonExistentHeadIdStub)
-import HydraAuction.Types (AuctionTerms (..), intToNatural)
-import HydraAuctionUtils.Fixture (Actor (..))
+import HydraAuctionUtils.L1.Runner.Time (waitUntil)
+import HydraAuctionUtils.Types.Natural (intToNatural)
 
 -- CLI imports
 
@@ -62,7 +63,7 @@ mockDelegateState = Initialized (HeadId . fromBuiltin . unCurrencySymbol $ nonEx
 auctionName :: AuctionName
 auctionName = "test"
 
-handleCliActionWithMockDelegates :: CliAction -> Runner ()
+handleCliActionWithMockDelegates :: CliAction -> L1Runner ()
 handleCliActionWithMockDelegates action = do
   delegateS <- newIORef mockDelegateState
   handleCliAction (\_ -> pure ()) delegateS action

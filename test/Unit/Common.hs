@@ -34,8 +34,9 @@ import HydraAuction.Tx.TermsConfig (
   constructTermsDynamic,
   nonExistentHeadIdStub,
  )
-import HydraAuction.Types (AuctionStage (..), intToNatural)
+import HydraAuction.Types (AuctionStage (..))
 import HydraAuctionUtils.Fixture (Actor (..))
+import HydraAuctionUtils.Types.Natural (intToNatural)
 
 testSuite :: TestTree
 testSuite =

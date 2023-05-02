@@ -11,9 +11,6 @@ import Data.Time.Clock (getCurrentTime)
 import Data.Time.Format (defaultTimeLocale, formatTime)
 import System.Console.ANSI
 
--- Plutus imports
-import Plutus.V2.Ledger.Api (POSIXTime (..))
-
 -- Hydra auction
 import CLI.Config (
   AuctionName (..),
@@ -23,7 +20,8 @@ import CLI.Config (
 import Data.IORef (IORef, readIORef)
 import HydraAuction.Delegate.Interface (DelegateState (..))
 import HydraAuction.OnChain.Common (secondsLeftInInterval, stageToInterval)
-import HydraAuction.Tx.Common (currentAuctionStage, currentTimeMilliseconds)
+import HydraAuction.Tx.Common (currentAuctionStage)
+import HydraAuctionUtils.Time (currentPlutusPOSIXTime)
 
 watchAuction :: AuctionName -> IORef DelegateState -> IO ()
 watchAuction auctionName currentDelegateStateRef = do
@@ -43,7 +41,7 @@ watchAuction auctionName currentDelegateStateRef = do
       putStrLn $ "Auction " <> show auctionName <> " does not exist."
     Just CliEnhancedAuctionTerms {sellerActor, terms} -> do
       currentTime <- getCurrentTime
-      currentPosixTime <- POSIXTime <$> currentTimeMilliseconds
+      currentPosixTime <- currentPlutusPOSIXTime
       currentStage <- currentAuctionStage terms
       let showTime = formatTime defaultTimeLocale "%Y-%m-%d %H:%M:%S"
           mSecsLeft = secondsLeftInInterval currentPosixTime (stageToInterval terms currentStage)

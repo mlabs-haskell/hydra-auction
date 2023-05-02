@@ -140,7 +140,6 @@ executable hydra-auction
     CLI.Config
     CLI.Parsers
     CLI.Parsers.TxIn
-    CLI.Prettyprinter
     CLI.Types
     CLI.Watch
 
@@ -177,7 +176,6 @@ executable hydra-auction
     , hydra-cardano-api
     , hydra-plutus
     , hydra-test-utils
-    , natural-numbers
     , optparse-applicative
     , ouroboros-network               ==0.1.0.1
     , parsec
@@ -206,17 +204,11 @@ library
   exposed-modules:
     HydraAuction.Addresses
     HydraAuction.Delegate
-    HydraAuction.Delegate.CompositeRunner
     HydraAuction.Delegate.Interface
-    HydraAuction.Hydra.Interface
-    HydraAuction.Hydra.Monad
-    HydraAuction.Hydra.Runner
     HydraAuction.HydraHacks
     HydraAuction.OnChain
     HydraAuction.OnChain.Common
     HydraAuction.OnChain.TestNFT
-    HydraAuction.Runner
-    HydraAuction.Runner.Time
     HydraAuction.Tx.Common
     HydraAuction.Tx.Deposit
     HydraAuction.Tx.Escrow
@@ -231,12 +223,10 @@ library
     HydraAuction.OnChain.Escrow
     HydraAuction.OnChain.StandingBid
     HydraAuction.OnChain.StateToken
-    HydraAuction.Runner.Tracer
 
   build-depends:
     , cardano-api
     , directory
-    , HUnit
     , hydra-auction-utils
     , hydra-cardano-api
     , hydra-cluster
@@ -244,7 +234,6 @@ library
     , hydra-plutus
     , hydra-prelude
     , hydra-test-utils
-    , natural-numbers
     , plutus-tx
     , time
     , typed-process
@@ -256,19 +245,37 @@ library hydra-auction-utils
   hs-source-dirs:  src-utils
   exposed-modules:
     HydraAuctionUtils.BundledData
+    HydraAuctionUtils.Composite.Runner
     HydraAuctionUtils.Extras.CardanoApi
     HydraAuctionUtils.Extras.Plutus
     HydraAuctionUtils.Extras.PlutusOrphans
     HydraAuctionUtils.Fixture
+    HydraAuctionUtils.Hydra.Interface
+    HydraAuctionUtils.Hydra.Monad
+    HydraAuctionUtils.Hydra.Runner
+    HydraAuctionUtils.L1.Runner
+    HydraAuctionUtils.L1.Runner.Time
     HydraAuctionUtils.Monads
+    HydraAuctionUtils.Monads.Actors
+    HydraAuctionUtils.Parsers
+    HydraAuctionUtils.Plutus
+    HydraAuctionUtils.PrettyPrinting
+    HydraAuctionUtils.Time
     HydraAuctionUtils.Tracing
     HydraAuctionUtils.Tx.AutoCreateTx
+    HydraAuctionUtils.Tx.Build
     HydraAuctionUtils.Tx.Utxo
+    HydraAuctionUtils.Types.Natural
     Paths_hydra_auction
 
+  other-modules:   HydraAuctionUtils.L1.Runner.Tracer
   build-depends:
+    , HUnit
     , hydra-plutus
+    , hydra-test-utils
+    , optparse-applicative
     , plutus-tx
+    , protolude
 
 test-suite hydra-auction-test
   import:         common-lang
@@ -277,7 +284,6 @@ test-suite hydra-auction-test
   other-modules:
     CLI.Actions
     CLI.Config
-    CLI.Prettyprinter
     EndToEnd.CLI
     EndToEnd.HydraUtils
     EndToEnd.Ledger.Auction

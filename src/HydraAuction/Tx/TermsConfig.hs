@@ -29,10 +29,11 @@ import Hydra.Cardano.Api (TxIn, toPlutusTxOutRef)
 
 -- Hydra auction imports
 import HydraAuction.OnChain.TestNFT (testNftAssetClass)
-import HydraAuction.Tx.Common (currentTimeSeconds)
-import HydraAuction.Types (AuctionTerms (..), Natural)
+import HydraAuction.Types (AuctionTerms (..))
 import HydraAuctionUtils.Extras.PlutusOrphans ()
 import HydraAuctionUtils.Fixture (Actor, getActorPubKeyHash)
+import HydraAuctionUtils.Time (currentTimeSeconds)
+import HydraAuctionUtils.Types.Natural (Natural)
 
 data AuctionTermsConfig = AuctionTermsConfig
   { configDiffBiddingStart :: !Integer

@@ -7,7 +7,6 @@ module CLI.Actions (
 ) where
 
 -- Prelude imports
--- Prelude imports
 import Hydra.Prelude (MonadIO, ask, liftIO)
 import Prelude
 
@@ -31,15 +30,7 @@ import Cardano.Api.UTxO qualified as UTxO
 import HydraAuction.Delegate.Interface (DelegateState (..))
 import HydraAuction.Delegate.Interface qualified as DelegateInterface
 import HydraAuction.OnChain (AuctionScript (..))
-import HydraAuction.Runner (
-  ExecutionContext (..),
-  Runner,
-  initWallet,
-  withActor,
- )
 import HydraAuction.Tx.Common (
-  actorTipUtxo,
-  addressAndKeys,
   currentAuctionStage,
   scriptSingleUtxo,
   scriptUtxos,
@@ -60,9 +51,26 @@ import HydraAuction.Tx.Escrow (
 import HydraAuction.Tx.StandingBid (cleanupTx, createStandingBidDatum, currentWinningBidder, newBid)
 import HydraAuction.Tx.TermsConfig (constructTermsDynamic)
 import HydraAuction.Tx.TestNFT (findTestNFT, mintOneTestNFT)
-import HydraAuction.Types (ApprovedBidders (..), AuctionStage (..), AuctionTerms, BidDepositDatum (..), Natural, naturalToInt)
+import HydraAuction.Types (
+  ApprovedBidders (..),
+  AuctionStage (..),
+  AuctionTerms,
+  BidDepositDatum (..),
+ )
 import HydraAuctionUtils.Fixture (Actor (..), actorFromPkh, allActors, getActorPubKeyHash, getActorsPubKeyHash)
+import HydraAuctionUtils.L1.Runner (
+  ExecutionContext (..),
+  L1Runner,
+  initWallet,
+  withActor,
+ )
 import HydraAuctionUtils.Monads (fromPlutusAddressInMonad)
+import HydraAuctionUtils.Monads.Actors (
+  actorTipUtxo,
+  addressAndKeys,
+ )
+import HydraAuctionUtils.PrettyPrinting (prettyPrintUtxo)
+import HydraAuctionUtils.Types.Natural (Natural, naturalToInt)
 
 -- Hydra auction CLI imports
 import CLI.Config (
@@ -74,7 +82,6 @@ import CLI.Config (
   readCliEnhancedAuctionTerms,
   writeAuctionTermsDynamic,
  )
-import CLI.Prettyprinter (prettyPrintUtxo)
 
 seedAmount :: Lovelace
 seedAmount = 10_000_000_000
@@ -103,7 +110,7 @@ data CliAction
   | Cleanup !AuctionName
   deriving stock (Show)
 
-doOnMatchingStage :: AuctionTerms -> AuctionStage -> Runner () -> Runner ()
+doOnMatchingStage :: AuctionTerms -> AuctionStage -> L1Runner () -> L1Runner ()
 doOnMatchingStage terms requiredStage action = do
   stage <- liftIO $ currentAuctionStage terms
   if requiredStage == stage
@@ -121,7 +128,7 @@ handleCliAction ::
   (DelegateInterface.FrontendRequest -> IO ()) ->
   IORef DelegateState ->
   CliAction ->
-  Runner ()
+  L1Runner ()
 handleCliAction sendRequestToDelegate currentDelegateStateRef userAction = do
   -- Await for initialized DelegateState
   MkExecutionContext {actor} <- ask

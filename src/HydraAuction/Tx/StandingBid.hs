@@ -58,13 +58,12 @@ import HydraAuction.OnChain (
   standingBidValidator,
   voucherAssetClass,
  )
-import HydraAuction.Runner (ExecutionContext (..), Runner)
-import HydraAuction.Tx.Common (
+import HydraAuctionUtils.Monads.Actors (
   actorTipUtxo,
   addressAndKeys,
-  minLovelace,
-  mkInlineDatum,
-  mkInlinedDatumScriptWitness,
+ )
+
+import HydraAuction.Tx.Common (
   scriptAddress,
   scriptPlutusScript,
   scriptSingleUtxo,
@@ -75,7 +74,6 @@ import HydraAuction.Types (
   ApprovedBidders (..),
   AuctionTerms (..),
   BidTerms (..),
-  Natural,
   StandingBidDatum (..),
   StandingBidRedeemer (..),
   StandingBidState (..),
@@ -83,6 +81,7 @@ import HydraAuction.Types (
  )
 import HydraAuctionUtils.Extras.Plutus (scriptCurrencySymbol)
 import HydraAuctionUtils.Fixture (Actor)
+import HydraAuctionUtils.L1.Runner (ExecutionContext (..), L1Runner)
 import HydraAuctionUtils.Monads (
   MonadCardanoClient,
   MonadNetworkId,
@@ -98,9 +97,15 @@ import HydraAuctionUtils.Tx.AutoCreateTx (
   autoCreateTx,
   autoSubmitAndAwaitTx,
  )
+import HydraAuctionUtils.Tx.Build (
+  minLovelace,
+  mkInlineDatum,
+  mkInlinedDatumScriptWitness,
+ )
 import HydraAuctionUtils.Tx.Utxo (
   filterAdaOnlyUtxo,
  )
+import HydraAuctionUtils.Types.Natural (Natural)
 
 data DatumDecodingError = CannotDecodeDatum | NoInlineDatum
 
@@ -136,7 +141,7 @@ currentWinningBidder terms = do
         Nothing -> Nothing
     Nothing -> Nothing
 
-newBid :: AuctionTerms -> Natural -> Runner ()
+newBid :: AuctionTerms -> Natural -> L1Runner ()
 newBid terms bidAmount = do
   MkExecutionContext {actor} <- ask
   (_, submitterVk, _) <- addressAndKeysForActor actor
@@ -221,7 +226,7 @@ moveToHydra ::
   HeadId ->
   AuctionTerms ->
   (TxIn, TxOut CtxUTxO) ->
-  Runner ()
+  L1Runner ()
 moveToHydra headId terms (standingBidTxIn, standingBidTxOut) = do
   -- FIXME: get headId from AuctionTerms
   -- FIXME: should use already deployed registry
@@ -247,7 +252,7 @@ validateHasSingleUtxo utxo utxoName =
     fail $
       utxoName <> " UTxO has not exactly one TxIn"
 
-cleanupTx :: AuctionTerms -> Runner ()
+cleanupTx :: AuctionTerms -> L1Runner ()
 cleanupTx terms = do
   logMsg "Doing standing bid cleanup"
 

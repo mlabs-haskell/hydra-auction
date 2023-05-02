@@ -1,5 +1,5 @@
 -- FIXME: should be abstracted on MonadBlockchainParams
-module HydraAuction.Runner.Time (
+module HydraAuctionUtils.L1.Runner.Time (
   waitUntil,
   currentSlot,
 ) where
@@ -21,22 +21,22 @@ import CardanoNode (RunningNode (..))
 import Hydra.Cardano.Api (ChainPoint (..), SlotNo (..))
 
 -- Hydra auction imports
-import HydraAuction.Runner (ExecutionContext (..), Runner)
+import HydraAuctionUtils.L1.Runner (ExecutionContext (..), L1Runner)
 import HydraAuctionUtils.Monads (MonadBlockchainParams (toSlotNo))
 
-waitUntil :: POSIXTime -> Runner ()
+waitUntil :: POSIXTime -> L1Runner ()
 waitUntil time = do
   slotToWait <- toSlotNo time
   waitUntilSlot slotToWait
 
-waitUntilSlot :: SlotNo -> Runner ()
+waitUntilSlot :: SlotNo -> L1Runner ()
 waitUntilSlot awaitedSlot = do
   currentSlot' <- currentSlot
   when (currentSlot' < awaitedSlot) $ do
     liftIO $ threadDelay 1_000
     waitUntilSlot awaitedSlot
 
-currentSlot :: Runner SlotNo
+currentSlot :: L1Runner SlotNo
 currentSlot = do
   MkExecutionContext {node} <- ask
   tip <- liftIO $ queryTip (networkId node) (nodeSocket node)

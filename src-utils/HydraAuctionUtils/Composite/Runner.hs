@@ -1,4 +1,4 @@
-module HydraAuction.Delegate.CompositeRunner (
+module HydraAuctionUtils.Composite.Runner (
   CompositeRunner,
   CompositeExecutionContext (..),
   executeCompositeRunner,
@@ -15,14 +15,14 @@ import Control.Monad.Reader (MonadReader, ReaderT (runReaderT), ask)
 import Control.Monad.Trans (MonadIO (liftIO))
 
 -- HydraAuction imports
-import HydraAuction.Hydra.Monad (MonadHydra (..))
-import HydraAuction.Hydra.Runner (
+import HydraAuctionUtils.Hydra.Monad (MonadHydra (..))
+import HydraAuctionUtils.Hydra.Runner (
   HydraExecutionContext,
   HydraRunner,
   executeHydraRunner,
  )
-import HydraAuction.Runner (ExecutionContext, Runner, executeRunner)
-import HydraAuctionUtils.Monads (MonadHasActor (..))
+import HydraAuctionUtils.L1.Runner (ExecutionContext, L1Runner, executeL1Runner)
+import HydraAuctionUtils.Monads.Actors (MonadHasActor (..))
 
 -- | Contexts should use same actor internally
 data CompositeExecutionContext = MkCompositeExecutionContext
@@ -57,10 +57,10 @@ runHydraInComposite action = do
   MkCompositeExecutionContext {hydraContext} <- ask
   liftIO $ executeHydraRunner hydraContext action
 
-runL1RunnerInComposite :: forall a. Runner a -> CompositeRunner a
+runL1RunnerInComposite :: forall a. L1Runner a -> CompositeRunner a
 runL1RunnerInComposite action = do
   MkCompositeExecutionContext {l1Context} <- ask
-  liftIO $ executeRunner l1Context action
+  liftIO $ executeL1Runner l1Context action
 
 instance MonadHydra CompositeRunner where
   sendCommand = runHydraInComposite . sendCommand

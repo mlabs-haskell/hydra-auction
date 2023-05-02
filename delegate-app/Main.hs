@@ -27,6 +27,7 @@ import Control.Monad.Trans (MonadIO (liftIO))
 import Control.Tracer (Tracer, contramap, nullTracer, stdoutTracer)
 import Data.Aeson (ToJSON, eitherDecode, encode)
 import Data.Maybe (fromMaybe)
+import GHC.Stack (HasCallStack)
 import Network.WebSockets (
   Connection,
   acceptRequest,
@@ -43,12 +44,8 @@ import System.IO (BufferMode (LineBuffering), hSetBuffering, stderr, stdout)
 import Hydra.Network (IP, PortNumber)
 import HydraNode (HydraClient (..))
 
--- Plutus imports
-import Plutus.V2.Ledger.Api (POSIXTime (..))
-
 -- HydraAuction imports
 
-import GHC.Stack (HasCallStack)
 import HydraAuction.Delegate (
   ClientId,
   ClientResponseScope (Broadcast),
@@ -56,12 +53,6 @@ import HydraAuction.Delegate (
   clientIsInScope,
   delegateEventStep,
   delegateFrontendRequestStep,
- )
-import HydraAuction.Delegate.CompositeRunner (
-  CompositeExecutionContext (..),
-  CompositeRunner,
-  executeCompositeRunner,
-  runHydraInComposite,
  )
 import HydraAuction.Delegate.Interface (
   DelegateResponse (AuctionSet),
@@ -78,13 +69,20 @@ import HydraAuction.Delegate.Server (
   ThreadEvent (ThreadCancelled, ThreadStarted),
   ThreadSort (..),
  )
-import HydraAuction.Hydra.Monad (AwaitedHydraEvent (..), waitForHydraEvent)
-import HydraAuction.Hydra.Runner (HydraRunner, executeHydraRunnerFakingParams)
 import HydraAuction.OnChain.Common (secondsLeftInInterval, stageToInterval)
-import HydraAuction.Runner (dockerNode, executeRunnerWithNodeAs)
-import HydraAuction.Tx.Common (currentAuctionStage, currentTimeMilliseconds)
+import HydraAuction.Tx.Common (currentAuctionStage)
 import HydraAuction.Types (AuctionTerms)
+import HydraAuctionUtils.Composite.Runner (
+  CompositeExecutionContext (..),
+  CompositeRunner,
+  executeCompositeRunner,
+  runHydraInComposite,
+ )
 import HydraAuctionUtils.Fixture (Actor (..))
+import HydraAuctionUtils.Hydra.Monad (AwaitedHydraEvent (..), waitForHydraEvent)
+import HydraAuctionUtils.Hydra.Runner (HydraRunner, executeHydraRunnerFakingParams)
+import HydraAuctionUtils.L1.Runner (dockerNode, executeL1RunnerWithNodeAs)
+import HydraAuctionUtils.Time (currentPlutusPOSIXTime)
 import HydraAuctionUtils.Tracing (
   MonadTracer (trace),
   askTracer,
@@ -276,7 +274,7 @@ runDelegateServer conf = do
       return v
     executeCompositeRunnerForConfig action =
       runHydraClientN (hydraServerNumber conf) $ \hydraClient -> do
-        context <- executeRunnerWithNodeAs dockerNode Alice $ do
+        context <- executeL1RunnerWithNodeAs dockerNode Alice $ do
           l1Context <- ask
           executeHydraRunnerFakingParams hydraClient $ do
             hydraContext <- ask
@@ -335,7 +333,7 @@ mbQueueAuctionPhases delegateEvents toClientsChannel = do
       atomically $
         writeTQueue delegateEvents $
           AuctionStageStarted currentStage
-      currentPosixTime <- POSIXTime <$> currentTimeMilliseconds
+      currentPosixTime <- currentPlutusPOSIXTime
       let mSecsLeft =
             secondsLeftInInterval
               currentPosixTime

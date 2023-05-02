@@ -14,7 +14,6 @@ import Plutus.V2.Ledger.Contexts (ScriptContext, TxInfo, ownCurrencySymbol, scri
 import HydraAuction.Addresses (EscrowAddress (..), VoucherCS (..))
 import HydraAuction.OnChain.Common (
   checkInterval,
-  decodeOutputDatum,
   validAuctionTerms,
  )
 import HydraAuction.Types (
@@ -24,6 +23,7 @@ import HydraAuction.Types (
   AuctionTerms (..),
   VoucherForgingRedeemer (..),
  )
+import HydraAuctionUtils.Plutus (decodeOutputDatum)
 
 data StateTokenKind = Voucher
 

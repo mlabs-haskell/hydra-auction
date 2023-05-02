@@ -1,5 +1,5 @@
 {-# OPTIONS -Wno-orphans #-}
-module CLI.Prettyprinter (prettyPrintUtxo) where
+module HydraAuctionUtils.PrettyPrinting (prettyPrintUtxo) where
 
 -- Prelude imports
 import Hydra.Prelude (fromString)

@@ -42,13 +42,7 @@ import Cardano.Api.UTxO qualified as UTxO
 -- Hydra auction imports
 import HydraAuction.Addresses (VoucherCS (..))
 import HydraAuction.OnChain (AuctionScript (..), policy, voucherAssetClass)
-import HydraAuction.Runner (Runner)
 import HydraAuction.Tx.Common (
-  actorTipUtxo,
-  addressAndKeys,
-  minLovelace,
-  mkInlineDatum,
-  mkInlinedDatumScriptWitness,
   scriptAddress,
   scriptPlutusScript,
   scriptUtxos,
@@ -70,25 +64,35 @@ import HydraAuction.Types (
   StandingBidState (..),
   VoucherForgingRedeemer (MintVoucher),
   calculateTotalFee,
-  naturalToInt,
  )
 import HydraAuctionUtils.Extras.Plutus (scriptCurrencySymbol)
+import HydraAuctionUtils.L1.Runner (L1Runner)
 import HydraAuctionUtils.Monads (
   MonadQueryUtxo (queryUtxo),
   UtxoQuery (ByTxIns),
   fromPlutusAddressInMonad,
   logMsg,
  )
+import HydraAuctionUtils.Monads.Actors (
+  actorTipUtxo,
+  addressAndKeys,
+ )
 import HydraAuctionUtils.Tx.AutoCreateTx (
   AutoCreateParams (..),
   autoSubmitAndAwaitTx,
+ )
+import HydraAuctionUtils.Tx.Build (
+  minLovelace,
+  mkInlineDatum,
+  mkInlinedDatumScriptWitness,
  )
 import HydraAuctionUtils.Tx.Utxo (
   filterAdaOnlyUtxo,
   filterUtxoByCurrencySymbols,
  )
+import HydraAuctionUtils.Types.Natural (naturalToInt)
 
-announceAuction :: AuctionTerms -> Runner ()
+announceAuction :: AuctionTerms -> L1Runner ()
 announceAuction terms = do
   logMsg "Doing announce auction"
 
@@ -134,7 +138,7 @@ announceAuction terms = do
         , validityBound = (Nothing, Just $ biddingStart terms)
         }
 
-startBidding :: AuctionTerms -> ApprovedBidders -> Runner ()
+startBidding :: AuctionTerms -> ApprovedBidders -> L1Runner ()
 startBidding terms approvedBidders = do
   logMsg "Doing start bidding"
 
@@ -209,7 +213,7 @@ startBidding terms approvedBidders = do
         , validityBound = (Just $ biddingStart terms, Just $ biddingEnd terms)
         }
 
-bidderBuys :: AuctionTerms -> Runner ()
+bidderBuys :: AuctionTerms -> L1Runner ()
 bidderBuys terms = do
   feeEscrowAddress <- scriptAddress FeeEscrow terms
   sellerAddress <-
@@ -302,7 +306,7 @@ bidderBuys terms = do
         , validityBound = (Just $ biddingEnd terms, Just $ voucherExpiry terms)
         }
 
-sellerReclaims :: AuctionTerms -> Runner ()
+sellerReclaims :: AuctionTerms -> L1Runner ()
 sellerReclaims terms = do
   feeEscrowAddress <- scriptAddress FeeEscrow terms
 

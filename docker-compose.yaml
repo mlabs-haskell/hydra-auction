@@ -25,9 +25,6 @@ services:
     image: ghcr.io/input-output-hk/hydra-node:0.9.0
     profiles:
       - hydra-node
-    depends_on:
-      cardano-node:
-        condition: service_started
     volumes:
       - ./data/hydra-keys:/keys:ro
       - ./devnet:/devnet
@@ -63,9 +60,6 @@ services:
     profiles:
       - hydra-node
 
-    depends_on:
-      cardano-node:
-        condition: service_started
     volumes:
       - ./data/hydra-keys:/keys:ro
       - ./devnet:/devnet
@@ -100,9 +94,6 @@ services:
     image: ghcr.io/input-output-hk/hydra-node:0.9.0
     profiles:
       - hydra-node
-    depends_on:
-      cardano-node:
-        condition: service_started
     volumes:
       - ./data/hydra-keys:/keys:ro
       - ./devnet:/devnet

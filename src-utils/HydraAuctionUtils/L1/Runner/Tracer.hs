@@ -1,4 +1,4 @@
-module HydraAuction.Runner.Tracer (
+module HydraAuctionUtils.L1.Runner.Tracer (
   StateDirectory (..),
   HydraAuctionLog (..),
   fileTracer,

@@ -1,4 +1,4 @@
-module HydraAuction.Hydra.Runner (
+module HydraAuctionUtils.Hydra.Runner (
   HydraRunner (..),
   HydraExecutionContext (..),
   matchingHydraEvent,
@@ -46,19 +46,20 @@ import HydraNode (
  )
 
 -- HydraAuction imports
-import HydraAuction.Hydra.Interface (
+
+import HydraAuctionUtils.BundledData (readHydraNodeProtocolParams)
+import HydraAuctionUtils.Hydra.Interface (
   HydraCommand (..),
   HydraEvent (..),
   commandConstructorName,
   getHydraEventKind,
  )
-import HydraAuction.Hydra.Monad (
+import HydraAuctionUtils.Hydra.Monad (
   AwaitedHydraEvent (..),
   EventMatcher (..),
   MonadHydra (..),
  )
-import HydraAuction.Runner (Runner)
-import HydraAuctionUtils.BundledData (readHydraNodeProtocolParams)
+import HydraAuctionUtils.L1.Runner (L1Runner)
 import HydraAuctionUtils.Monads (
   BlockchainParams (..),
   MonadBlockchainParams (..),
@@ -202,7 +203,7 @@ executeHydraRunner ::
 executeHydraRunner context runner =
   runReaderT (unHydraRunner runner) context
 
-executeHydraRunnerFakingParams :: HydraClient -> HydraRunner a -> Runner a
+executeHydraRunnerFakingParams :: HydraClient -> HydraRunner a -> L1Runner a
 executeHydraRunnerFakingParams node monad = do
   params <- queryBlockchainParams
   protocolParameters <- liftIO readHydraNodeProtocolParams

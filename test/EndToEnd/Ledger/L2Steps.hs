@@ -25,7 +25,6 @@ import Hydra.Chain (HeadId)
 -- HydraAuction imports
 
 import HydraAuction.Delegate (ClientResponseScope (..), DelegateEvent (..), delegateEventStep, delegateFrontendRequestStep)
-import HydraAuction.Delegate.CompositeRunner (CompositeRunner, runHydraInComposite, runL1RunnerInComposite)
 import HydraAuction.Delegate.Interface (
   DelegateResponse (..),
   DelegateState (..),
@@ -33,14 +32,16 @@ import HydraAuction.Delegate.Interface (
   InitializedState (..),
   ResponseReason (..),
  )
-import HydraAuction.Hydra.Interface (HydraEvent (..), HydraEventKind (..))
-import HydraAuction.Hydra.Monad (AwaitedHydraEvent (..), waitForHydraEvent)
 import HydraAuction.OnChain (AuctionScript (..))
 import HydraAuction.Tx.Common (scriptSingleUtxo)
 import HydraAuction.Tx.StandingBid (createStandingBidDatum, queryStandingBidDatum)
-import HydraAuction.Types (AuctionStage (..), AuctionTerms, Natural, standingBid, standingBidState)
+import HydraAuction.Types (AuctionStage (..), AuctionTerms, standingBid, standingBidState)
+import HydraAuctionUtils.Composite.Runner (CompositeRunner, runHydraInComposite, runL1RunnerInComposite)
 import HydraAuctionUtils.Fixture (Actor, keysFor)
-import HydraAuctionUtils.Monads (MonadHasActor (..))
+import HydraAuctionUtils.Hydra.Interface (HydraEvent (..), HydraEventKind (..))
+import HydraAuctionUtils.Hydra.Monad (AwaitedHydraEvent (..), waitForHydraEvent)
+import HydraAuctionUtils.Monads.Actors (MonadHasActor (..))
+import HydraAuctionUtils.Types.Natural (Natural)
 
 -- HydraAuction test imports
 import EndToEnd.HydraUtils (DelegatesClusterEmulator, EmulatorDelegate (..), runCompositeForAllDelegates, runCompositeForDelegate)

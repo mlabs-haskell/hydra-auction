@@ -1,6 +1,6 @@
 {-# LANGUAGE StrictData #-}
 
-module HydraAuction.Hydra.Interface (
+module HydraAuctionUtils.Hydra.Interface (
   commandConstructorName,
   getHydraEventKind,
   HydraEventKind (..),

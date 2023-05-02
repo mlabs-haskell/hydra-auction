@@ -19,8 +19,7 @@ import Hydra.Chain (HeadId)
 import Hydra.Chain.Direct.Tx (headIdToCurrencySymbol)
 
 -- HydraAuction imports
-import HydraAuction.Runner (Runner)
-import HydraAuction.Runner.Time (waitUntil)
+
 import HydraAuction.Tx.Escrow (announceAuction, startBidding)
 import HydraAuction.Tx.TermsConfig (
   AuctionTermsConfig,
@@ -31,16 +30,20 @@ import HydraAuction.Tx.TestNFT (mintOneTestNFT)
 import HydraAuction.Types (
   ApprovedBidders (..),
   AuctionTerms (..),
+ )
+import HydraAuctionUtils.Fixture (getActorsPubKeyHash)
+import HydraAuctionUtils.L1.Runner (L1Runner)
+import HydraAuctionUtils.L1.Runner.Time (waitUntil)
+import HydraAuctionUtils.Types.Natural (
   Natural,
   intToNatural,
   naturalToInt,
  )
-import HydraAuctionUtils.Fixture (getActorsPubKeyHash)
 
 -- HydraAuction test imports
 
 import EndToEnd.Utils (assertNFTNumEquals)
-import HydraAuctionUtils.Monads (MonadHasActor (..))
+import HydraAuctionUtils.Monads.Actors (MonadHasActor (..))
 
 correctBidNo :: AuctionTerms -> Integer -> Natural
 correctBidNo terms n =
@@ -52,7 +55,7 @@ correctBidNo terms n =
             + n * naturalToInt (minimumBidIncrement terms)
     else error "BidNo should be non-negative"
 
-createTermsWithTestNFT :: AuctionTermsConfig -> HeadId -> Runner AuctionTerms
+createTermsWithTestNFT :: AuctionTermsConfig -> HeadId -> L1Runner AuctionTerms
 createTermsWithTestNFT config headId = do
   seller <- askActor
 
@@ -71,7 +74,7 @@ createTermsWithTestNFT config headId = do
 
   liftIO $ configToAuctionTerms config dynamicState
 
-announceAndStartBidding :: AuctionTerms -> Runner ()
+announceAndStartBidding :: AuctionTerms -> L1Runner ()
 announceAndStartBidding terms = do
   announceAuction terms
 

@@ -32,17 +32,19 @@ import HydraAuction.OnChain.TestNFT (
   testNftPolicy,
   testNftTokenName,
  )
-import HydraAuction.Runner (Runner)
-import HydraAuction.Tx.Common (
+import HydraAuctionUtils.L1.Runner (L1Runner)
+import HydraAuctionUtils.Monads.Actors (
   actorTipUtxo,
   addressAndKeys,
-  minLovelace,
-  mintedTokens,
-  tokenToAsset,
  )
 import HydraAuctionUtils.Tx.AutoCreateTx (
   AutoCreateParams (..),
   autoSubmitAndAwaitTx,
+ )
+import HydraAuctionUtils.Tx.Build (
+  minLovelace,
+  mintedTokens,
+  tokenToAsset,
  )
 import HydraAuctionUtils.Tx.Utxo (
   filterAdaOnlyUtxo,
@@ -57,7 +59,7 @@ findTestNFT (UTxO.UTxO m) = Map.foldrWithKey isTestNFT Nothing m
         then pure k
         else acc
 
-mintOneTestNFT :: Runner Tx
+mintOneTestNFT :: L1Runner Tx
 mintOneTestNFT = do
   (actorAddress, _, actorSk) <- addressAndKeys
 

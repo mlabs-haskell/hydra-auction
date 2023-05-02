@@ -78,9 +78,9 @@ import Hydra.Ledger.Cardano.Builder (
 import Hydra.Party (Party)
 
 -- HydraAuction imports
-import HydraAuction.Runner (ExecutionContext (..), Runner)
-import HydraAuction.Tx.Common (actorTipUtxo, addressAndKeys)
+
 import HydraAuctionUtils.Fixture (partyFor)
+import HydraAuctionUtils.L1.Runner (ExecutionContext (..), L1Runner)
 import HydraAuctionUtils.Monads (
   BlockchainParams (..),
   MonadBlockchainParams (..),
@@ -88,6 +88,7 @@ import HydraAuctionUtils.Monads (
   UtxoQuery (..),
   submitAndAwaitTx,
  )
+import HydraAuctionUtils.Monads.Actors (actorTipUtxo, addressAndKeys)
 import HydraAuctionUtils.Tx.AutoCreateTx (callBodyAutoBalance, makeSignedTransactionWithKeys)
 import HydraAuctionUtils.Tx.Utxo (filterAdaOnlyUtxo)
 
@@ -162,7 +163,7 @@ commitTxBody
           mkCommitDatum party (Just (scriptInput, scriptOutput)) (headIdToCurrencySymbol headId)
 
 -- | Find initial Utxo with Participation Token matchin our current actor
-findInitialUtxo :: HeadId -> Runner (TxIn, TxOut CtxUTxO)
+findInitialUtxo :: HeadId -> L1Runner (TxIn, TxOut CtxUTxO)
 findInitialUtxo headId = do
   (_, commitingNodeVk, _) <- addressAndKeys
   let vkh = verificationKeyHash commitingNodeVk
@@ -208,9 +209,9 @@ submitAndAwaitCommitTx ::
   , TxOut CtxUTxO
   , BuildTxWith BuildTx (Witness WitCtxTxIn)
   ) ->
-  Runner ()
+  L1Runner ()
 
--- | Runner Actor should represent one which runs Hydra Node
+-- | L1Runner Actor should represent one which runs Hydra Node
 submitAndAwaitCommitTx
   scriptRegistry
   headId
