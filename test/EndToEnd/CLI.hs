@@ -1,89 +1,72 @@
 module EndToEnd.CLI (testSuite) where
 
 -- Prelude imports
-import Hydra.Prelude (MonadIO (liftIO), SomeException, fail)
-import PlutusTx.Prelude
+import Hydra.Prelude
 
 -- Haskell imports
 
-import Control.Monad (void)
-import Control.Monad.Catch (try)
 import Data.Maybe (fromJust)
 
 -- Haskell test imports
-import Test.Tasty (TestTree, testGroup)
-import Test.Tasty.HUnit (Assertion, testCase, (@=?))
 
--- Cardano node imports
-import Cardano.Api.UTxO qualified as UTxO
+import System.Directory (removeFile)
+import Test.Tasty (TestTree, testGroup, withResource)
+import Test.Tasty.HUnit (Assertion, testCase)
 
 -- Plutus imports
-import Plutus.V1.Ledger.Value (assetClassValueOf)
+import Plutus.V1.Ledger.Value (unCurrencySymbol)
+import Plutus.V2.Ledger.Api (fromBuiltin)
 
 -- Hydra imports
-import Hydra.Cardano.Api (mkTxIn, toPlutusValue, txOutValue)
+import Hydra.Chain (HeadId (..))
 
 -- Hydra auction imports
-import HydraAuction.OnChain.TestNFT (testNftAssetClass)
-import HydraAuction.Tx.Common (actorTipUtxo)
-import HydraAuction.Tx.Escrow (
-  announceAuction,
-  bidderBuys,
-  sellerReclaims,
-  startBidding,
- )
-import HydraAuction.Tx.StandingBid (cleanupTx, newBid)
-import HydraAuction.Tx.TermsConfig (
-  AuctionTermsConfig (
-    AuctionTermsConfig,
-    configAuctionFeePerDelegate,
-    configDiffBiddingEnd,
-    configDiffBiddingStart,
-    configDiffCleanup,
-    configDiffVoucherExpiry,
-    configMinimumBidIncrement,
-    configStartingBid
-  ),
-  configToAuctionTerms,
-  constructTermsDynamic,
- )
-import HydraAuction.Tx.TestNFT (mintOneTestNFT)
-import HydraAuction.Types (ApprovedBidders (..), AuctionTerms (..), intToNatural)
-import HydraAuctionUtils.Fixture (Actor (..), getActorsPubKey)
+
+import HydraAuction.Delegate.Interface (DelegateState (..), InitializedState (..))
+import HydraAuction.OnChain (AuctionScript (..))
+import HydraAuction.Tx.TermsConfig (nonExistentHeadIdStub)
+import HydraAuction.Types (AuctionTerms (..))
+import HydraAuctionUtils.Fixture (Actor (..))
 import HydraAuctionUtils.L1.Runner (
   L1Runner,
-  initWallet,
   withActor,
  )
 import HydraAuctionUtils.L1.Runner.Time (waitUntil)
+import HydraAuctionUtils.Types.Natural (intToNatural)
+
+-- CLI imports
+
+import CLI.Actions (CliAction (..), Layer (..), auctionTermsFor, handleCliAction)
+import CLI.Config (AuctionName, DirectoryKind (..), toJsonFileName, writeAuctionTermsConfig)
 
 -- Hydra auction test imports
-import EndToEnd.Utils (mkAssertion)
+import EndToEnd.Utils (assertNFTNumEquals, assertUTxOsInScriptEquals, config, mkAssertion)
 
 testSuite :: TestTree
 testSuite =
-  testGroup
-    "L1 - CLI"
-    [testCase "bidder-buys" bidderBuysTest]
+  withResource createTestConfig deleteTestConfig $
+    const $
+      testGroup
+        "L1 - CLI"
+        [ testCase "bidder-buys" bidderBuysTest
+        , testCase "deposit-test" depositTest
+        ]
+  where
+    createTestConfig = writeAuctionTermsConfig auctionName config
+    deleteTestConfig = const $ do
+      fn <- toJsonFileName AuctionConfig auctionName
+      removeFile fn
 
-assertNFTNumEquals :: Actor -> Integer -> L1Runner ()
-assertNFTNumEquals actor expectedNum = do
-  utxo <- withActor actor actorTipUtxo
-  liftIO $ do
-    let value = mconcat [toPlutusValue $ txOutValue out | (_, out) <- UTxO.pairs utxo]
-    assetClassValueOf value testNftAssetClass @=? expectedNum
+mockDelegateState :: DelegateState
+mockDelegateState = Initialized (HeadId . fromBuiltin . unCurrencySymbol $ nonExistentHeadIdStub) (Open Nothing)
 
-config :: AuctionTermsConfig
-config =
-  AuctionTermsConfig
-    { configDiffBiddingStart = 2
-    , configDiffBiddingEnd = 5
-    , configDiffVoucherExpiry = 8
-    , configDiffCleanup = 10
-    , configAuctionFeePerDelegate = fromJust $ intToNatural 4_000_000
-    , configStartingBid = fromJust $ intToNatural 8_000_000
-    , configMinimumBidIncrement = fromJust $ intToNatural 8_000_000
-    }
+auctionName :: AuctionName
+auctionName = "test"
+
+handleCliActionWithMockDelegates :: CliAction -> L1Runner ()
+handleCliActionWithMockDelegates action = do
+  delegateS <- newIORef mockDelegateState
+  handleCliAction (\_ -> pure ()) delegateS action
 
 bidderBuysTest :: Assertion
 bidderBuysTest = mkAssertion $ do
@@ -91,28 +74,73 @@ bidderBuysTest = mkAssertion $ do
       buyer1 = Bob
       buyer2 = Carol
 
-  handleCliAction $ Prepare seller
+  handleCliActionWithMockDelegates $ Prepare seller
 
   assertNFTNumEquals seller 1
 
-  handleCliAction $ AuctionAnounce "demo"
+  handleCliActionWithMockDelegates $ AuctionAnounce auctionName
+
+  terms <- auctionTermsFor auctionName
 
   waitUntil $ biddingStart terms
 
-  handleCliAction $ StartBidding "demo" [buyer1, buyer2]
+  handleCliActionWithMockDelegates $ StartBidding auctionName [buyer1, buyer2]
 
   assertNFTNumEquals seller 0
 
-  withActor buyer1 $ handleCliAction $ NewBid "demo" $ startingBid terms
-  withActor buyer2 $ handleCliAction $ NewBid "demo" $ startingBid terms + minimumBidIncrement terms
+  withActor buyer2 $ handleCliActionWithMockDelegates $ NewBid auctionName (startingBid terms) L1
 
   waitUntil $ biddingEnd terms
 
-  withActor buyer2 $ handleCliAction "demo"
+  withActor buyer2 $ handleCliActionWithMockDelegates $ BidderBuys auctionName
 
   assertNFTNumEquals seller 0
   assertNFTNumEquals buyer1 0
   assertNFTNumEquals buyer2 1
 
   waitUntil $ cleanup terms
-  handleCliAction $ Cleanup "demo"
+  handleCliActionWithMockDelegates $ Cleanup auctionName
+
+depositTest :: Assertion
+depositTest = mkAssertion $ do
+  let seller = Alice
+      buyer1 = Bob
+      buyer2 = Carol
+
+  handleCliActionWithMockDelegates $ Prepare seller
+
+  assertNFTNumEquals seller 1
+
+  handleCliActionWithMockDelegates $ AuctionAnounce auctionName
+
+  terms <- auctionTermsFor auctionName
+
+  withActor buyer1 $ handleCliActionWithMockDelegates $ MakeDeposit auctionName (fromJust $ intToNatural 10_000_000)
+  withActor buyer2 $ handleCliActionWithMockDelegates $ MakeDeposit auctionName (fromJust $ intToNatural 10_000_000)
+
+  assertUTxOsInScriptEquals Deposit terms 2
+
+  waitUntil $ biddingStart terms
+
+  handleCliActionWithMockDelegates $ StartBidding auctionName [buyer1, buyer2]
+
+  assertNFTNumEquals seller 0
+
+  withActor buyer2 $ handleCliActionWithMockDelegates $ NewBid auctionName (startingBid terms) L1
+
+  waitUntil $ biddingEnd terms
+
+  withActor buyer2 $ handleCliActionWithMockDelegates $ BidderBuys auctionName
+
+  assertNFTNumEquals seller 0
+  assertNFTNumEquals buyer1 0
+  assertNFTNumEquals buyer2 1
+
+  assertUTxOsInScriptEquals Deposit terms 1
+
+  withActor buyer1 $ handleCliActionWithMockDelegates $ BidderClaimsDeposit auctionName
+
+  assertUTxOsInScriptEquals Deposit terms 0
+
+  waitUntil $ cleanup terms
+  handleCliActionWithMockDelegates $ Cleanup auctionName

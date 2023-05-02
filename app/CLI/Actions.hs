@@ -3,6 +3,7 @@ module CLI.Actions (
   Layer (..),
   handleCliAction,
   seedAmount,
+  auctionTermsFor,
 ) where
 
 -- Prelude imports
@@ -36,8 +37,10 @@ import HydraAuction.Tx.Common (
  )
 import HydraAuction.Tx.Deposit (
   filterDepositGreaterThan,
+  losingBidderClaimDeposit,
   mkDeposit,
   parseBidDepositDatum,
+  sellerClaimDepositFor,
  )
 import HydraAuction.Tx.Escrow (
   announceAuction,
@@ -54,7 +57,7 @@ import HydraAuction.Types (
   AuctionTerms,
   BidDepositDatum (..),
  )
-import HydraAuctionUtils.Fixture (Actor (..), actorFromPkh, allActors, getActorsPubKeyHash)
+import HydraAuctionUtils.Fixture (Actor (..), actorFromPkh, allActors, getActorPubKeyHash, getActorsPubKeyHash)
 import HydraAuctionUtils.L1.Runner (
   ExecutionContext (..),
   L1Runner,
@@ -101,7 +104,9 @@ data CliAction
   | MoveToL2 !AuctionName
   | NewBid !AuctionName !Natural !Layer
   | BidderBuys !AuctionName
+  | BidderClaimsDeposit !AuctionName
   | SellerReclaims !AuctionName
+  | SellerClaimsDepositFor !AuctionName !Actor
   | Cleanup !AuctionName
   deriving stock (Show)
 
@@ -306,6 +311,13 @@ handleCliAction sendRequestToDelegate currentDelegateStateRef userAction = do
           <> " now has the following utxos in their wallet."
       utxos <- actorTipUtxo
       liftIO $ prettyPrintUtxo utxos
+    BidderClaimsDeposit auctionName -> do
+      terms <- auctionTermsFor auctionName
+      liftIO . putStrLn $
+        show actor
+          <> " reclaims their deposit, as a losing bidder."
+      doOnMatchingStage terms BiddingEndedStage $
+        losingBidderClaimDeposit terms
     SellerReclaims auctionName -> do
       liftIO . putStrLn $
         show actor
@@ -318,6 +330,15 @@ handleCliAction sendRequestToDelegate currentDelegateStateRef userAction = do
           <> " now has the following utxos in their wallet."
       utxos <- actorTipUtxo
       liftIO $ prettyPrintUtxo utxos
+    SellerClaimsDepositFor auctionName bidderActor -> do
+      terms <- auctionTermsFor auctionName
+      liftIO . putStrLn $
+        show actor
+          <> ", as the seller, reclaims the deposit for "
+          <> show bidderActor
+      bidderPKH <- liftIO $ getActorPubKeyHash bidderActor
+      doOnMatchingStage terms VoucherExpiredStage $
+        sellerClaimDepositFor terms bidderPKH
     Cleanup auctionName -> do
       terms <- auctionTermsFor auctionName
       liftIO . putStrLn $
@@ -326,12 +347,12 @@ handleCliAction sendRequestToDelegate currentDelegateStateRef userAction = do
           <> "."
       doOnMatchingStage terms CleanupStage $
         cleanupTx terms
-  where
-    noteM :: forall m a. MonadFail m => String -> m (Maybe a) -> m a
-    noteM s = (>>= maybe (fail s) pure)
 
-    auctionTermsFor :: forall m. MonadIO m => AuctionName -> m AuctionTerms
-    auctionTermsFor name =
-      liftIO $
-        noteM ("could not read auction terms for " <> show name) $
-          readAuctionTerms name
+noteM :: forall m a. MonadFail m => String -> m (Maybe a) -> m a
+noteM s = (>>= maybe (fail s) pure)
+
+auctionTermsFor :: forall m. MonadIO m => AuctionName -> m AuctionTerms
+auctionTermsFor name =
+  liftIO $
+    noteM ("could not read auction terms for " <> show name) $
+      readAuctionTerms name
