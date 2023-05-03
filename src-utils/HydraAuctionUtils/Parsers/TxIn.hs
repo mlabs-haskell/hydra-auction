@@ -1,4 +1,4 @@
-module CLI.Parsers.TxIn (
+module HydraAuctionUtils.Parsers.TxIn (
   parseTxIn,
 ) where
 
