@@ -626,9 +626,7 @@ Under the **distribute fees** redeemer, we enforce that:
 - There is one input spent from the fee escrow validator,
 defining the delegates.
 - There is at least one output per delegate such that
-the ada contained in that output is >=
-than the ada in the input from the fee validator
-divided by the number of delegates
+the ada contained in that output is >= `auctionFeePerDelegate`
 - No tokens are minted or burned.
 
 ```mermaid

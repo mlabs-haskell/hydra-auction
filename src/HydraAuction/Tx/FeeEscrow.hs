@@ -73,12 +73,11 @@ distributeFee terms = do
     _ -> fail "wrong number of utxos in fee escrow script"
 
   lovelaceAmt <- case valueToLovelace feeEscrowValue of
-    Just (Lovelace l) -> pure l
+    Just l -> pure l
     Nothing -> fail "fee escrow asset does not contain ada-only"
 
   delegateOuts <- mapM mkFeeOut (zipDistributingValue lovelaceAmt (delegates terms))
 
-  logMsg $ show delegateOuts
   void $
     autoSubmitAndAwaitTx $
       AutoCreateParams
@@ -105,8 +104,8 @@ distributeFee terms = do
           TxOutDatumNone
           ReferenceScriptNone
 
-zipDistributingValue :: Integer -> [PubKeyHash] -> [(PubKeyHash, Value)]
-zipDistributingValue lovelaceAmt delegatePKHs = zip delegatePKHs (lovelaceToValue . Lovelace <$> distributedLovelace)
+zipDistributingValue :: Lovelace -> [PubKeyHash] -> [(PubKeyHash, Value)]
+zipDistributingValue (Lovelace lovelaceAmt) delegatePKHs = zip delegatePKHs (lovelaceToValue . Lovelace <$> distributedLovelace)
   where
     delegateNumber = length delegatePKHs
     (quotient, remainder) = divMod lovelaceAmt (toInteger delegateNumber)
