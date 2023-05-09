@@ -3,6 +3,8 @@
 module HydraAuction.OnChain.StandingBid (
   mkStandingBidValidator,
   validNewBidTerms,
+  sellerSignatureMessage,
+  bidderSignatureMessage,
 ) where
 
 -- Prelude imports
@@ -11,8 +13,9 @@ import PlutusTx.Prelude
 -- Plutus imports
 import Plutus.V1.Ledger.Address (pubKeyHashAddress, scriptHashAddress)
 import Plutus.V1.Ledger.Interval (contains, to)
-import Plutus.V1.Ledger.Value (assetClass, assetClassValueOf)
+import Plutus.V1.Ledger.Value (CurrencySymbol (..), assetClass, assetClassValueOf)
 import Plutus.V2.Ledger.Api (
+  PubKeyHash (..),
   TxInfo,
   TxOut (..),
   scriptContextTxInfo,
@@ -44,6 +47,7 @@ import HydraAuctionUtils.Plutus (
   isNotAdaOnlyOutput,
   nothingForged,
  )
+import HydraAuctionUtils.Types.Natural (Natural, toBuiltinBytestring)
 
 {-# INLINEABLE mkStandingBidValidator #-}
 mkStandingBidValidator :: AuctionTerms -> StandingBidDatum -> StandingBidRedeemer -> ScriptContext -> Bool
@@ -84,14 +88,6 @@ mkStandingBidValidator terms datum redeemer context =
       byAddress address $ txInInfoResolved <$> txInfoInputs info
     validNewBid :: StandingBidState -> StandingBidState -> Bool
     validNewBid (StandingBidState _oldApprovedBidders oldBid) (StandingBidState _newApprovedBidders newBid) =
-      -- FIXME: disabled until M6
-      -- traceIfFalse "Bidder not signed" (txSignedBy info (bidBidder newBidTerms))
-      -- && traceIfFalse
-      --   "Bidder is not approved"
-      --   (bidBidder newBidTerms `elem` bidders oldApprovedBidders)
-      -- traceIfFalse
-      -- "Approved Bidders can not be modified"
-      -- (oldApprovedBidders == newApprovedBidders)
       validNewBidTerms terms oldBid newBid
     checkCorrectNewBidOutput inputOut =
       case byAddress standingBidAddress $ txInfoOutputs info of
@@ -113,7 +109,7 @@ mkStandingBidValidator terms datum redeemer context =
       [out] ->
         traceIfFalse
           "Output is not to seller"
-          (txOutAddress out == pubKeyHashAddress (seller terms))
+          (txOutAddress out == pubKeyHashAddress (sellerPKH terms))
       _ -> traceError "Not exactly one ouput"
     checkExactlyOneVoucherBurned =
       traceIfFalse
@@ -123,14 +119,29 @@ mkStandingBidValidator terms datum redeemer context =
            in assetClassValueOf (txInfoMint info) voucherAC == -1
         )
 
+{-# INLINEABLE validNewBidTerms #-}
 validNewBidTerms :: AuctionTerms -> Maybe BidTerms -> Maybe BidTerms -> Bool
 validNewBidTerms terms oldBid (Just newBidTerms) =
-  case oldBid of
-    Just oldBidTerms ->
-      traceIfFalse "Bid increment is not greater than minimumBidIncrement" $
-        bidAmount oldBidTerms + minimumBidIncrement terms <= bidAmount newBidTerms
-    Nothing ->
-      traceIfFalse "Bid is not greater than startingBid" $
-        startingBid terms <= bidAmount newBidTerms
+  -- The seller has allowed the bidder to participate in the auction
+  traceIfFalse "User is not an autorised bider" (verifyEd25519Signature (sellerVK terms) (sellerSignatureMessage (hydraHeadId terms) bidderVK bidderPKH) sellerSignature)
+    -- The bidder has correctly signed the datum
+    && traceIfFalse "New bid datum is not signed correctly" (verifyEd25519Signature bidderVK (bidderSignatureMessage (hydraHeadId terms) newPrice bidderPKH) bidderSignature)
+    && case oldBid of
+      Just oldBidTerms ->
+        traceIfFalse "Bid increment is not greater than minimumBidIncrement" $
+          bidAmount oldBidTerms + minimumBidIncrement terms <= bidAmount newBidTerms
+      Nothing ->
+        traceIfFalse "Bid is not greater than startingBid" $
+          startingBid terms <= bidAmount newBidTerms
+  where
+    BidTerms bidderPKH bidderVK newPrice bidderSignature sellerSignature = newBidTerms
 validNewBidTerms _ _ Nothing =
   traceIfFalse "Bid cannot be empty" False
+
+{-# INLINEABLE bidderSignatureMessage #-}
+bidderSignatureMessage :: CurrencySymbol -> Natural -> PubKeyHash -> BuiltinByteString
+bidderSignatureMessage (CurrencySymbol headId) bidAmount (PubKeyHash bidderPKH) = headId <> toBuiltinBytestring bidAmount <> bidderPKH
+
+{-# INLINEABLE sellerSignatureMessage #-}
+sellerSignatureMessage :: CurrencySymbol -> BuiltinByteString -> PubKeyHash -> BuiltinByteString
+sellerSignatureMessage (CurrencySymbol headId) bidderVK (PubKeyHash bidderPKH) = headId <> bidderPKH <> bidderVK

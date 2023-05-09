@@ -73,8 +73,10 @@ auctionStages = [Prelude.minBound .. Prelude.maxBound]
 data AuctionTerms = AuctionTerms
   { auctionLot :: !AssetClass
   -- ^ What is being sold at the auction?
-  , seller :: !PubKeyHash
+  , sellerPKH :: !PubKeyHash
   -- ^ Who is selling it?
+  , sellerVK :: !BuiltinByteString
+  -- ^ Verification key of the seller
   , hydraHeadId :: !CurrencySymbol
   -- ^ Which Hydra Head is authorized to host the bidding for this auction?
   , delegates :: ![PubKeyHash]
@@ -106,7 +108,8 @@ instance Eq AuctionTerms where
   {-# INLINEABLE (==) #-}
   x == y =
     (auctionLot x == auctionLot y)
-      && (seller x == seller y)
+      && (sellerPKH x == sellerPKH y)
+      && (sellerVK x == sellerVK y)
       && (delegates x == delegates y)
       && (biddingStart x == biddingStart y)
       && (biddingEnd x == biddingEnd y)
@@ -150,17 +153,28 @@ instance Eq StandingBidState where
   x == y = approvedBidders x == approvedBidders y && standingBid x == standingBid y
 
 data BidTerms = BidTerms
-  { bidBidder :: !PubKeyHash
-  -- ^ Who submitted the bid?
+  { bidderPKH :: !PubKeyHash
+  -- ^ PubKeyHash of whoever submitted the bid?
+  , bidderVK :: BuiltinByteString
+  -- ^ Verification Key of whoever submitted the bid
   , bidAmount :: !Natural
   -- ^ Which amount did the bidder set to buy the auction lot?
+  , bidderSignature :: BuiltinByteString
+  -- ^ Represents the signed payload by the bidder
+  , sellerSignature :: BuiltinByteString
+  -- ^ Represents the signed payload by the seller
   }
   deriving stock (Generic, Prelude.Show, Prelude.Eq)
   deriving anyclass (FromJSON, ToJSON)
 
 instance Eq BidTerms where
   {-# INLINEABLE (==) #-}
-  x == y = (bidBidder x == bidBidder y) && (bidAmount x == bidAmount y)
+  x == y =
+    (bidderPKH x == bidderPKH y)
+      && (bidderVK x == bidderVK y)
+      && (bidAmount x == bidAmount y)
+      && (bidderSignature x == bidderSignature y)
+      && (sellerSignature x == sellerSignature y)
 
 PlutusTx.makeIsDataIndexed ''StandingBidState [('StandingBidState, 0)]
 PlutusTx.makeLift ''StandingBidState

@@ -43,7 +43,7 @@ mkDepositValidator (StandingBidAddress standingBidAddr, EscrowAddress escrowAddr
       -- Standing bid winner is not current bidder
       && traceIfFalse
         "Standing bid winner must not be current bidder"
-        ((bidBidder <$> standingBid (standingBidState standingBidReferenceInputDatum)) /= Just (bidDepositBidder datum))
+        ((bidderPKH <$> standingBid (standingBidState standingBidReferenceInputDatum)) /= Just (bidDepositBidder datum))
       -- The transaction validity time starts after the bidding ends
       && traceIfFalse
         "Wrong interval for Losing Bidder"
@@ -55,13 +55,13 @@ mkDepositValidator (StandingBidAddress standingBidAddr, EscrowAddress escrowAddr
     traceIfFalse "Voucher CS does not match auction escrow" (auctionVoucherCS auctionEscrowReferenceInputDatum == bidDepositVoucherCS datum)
       -- There is one reference input from the standing bid validator, mentioning the same voucher and bidder as the bid deposit input.
       && traceIfFalse "Voucher CS does not match standing bid" (standingBidVoucherCS standingBidReferenceInputDatum == bidDepositVoucherCS datum)
-      && traceIfFalse "Bidder deposit input does not match standing bid validator" ((bidBidder <$> standingBid (standingBidState standingBidReferenceInputDatum)) == Just (bidDepositBidder datum))
+      && traceIfFalse "Bidder deposit input does not match standing bid validator" ((bidderPKH <$> standingBid (standingBidState standingBidReferenceInputDatum)) == Just (bidDepositBidder datum))
       -- The transaction validity interval starts after the voucher expiry time.
       && traceIfFalse
         "Wrong interval for Losing"
         (contains (from (voucherExpiry terms)) (txInfoValidRange info))
       -- The transaction is signed by the seller.
-      && traceIfFalse "Seller not signed" (txSignedBy info (seller terms))
+      && traceIfFalse "Seller not signed" (txSignedBy info (sellerPKH terms))
       -- No tokens are minted or burned
       && nothingForged info
   WinningBidder ->

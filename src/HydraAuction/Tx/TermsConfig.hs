@@ -23,15 +23,16 @@ import Plutus.V1.Ledger.Crypto (PubKeyHash)
 import Plutus.V1.Ledger.Time (POSIXTime (..))
 import Plutus.V1.Ledger.Value (AssetClass, CurrencySymbol (..))
 import Plutus.V2.Ledger.Contexts (TxOutRef)
+import PlutusTx.Builtins (toBuiltin)
 
 -- Hydra imports
-import Hydra.Cardano.Api (TxIn, toPlutusTxOutRef)
+import Hydra.Cardano.Api (TxIn, serialiseToRawBytes, toPlutusTxOutRef)
 
 -- Hydra auction imports
 import HydraAuction.OnChain.TestNFT (testNftAssetClass)
 import HydraAuction.Types (AuctionTerms (..))
 import HydraAuctionUtils.Extras.PlutusOrphans ()
-import HydraAuctionUtils.Fixture (Actor, getActorPubKeyHash)
+import HydraAuctionUtils.Fixture (Actor, getActorPubKeyHash, keysFor)
 import HydraAuctionUtils.Time (currentTimeSeconds)
 import HydraAuctionUtils.Types.Natural (Natural)
 
@@ -97,11 +98,13 @@ configToAuctionTerms ::
   AuctionTermsDynamic ->
   IO AuctionTerms
 configToAuctionTerms AuctionTermsConfig {..} AuctionTermsDynamic {..} = do
+  (sellerVK, _) <- keysFor configSellerActor
   sellerVkHash <- getActorPubKeyHash configSellerActor
   return $
     AuctionTerms
       { auctionLot = configAuctionLot
-      , seller = sellerVkHash
+      , sellerPKH = sellerVkHash
+      , sellerVK = toBuiltin $ serialiseToRawBytes sellerVK
       , hydraHeadId = configHeadId
       , delegates = configDelegates
       , biddingStart = toAbsTime configDiffBiddingStart

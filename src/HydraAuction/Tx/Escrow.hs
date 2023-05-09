@@ -142,7 +142,7 @@ startBidding :: AuctionTerms -> ApprovedBidders -> L1Runner ()
 startBidding terms approvedBidders = do
   logMsg "Doing start bidding"
 
-  when (seller terms `elem` bidders approvedBidders) $ do
+  when (sellerPKH terms `elem` bidders approvedBidders) $ do
     fail "Seller can not be in approved bidders"
 
   let escrowScript = scriptPlutusScript Escrow terms
@@ -219,7 +219,7 @@ bidderBuys terms = do
   sellerAddress <-
     fromPlutusAddressInMonad $
       pubKeyHashAddress $
-        seller terms
+        sellerPKH terms
 
   -- FIXME: better error reporting
   Just (StandingBidDatum {standingBidState}) <- queryStandingBidDatum terms

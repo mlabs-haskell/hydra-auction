@@ -48,7 +48,7 @@ import HydraAuction.Tx.Escrow (
   sellerReclaims,
   startBidding,
  )
-import HydraAuction.Tx.StandingBid (cleanupTx, createStandingBidDatum, currentWinningBidder, newBid)
+import HydraAuction.Tx.StandingBid (cleanupTx, createStandingBidDatum, currentWinningBidder, newBid, sellerSignatureForActor)
 import HydraAuction.Tx.TermsConfig (constructTermsDynamic)
 import HydraAuction.Tx.TestNFT (findTestNFT, mintOneTestNFT)
 import HydraAuction.Types (
@@ -270,9 +270,10 @@ handleCliAction sendRequestToDelegate currentDelegateStateRef userAction = do
             case layer of
               L1 -> newBid terms bidAmount
               L2 -> do
-                (_, bidderPublicKey, _) <- addressAndKeys
+                (_, _, bidderSigningKey) <- addressAndKeys
+                sellerSignature <- liftIO $ sellerSignatureForActor terms actor
                 let bidDatum =
-                      createStandingBidDatum terms bidAmount bidderPublicKey
+                      createStandingBidDatum terms bidAmount sellerSignature bidderSigningKey
                 liftIO $
                   sendRequestToDelegate $
                     DelegateInterface.NewBid

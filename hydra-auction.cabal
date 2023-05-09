@@ -64,6 +64,7 @@ common common-lang
     , cardano-ledger-core
     , containers
     , contra-tracer
+    , ed25519
     , exceptions
     , extra
     , filepath
