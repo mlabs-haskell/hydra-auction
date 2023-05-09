@@ -31,7 +31,7 @@ import HydraAuction.Tx.TermsConfig (
   nonExistentHeadIdStub,
  )
 import HydraAuction.Tx.TestNFT (mintOneTestNFT)
-import HydraAuction.Types (ApprovedBidders (..), AuctionTerms (..))
+import HydraAuction.Types (AuctionTerms (..))
 import HydraAuctionUtils.Fixture (Actor (..), getActorsPubKeyHash)
 import HydraAuctionUtils.L1.Runner (
   initWallet,
@@ -48,9 +48,6 @@ testSuite =
     "Ledger - Auction"
     [ testCase "bidder-buys" bidderBuysTest
     , testCase "seller-reclaims" sellerReclaimsTest
-    , testCase "seller-bids" sellerBidsTest
-    -- FIXME: disabled until M6
-    -- , testCase "unauthorised-bidder" unauthorisedBidderTest
     ]
 
 bidderBuysTest :: Assertion
@@ -73,8 +70,7 @@ bidderBuysTest = mkAssertion $ do
   announceAuction terms
 
   waitUntil $ biddingStart terms
-  actorsPkh <- liftIO $ getActorsPubKeyHash [buyer1, buyer2]
-  startBidding terms (ApprovedBidders actorsPkh)
+  startBidding terms
 
   assertNFTNumEquals seller 0
 
@@ -108,7 +104,7 @@ sellerReclaimsTest = mkAssertion $ do
   announceAuction terms
 
   waitUntil $ biddingStart terms
-  startBidding terms (ApprovedBidders [])
+  startBidding terms
   assertNFTNumEquals seller 0
 
   waitUntil $ voucherExpiry terms
@@ -118,61 +114,3 @@ sellerReclaimsTest = mkAssertion $ do
 
   waitUntil $ cleanup terms
   cleanupTx terms
-
-sellerBidsTest :: Assertion
-sellerBidsTest = mkAssertion $ do
-  let seller = Alice
-
-  void $ initWallet 100_000_000 seller
-
-  nftTx <- mintOneTestNFT
-  let utxoRef = mkTxIn nftTx 0
-
-  terms <- liftIO $ do
-    dynamicState <- constructTermsDynamic seller utxoRef nonExistentHeadIdStub
-    configToAuctionTerms config dynamicState
-
-  assertNFTNumEquals seller 1
-  announceAuction terms
-
-  waitUntil $ biddingStart terms
-  sellerPkh <- liftIO $ getActorsPubKeyHash [seller]
-  result <- try $ startBidding terms (ApprovedBidders sellerPkh)
-
-  case result of
-    Left (_ :: SomeException) -> return ()
-    Right _ -> fail "Start bidding should fail"
-
-{-
-unauthorisedBidderTest :: Assertion
-unauthorisedBidderTest = mkAssertion $ do
-  let seller = Alice
-      buyer1 = Bob
-      buyer2 = Carol
-
-  mapM_ (initWallet 100_000_000) [seller, buyer1, buyer2]
-
-  nftTx <- mintOneTestNFT
-  let utxoRef = mkTxIn nftTx 0
-
-  terms <- liftIO $ do
-    dynamicState <- constructTermsDynamic seller utxoRef nonExistentHeadIdStub
-    configToAuctionTerms config dynamicState
-
-  assertNFTNumEquals seller 1
-
-  announceAuction terms
-
-  waitUntil $ biddingStart terms
-  actorsPkh <- liftIO $ getActorsPubKeyHash [buyer1]
-  startBidding terms (ApprovedBidders actorsPkh)
-
-  assertNFTNumEquals seller 0
-
-  withActor buyer1 $ newBid terms $ startingBid terms
-  result <- try $ withActor buyer2 $ newBid terms $ startingBid terms + minimumBidIncrement terms
-
-  case result of
-    Left (_ :: SomeException) -> return ()
-    Right _ -> fail "New bid should fail, actor is not authorised"
--}

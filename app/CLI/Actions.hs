@@ -52,7 +52,6 @@ import HydraAuction.Tx.StandingBid (cleanupTx, createStandingBidDatum, currentWi
 import HydraAuction.Tx.TermsConfig (constructTermsDynamic)
 import HydraAuction.Tx.TestNFT (findTestNFT, mintOneTestNFT)
 import HydraAuction.Types (
-  ApprovedBidders (..),
   AuctionStage (..),
   AuctionTerms,
   BidDepositDatum (..),
@@ -231,13 +230,12 @@ handleCliAction sendRequestToDelegate currentDelegateStateRef userAction = do
     StartBidding auctionName actors -> do
       terms <- auctionTermsFor auctionName
       doOnMatchingStage terms BiddingStartedStage $ do
-        actorsPkh <- liftIO $ getActorsPubKeyHash actors
         liftIO . putStrLn $
           show actor
             <> " starts the bidding phase of auction "
             <> show auctionName
             <> "."
-        startBidding terms (ApprovedBidders actorsPkh)
+        startBidding terms
     MoveToL2 auctionName -> do
       terms <- auctionTermsFor auctionName
       doOnMatchingStage terms BiddingStartedStage $ do

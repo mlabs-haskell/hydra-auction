@@ -5,7 +5,6 @@
 -- FIXME: Use template Haskell to derive Eq instances
 module HydraAuction.Types (
   isStarted,
-  ApprovedBiddersHash (..),
   BidTerms (..),
   BidDepositDatum (..),
   BidDepositRedeemer (..),
@@ -13,7 +12,6 @@ module HydraAuction.Types (
   StandingBidDatum (..),
   AuctionTerms (..),
   AuctionState (..),
-  ApprovedBidders (..),
   AuctionEscrowDatum (..),
   EscrowRedeemer (..),
   StandingBidRedeemer (..),
@@ -40,7 +38,6 @@ import Plutus.V1.Ledger.Time (POSIXTime)
 import Plutus.V1.Ledger.Value (AssetClass, CurrencySymbol)
 import Plutus.V2.Ledger.Contexts (TxOutRef)
 import PlutusTx qualified
-import PlutusTx.IsData.Class (FromData, ToData, UnsafeFromData)
 
 -- Hydra auction imports
 import HydraAuction.Addresses (VoucherCS)
@@ -124,33 +121,13 @@ calculateTotalFee :: AuctionTerms -> Integer
 calculateTotalFee terms =
   naturalToInt (auctionFeePerDelegate terms) * length (delegates terms)
 
-newtype ApprovedBidders = ApprovedBidders
-  { bidders :: [PubKeyHash]
-  -- ^ Which bidders are approved to submit bids?
-  }
-  deriving stock (Generic, Prelude.Show, Prelude.Eq)
-  deriving anyclass (ToJSON, FromJSON)
-
-instance Eq ApprovedBidders where
-  {-# INLINEABLE (==) #-}
-  x == y = bidders x == bidders y
-
-deriving newtype instance (UnsafeFromData ApprovedBidders)
-deriving newtype instance (ToData ApprovedBidders)
-deriving newtype instance (FromData ApprovedBidders)
-
-PlutusTx.makeLift ''ApprovedBidders
-
-data StandingBidState = StandingBidState
-  { approvedBidders :: ApprovedBidders
-  , standingBid :: Maybe BidTerms
-  }
+newtype StandingBidState = StandingBidState {standingBid :: Maybe BidTerms}
   deriving stock (Generic, Prelude.Show, Prelude.Eq)
   deriving anyclass (ToJSON, FromJSON)
 
 instance Eq StandingBidState where
   {-# INLINEABLE (==) #-}
-  x == y = approvedBidders x == approvedBidders y && standingBid x == standingBid y
+  x == y = standingBid x == standingBid y
 
 data BidTerms = BidTerms
   { bidderPKH :: !PubKeyHash
@@ -183,35 +160,19 @@ PlutusTx.makeLift ''BidTerms
 
 data AuctionState
   = Announced
-  | BiddingStarted !ApprovedBiddersHash
+  | BiddingStarted
   deriving stock (Generic, Prelude.Show, Prelude.Eq)
 
 {-# INLINEABLE isStarted #-}
 isStarted :: AuctionState -> Bool
-isStarted (BiddingStarted _) = True
+isStarted BiddingStarted = True
 isStarted _ = False
 
 instance Eq AuctionState where
   {-# INLINEABLE (==) #-}
   Announced == Announced = True
-  (BiddingStarted x) == (BiddingStarted y) = x == y
+  BiddingStarted == BiddingStarted = True
   _ == _ = False
-
--- | FIXME: Bytetring will be changed to actual hash
-newtype ApprovedBiddersHash = ApprovedBiddersHash BuiltinByteString
-  deriving stock (Generic, Prelude.Show, Prelude.Eq)
-{- ^ This hash is calculated from the `ApprovedBidders` value that the seller
- fixes for the auction.
--}
-
-deriving newtype instance (UnsafeFromData ApprovedBiddersHash)
-deriving newtype instance (ToData ApprovedBiddersHash)
-deriving newtype instance (FromData ApprovedBiddersHash)
-PlutusTx.makeLift ''ApprovedBiddersHash
-
-instance Eq ApprovedBiddersHash where
-  {-# INLINEABLE (==) #-}
-  (ApprovedBiddersHash x) == (ApprovedBiddersHash y) = x == y
 
 PlutusTx.makeIsDataIndexed ''AuctionState [('Announced, 0), ('BiddingStarted, 1)]
 PlutusTx.makeLift ''AuctionState

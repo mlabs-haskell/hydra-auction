@@ -18,7 +18,7 @@ import Prelude
 import Control.Monad (when)
 import Control.Monad.IO.Class (MonadIO (..))
 import Control.Monad.Reader (MonadReader (ask))
-import Crypto.Sign.Ed25519 (PublicKey (..), SecretKey (..), Signature (..), createKeypair, dsign, dverify, toPublicKey)
+import Crypto.Sign.Ed25519 (SecretKey (..), Signature (..), dsign)
 
 -- Plutus imports
 import Plutus.V1.Ledger.Value (assetClassValue)
@@ -77,7 +77,6 @@ import HydraAuction.Tx.Common (
   toForgeStateToken,
  )
 import HydraAuction.Types (
-  ApprovedBidders (..),
   AuctionTerms (..),
   BidTerms (..),
   StandingBidDatum (..),
@@ -111,7 +110,7 @@ import HydraAuctionUtils.Tx.Build (
 import HydraAuctionUtils.Tx.Utxo (
   filterAdaOnlyUtxo,
  )
-import HydraAuctionUtils.Types.Natural (Natural, intToNatural)
+import HydraAuctionUtils.Types.Natural (Natural)
 
 data DatumDecodingError = CannotDecodeDatum | NoInlineDatum
 
@@ -232,24 +231,21 @@ createStandingBidDatum terms bidAmount sellerSignature bidderSk =
             Just $
               BidTerms
                 { bidderPKH
-                , bidderVK
+                , bidderVK = toBuiltin $ serialiseToRawBytes derivedVK
                 , bidAmount
                 , bidderSignature = toBuiltin bidderSignature
                 , sellerSignature
                 }
-        , approvedBidders = emptyBidders
         }
     )
     voucherCS
   where
     auctionId = hydraHeadId terms
     derivedVK = getVerificationKey bidderSk
-    bidderVK = toBuiltin $ serialiseToRawBytes derivedVK
     bidderPKH = toPlutusKeyHash $ verificationKeyHash derivedVK
     bidderSecretKey = SecretKey $ serialiseToRawBytes bidderSk <> serialiseToRawBytes derivedVK
     bidderMessage = fromBuiltin $ bidderSignatureMessage auctionId bidAmount bidderPKH
     Signature bidderSignature = dsign bidderSecretKey bidderMessage
-    emptyBidders = ApprovedBidders []
     mp = policy terms
     voucherCS = VoucherCS $ scriptCurrencySymbol mp
 

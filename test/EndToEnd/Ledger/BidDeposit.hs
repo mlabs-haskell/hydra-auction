@@ -30,8 +30,8 @@ import HydraAuction.Tx.TermsConfig (
   nonExistentHeadIdStub,
  )
 import HydraAuction.Tx.TestNFT (mintOneTestNFT)
-import HydraAuction.Types (ApprovedBidders (..), AuctionTerms (..))
-import HydraAuctionUtils.Fixture (Actor (..), getActorsPubKeyHash)
+import HydraAuction.Types (AuctionTerms (..))
+import HydraAuctionUtils.Fixture (Actor (..), getActorPubKeyHash)
 import HydraAuctionUtils.L1.Runner (
   initWallet,
   withActor,
@@ -82,8 +82,7 @@ losingBidderClaimDepositTest = mkAssertion $ do
   assertUTxOsInScriptEquals Deposit terms 2
 
   waitUntil $ biddingStart terms
-  actorsPkh <- liftIO $ getActorsPubKeyHash [buyer1, buyer2]
-  startBidding terms (ApprovedBidders actorsPkh)
+  startBidding terms
 
   assertNFTNumEquals seller 0
 
@@ -121,8 +120,7 @@ losingBidderDoubleClaimTest = mkAssertion $ do
   assertUTxOsInScriptEquals Deposit terms 2
 
   waitUntil $ biddingStart terms
-  actorsPkh <- liftIO $ getActorsPubKeyHash [buyer1, buyer2]
-  startBidding terms (ApprovedBidders actorsPkh)
+  startBidding terms
 
   assertNFTNumEquals seller 0
 
@@ -164,8 +162,8 @@ sellerClaimsDepositTest = mkAssertion $ do
   assertUTxOsInScriptEquals Deposit terms 1
 
   waitUntil $ biddingStart terms
-  actorsPkh <- liftIO $ getActorsPubKeyHash [buyer]
-  startBidding terms (ApprovedBidders actorsPkh)
+
+  startBidding terms
 
   assertNFTNumEquals seller 0
 
@@ -173,7 +171,9 @@ sellerClaimsDepositTest = mkAssertion $ do
 
   waitUntil $ voucherExpiry terms
 
-  sellerClaimDepositFor terms (head actorsPkh)
+  buyerPKH <- liftIO $ getActorPubKeyHash buyer
+
+  sellerClaimDepositFor terms buyerPKH
 
   assertUTxOsInScriptEquals Deposit terms 0
 
@@ -202,8 +202,8 @@ sellerClaimsLosingDepositTest = mkAssertion $ do
   assertUTxOsInScriptEquals Deposit terms 2
 
   waitUntil $ biddingStart terms
-  actorsPkh <- liftIO $ getActorsPubKeyHash [buyer1, buyer2]
-  startBidding terms (ApprovedBidders actorsPkh)
+
+  startBidding terms
 
   assertNFTNumEquals seller 0
 
@@ -212,7 +212,8 @@ sellerClaimsLosingDepositTest = mkAssertion $ do
 
   waitUntil $ voucherExpiry terms
 
-  result <- try $ sellerClaimDepositFor terms (head actorsPkh)
+  buyer1PKH <- liftIO $ getActorPubKeyHash buyer1
+  result <- try $ sellerClaimDepositFor terms buyer1PKH
 
   case result of
     Left (_ :: SomeException) -> assertUTxOsInScriptEquals Deposit terms 2
@@ -243,8 +244,7 @@ bidderBuysWithDepositTest = mkAssertion $ do
   assertUTxOsInScriptEquals Deposit terms 2
 
   waitUntil $ biddingStart terms
-  actorsPkh <- liftIO $ getActorsPubKeyHash [buyer1, buyer2]
-  startBidding terms (ApprovedBidders actorsPkh)
+  startBidding terms
 
   assertNFTNumEquals seller 0
 
@@ -287,8 +287,7 @@ cleanupDepositTest = mkAssertion $ do
   assertUTxOsInScriptEquals Deposit terms 2
 
   waitUntil $ biddingStart terms
-  actorsPkh <- liftIO $ getActorsPubKeyHash [buyer1, buyer2]
-  startBidding terms (ApprovedBidders actorsPkh)
+  startBidding terms
 
   assertNFTNumEquals seller 0
 

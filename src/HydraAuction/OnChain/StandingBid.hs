@@ -87,7 +87,7 @@ mkStandingBidValidator terms datum redeemer context =
     inOutsByAddress address =
       byAddress address $ txInInfoResolved <$> txInfoInputs info
     validNewBid :: StandingBidState -> StandingBidState -> Bool
-    validNewBid (StandingBidState _oldApprovedBidders oldBid) (StandingBidState _newApprovedBidders newBid) =
+    validNewBid (StandingBidState oldBid) (StandingBidState newBid) =
       validNewBidTerms terms oldBid newBid
     checkCorrectNewBidOutput inputOut =
       case byAddress standingBidAddress $ txInfoOutputs info of
@@ -123,9 +123,9 @@ mkStandingBidValidator terms datum redeemer context =
 validNewBidTerms :: AuctionTerms -> Maybe BidTerms -> Maybe BidTerms -> Bool
 validNewBidTerms terms oldBid (Just newBidTerms) =
   -- The seller has allowed the bidder to participate in the auction
-  traceIfFalse "User is not an autorised bider" (verifyEd25519Signature (sellerVK terms) (sellerSignatureMessage (hydraHeadId terms) bidderVK bidderPKH) sellerSignature)
+  traceIfFalse "User is not an autorised bider" (verifyEd25519Signature (sellerVK terms) sellerMessage sellerSignature)
     -- The bidder has correctly signed the datum
-    && traceIfFalse "New bid datum is not signed correctly" (verifyEd25519Signature bidderVK (bidderSignatureMessage (hydraHeadId terms) newPrice bidderPKH) bidderSignature)
+    && traceIfFalse "New bid datum is not signed correctly" (verifyEd25519Signature bidderVK bidderMessage bidderSignature)
     && case oldBid of
       Just oldBidTerms ->
         traceIfFalse "Bid increment is not greater than minimumBidIncrement" $
@@ -135,6 +135,9 @@ validNewBidTerms terms oldBid (Just newBidTerms) =
           startingBid terms <= bidAmount newBidTerms
   where
     BidTerms bidderPKH bidderVK newPrice bidderSignature sellerSignature = newBidTerms
+    auctionId = hydraHeadId terms
+    sellerMessage = sellerSignatureMessage auctionId bidderVK bidderPKH
+    bidderMessage = bidderSignatureMessage auctionId newPrice bidderPKH
 validNewBidTerms _ _ Nothing =
   traceIfFalse "Bid cannot be empty" False
 
