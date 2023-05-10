@@ -4,8 +4,10 @@ module EndToEnd.Ledger.L2 (testSuite) where
 import Prelude
 
 -- Haskell imports
+
 import Control.Monad (replicateM_)
 import Control.Monad.Trans (MonadIO (..))
+import Data.Map qualified as Map
 
 -- Haskell test imports
 import Test.Tasty (TestTree, testGroup)
@@ -22,7 +24,7 @@ import HydraAuction.Tx.Escrow (
 import HydraAuction.Tx.StandingBid (newBid)
 import HydraAuction.Tx.TermsConfig (AuctionTermsConfig (..))
 import HydraAuction.Types (AuctionTerms (..))
-import HydraAuctionUtils.Fixture (Actor (..), hydraNodeActors)
+import HydraAuctionUtils.Fixture (Actor (..), ActorKind (..), actorsByKind)
 import HydraAuctionUtils.L1.Runner (
   executeL1RunnerWithNodeAs,
   initWallet,
@@ -151,7 +153,8 @@ multipleUtxosToCommitTest = mkAssertion $ do
     replicateM_ 3 $
       liftIO $
         executeL1RunnerWithNodeAs node seller $
-          mapM_ (initWallet 200_000_000) hydraNodeActors
+          mapM_ (initWallet 200_000_000) $
+            (Map.!) actorsByKind HydraNodeActor
 
     -- Init hydra
 

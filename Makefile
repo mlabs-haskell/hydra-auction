@@ -12,7 +12,7 @@
 	requires_nix_shell
 
 check:
-	@nix flake check -Lv --impure --allow-import-from-derivation 
+	@nix flake check -Lv --impure --allow-import-from-derivation
 
 hoogle: requires_nix_shell
 	@hoogle server --local --port=8070 > /dev/null &
@@ -60,10 +60,10 @@ requires_nix_shell:
 	}
 
 demo-monitor:
-	cabal run hydra-auction -- -w demo -i 127.0.0.1 -d 1
+	cabal run hydra-auction -- -w demo -d 127.0.0.1:8001
 
 demo-seller:
-	cabal run hydra-auction -- -a alice  --cardano-node-socket /home/gregory/Programming/hydra-auction/devnet/node.socket --network-magic 42 -d 1 -i 127.0.0.1
+	cabal run hydra-auction -- -a alice  --cardano-node-socket ./devnet/node.socket --network-magic 42 -d 127.0.0.1:8001
 
 demo-bidder:
-	cabal run hydra-auction -- -a bob  --cardano-node-socket /home/gregory/Programming/hydra-auction/devnet/node.socket --network-magic 42 -d 2 -i 127.0.0.1
+	cabal run hydra-auction -- -a bob  --cardano-node-socket ./devnet/node.socket --network-magic 42 -i 127.0.0.1:8002
