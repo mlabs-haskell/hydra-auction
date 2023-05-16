@@ -9,6 +9,7 @@ module HydraAuction.OnChain.StandingBid (
 import PlutusTx.Prelude
 
 -- Plutus imports
+
 import PlutusLedgerApi.V1.Address (pubKeyHashAddress)
 import PlutusLedgerApi.V1.Interval (contains, to)
 import PlutusLedgerApi.V1.Value (assetClass, assetClassValueOf)
