@@ -40,7 +40,7 @@ import Hydra.Cardano.Api (
  )
 
 -- Plutus imports
-import Plutus.V1.Ledger.Crypto (PubKeyHash)
+import PlutusLedgerApi.V1.Crypto (PubKeyHash)
 
 -- Hydra Auction imports
 import Hydra.Crypto (AsType (AsHydraKey), HydraKey)

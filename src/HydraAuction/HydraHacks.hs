@@ -24,7 +24,7 @@ import Hydra.Cardano.Api (
   BuildTxWith (BuildTxWith),
   CtxUTxO,
   Hash,
-  IsScriptWitnessInCtx (scriptWitnessCtx),
+  IsScriptWitnessInCtx (scriptWitnessInCtx),
   Key (verificationKeyHash),
   NetworkId,
   PaymentKey,
@@ -138,7 +138,7 @@ commitTxBody
     where
       initialWitness =
         BuildTxWith $
-          ScriptWitness scriptWitnessCtx $
+          ScriptWitness scriptWitnessInCtx $
             mkScriptReference initialScriptRef initialScript initialDatum initialRedeemer
       initialScript =
         fromPlutusScript @PlutusScriptV2 Initial.validatorScript

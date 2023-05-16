@@ -22,7 +22,7 @@ import Test.Hydra.Prelude (failAfter)
 import Test.Tasty.HUnit (Assertion, (@=?), (@?=))
 
 -- Plutus imports
-import Plutus.V1.Ledger.Value (assetClassValueOf)
+import PlutusLedgerApi.V1.Value (assetClassValueOf)
 
 -- Hydra imports
 import Hydra.Cardano.Api (toPlutusValue, txOutValue)

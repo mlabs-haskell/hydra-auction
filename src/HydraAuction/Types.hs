@@ -36,10 +36,10 @@ import Data.Aeson (FromJSON, ToJSON)
 import GHC.Generics (Generic)
 
 -- Plutus imports
-import Plutus.V1.Ledger.Crypto (PubKeyHash)
-import Plutus.V1.Ledger.Time (POSIXTime)
-import Plutus.V1.Ledger.Value (AssetClass, CurrencySymbol)
-import Plutus.V2.Ledger.Contexts (TxOutRef)
+import PlutusLedgerApi.V1.Crypto (PubKeyHash)
+import PlutusLedgerApi.V1.Time (POSIXTime)
+import PlutusLedgerApi.V1.Value (AssetClass, CurrencySymbol)
+import PlutusLedgerApi.V2.Contexts (TxOutRef)
 import PlutusTx qualified
 import PlutusTx.IsData.Class (FromData, ToData, UnsafeFromData)
 

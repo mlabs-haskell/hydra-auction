@@ -14,12 +14,12 @@ import Data.Map qualified as Map
 import Data.Tuple.Extra (first)
 
 -- Plutus imports
-import Plutus.V1.Ledger.Value (
+import PlutusLedgerApi.V1.Value (
   TokenName (..),
  )
-import Plutus.V2.Ledger.Api (
+import PlutusTx.Builtins.Class (fromBuiltin)
+import PlutusTx.IsData.Class (
   ToData,
-  fromBuiltin,
   toBuiltinData,
   toData,
  )
@@ -43,8 +43,9 @@ import Hydra.Cardano.Api (
   fromPlutusData,
   hashScript,
   mkScriptWitness,
-  scriptWitnessCtx,
+  scriptWitnessInCtx,
   toScriptData,
+  unsafeHashableScriptData,
   valueFromList,
   pattern AssetId,
   pattern AssetName,
@@ -81,7 +82,12 @@ mintedTokens script redeemer assets =
       PolicyId $ hashScript $ PlutusScript script
 
 mkInlineDatum :: ToScriptData datum => datum -> TxOutDatum ctx
-mkInlineDatum x = TxOutDatumInline $ fromPlutusData $ toData $ toBuiltinData x
+mkInlineDatum x =
+  TxOutDatumInline $
+    unsafeHashableScriptData $
+      fromPlutusData $
+        toData $
+          toBuiltinData x
 
 mkInlinedDatumScriptWitness ::
   (ToData a) =>
@@ -90,5 +96,5 @@ mkInlinedDatumScriptWitness ::
   BuildTxWith BuildTx (Witness WitCtxTxIn)
 mkInlinedDatumScriptWitness script redeemer =
   BuildTxWith $
-    ScriptWitness scriptWitnessCtx $
+    ScriptWitness scriptWitnessInCtx $
       mkScriptWitness script InlineScriptDatum (toScriptData redeemer)

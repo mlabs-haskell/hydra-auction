@@ -15,11 +15,7 @@ import Control.Monad (when)
 import Control.Monad.TimeMachine (MonadTime)
 
 -- Plutus imports
-import Plutus.V1.Ledger.Interval (member)
-import Plutus.V2.Ledger.Api (
-  getMintingPolicy,
-  getValidator,
- )
+import PlutusLedgerApi.V1.Interval (member)
 
 -- Cardano imports
 import Cardano.Api.UTxO qualified as UTxO
@@ -78,7 +74,7 @@ currentAuctionStage terms = do
 toForgeStateToken :: AuctionTerms -> VoucherForgingRedeemer -> TxMintValue BuildTx
 toForgeStateToken terms redeemer =
   mintedTokens
-    (fromPlutusScript $ getMintingPolicy $ policy terms)
+    (fromPlutusScript $ policy terms)
     redeemer
     [(tokenToAsset $ stateTokenKindToTokenName Voucher, num)]
   where
@@ -87,7 +83,7 @@ toForgeStateToken terms redeemer =
       BurnVoucher -> -1
 
 scriptPlutusScript :: AuctionScript -> AuctionTerms -> PlutusScript
-scriptPlutusScript script terms = fromPlutusScript $ getValidator $ scriptValidatorForTerms script terms
+scriptPlutusScript script terms = fromPlutusScript $ scriptValidatorForTerms script terms
 
 scriptAddress :: MonadNetworkId m => AuctionScript -> AuctionTerms -> m (Address ShelleyAddr)
 scriptAddress script terms =

@@ -17,11 +17,11 @@ import Data.List (sort)
 import Data.Map qualified as Map
 
 -- Plutus imports
-import Plutus.V1.Ledger.Value (
+import PlutusLedgerApi.V1.Value (
   CurrencySymbol (..),
   symbols,
  )
-import Plutus.V2.Ledger.Api (txOutValue)
+import PlutusLedgerApi.V2.Tx (txOutValue)
 
 -- Cardano imports
 import Cardano.Api.UTxO qualified as UTxO

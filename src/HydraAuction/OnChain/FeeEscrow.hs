@@ -5,13 +5,11 @@ module HydraAuction.OnChain.FeeEscrow (mkFeeEscrowValidator) where
 -- Prelude imports
 import PlutusTx.Prelude
 
--- import Prelude (quot)
-
 -- Plutus imports
-import Plutus.V1.Ledger.Address (pubKeyHashAddress, scriptHashAddress)
-import Plutus.V1.Ledger.Value (valueOf)
-import Plutus.V2.Ledger.Api (TxInfo (..), TxOut (..), Value, adaSymbol, adaToken, scriptContextTxInfo, txInInfoResolved)
-import Plutus.V2.Ledger.Contexts (ScriptContext, ownHash)
+import PlutusLedgerApi.V1.Address (pubKeyHashAddress)
+import PlutusLedgerApi.V1.Value (valueOf)
+import PlutusLedgerApi.V2 (TxInfo (..), TxOut (..), Value, adaSymbol, adaToken, scriptContextTxInfo, txInInfoResolved)
+import PlutusLedgerApi.V2.Contexts (ScriptContext, findOwnInput)
 
 -- Hydra auction imports
 import HydraAuction.Types (
@@ -38,6 +36,10 @@ mkFeeEscrowValidator terms () DistributeFees context =
     info :: TxInfo
     info = scriptContextTxInfo context
 
+    ownAddress = case findOwnInput context of
+      Just x -> txOutAddress $ txInInfoResolved x
+      Nothing -> traceError "Impossible happened"
+
     outputs :: [TxOut]
     outputs = txInfoOutputs info
 
@@ -52,7 +54,7 @@ mkFeeEscrowValidator terms () DistributeFees context =
           any (\txOut -> adaValueOf (txOutValue txOut) >= naturalToInt (auctionFeePerDelegate terms)) outsToDelegate
 
     singleFeeInputValue :: Value
-    singleFeeInputValue = case byAddress (scriptHashAddress $ ownHash context) $ txInInfoResolved <$> txInfoInputs info of
+    singleFeeInputValue = case byAddress ownAddress $ txInInfoResolved <$> txInfoInputs info of
       [] -> traceError "Missing input for fee escrow"
       [feeOut] -> txOutValue feeOut
       _ : _ -> traceError "More than single input from fee escrow validator"

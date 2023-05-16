@@ -47,14 +47,14 @@ import Hydra.Cardano.Api (
  )
 
 -- Plutus imports
-import Plutus.V1.Ledger.Address qualified as PlutusAddress
+import PlutusLedgerApi.V1.Address qualified as PlutusAddress
 
 -- HydraAuction imports
 import CardanoClient (buildAddress)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import HydraAuctionUtils.Extras.CardanoApi (networkIdToNetwork)
 import HydraAuctionUtils.Fixture (Actor, keysFor)
-import Plutus.V1.Ledger.Api (POSIXTime)
+import PlutusLedgerApi.V1.Time (POSIXTime)
 
 -- MonadQueryUtxo
 

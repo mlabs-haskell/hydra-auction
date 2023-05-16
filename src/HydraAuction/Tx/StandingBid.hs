@@ -20,8 +20,10 @@ import Control.Monad.IO.Class (MonadIO (..))
 import Control.Monad.Reader (MonadReader (ask))
 
 -- Plutus imports
-import Plutus.V1.Ledger.Value (assetClassValue)
-import Plutus.V2.Ledger.Api (FromData, PubKeyHash, fromData, getValidator)
+
+import PlutusLedgerApi.V1.Crypto (PubKeyHash)
+import PlutusLedgerApi.V1.Value (assetClassValue)
+import PlutusTx.IsData.Class (FromData, fromData)
 
 -- Hydra imports
 import Cardano.Api.UTxO qualified as UTxO
@@ -35,10 +37,12 @@ import Hydra.Cardano.Api (
   TxOut,
   fromPlutusScript,
   fromPlutusValue,
+  getScriptData,
   lovelaceToValue,
   toPlutusData,
   toPlutusKeyHash,
   txOutDatum,
+  unsafeHashableScriptData,
   verificationKeyHash,
   pattern ReferenceScriptNone,
   pattern ShelleyAddressInEra,
@@ -115,7 +119,7 @@ decodeInlineDatum ::
 decodeInlineDatum out =
   case txOutDatum out of
     TxOutDatumInline scriptData ->
-      case fromData $ toPlutusData scriptData of
+      case fromData $ toPlutusData $ getScriptData scriptData of
         Just standingBidDatum -> Right standingBidDatum
         Nothing -> Left CannotDecodeDatum
     _ -> Left NoInlineDatum
@@ -282,5 +286,4 @@ cleanupTx terms = do
       where
         script =
           fromPlutusScript @PlutusScriptV2 $
-            getValidator $
-              standingBidValidator terms
+            standingBidValidator terms

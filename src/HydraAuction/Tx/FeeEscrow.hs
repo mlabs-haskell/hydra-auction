@@ -9,8 +9,8 @@ import Prelude
 import Control.Monad (void)
 
 -- Plutus imports
-import Plutus.V1.Ledger.Address (pubKeyHashAddress)
-import Plutus.V2.Ledger.Api (PubKeyHash)
+import PlutusLedgerApi.V1.Address (pubKeyHashAddress)
+import PlutusLedgerApi.V2 (PubKeyHash)
 
 -- Cardano node imports
 import Cardano.Api.UTxO qualified as UTxO

@@ -36,6 +36,8 @@ import Prelude
 import Control.Monad (void)
 import Control.Monad.Catch (MonadCatch, MonadMask, MonadThrow)
 import Control.Tracer (nullTracer, stdoutTracer, traceWith)
+import Data.Time (secondsToNominalDiffTime)
+import Data.Time.Clock.POSIX (posixSecondsToUTCTime)
 
 -- Cardano imports
 import CardanoClient (
@@ -57,12 +59,10 @@ import CardanoNode (
  )
 
 -- Plutus imports
-import Data.Time (secondsToNominalDiffTime)
-import Data.Time.Clock.POSIX (posixSecondsToUTCTime)
-import Hydra.Chain.Direct.TimeHandle (TimeHandle (..), queryTimeHandle)
-import Plutus.V2.Ledger.Api (POSIXTime (getPOSIXTime))
+import PlutusLedgerApi.V1.Time (POSIXTime (getPOSIXTime))
 
 -- Hydra imports
+
 import Hydra.Cardano.Api (
   Lovelace,
   NetworkId (Testnet),
@@ -75,6 +75,7 @@ import Hydra.Cardano.Api (
   pattern TxValidityNoUpperBound,
   pattern TxValidityUpperBound,
  )
+import Hydra.Chain.Direct.TimeHandle (TimeHandle (..), queryTimeHandle)
 import Hydra.Cluster.Faucet (Marked (Normal), seedFromFaucet)
 import Hydra.Logging (Tracer)
 import HydraNode (EndToEndLog (FromCardanoNode, FromFaucet))

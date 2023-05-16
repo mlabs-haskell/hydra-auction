@@ -20,12 +20,12 @@ module HydraAuction.Delegate.Interface (
 import Prelude
 
 -- Haskell imports
+
+import Data.Aeson (FromJSON, ToJSON)
 import GHC.Generics (Generic)
 
--- Cardano imports
-import Cardano.Api
-
 -- Hydra imports
+import Hydra.Cardano.Api (CtxUTxO, TxIn, TxOut)
 import Hydra.Chain (HeadId)
 
 -- HydraAuction imports

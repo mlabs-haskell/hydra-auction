@@ -15,7 +15,7 @@ import Control.Monad (forM_, void)
 import Data.IORef (IORef, readIORef)
 
 -- Plutus imports
-import Plutus.V1.Ledger.Address (pubKeyHashAddress)
+import PlutusLedgerApi.V1.Address (pubKeyHashAddress)
 
 -- Hydra imports
 
