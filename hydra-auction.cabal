@@ -139,7 +139,7 @@ executable hydra-auction
     CLI.Actions
     CLI.Config
     CLI.Parsers
-    CLI.Parsers.TxIn
+    CLI.Printing
     CLI.Types
     CLI.Watch
 
@@ -178,7 +178,6 @@ executable hydra-auction
     , hydra-test-utils
     , optparse-applicative
     , ouroboros-network               ==0.1.0.1
-    , parsec
     , plutus-tx
     , QuickCheck
     , serialise
@@ -260,6 +259,7 @@ library hydra-auction-utils
     HydraAuctionUtils.Monads
     HydraAuctionUtils.Monads.Actors
     HydraAuctionUtils.Parsers
+    HydraAuctionUtils.Parsers.TxIn
     HydraAuctionUtils.Plutus
     HydraAuctionUtils.PrettyPrinting
     HydraAuctionUtils.Time
@@ -272,10 +272,12 @@ library hydra-auction-utils
 
   other-modules:   HydraAuctionUtils.L1.Runner.Tracer
   build-depends:
+    , HostAndPort
     , HUnit
     , hydra-plutus
     , hydra-test-utils
     , optparse-applicative
+    , parsec
     , plutus-tx
     , protolude
 
@@ -286,6 +288,8 @@ test-suite hydra-auction-test
   other-modules:
     CLI.Actions
     CLI.Config
+    CLI.Printing
+    CLI.Types
     EndToEnd.CLI
     EndToEnd.HydraUtils
     EndToEnd.Ledger.Auction

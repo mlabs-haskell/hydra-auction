@@ -57,7 +57,12 @@ import HydraAuction.Types (
   AuctionTerms,
   BidDepositDatum (..),
  )
-import HydraAuctionUtils.Fixture (Actor (..), actorFromPkh, allActors, getActorPubKeyHash, getActorsPubKeyHash)
+import HydraAuctionUtils.Fixture (
+  actorFromPkh,
+  allActors,
+  getActorPubKeyHash,
+  getActorsPubKeyHash,
+ )
 import HydraAuctionUtils.L1.Runner (
   ExecutionContext (..),
   L1Runner,
@@ -70,7 +75,6 @@ import HydraAuctionUtils.Monads.Actors (
   addressAndKeys,
  )
 import HydraAuctionUtils.PrettyPrinting (prettyPrintUtxo)
-import HydraAuctionUtils.Types.Natural (Natural, naturalToInt)
 
 -- Hydra auction CLI imports
 import CLI.Config (
@@ -82,33 +86,14 @@ import CLI.Config (
   readCliEnhancedAuctionTerms,
   writeAuctionTermsDynamic,
  )
+import CLI.Printing (
+  announceActionExecution,
+  prettyPrintCurrentActorUtxos,
+ )
+import CLI.Types (CliAction (..), Layer (..))
 
 seedAmount :: Lovelace
 seedAmount = 10_000_000_000
-
-data Layer = L1 | L2 deriving stock (Show)
-
-data CliAction
-  = ShowCurrentStage !AuctionName
-  | ShowScriptUtxos !AuctionName !AuctionScript
-  | ShowUtxos
-  | ShowAllUtxos
-  | ShowCurrentWinningBidder !AuctionName
-  | ShowActorsMinDeposit !AuctionName !Natural
-  | Seed
-  | Prepare !Actor
-  | MintTestNFT
-  | AuctionAnounce !AuctionName
-  | MakeDeposit !AuctionName !Natural
-  | StartBidding !AuctionName ![Actor]
-  | MoveToL2 !AuctionName
-  | NewBid !AuctionName !Natural !Layer
-  | BidderBuys !AuctionName
-  | BidderClaimsDeposit !AuctionName
-  | SellerReclaims !AuctionName
-  | SellerClaimsDepositFor !AuctionName !Actor
-  | Cleanup !AuctionName
-  deriving stock (Show)
 
 doOnMatchingStage :: AuctionTerms -> AuctionStage -> L1Runner () -> L1Runner ()
 doOnMatchingStage terms requiredStage action = do
@@ -139,41 +124,21 @@ handleCliAction sendRequestToDelegate currentDelegateStateRef userAction = do
         stage <- currentAuctionStage terms
         putStrLn $ "Current stage: " <> show stage
     Seed -> do
-      liftIO . putStrLn $
-        "Seeding all wallets with 10,000 ADA."
+      announceActionExecution userAction
       void $ initWallet seedAmount actor
     Prepare sellerActor -> do
-      liftIO . putStrLn $
-        "Seeding all wallets with 10,000 ADA and minting the test NFT for "
-          <> show sellerActor
-          <> "."
+      announceActionExecution userAction
       forM_ allActors $ initWallet seedAmount
       void $ withActor sellerActor mintOneTestNFT
-      liftIO . putStrLn $
-        show sellerActor
-          <> " now has the following utxos in their wallet."
-      utxos <- actorTipUtxo
-      liftIO $ prettyPrintUtxo utxos
+      prettyPrintCurrentActorUtxos
     ShowScriptUtxos auctionName script -> do
-      liftIO . putStrLn $
-        "Showing all utxos under the "
-          <> show script
-          <> " script for auction"
-          <> show auctionName
-          <> "."
+      announceActionExecution userAction
       terms <- auctionTermsFor auctionName
       utxos <- scriptUtxos script terms
       liftIO $ prettyPrintUtxo utxos
-    ShowUtxos -> do
-      liftIO . putStrLn $
-        "Showing all utxos in "
-          <> show actor
-          <> "'s wallet."
-      utxos <- actorTipUtxo
-      liftIO $ prettyPrintUtxo utxos
+    ShowUtxos -> prettyPrintCurrentActorUtxos
     ShowAllUtxos -> do
-      liftIO . putStrLn $
-        "Showing all utxos in everyone's wallet."
+      announceActionExecution userAction
       forM_ allActors $ \a -> do
         utxos <- withActor a actorTipUtxo
         liftIO $ print a
@@ -191,15 +156,12 @@ handleCliAction sendRequestToDelegate currentDelegateStateRef userAction = do
 
       let matchingDatums = (parseBidDepositDatum . snd <$>) . UTxO.pairs $ filterDepositGreaterThan minDeposit allDeposits
       actors <- liftIO $ mapM (actorFromPkh . bidDepositBidder) matchingDatums
-
+      -- FIXME: pretty print on separate lines
       liftIO . putStrLn $
         "Showing actors that satisfy min deposit: "
           <> show actors
     MintTestNFT -> do
-      liftIO . putStrLn $
-        "Minting the test NFT for "
-          <> show actor
-          <> "."
+      announceActionExecution userAction
       void mintOneTestNFT
     AuctionAnounce auctionName -> do
       mTxIn <- findTestNFT <$> actorTipUtxo
@@ -220,11 +182,7 @@ handleCliAction sendRequestToDelegate currentDelegateStateRef userAction = do
                   noteM ("could not read auction terms config for " <> show auctionName) $
                     readAuctionTermsConfig auctionName
               terms <- liftIO $ configToAuctionTerms config dynamic
-              liftIO . putStrLn $
-                show actor
-                  <> " announces auction called "
-                  <> show auctionName
-                  <> "."
+              announceActionExecution userAction
               announceAuction terms
             _ -> liftIO . putStrLn $ "Hydra is not initialized yet"
         Nothing -> liftIO . putStrLn $ "User doesn't have the \"Mona Lisa\" token.\nThis demo is configured to use this token as the auction lot."
@@ -232,11 +190,7 @@ handleCliAction sendRequestToDelegate currentDelegateStateRef userAction = do
       terms <- auctionTermsFor auctionName
       doOnMatchingStage terms BiddingStartedStage $ do
         actorsPkh <- liftIO $ getActorsPubKeyHash actors
-        liftIO . putStrLn $
-          show actor
-            <> " starts the bidding phase of auction "
-            <> show auctionName
-            <> "."
+        announceActionExecution userAction
         startBidding terms (ApprovedBidders actorsPkh)
     MoveToL2 auctionName -> do
       terms <- auctionTermsFor auctionName
@@ -259,13 +213,7 @@ handleCliAction sendRequestToDelegate currentDelegateStateRef userAction = do
       if actor == sellerActor
         then liftIO $ putStrLn "Seller cannot place a bid"
         else do
-          liftIO . putStrLn $
-            show actor
-              <> " places a new bid of "
-              <> show (naturalToInt bidAmount `div` 1_000_000)
-              <> " ADA in auction "
-              <> show auctionName
-              <> "."
+          announceActionExecution userAction
           doOnMatchingStage terms BiddingStartedStage $
             case layer of
               L1 -> newBid terms bidAmount
@@ -285,9 +233,6 @@ handleCliAction sendRequestToDelegate currentDelegateStateRef userAction = do
         mkDeposit terms depositAmount
     BidderBuys auctionName -> do
       terms <- auctionTermsFor auctionName
-      liftIO . putStrLn $
-        show actor
-          <> " buys the auction lot, as the winning bidder."
       doOnMatchingStage terms BiddingEndedStage $ do
         mWinningBidderPk <- currentWinningBidder terms
         (currentActorAddress, _, _) <- addressAndKeys
@@ -298,55 +243,38 @@ handleCliAction sendRequestToDelegate currentDelegateStateRef userAction = do
                 pubKeyHashAddress winningBidderPk
             if winningBidderAddress == ShelleyAddressInEra currentActorAddress
               then do
+                announceActionExecution userAction
                 bidderBuys terms
-                utxos <- actorTipUtxo
-                liftIO $ prettyPrintUtxo utxos
+                prettyPrintCurrentActorUtxos
               else
                 liftIO $
                   putStrLn "Cannot perform: Other actor is the winning bidder!"
           Nothing ->
             liftIO $ putStrLn "Cannot perform: No bid is placed!"
-      liftIO . putStrLn $
-        show actor
-          <> " now has the following utxos in their wallet."
-      utxos <- actorTipUtxo
-      liftIO $ prettyPrintUtxo utxos
     BidderClaimsDeposit auctionName -> do
       terms <- auctionTermsFor auctionName
-      liftIO . putStrLn $
-        show actor
-          <> " reclaims their deposit, as a losing bidder."
-      doOnMatchingStage terms BiddingEndedStage $
+      doOnMatchingStage terms BiddingEndedStage $ do
+        announceActionExecution userAction
         losingBidderClaimDeposit terms
     SellerReclaims auctionName -> do
-      liftIO . putStrLn $
-        show actor
-          <> " reclaims the auction lot, as the seller."
       terms <- auctionTermsFor auctionName
-      doOnMatchingStage terms VoucherExpiredStage $
+      doOnMatchingStage terms VoucherExpiredStage $ do
+        announceActionExecution userAction
         sellerReclaims terms
-      liftIO . putStrLn $
-        show actor
-          <> " now has the following utxos in their wallet."
-      utxos <- actorTipUtxo
-      liftIO $ prettyPrintUtxo utxos
+        prettyPrintCurrentActorUtxos
     SellerClaimsDepositFor auctionName bidderActor -> do
       terms <- auctionTermsFor auctionName
-      liftIO . putStrLn $
-        show actor
-          <> ", as the seller, reclaims the deposit for "
-          <> show bidderActor
+      announceActionExecution userAction
       bidderPKH <- liftIO $ getActorPubKeyHash bidderActor
       doOnMatchingStage terms VoucherExpiredStage $
         sellerClaimDepositFor terms bidderPKH
     Cleanup auctionName -> do
       terms <- auctionTermsFor auctionName
-      liftIO . putStrLn $
-        "Cleaning up all remaining script utxos for auction "
-          <> show auctionName
-          <> "."
-      doOnMatchingStage terms CleanupStage $
-        cleanupTx terms
+      doOnMatchingStage terms CleanupStage $ do
+        announceActionExecution userAction
+        cleanupTx
+          terms
+        prettyPrintCurrentActorUtxos
 
 noteM :: forall m a. MonadFail m => String -> m (Maybe a) -> m a
 noteM s = (>>= maybe (fail s) pure)
