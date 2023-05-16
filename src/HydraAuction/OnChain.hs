@@ -21,7 +21,6 @@ import Prelude qualified
 -- Plutus imports
 import PlutusLedgerApi.Common (SerialisedScript, serialiseCompiledCode)
 import PlutusLedgerApi.V1.Value (AssetClass (..), CurrencySymbol)
-import PlutusLedgerApi.V2.Contexts (ScriptContext)
 import PlutusTx qualified
 
 -- Hydra auction imports

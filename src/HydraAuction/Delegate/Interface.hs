@@ -35,7 +35,7 @@ data FrontendRequest
   = QueryCurrentDelegateState
   | CommitStandingBid
       { auctionTerms :: AuctionTerms
-      , utxoToCommit :: TxIn
+      , utxoToCommit :: (TxIn, TxOut CtxUTxO)
       }
   | NewBid
       { auctionTerms :: AuctionTerms

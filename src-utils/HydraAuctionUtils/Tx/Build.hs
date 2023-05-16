@@ -58,7 +58,7 @@ import Hydra.Cardano.Api (
  )
 
 minLovelace :: Lovelace
-minLovelace = 2_000_000
+minLovelace = 3_000_000
 
 tokenToAsset :: TokenName -> AssetName
 tokenToAsset (TokenName t) = AssetName $ fromBuiltin t

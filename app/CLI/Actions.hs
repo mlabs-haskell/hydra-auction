@@ -196,14 +196,14 @@ handleCliAction sendRequestToDelegate currentDelegateStateRef userAction = do
       terms <- auctionTermsFor auctionName
       doOnMatchingStage terms BiddingStartedStage $ do
         mUtxo <- scriptSingleUtxo StandingBid terms
-        (standingBidTxIn, _) <- case mUtxo of
+        stadingBidUtxo <- case mUtxo of
           Just x -> return x
           Nothing -> fail "No Standing bid found"
         liftIO $
           sendRequestToDelegate $
             DelegateInterface.CommitStandingBid
               { auctionTerms = terms
-              , utxoToCommit = standingBidTxIn
+              , utxoToCommit = stadingBidUtxo
               }
     NewBid auctionName bidAmount layer -> do
       CliEnhancedAuctionTerms {terms, sellerActor} <-

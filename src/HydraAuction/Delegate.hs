@@ -99,32 +99,16 @@ delegateFrontendRequestStep (clientId, request) =
       state <- get
       return [(PerClient clientId, CurrentDelegateState WasQueried state)]
     CommitStandingBid {auctionTerms, utxoToCommit} -> do
+      let (txIn, txOut) = utxoToCommit
       state <- get
       case state of
-        Initialized headId NotYetOpen -> do
-          -- FIXME: do not query
-          standingBidUtxo <-
+        Initialized headId NotYetOpen ->
+          validatingAuctionTerms headId auctionTerms $ do
+            -- FIXME: Waiting for support by Hydra
             lift $
               runL1RunnerInComposite $
-                UTxO.pairs <$> queryUtxo (ByTxIns [utxoToCommit])
-          case standingBidUtxo of
-            [(txIn, txOut)] -> do
-              validatingAuctionTerms headId auctionTerms $ do
-                -- FIXME: Waiting for support by Hydra
-                lift $
-                  runL1RunnerInComposite $
-                    moveToHydra headId auctionTerms (txIn, txOut)
-                return [(Broadcast, AuctionSet auctionTerms)]
-            [] ->
-              return
-                [
-                  ( PerClient clientId
-                  , RequestIgnored $ IncorrectRequestData TxIdDoesNotExist
-                  )
-                ]
-            _ -> do
-              responses <- abort $ ImpossibleHappened OnChainInvariantBreaks
-              return $ map (Broadcast,) responses
+                moveToHydra headId auctionTerms (txIn, txOut)
+            return [(Broadcast, AuctionSet auctionTerms)]
         _ ->
           return
             [ (PerClient clientId, RequestIgnored $ WrongDelegateState state)
@@ -142,8 +126,7 @@ delegateFrontendRequestStep (clientId, request) =
                   runHydraInComposite $ do
                     tx <- createNewBidTx auctionTerms actor datum
                     submitTx tx
-                -- FIXME: return closing transaction
-                return [(PerClient clientId, ClosingTxTemplate)]
+                return []
               else
                 return
                   [
@@ -209,7 +192,7 @@ delegateEventStep event = case event of
         _ -> False
   HydraEvent Committed {utxo, party} -> do
     state <- get
-    case UTxO.pairs utxo of
+    case UTxO.pairs $ filterNotAdaOnlyUtxo utxo of
       [(_, txOut)] -> do
         delegateActor <- askActor
         delegateParty <- liftIO $ partyFor delegateActor
@@ -228,6 +211,7 @@ delegateEventStep event = case event of
             updateStateAndResponse HasCommit
           (True, _, Initialized _ HasCommit) -> return []
           _ -> return [] -- Other stages shoud not be possible
+      [] -> return [] -- Reaction to collateral commit
       _ ->
         abort $ ImpossibleHappened IncorrectStandingBidUtxoOnL2
   HydraEvent (SnapshotConfirmed _txs utxo) ->
@@ -261,7 +245,11 @@ delegateEventStep event = case event of
     updateStateWithStandingBidOrAbort utxo =
       case UTxO.pairs $ filterNotAdaOnlyUtxo utxo of
         [(_, txOut)] -> case decodeStandingBidTerms txOut of
-          Just standingBid -> updateStateAndResponse $ Open standingBid
+          Just standingBidDatum ->
+            updateStateAndResponse $
+              Open
+                { standingBidTerms = standingBidDatum
+                }
           Nothing -> abort'
         _ -> abort'
       where

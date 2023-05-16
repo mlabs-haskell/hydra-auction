@@ -4,7 +4,7 @@ module HydraAuction.OnChain.Escrow (mkEscrowValidator) where
 import PlutusTx.Prelude
 
 -- Plutus imports
-import PlutusLedgerApi.V1.Address (Address, pubKeyHashAddress, scriptHashAddress)
+import PlutusLedgerApi.V1.Address (Address, pubKeyHashAddress)
 import PlutusLedgerApi.V1.Value (assetClass, assetClassValueOf, getValue)
 import PlutusLedgerApi.V2.Contexts (
   ScriptContext (..),

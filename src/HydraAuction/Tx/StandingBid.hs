@@ -49,6 +49,7 @@ import Hydra.Cardano.Api (
   pattern TxMintValueNone,
   pattern TxOut,
   pattern TxOutDatumInline,
+  pattern TxOutDatumNone,
  )
 import Hydra.Chain (HeadId)
 
@@ -68,6 +69,7 @@ import HydraAuctionUtils.Monads.Actors (
  )
 
 import HydraAuction.Tx.Common (
+  createTwoMinAdaUtxo,
   scriptAddress,
   scriptPlutusScript,
   scriptSingleUtxo,
@@ -238,16 +240,19 @@ moveToHydra headId terms (standingBidTxIn, standingBidTxOut) = do
     MkExecutionContext {node} <- ask
     liftIO $ prepareScriptRegistry node
 
+  (utxo1, utxo2) <- createTwoMinAdaUtxo
+
   void $
     submitAndAwaitCommitTx
       scriptRegistry
       headId
+      utxo1
+      (UTxO.fromPairs [utxo2])
       (standingBidTxIn, standingBidTxOut, standingBidWitness)
   where
     script =
       fromPlutusScript @PlutusScriptV2 $
-        getValidator $
-          standingBidValidator terms
+        standingBidValidator terms
     standingBidWitness = mkInlinedDatumScriptWitness script MoveToHydra
 
 validateHasSingleUtxo :: MonadFail m => UTxO.UTxO -> String -> m ()
