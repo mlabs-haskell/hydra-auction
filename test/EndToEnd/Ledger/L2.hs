@@ -19,7 +19,7 @@ import Hydra.Prelude (ask)
 import HydraAuction.Tx.Escrow (
   bidderBuys,
  )
-import HydraAuction.Tx.StandingBid (newBid)
+import HydraAuction.Tx.StandingBid (newBid, sellerSignatureForActor)
 import HydraAuction.Tx.TermsConfig (AuctionTermsConfig (..))
 import HydraAuction.Types (AuctionTerms (..))
 import HydraAuctionUtils.Fixture (Actor (..), hydraNodeActors)
@@ -93,11 +93,10 @@ bidderBuysTest = mkAssertion $ do
           announceAndStartBidding terms
 
     -- Place bid on L1
-
+    bidder1SellerSignature <- liftIO $ sellerSignatureForActor terms bidder1
     liftIO $
       executeL1RunnerWithNodeAs node bidder1 $
-        newBid terms $
-          correctBidNo terms 0
+        newBid terms (correctBidNo terms 0) bidder1SellerSignature
 
     -- Move and commit
 
@@ -120,11 +119,10 @@ bidderBuysTest = mkAssertion $ do
     emulateClosing headId
 
     -- Place bid after return to L1
-
+    bidder2SellerSignature <- liftIO $ sellerSignatureForActor terms bidder2
     liftIO $
       executeL1RunnerWithNodeAs node bidder2 $
-        newBid terms $
-          correctBidNo terms 4
+        newBid terms (correctBidNo terms 4) bidder2SellerSignature
 
     -- Got lot
 

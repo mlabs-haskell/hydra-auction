@@ -84,7 +84,7 @@ bidderBuysTest = mkAssertion $ do
 
   waitUntil $ biddingStart terms
 
-  handleCliActionWithMockDelegates $ StartBidding auctionName [buyer1, buyer2]
+  handleCliActionWithMockDelegates $ StartBidding auctionName
 
   assertNFTNumEquals seller 0
 
@@ -122,7 +122,7 @@ depositTest = mkAssertion $ do
 
   waitUntil $ biddingStart terms
 
-  handleCliActionWithMockDelegates $ StartBidding auctionName [buyer1, buyer2]
+  handleCliActionWithMockDelegates $ StartBidding auctionName
 
   assertNFTNumEquals seller 0
 

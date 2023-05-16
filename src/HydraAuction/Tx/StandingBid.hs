@@ -146,11 +146,10 @@ currentWinningBidder terms = do
         Nothing -> Nothing
     Nothing -> Nothing
 
-newBid :: AuctionTerms -> Natural -> L1Runner ()
-newBid terms bidAmount = do
+newBid :: AuctionTerms -> Natural -> BuiltinByteString -> L1Runner ()
+newBid terms bidAmount sellerSignature = do
   MkExecutionContext {actor} <- ask
   (_, _, submitterSk) <- addressAndKeysForActor actor
-  sellerSignature <- liftIO $ sellerSignatureForActor terms actor
   let datum = createStandingBidDatum terms bidAmount sellerSignature submitterSk
   tx <- createNewBidTx terms actor datum
   submitAndAwaitTx tx

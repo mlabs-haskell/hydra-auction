@@ -24,7 +24,7 @@ import HydraAuction.Tx.Escrow (
   sellerReclaims,
   startBidding,
  )
-import HydraAuction.Tx.StandingBid (cleanupTx, newBid)
+import HydraAuction.Tx.StandingBid (cleanupTx, newBid, sellerSignatureForActor)
 import HydraAuction.Tx.TermsConfig (
   configToAuctionTerms,
   constructTermsDynamic,
@@ -32,7 +32,7 @@ import HydraAuction.Tx.TermsConfig (
  )
 import HydraAuction.Tx.TestNFT (mintOneTestNFT)
 import HydraAuction.Types (AuctionTerms (..))
-import HydraAuctionUtils.Fixture (Actor (..), getActorsPubKeyHash)
+import HydraAuctionUtils.Fixture (Actor (..))
 import HydraAuctionUtils.L1.Runner (
   initWallet,
   withActor,
@@ -48,6 +48,7 @@ testSuite =
     "Ledger - Auction"
     [ testCase "bidder-buys" bidderBuysTest
     , testCase "seller-reclaims" sellerReclaimsTest
+    , testCase "unauthorised-bidder" unauthorisedBidderTest
     ]
 
 bidderBuysTest :: Assertion
@@ -74,8 +75,10 @@ bidderBuysTest = mkAssertion $ do
 
   assertNFTNumEquals seller 0
 
-  withActor buyer1 $ newBid terms $ startingBid terms
-  withActor buyer2 $ newBid terms $ startingBid terms + minimumBidIncrement terms
+  buyer1SellerSignature <- liftIO $ sellerSignatureForActor terms buyer1
+  buyer2SellerSignature <- liftIO $ sellerSignatureForActor terms buyer2
+  withActor buyer1 $ newBid terms (startingBid terms) buyer1SellerSignature
+  withActor buyer2 $ newBid terms (startingBid terms + minimumBidIncrement terms) buyer2SellerSignature
 
   waitUntil $ biddingEnd terms
   withActor buyer2 $ bidderBuys terms
@@ -114,3 +117,35 @@ sellerReclaimsTest = mkAssertion $ do
 
   waitUntil $ cleanup terms
   cleanupTx terms
+
+unauthorisedBidderTest :: Assertion
+unauthorisedBidderTest = mkAssertion $ do
+  let seller = Alice
+      buyer1 = Bob
+      buyer2 = Carol
+
+  mapM_ (initWallet 100_000_000) [seller, buyer1, buyer2]
+
+  nftTx <- mintOneTestNFT
+  let utxoRef = mkTxIn nftTx 0
+
+  terms <- liftIO $ do
+    dynamicState <- constructTermsDynamic seller utxoRef nonExistentHeadIdStub
+    configToAuctionTerms config dynamicState
+
+  assertNFTNumEquals seller 1
+
+  announceAuction terms
+
+  waitUntil $ biddingStart terms
+  startBidding terms
+
+  assertNFTNumEquals seller 0
+
+  buyer2SellerSignature <- liftIO $ sellerSignatureForActor terms buyer2
+
+  result <- try $ withActor buyer1 $ newBid terms (startingBid terms) buyer2SellerSignature
+
+  case result of
+    Left (_ :: SomeException) -> return ()
+    Right _ -> fail "Seller should not be able to claim deposit from losing bidder"

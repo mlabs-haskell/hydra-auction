@@ -125,7 +125,7 @@ cliActionParser =
       , command "prepare-for-demo" (info (Prepare <$> actor) (progDesc $ "Provides " <> show seedAmount <> " Lovelace for every actor and 1 Test NFT for given actor"))
       , command "mint-test-nft" (info (pure MintTestNFT) (progDesc "Mints an NFT that can be used as auction lot"))
       , command "announce-auction" (info (AuctionAnounce <$> auctionName) (progDesc "Create an auction"))
-      , command "start-bidding" (info (StartBidding <$> auctionName <*> many actor) (progDesc "Open an auction for bidding"))
+      , command "start-bidding" (info (StartBidding <$> auctionName) (progDesc "Open an auction for bidding"))
       , command "move-to-l2" (info (MoveToL2 <$> auctionName) (progDesc "Move Standing bid to L2"))
       , command "new-bid" (info (NewBid <$> auctionName <*> bidAmount <*> pure L1) (progDesc "Actor places new bid after bidding is started"))
       , command

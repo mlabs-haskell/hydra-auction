@@ -23,7 +23,7 @@ import HydraAuction.Tx.Escrow (
   bidderBuys,
   startBidding,
  )
-import HydraAuction.Tx.StandingBid (cleanupTx, newBid)
+import HydraAuction.Tx.StandingBid (cleanupTx, newBid, sellerSignatureForActor)
 import HydraAuction.Tx.TermsConfig (
   configToAuctionTerms,
   constructTermsDynamic,
@@ -86,8 +86,10 @@ losingBidderClaimDepositTest = mkAssertion $ do
 
   assertNFTNumEquals seller 0
 
-  withActor buyer1 $ newBid terms $ startingBid terms
-  withActor buyer2 $ newBid terms $ startingBid terms + minimumBidIncrement terms
+  buyer1SellerSignature <- liftIO $ sellerSignatureForActor terms buyer1
+  buyer2SellerSignature <- liftIO $ sellerSignatureForActor terms buyer2
+  withActor buyer1 $ newBid terms (startingBid terms) buyer1SellerSignature
+  withActor buyer2 $ newBid terms (startingBid terms + minimumBidIncrement terms) buyer2SellerSignature
 
   waitUntil $ biddingEnd terms
 
@@ -124,8 +126,10 @@ losingBidderDoubleClaimTest = mkAssertion $ do
 
   assertNFTNumEquals seller 0
 
-  withActor buyer1 $ newBid terms $ startingBid terms
-  withActor buyer2 $ newBid terms $ startingBid terms + minimumBidIncrement terms
+  buyer1SellerSignature <- liftIO $ sellerSignatureForActor terms buyer1
+  buyer2SellerSignature <- liftIO $ sellerSignatureForActor terms buyer2
+  withActor buyer1 $ newBid terms (startingBid terms) buyer1SellerSignature
+  withActor buyer2 $ newBid terms (startingBid terms + minimumBidIncrement terms) buyer2SellerSignature
 
   waitUntil $ biddingEnd terms
 
@@ -167,7 +171,9 @@ sellerClaimsDepositTest = mkAssertion $ do
 
   assertNFTNumEquals seller 0
 
-  withActor buyer $ newBid terms $ startingBid terms
+  buyerSellerSignature <- liftIO $ sellerSignatureForActor terms buyer
+
+  withActor buyer $ newBid terms (startingBid terms) buyerSellerSignature
 
   waitUntil $ voucherExpiry terms
 
@@ -207,8 +213,10 @@ sellerClaimsLosingDepositTest = mkAssertion $ do
 
   assertNFTNumEquals seller 0
 
-  withActor buyer1 $ newBid terms $ startingBid terms
-  withActor buyer2 $ newBid terms $ startingBid terms + minimumBidIncrement terms
+  buyer1SellerSignature <- liftIO $ sellerSignatureForActor terms buyer1
+  buyer2SellerSignature <- liftIO $ sellerSignatureForActor terms buyer2
+  withActor buyer1 $ newBid terms (startingBid terms) buyer1SellerSignature
+  withActor buyer2 $ newBid terms (startingBid terms + minimumBidIncrement terms) buyer2SellerSignature
 
   waitUntil $ voucherExpiry terms
 
@@ -248,8 +256,10 @@ bidderBuysWithDepositTest = mkAssertion $ do
 
   assertNFTNumEquals seller 0
 
-  withActor buyer1 $ newBid terms $ startingBid terms
-  withActor buyer2 $ newBid terms $ startingBid terms + minimumBidIncrement terms
+  buyer1SellerSignature <- liftIO $ sellerSignatureForActor terms buyer1
+  buyer2SellerSignature <- liftIO $ sellerSignatureForActor terms buyer2
+  withActor buyer1 $ newBid terms (startingBid terms) buyer1SellerSignature
+  withActor buyer2 $ newBid terms (startingBid terms + minimumBidIncrement terms) buyer2SellerSignature
 
   waitUntil $ biddingEnd terms
   withActor buyer2 $ bidderBuys terms
@@ -291,8 +301,10 @@ cleanupDepositTest = mkAssertion $ do
 
   assertNFTNumEquals seller 0
 
-  withActor buyer1 $ newBid terms $ startingBid terms
-  withActor buyer2 $ newBid terms $ startingBid terms + minimumBidIncrement terms
+  buyer1SellerSignature <- liftIO $ sellerSignatureForActor terms buyer1
+  buyer2SellerSignature <- liftIO $ sellerSignatureForActor terms buyer2
+  withActor buyer1 $ newBid terms (startingBid terms) buyer1SellerSignature
+  withActor buyer2 $ newBid terms (startingBid terms + minimumBidIncrement terms) buyer2SellerSignature
 
   waitUntil $ cleanup terms
   cleanupTx terms

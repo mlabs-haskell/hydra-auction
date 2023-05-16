@@ -56,7 +56,7 @@ import HydraAuction.Types (
   AuctionTerms,
   BidDepositDatum (..),
  )
-import HydraAuctionUtils.Fixture (Actor (..), actorFromPkh, allActors, getActorPubKeyHash, getActorsPubKeyHash)
+import HydraAuctionUtils.Fixture (Actor (..), actorFromPkh, allActors, getActorPubKeyHash)
 import HydraAuctionUtils.L1.Runner (
   ExecutionContext (..),
   L1Runner,
@@ -99,7 +99,7 @@ data CliAction
   | MintTestNFT
   | AuctionAnounce !AuctionName
   | MakeDeposit !AuctionName !Natural
-  | StartBidding !AuctionName ![Actor]
+  | StartBidding !AuctionName
   | MoveToL2 !AuctionName
   | NewBid !AuctionName !Natural !Layer
   | BidderBuys !AuctionName
@@ -227,7 +227,7 @@ handleCliAction sendRequestToDelegate currentDelegateStateRef userAction = do
               announceAuction terms
             _ -> liftIO . putStrLn $ "Hydra is not initialized yet"
         Nothing -> liftIO . putStrLn $ "User doesn't have the \"Mona Lisa\" token.\nThis demo is configured to use this token as the auction lot."
-    StartBidding auctionName actors -> do
+    StartBidding auctionName -> do
       terms <- auctionTermsFor auctionName
       doOnMatchingStage terms BiddingStartedStage $ do
         liftIO . putStrLn $
@@ -264,12 +264,12 @@ handleCliAction sendRequestToDelegate currentDelegateStateRef userAction = do
               <> " ADA in auction "
               <> show auctionName
               <> "."
+          sellerSignature <- liftIO $ sellerSignatureForActor terms actor
           doOnMatchingStage terms BiddingStartedStage $
             case layer of
-              L1 -> newBid terms bidAmount
+              L1 -> newBid terms bidAmount sellerSignature
               L2 -> do
                 (_, _, bidderSigningKey) <- addressAndKeys
-                sellerSignature <- liftIO $ sellerSignatureForActor terms actor
                 let bidDatum =
                       createStandingBidDatum terms bidAmount sellerSignature bidderSigningKey
                 liftIO $
