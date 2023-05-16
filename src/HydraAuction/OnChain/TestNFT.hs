@@ -18,7 +18,7 @@ import HydraAuctionUtils.Extras.Plutus (scriptCurrencySymbol)
 testNftPolicy :: SerialisedScript
 testNftPolicy =
   serialiseCompiledCode $
-    $$(PlutusTx.compile [||\_ _ -> ()||])
+    $$(PlutusTx.compile [||\(_ :: BuiltinData) (_ :: BuiltinData) -> ()||])
 
 testNftCurrencySymbol :: CurrencySymbol
 testNftCurrencySymbol = scriptCurrencySymbol testNftPolicy
