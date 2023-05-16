@@ -16,6 +16,7 @@ import Control.Monad.IO.Class (MonadIO (liftIO))
 import Control.Monad.TimeMachine (MonadTime)
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Kind (Type)
+import Data.Map qualified as Map
 import GHC.Generics (Generic)
 
 -- Plutus imports
@@ -33,7 +34,7 @@ import Hydra.Chain (HeadId (..))
 import HydraAuction.OnChain.TestNFT (testNftAssetClass)
 import HydraAuction.Types (AuctionTerms (..))
 import HydraAuctionUtils.Extras.PlutusOrphans ()
-import HydraAuctionUtils.Fixture (Actor, getActorPubKeyHash, getActorsPubKeyHash, hydraNodeActors)
+import HydraAuctionUtils.Fixture (Actor, ActorKind (..), actorsByKind, getActorPubKeyHash, getActorsPubKeyHash)
 import HydraAuctionUtils.Time (currentTimeSeconds)
 import HydraAuctionUtils.Types.Natural (Natural)
 
@@ -81,7 +82,7 @@ constructTermsDynamic ::
   timedMonad AuctionTermsDynamic
 constructTermsDynamic sellerActor utxoNonce headId = do
   currentTimeSeconds' <- currentTimeSeconds
-  configDelegates <- liftIO $ getActorsPubKeyHash hydraNodeActors
+  configDelegates <- liftIO $ getActorsPubKeyHash $ (Map.!) actorsByKind HydraNodeActor
   return $
     AuctionTermsDynamic
       { configAuctionLot = testNftAssetClass

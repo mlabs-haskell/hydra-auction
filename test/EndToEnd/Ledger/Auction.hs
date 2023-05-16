@@ -5,9 +5,9 @@ import Hydra.Prelude (MonadIO (liftIO), SomeException, fail)
 import PlutusTx.Prelude
 
 -- Haskell imports
-
 import Control.Monad (void)
 import Control.Monad.Catch (try)
+import Data.Map qualified as Map
 
 -- Haskell test imports
 import Test.Tasty (TestTree, testGroup)
@@ -27,7 +27,7 @@ import HydraAuction.Tx.TermsConfig (
   nonExistentHeadIdStub,
  )
 import HydraAuction.Types (ApprovedBidders (..), AuctionTerms (..))
-import HydraAuctionUtils.Fixture (Actor (..), getActorsPubKeyHash, hydraNodeActors)
+import HydraAuctionUtils.Fixture (Actor (..), ActorKind (..), actorsByKind, getActorsPubKeyHash)
 import HydraAuctionUtils.L1.Runner (
   initWallet,
   withActor,
@@ -130,7 +130,7 @@ distributeFeeTest = mkAssertion $ do
       buyer1 = Bob
       buyer2 = Carol
 
-  mapM_ (initWallet 100_000_000) $ [seller, buyer1, buyer2] <> hydraNodeActors
+  mapM_ (initWallet 100_000_000) $ [seller, buyer1, buyer2] <> (Map.!) actorsByKind HydraNodeActor
 
   terms <- createTermsWithTestNFT config nonExistentHeadIdStub
 
