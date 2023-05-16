@@ -10,6 +10,7 @@ import Prelude
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Control.Monad.Reader (MonadReader (ask))
 import Data.Function ((&))
+import Data.Set qualified as Set
 
 -- Caradno imports
 import Cardano.Api.UTxO qualified as UTxO
@@ -62,7 +63,6 @@ import Hydra.Chain.Direct.Tx (
   headIdToCurrencySymbol,
   mkCommitDatum,
  )
-import Hydra.Chain.Direct.Util (isMarkedOutput)
 import Hydra.Cluster.Faucet (publishHydraScriptsAs)
 import Hydra.Cluster.Fixture qualified as HydraFixture
 import Hydra.Contract.Commit qualified as Commit
@@ -88,9 +88,8 @@ import HydraAuctionUtils.Monads (
   UtxoQuery (..),
   submitAndAwaitTx,
  )
-import HydraAuctionUtils.Monads.Actors (actorTipUtxo, addressAndKeys)
+import HydraAuctionUtils.Monads.Actors (addressAndKeys)
 import HydraAuctionUtils.Tx.AutoCreateTx (callBodyAutoBalance, makeSignedTransactionWithKeys)
-import HydraAuctionUtils.Tx.Utxo (filterAdaOnlyUtxo)
 
 prepareScriptRegistry :: RunningNode -> IO (TxId, ScriptRegistry)
 prepareScriptRegistry node@RunningNode {networkId, nodeSocket} = do
@@ -109,6 +108,8 @@ commitTxBody ::
   -- | The initial output (sent to each party) which should contain the PT
   -- and is locked by initial script
   (TxIn, TxOut CtxUTxO) ->
+  -- | Ada-only utxo to be commited
+  UTxO ->
   -- | Script utxo to be commited
   (TxIn, TxOut CtxUTxO, BuildTxWith BuildTx (Witness WitCtxTxIn)) ->
   -- | Input to cover fees from Hydra node key owner
@@ -122,20 +123,25 @@ commitTxBody
   headId
   party
   (initialInput, out)
+  moneyUtxo
   (scriptInput, scriptOutput, scriptWitness)
-  moneyInput
+  l1FeeInput
   vkh =
     ( emptyTxBody
         & addInputs
-          [(initialInput, initialWitness), (scriptInput, scriptWitness)]
+          [ (initialInput, initialWitness)
+          , (scriptInput, scriptWitness)
+          ]
         & addReferenceInputs [initialScriptRef]
-        & addVkInputs [moneyInput]
+        & addVkInputs (l1FeeInput : Set.toList (UTxO.inputSet moneyUtxo))
         & addExtraRequiredSigners [vkh]
         & addOutputs [commitOutput]
     )
-      { txInsCollateral = TxInsCollateral [moneyInput]
+      { txInsCollateral = TxInsCollateral [l1FeeInput]
       }
     where
+      fullUtxoToCommit =
+        UTxO.fromPairs [(scriptInput, scriptOutput)] <> moneyUtxo
       initialWitness =
         BuildTxWith $
           ScriptWitness scriptWitnessInCtx $
@@ -148,7 +154,8 @@ commitTxBody
         mkScriptDatum $ Initial.datum (headIdToCurrencySymbol headId)
       initialRedeemer =
         toScriptData . Initial.redeemer $
-          Initial.ViaCommit (Just $ toPlutusTxOutRef scriptInput)
+          Initial.ViaCommit
+            (map (toPlutusTxOutRef . fst) $ UTxO.pairs fullUtxoToCommit)
       commitOutput =
         TxOut commitAddress commitValue commitDatum ReferenceScriptNone
       commitScript =
@@ -157,10 +164,13 @@ commitTxBody
         mkScriptAddress @PlutusScriptV2 networkId commitScript
       commitValue =
         txOutValue out
-          <> txOutValue scriptOutput
+          <> foldMap txOutValue fullUtxoToCommit
       commitDatum =
         mkTxOutDatum $
-          mkCommitDatum party (Just (scriptInput, scriptOutput)) (headIdToCurrencySymbol headId)
+          mkCommitDatum
+            party
+            fullUtxoToCommit
+            (headIdToCurrencySymbol headId)
 
 -- | Find initial Utxo with Participation Token matchin our current actor
 findInitialUtxo :: HeadId -> L1Runner (TxIn, TxOut CtxUTxO)
@@ -205,6 +215,8 @@ findInitialScriptRefUtxo scriptRegistry = do
 submitAndAwaitCommitTx ::
   ScriptRegistry ->
   HeadId ->
+  (TxIn, TxOut CtxUTxO) ->
+  UTxO ->
   ( TxIn
   , TxOut CtxUTxO
   , BuildTxWith BuildTx (Witness WitCtxTxIn)
@@ -215,6 +227,8 @@ submitAndAwaitCommitTx ::
 submitAndAwaitCommitTx
   scriptRegistry
   headId
+  (l1FeeTxIn, l1FeeTxOut)
+  adaOnlyUtxoToCommit
   (scriptTxIn, scriptTxOut, scriptTxWitness) =
     do
       MkExecutionContext {actor, node} <- ask
@@ -230,10 +244,6 @@ submitAndAwaitCommitTx
       initialScriptRefUtxo <- findInitialScriptRefUtxo scriptRegistry
       (initialTxIn, initialTxOut) <- findInitialUtxo headId
 
-      commiterAdaUtxo <- UTxO.filter (not . isMarkedOutput) . filterAdaOnlyUtxo <$> actorTipUtxo
-      (commiterAdaTxIn, commiterAdaTxOut) : _ <-
-        return $ UTxO.pairs commiterAdaUtxo
-
       let preTxBody =
             commitTxBody
               networkId
@@ -241,8 +251,9 @@ submitAndAwaitCommitTx
               headId
               party
               (initialTxIn, initialTxOut)
+              adaOnlyUtxoToCommit
               (scriptTxIn, scriptTxOut, scriptTxWitness)
-              commiterAdaTxIn
+              l1FeeTxIn
               commiterVkh
 
       -- Patching pparams to match one on Hydra ledger
@@ -256,8 +267,9 @@ submitAndAwaitCommitTx
             UTxO.fromPairs
               [ (initialTxIn, initialTxOut)
               , (scriptTxIn, scriptTxOut)
-              , (commiterAdaTxIn, commiterAdaTxOut)
+              , (l1FeeTxIn, l1FeeTxOut)
               ]
+              <> adaOnlyUtxoToCommit
               <> initialScriptRefUtxo
 
       eTxBody <- callBodyAutoBalance utxos patchedPreTxBody commitingNodeAddress
