@@ -211,6 +211,7 @@ library
     HydraAuction.Tx.Common
     HydraAuction.Tx.Deposit
     HydraAuction.Tx.Escrow
+    HydraAuction.Tx.FeeEscrow
     HydraAuction.Tx.StandingBid
     HydraAuction.Tx.TermsConfig
     HydraAuction.Tx.TestNFT
@@ -220,6 +221,7 @@ library
   other-modules:
     HydraAuction.OnChain.Deposit
     HydraAuction.OnChain.Escrow
+    HydraAuction.OnChain.FeeEscrow
     HydraAuction.OnChain.StandingBid
     HydraAuction.OnChain.StateToken
 

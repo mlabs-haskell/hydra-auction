@@ -20,7 +20,7 @@ import Prelude qualified
 
 -- Plutus imports
 import Plutus.V1.Ledger.Value (AssetClass (..))
-import Plutus.V2.Ledger.Api (CurrencySymbol, MintingPolicy, ScriptContext, Validator, mkMintingPolicyScript, mkValidatorScript)
+import Plutus.V2.Ledger.Api (CurrencySymbol, MintingPolicy, Validator, mkMintingPolicyScript, mkValidatorScript)
 import PlutusTx qualified
 
 -- Hydra auction imports
@@ -32,6 +32,7 @@ import HydraAuction.Addresses (
  )
 import HydraAuction.OnChain.Deposit (mkDepositValidator)
 import HydraAuction.OnChain.Escrow (mkEscrowValidator)
+import HydraAuction.OnChain.FeeEscrow (mkFeeEscrowValidator)
 import HydraAuction.OnChain.StandingBid (mkStandingBidValidator)
 import HydraAuction.OnChain.StateToken (
   StateTokenKind (..),
@@ -103,9 +104,6 @@ standingBidAddress :: AuctionTerms -> StandingBidAddress
 standingBidAddress = StandingBidAddress . validatorAddress . standingBidValidator
 
 -- Fee escrow
-
-mkFeeEscrowValidator :: AuctionTerms -> () -> () -> ScriptContext -> Bool
-mkFeeEscrowValidator _terms _datum () _context = True -- FIXUP: Implement
 
 {-# INLINEABLE feeEscrowValidator #-}
 feeEscrowValidator :: AuctionTerms -> Validator

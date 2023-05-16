@@ -12,9 +12,6 @@ import Data.Maybe (fromJust)
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (Assertion, testCase)
 
--- Hydra imports
-import Hydra.Cardano.Api (mkTxIn)
-
 -- Hydra auction imports
 import HydraAuction.OnChain (AuctionScript (..))
 import HydraAuction.Tx.Deposit (cleanupDeposit, losingBidderClaimDeposit, mkDeposit, sellerClaimDepositFor)
@@ -25,11 +22,8 @@ import HydraAuction.Tx.Escrow (
  )
 import HydraAuction.Tx.StandingBid (cleanupTx, newBid)
 import HydraAuction.Tx.TermsConfig (
-  configToAuctionTerms,
-  constructTermsDynamic,
   nonExistentHeadIdStub,
  )
-import HydraAuction.Tx.TestNFT (mintOneTestNFT)
 import HydraAuction.Types (ApprovedBidders (..), AuctionTerms (..))
 import HydraAuctionUtils.Fixture (Actor (..), getActorsPubKeyHash)
 import HydraAuctionUtils.L1.Runner (
@@ -40,6 +34,8 @@ import HydraAuctionUtils.L1.Runner.Time (waitUntil)
 import HydraAuctionUtils.Types.Natural (Natural, intToNatural)
 
 -- Hydra auction test imports
+
+import EndToEnd.Ledger.L1Steps (createTermsWithTestNFT)
 import EndToEnd.Utils (assertNFTNumEquals, assertUTxOsInScriptEquals, config, mkAssertion)
 
 testSuite :: TestTree
@@ -65,14 +61,7 @@ losingBidderClaimDepositTest = mkAssertion $ do
 
   mapM_ (initWallet 100_000_000) [seller, buyer1, buyer2]
 
-  nftTx <- mintOneTestNFT
-  let utxoRef = mkTxIn nftTx 0
-
-  terms <- liftIO $ do
-    dynamicState <- constructTermsDynamic seller utxoRef nonExistentHeadIdStub
-    configToAuctionTerms config dynamicState
-
-  assertNFTNumEquals seller 1
+  terms <- createTermsWithTestNFT config nonExistentHeadIdStub
 
   announceAuction terms
 
@@ -104,14 +93,7 @@ losingBidderDoubleClaimTest = mkAssertion $ do
 
   mapM_ (initWallet 100_000_000) [seller, buyer1, buyer2]
 
-  nftTx <- mintOneTestNFT
-  let utxoRef = mkTxIn nftTx 0
-
-  terms <- liftIO $ do
-    dynamicState <- constructTermsDynamic seller utxoRef nonExistentHeadIdStub
-    configToAuctionTerms config dynamicState
-
-  assertNFTNumEquals seller 1
+  terms <- createTermsWithTestNFT config nonExistentHeadIdStub
 
   announceAuction terms
 
@@ -148,14 +130,7 @@ sellerClaimsDepositTest = mkAssertion $ do
 
   mapM_ (initWallet 100_000_000) [seller, buyer]
 
-  nftTx <- mintOneTestNFT
-  let utxoRef = mkTxIn nftTx 0
-
-  terms <- liftIO $ do
-    dynamicState <- constructTermsDynamic seller utxoRef nonExistentHeadIdStub
-    configToAuctionTerms config dynamicState
-
-  assertNFTNumEquals seller 1
+  terms <- createTermsWithTestNFT config nonExistentHeadIdStub
 
   announceAuction terms
 
@@ -185,14 +160,7 @@ sellerClaimsLosingDepositTest = mkAssertion $ do
 
   mapM_ (initWallet 100_000_000) [seller, buyer1, buyer2]
 
-  nftTx <- mintOneTestNFT
-  let utxoRef = mkTxIn nftTx 0
-
-  terms <- liftIO $ do
-    dynamicState <- constructTermsDynamic seller utxoRef nonExistentHeadIdStub
-    configToAuctionTerms config dynamicState
-
-  assertNFTNumEquals seller 1
+  terms <- createTermsWithTestNFT config nonExistentHeadIdStub
 
   announceAuction terms
 
@@ -226,14 +194,7 @@ bidderBuysWithDepositTest = mkAssertion $ do
 
   mapM_ (initWallet 100_000_000) [seller, buyer1, buyer2]
 
-  nftTx <- mintOneTestNFT
-  let utxoRef = mkTxIn nftTx 0
-
-  terms <- liftIO $ do
-    dynamicState <- constructTermsDynamic seller utxoRef nonExistentHeadIdStub
-    configToAuctionTerms config dynamicState
-
-  assertNFTNumEquals seller 1
+  terms <- createTermsWithTestNFT config nonExistentHeadIdStub
 
   announceAuction terms
 
@@ -270,14 +231,7 @@ cleanupDepositTest = mkAssertion $ do
 
   mapM_ (initWallet 100_000_000) [seller, buyer1, buyer2]
 
-  nftTx <- mintOneTestNFT
-  let utxoRef = mkTxIn nftTx 0
-
-  terms <- liftIO $ do
-    dynamicState <- constructTermsDynamic seller utxoRef nonExistentHeadIdStub
-    configToAuctionTerms config dynamicState
-
-  assertNFTNumEquals seller 1
+  terms <- createTermsWithTestNFT config nonExistentHeadIdStub
 
   announceAuction terms
 

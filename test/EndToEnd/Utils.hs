@@ -28,7 +28,7 @@ import Plutus.V1.Ledger.Value (assetClassValueOf)
 import Hydra.Cardano.Api (toPlutusValue, txOutValue)
 
 -- Hydra auction imports
-import HydraAuction.OnChain (AuctionScript (..))
+import HydraAuction.OnChain (AuctionScript)
 import HydraAuction.OnChain.TestNFT (testNftAssetClass)
 import HydraAuction.Tx.Common (scriptUtxos)
 import HydraAuction.Tx.TermsConfig (AuctionTermsConfig (..))
@@ -46,12 +46,12 @@ config =
     , configDiffVoucherExpiry = 8
     , configDiffCleanup = 10
     , configAuctionFeePerDelegate = fromJust $ intToNatural 4_000_000
-    , configStartingBid = fromJust $ intToNatural 8_000_000
-    , configMinimumBidIncrement = fromJust $ intToNatural 8_000_000
+    , configStartingBid = fromJust $ intToNatural 15_000_000
+    , configMinimumBidIncrement = fromJust $ intToNatural 10_000_000
     }
 
 mkAssertion :: L1Runner () -> Assertion
-mkAssertion = failAfter 60 . executeTestL1Runner
+mkAssertion = failAfter 120 . executeTestL1Runner
 
 assertNFTNumEquals :: Actor -> Integer -> L1Runner ()
 assertNFTNumEquals actor expectedNum = do

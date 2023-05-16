@@ -250,7 +250,7 @@ bidderBuys terms = do
               <> lovelaceToValue minLovelace
 
       txOutFeeEscrow =
-        TxOut (ShelleyAddressInEra feeEscrowAddress) value TxOutDatumNone ReferenceScriptNone
+        TxOut (ShelleyAddressInEra feeEscrowAddress) value (mkInlineDatum ()) ReferenceScriptNone
         where
           value = lovelaceToValue $ Lovelace $ calculateTotalFee terms
 
@@ -328,7 +328,7 @@ sellerReclaims terms = do
         TxOut
           (ShelleyAddressInEra feeEscrowAddress)
           value
-          TxOutDatumNone
+          (mkInlineDatum ())
           ReferenceScriptNone
         where
           value = lovelaceToValue $ Lovelace $ calculateTotalFee terms
