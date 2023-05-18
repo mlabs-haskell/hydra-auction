@@ -86,9 +86,9 @@ mkStandingBidValidator terms datum redeemer context =
     standingBidAddress = scriptHashAddress $ ownHash context
     inOutsByAddress address =
       byAddress address $ txInInfoResolved <$> txInfoInputs info
-    validNewBid :: StandingBidState -> StandingBidState -> Bool
-    validNewBid (StandingBidState oldBid) (StandingBidState newBid) =
-      validNewBidTerms terms oldBid newBid
+    validNewBid :: CurrencySymbol -> StandingBidState -> StandingBidState -> Bool
+    validNewBid voucherCS (StandingBidState oldBid) (StandingBidState newBid) =
+      validNewBidTerms terms voucherCS oldBid newBid
     checkCorrectNewBidOutput inputOut =
       case byAddress standingBidAddress $ txInfoOutputs info of
         [out] ->
@@ -99,9 +99,11 @@ mkStandingBidValidator terms datum redeemer context =
         _ -> traceError "Not exactly one ouput"
       where
         checkValidNewBid out =
-          let inBid = standingBidState <$> decodeOutputDatum info inputOut
+          let inDatum = decodeOutputDatum info inputOut
+              inBid = standingBidState <$> inDatum
+              Just inVoucherCS = standingBidVoucherCS <$> inDatum
               outBid = standingBidState <$> decodeOutputDatum info out
-           in case validNewBid <$> inBid <*> outBid of
+           in case validNewBid (unVoucherCS inVoucherCS) <$> inBid <*> outBid of
                 Just x -> traceIfFalse "Incorrect bid" x
                 Nothing ->
                   traceError "Incorrect encoding for input or output datum"
@@ -120,8 +122,8 @@ mkStandingBidValidator terms datum redeemer context =
         )
 
 {-# INLINEABLE validNewBidTerms #-}
-validNewBidTerms :: AuctionTerms -> Maybe BidTerms -> Maybe BidTerms -> Bool
-validNewBidTerms terms oldBid (Just newBidTerms) =
+validNewBidTerms :: AuctionTerms -> CurrencySymbol -> Maybe BidTerms -> Maybe BidTerms -> Bool
+validNewBidTerms terms voucherCS oldBid (Just newBidTerms) =
   -- The seller has allowed the bidder to participate in the auction
   traceIfFalse "User is not an autorised bider" (verifyEd25519Signature (sellerVK terms) sellerMessage sellerSignature)
     -- The bidder has correctly signed the datum
@@ -135,10 +137,10 @@ validNewBidTerms terms oldBid (Just newBidTerms) =
           startingBid terms <= bidAmount newBidTerms
   where
     BidTerms bidderPKH bidderVK newPrice bidderSignature sellerSignature = newBidTerms
-    auctionId = hydraHeadId terms
+    auctionId = voucherCS
     sellerMessage = sellerSignatureMessage auctionId bidderVK bidderPKH
     bidderMessage = bidderSignatureMessage auctionId newPrice bidderPKH
-validNewBidTerms _ _ Nothing =
+validNewBidTerms _ _ _ Nothing =
   traceIfFalse "Bid cannot be empty" False
 
 {-# INLINEABLE bidderSignatureMessage #-}

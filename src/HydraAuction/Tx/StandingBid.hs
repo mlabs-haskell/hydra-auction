@@ -59,6 +59,7 @@ import HydraAuction.OnChain (
   policy,
   standingBidValidator,
   voucherAssetClass,
+  voucherCurrencySymbol,
  )
 import HydraAuction.OnChain.StandingBid (
   bidderSignatureMessage,
@@ -163,7 +164,7 @@ sellerSignatureForActor terms actor = do
   -- dsign expects keys to be 64bytes long and to be the
   -- concatenation of an skey and vkey
   let sellerSecretKey = SecretKey $ serialiseToRawBytes sellerSk <> serialiseToRawBytes sellerVk
-      sellerMessge = fromBuiltin $ sellerSignatureMessage (hydraHeadId terms) (toBuiltin $ serialiseToRawBytes actorVK) actorPKH
+      sellerMessge = fromBuiltin $ sellerSignatureMessage (voucherCurrencySymbol terms) (toBuiltin $ serialiseToRawBytes actorVK) actorPKH
       Signature sellerSignature = dsign sellerSecretKey sellerMessge
   pure $ toBuiltin sellerSignature
 
@@ -239,7 +240,7 @@ createStandingBidDatum terms bidAmount sellerSignature bidderSk =
     )
     voucherCS
   where
-    auctionId = hydraHeadId terms
+    auctionId = voucherCurrencySymbol terms
     derivedVK = getVerificationKey bidderSk
     bidderPKH = toPlutusKeyHash $ verificationKeyHash derivedVK
     bidderSecretKey = SecretKey $ serialiseToRawBytes bidderSk <> serialiseToRawBytes derivedVK
