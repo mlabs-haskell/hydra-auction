@@ -61,10 +61,6 @@ import Hydra.Cardano.Api (
   pattern TxScriptValidityNone,
   pattern TxTotalCollateralNone,
   pattern TxUpdateProposalNone,
-  pattern TxValidityLowerBound,
-  pattern TxValidityNoLowerBound,
-  pattern TxValidityNoUpperBound,
-  pattern TxValidityUpperBound,
   pattern TxWithdrawalsNone,
   pattern WitnessPaymentKey,
  )
@@ -104,15 +100,7 @@ autoCreateTx ::
   m Tx
 -- FIXME: more docs on usage
 autoCreateTx (AutoCreateParams {..}) = do
-  let (lowerBound', upperBound') = validityBound
-  lowerBound <- case lowerBound' of
-    Nothing -> pure TxValidityNoLowerBound
-    Just x -> TxValidityLowerBound <$> toSlotNo x
-  -- FIXUP: more elegant solution to prevent empty interval
-  let hackInc x = if x == 0 then x + 1 else x
-  upperBound <- case upperBound' of
-    Nothing -> pure TxValidityNoUpperBound
-    Just x -> TxValidityUpperBound . hackInc <$> toSlotNo x
+  (lowerBound, upperBound) <- convertValidityBound validityBound
 
   MkBlockchainParams {protocolParameters} <-
     queryBlockchainParams

@@ -37,7 +37,11 @@ import Cardano.Api.UTxO qualified as UTxO
 
 -- Hydra imports
 import Cardano.Api (NetworkId (Testnet))
-import Hydra.Cardano.Api (NetworkMagic (NetworkMagic))
+import Hydra.Cardano.Api (
+  NetworkMagic (NetworkMagic),
+  pattern TxValidityNoLowerBound,
+  pattern TxValidityUpperBound,
+ )
 import HydraNode (
   HydraClient,
   input,
@@ -145,9 +149,9 @@ instance MonadBlockchainParams HydraRunner where
     MkHydraExecutionContext {fakeBlockchainParams} <- ask
     return fakeBlockchainParams
 
-  -- Hydra slot is always 0, so it probably safe to use it
-  -- for interval conversion
-  toSlotNo _ = return 0
+  -- Hydra slot is always 0, so we just return the only working validity bound
+  convertValidityBound (_, _) =
+    return (TxValidityNoLowerBound, TxValidityUpperBound 1)
 
 matchingHydraEvent :: Value -> Maybe HydraEvent
 matchingHydraEvent value =
@@ -182,6 +186,7 @@ matchingHydraEvent value =
     Just "HeadIsClosed" -> Just HeadIsClosed
     Just "ReadyToFanout" -> Just ReadyToFanout
     Just "HeadIsFinalized" -> HeadIsFinalized <$> retrieveField "utxo"
+    Just "HeadIsAborted" -> Just HeadIsAborted
     _ -> Nothing
   where
     getUtxoValueHandler =
