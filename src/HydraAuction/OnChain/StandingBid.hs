@@ -124,6 +124,7 @@ mkStandingBidValidator terms datum redeemer context =
            in assetClassValueOf (txInfoMint info) voucherAC == -1
         )
 
+{-# INLINEABLE validNewBidTerms #-}
 validNewBidTerms :: AuctionTerms -> Maybe BidTerms -> Maybe BidTerms -> Bool
 validNewBidTerms terms oldBid (Just newBidTerms) =
   case oldBid of

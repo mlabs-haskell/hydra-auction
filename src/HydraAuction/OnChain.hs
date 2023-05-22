@@ -15,6 +15,7 @@ module HydraAuction.OnChain (
 
 -- Prelude imports
 
+import GHC.Stack (HasCallStack)
 import PlutusTx.Prelude
 import Prelude qualified
 
@@ -118,8 +119,9 @@ feeEscrowAddress = FeeEscrowAddress . validatorAddress . feeEscrowValidator
 
 -- Deposit
 
+-- HACK: compilies incorrectly without HasCallStack
 {-# INLINEABLE depositValidator #-}
-depositValidator :: AuctionTerms -> SerialisedScript
+depositValidator :: HasCallStack => AuctionTerms -> SerialisedScript
 depositValidator terms =
   serialiseCompiledCode $
     $$(PlutusTx.compile [||wrapValidator . mkDepositValidator||])
