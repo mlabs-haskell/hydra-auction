@@ -275,7 +275,7 @@ runDelegateServer conf = do
       return v
     executeCompositeRunnerForConfig action =
       runHydraClient (hydraNodeHost conf) True $ \hydraClient -> do
-        context <- executeL1RunnerWithNodeAs (cardanoNode conf) Alice $ do
+        context <- executeL1RunnerWithNodeAs (cardanoNode conf) (l1Actor conf) $ do
           l1Context <- ask
           executeHydraRunnerFakingParams hydraClient $ do
             hydraContext <- ask
@@ -344,7 +344,7 @@ mbQueueAuctionPhases tick delegateEvents toClientsChannel = do
           <> show currentStage
           <> " , awaiting "
           <> show mSecsLeft
-          <> "until next stage."
+          <> " until next stage."
       case mSecsLeft of
         Nothing -> pure ()
         Just s -> do
