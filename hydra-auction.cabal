@@ -200,8 +200,8 @@ executable hydra-auction-delegate
   build-depends:
     , hydra-auction
     , hydra-auction-utils
-    , plutus-ledger-api
     , optparse-applicative
+    , plutus-ledger-api
 
 library
   import:          common-lang
