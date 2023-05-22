@@ -4,18 +4,21 @@ module HydraAuctionUtils.Parsers (
   parseNetworkMagic,
   parseHost,
   cardanoRunningNodeParser,
+  execParserForCliArgs,
 ) where
 
 -- Prelude imports
 import Prelude
 
 -- Haskell imports
+
+import Control.Applicative ((<**>))
 import Data.Char (toLower)
 import Data.Map qualified as Map
 import Data.Text qualified as Text
 import Network.HostAndPort (maybeHostAndPort)
-import Options.Applicative (Parser)
-import Options.Applicative.Builder (ReadM, eitherReader, help, long, metavar, option, strOption)
+import Options.Applicative (Parser, customExecParser, helper)
+import Options.Applicative.Builder (ReadM, eitherReader, fullDesc, help, info, long, metavar, option, prefs, showHelpOnEmpty, showHelpOnError, strOption)
 import Protolude.Exceptions (note)
 import Text.Read (readMaybe)
 
@@ -30,6 +33,16 @@ import Hydra.Network (Host (..))
 -- HydraAuction imports
 import HydraAuctionUtils.Fixture (Actor (..), actorName)
 import HydraAuctionUtils.Types.Natural (Natural, intToNatural)
+
+execParserForCliArgs :: forall x. Parser x -> IO x
+execParserForCliArgs parser = do
+  customExecParser preferences options
+  where
+    options =
+      info
+        (parser <**> helper)
+        fullDesc
+    preferences = prefs (showHelpOnEmpty <> showHelpOnError)
 
 parseActor :: ReadM Actor
 parseActor =

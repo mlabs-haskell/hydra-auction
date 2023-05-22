@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -Wno-orphans #-}
+
 module HydraAuction.Delegate.Server (
   -- * Delegate server types
 
@@ -30,7 +32,9 @@ import Network.WebSockets (PendingConnection)
 import Prettyprinter (Doc, Pretty (pretty), indent, line, viaShow, (<+>))
 
 -- Cardano imports
-import Hydra.Network (IP, PortNumber)
+
+import CardanoNode (RunningNode (..))
+import Hydra.Network (Host)
 
 -- Hydra auction imports
 import HydraAuction.Delegate (ClientId, ClientResponseScope)
@@ -39,23 +43,26 @@ import HydraAuction.Types (AuctionTerms)
 import HydraAuctionUtils.Fixture (Actor)
 import HydraAuctionUtils.Tracing (TracerT)
 
+deriving stock instance Eq RunningNode
+deriving stock instance Show RunningNode
+
 -- | The config for the delegate server
 data DelegateServerConfig = DelegateServerConfig
-  { host :: IP
-  -- ^ the host of the delegate server
-  , port :: PortNumber
-  -- ^ the port number the delegate server receives input at
+  { websocketsHost :: Host
+  , cardanoNode :: RunningNode
+  , hydraNodeHost :: Host
+  , l1Actor :: Actor
+  -- ^ should match Hydra node acto
   , tick :: Int
-  -- ^ the amount of milliseconds, the thread should wait
+  -- ^ the amount of milliseconds, the event polling threads should wait
   , ping :: Int
   -- ^ the amount of seconds between pings for the client thread
-  , l1Actor :: Actor
-  , hydraServerNumber :: Int
   }
+  deriving stock (Eq, Show, Generic)
 
 -- | Representation of the Delegate Server's log
 data DelegateServerLog
-  = Started PortNumber
+  = Started DelegateServerConfig
   | GotFrontendConnected ClientId
   | GotFrontendRequest FrontendRequest
   | ProducedDelegateResponse (ClientResponseScope, DelegateResponse)

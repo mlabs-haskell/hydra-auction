@@ -177,7 +177,8 @@ executable hydra-auction
     , hydra-plutus
     , hydra-test-utils
     , optparse-applicative
-    , ouroboros-network               ==0.1.0.1
+    , ouroboros-network
+    , parsec
     , plutus-tx
     , QuickCheck
     , serialise
@@ -190,12 +191,16 @@ executable hydra-auction
 executable hydra-auction-delegate
   import:         common-lang
   main-is:        Main.hs
-  other-modules:  HydraAuction.Delegate.Server
+  other-modules:
+    DelegateServer.Parsers
+    HydraAuction.Delegate.Server
+
   hs-source-dirs: delegate-app
   ghc-options:    -threaded -rtsopts
   build-depends:
     , hydra-auction
     , hydra-auction-utils
+    , optparse-applicative
     , plutus-ledger-api
 
 library
@@ -258,6 +263,7 @@ library hydra-auction-utils
     HydraAuctionUtils.L1.Runner.Time
     HydraAuctionUtils.Monads
     HydraAuctionUtils.Monads.Actors
+    HydraAuctionUtils.Network
     HydraAuctionUtils.Parsers
     HydraAuctionUtils.Parsers.TxIn
     HydraAuctionUtils.Plutus
