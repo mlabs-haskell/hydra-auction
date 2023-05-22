@@ -148,7 +148,7 @@ handleCliAction sendRequestToDelegate currentDelegateStateRef userAction = do
       terms <- auctionTermsFor auctionName
       winningActor <- do
         winningBidder <- currentWinningBidder terms
-        liftIO $ sequence $ actorFromPkh <$> winningBidder
+        liftIO $ mapM actorFromPkh winningBidder
       liftIO $ print winningActor
     ShowActorsMinDeposit auctionName minDeposit -> do
       terms <- auctionTermsFor auctionName

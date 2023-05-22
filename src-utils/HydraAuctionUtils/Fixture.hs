@@ -130,7 +130,7 @@ getActorPubKeyHash actor = do
   return $ toPlutusKeyHash $ verificationKeyHash actorVk
 
 getActorsPubKeyHash :: [Actor] -> IO [PubKeyHash]
-getActorsPubKeyHash actors = sequence $ getActorPubKeyHash <$> actors
+getActorsPubKeyHash = mapM getActorPubKeyHash
 
 actorFromPkh :: PubKeyHash -> IO Actor
 actorFromPkh pkh = do
