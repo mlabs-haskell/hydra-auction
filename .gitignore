@@ -76,3 +76,4 @@ auction-state
 
 # Ignoring `./devnet` but not `./data/devnet`
 /devnet/
+testnet/db

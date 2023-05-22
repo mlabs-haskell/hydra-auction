@@ -1,0 +1,191 @@
+version: "3.9"
+
+
+services:
+  cardano-node:
+    image: inputoutput/cardano-node:latest
+    volumes:
+      # FIXUP: not sure mounting same dir to /ipc is correct
+      - ./testnet:/ipc
+      - ./testnet/db:/data/db
+    environment:
+      NETWORK: preprod
+      CARDANO_SOCKET_PATH: /ipc/node.socket # used by cardano-node
+      CARDANO_NODE_SOCKET_PATH: /ipc/node.socket # used by cardano-cli
+
+  hydra-node-1:
+    image: ghcr.io/input-output-hk/hydra-node:0.9.0
+    profiles:
+      - hydra-node
+    volumes:
+      - ./data/hydra-keys:/keys:ro
+      - ./testnet:/devnet
+    ports:
+      - "4001:4001"
+    command:
+      [ "--node-id", "1"
+      , "--api-host", "0.0.0.0"
+      , "--host", "172.16.238.10"
+      , "--monitoring-port", "6001"
+      , "--peer", "172.16.238.20:5001"
+      , "--peer", "172.16.238.30:5001"
+      , "--hydra-scripts-tx-id", "6fd13073c47411af7f3adf31f46e61f570872a832822fdc5da5b214766651bfd"
+      , "--contestation-period", "1"
+      , "--hydra-signing-key", "/keys/oscar.sk"
+      , "--hydra-verification-key", "/keys/patricia.vk"
+      , "--hydra-verification-key", "/keys/rupert.vk"
+      , "--cardano-signing-key", "/devnet/credentials/oscar.sk"
+      , "--cardano-verification-key", "/devnet/credentials/patricia.vk"
+      , "--cardano-verification-key", "/devnet/credentials/rupert.vk"
+      , "--ledger-genesis", "/devnet/genesis/shelley.json"
+      , "--ledger-protocol-parameters", "/devnet/protocol-parameters.json"
+      , "--network-id", "1"
+      , "--node-socket", "/devnet/node.socket"
+      ]
+    networks:
+      hydra_net:
+        ipv4_address: 172.16.238.10
+
+  hydra-node-2:
+    image: ghcr.io/input-output-hk/hydra-node:0.9.0
+    profiles:
+      - hydra-node
+    volumes:
+      - ./data/hydra-keys:/keys:ro
+      - ./testnet:/devnet
+    ports:
+      - "4002:4001"
+    command:
+      [ "--node-id", "2"
+      , "--api-host", "0.0.0.0"
+      , "--host", "172.16.238.20"
+      , "--monitoring-port", "6001"
+      , "--peer", "172.16.238.10:5001"
+      , "--peer", "172.16.238.30:5001"
+      , "--hydra-scripts-tx-id", "6fd13073c47411af7f3adf31f46e61f570872a832822fdc5da5b214766651bfd"
+      , "--contestation-period", "1"
+      , "--hydra-signing-key", "/keys/patricia.sk"
+      , "--hydra-verification-key", "/keys/oscar.vk"
+      , "--hydra-verification-key", "/keys/rupert.vk"
+      , "--cardano-signing-key", "/devnet/credentials/patricia.sk"
+      , "--cardano-verification-key", "/devnet/credentials/oscar.vk"
+      , "--cardano-verification-key", "/devnet/credentials/rupert.vk"
+      , "--ledger-genesis", "/devnet/genesis/shelley.json"
+      , "--ledger-protocol-parameters", "/devnet/protocol-parameters.json"
+      , "--network-id", "1"
+      , "--node-socket", "/devnet/node.socket"
+      ]
+    networks:
+      hydra_net:
+        ipv4_address: 172.16.238.20
+
+  hydra-node-3:
+    image: ghcr.io/input-output-hk/hydra-node:0.9.0
+    profiles:
+      - hydra-node
+    volumes:
+      - ./data/hydra-keys:/keys:ro
+      - ./testnet:/devnet
+    ports:
+      - "4003:4001"
+    command:
+      [ "--node-id", "3"
+      , "--api-host", "0.0.0.0"
+      , "--host", "172.16.238.30"
+      , "--monitoring-port", "6001"
+      , "--peer", "172.16.238.10:5001"
+      , "--peer", "172.16.238.20:5001"
+      , "--hydra-scripts-tx-id", "6fd13073c47411af7f3adf31f46e61f570872a832822fdc5da5b214766651bfd"
+      , "--contestation-period", "1"
+      , "--hydra-signing-key", "/keys/rupert.sk"
+      , "--hydra-verification-key", "/keys/oscar.vk"
+      , "--hydra-verification-key", "/keys/patricia.vk"
+      , "--cardano-signing-key", "/devnet/credentials/rupert.sk"
+      , "--cardano-verification-key", "/devnet/credentials/oscar.vk"
+      , "--cardano-verification-key", "/devnet/credentials/patricia.vk"
+      , "--ledger-genesis", "/devnet/genesis/shelley.json"
+      , "--ledger-protocol-parameters", "/devnet/protocol-parameters.json"
+      , "--network-id", "1"
+      , "--node-socket", "/devnet/node.socket"
+      ]
+    networks:
+      hydra_net:
+        ipv4_address: 172.16.238.30
+
+  delegate-server-1:
+    image: hydra-auction-delegate:latest
+    profiles:
+      - hydra-node
+    depends_on:
+      hydra-node-1:
+        condition: service_started
+    volumes:
+      - ./data/hydra-keys:/keys:ro
+      - ./testnet:/devnet
+    ports:
+      - "8001:8001"
+    networks:
+      hydra_net:
+    command:
+      [ "hydra-auction-delegate"
+      , "--actor", "oscar"
+      , "--hydra-node", "172.16.238.10:4001"
+      , "--websockets-host", "0.0.0.0:8001"
+      , "--network-magic", "1"
+      , "--cardano-node-socket", "/devnet/node.socket"
+      ]
+
+  delegate-server-2:
+    image: hydra-auction-delegate:latest
+    profiles:
+      - hydra-node
+    depends_on:
+      hydra-node-2:
+        condition: service_started
+    volumes:
+      - ./data/hydra-keys:/keys:ro
+      - ./testnet:/devnet
+    ports:
+      - "8002:8001"
+    networks:
+      hydra_net:
+    command:
+      [ "hydra-auction-delegate"
+      , "--actor", "patricia"
+      , "--hydra-node", "172.16.238.20:4001"
+      , "--websockets-host", "0.0.0.0:8001"
+      , "--network-magic", "1"
+      , "--cardano-node-socket", "/devnet/node.socket"
+      ]
+
+  delegate-server-3:
+    image: hydra-auction-delegate:latest
+    profiles:
+      - hydra-node
+    depends_on:
+      hydra-node-3:
+        condition: service_started
+    volumes:
+      - ./data/hydra-keys:/keys:ro
+      - ./testnet:/devnet
+    ports:
+      - "8003:8001"
+    networks:
+      hydra_net:
+    command:
+      [ "hydra-auction-delegate"
+      , "--actor", "rupert"
+      , "--hydra-node", "172.16.238.30:4001"
+      , "--websockets-host", "0.0.0.0:8001"
+      , "--network-magic", "1"
+      , "--cardano-node-socket", "/devnet/node.socket"
+      ]
+
+networks:
+  hydra_net:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.16.238.0/24
+          gateway: 172.16.238.1
