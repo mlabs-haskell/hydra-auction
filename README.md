@@ -43,11 +43,11 @@ that will start a single cardano-node,
 and 3 instances of the delegate server.
 
 Before starting the demo we will need to build the delegate server docker images.
-This is done through nix and can be done by `make build-docker`.
+This is done inside nix shell and can be done by `make build-docker`.
 This command will build the image and load it as `hydra-auction-delegate:latest`.
 
-We recommend using the `spin-up-new-devnet.sh` script
-to run the demo and start the components,
+We recommend call the `./spin-up-new-devnet.sh 1` script
+to start all cluster components,
 as it will take care of setting up the correct files for the cardano-node
 and seeding the actors running the hydra-nodes with enough funds to manage the head lifecycle.
 
@@ -69,38 +69,80 @@ We also have some hydra keys generated for the delegates, these are under `data/
 In our demo, Oscar, Patricia and Rupert are the delegates running hydra nodes,
 all other actors are meant to be either sellers or bidders.
 
+### Prepare REPLs for demoing
+
+Start a REPL for different actors in different terminals.
+
+You need at least one seller (Alice in our example),
+and one bidder (Bob in our example).
+To start their REPLs run: `make demo-seller` and `make demo-bidder`.
+
+Also run `make demo-monitor`.
+This is ncurses CLI, which shows current state of auction and Head.
+
+`make` shortcuts use params for local nodes started with `docker-compose`.
+
 ### Bidder wins case
 
-1. Start a REPL for different actors in different terminals.
-   You need at least one seller (Alice in our example),
-   and one bidder (Bob in our example).
-   To start REPL run:
-   `cabal run hydra-auction -- -a alice --cardano-node-socket ./devnet/node.socket --network-magic 42`
-2. Run `prepare-for-demo -a alice` on Alice's REPL
-3. Run `show-utxos` to see which UTxO got Test NFT
-4. Run `announce-auction` with this UTxO, on Alice's REPL, like
-   `announce-auction -n some-auction` (for our demo, we use an auction called `demo` that is stored in
-   `./example/auction-config/demo.json`)
+1. Run `prepare-for-demo -a alice` on Alice's REPL
+2. Run `announce-auction` , on Alice's REPL, like
+   `announce-auction -n demo`
+
+   We use an auction called `demo` that is stored in
+   `./example/auction-config/demo.json` for example.
+   You may create your own params in that dir and use that for auction.
+
    Now the auction time stages begin.
-5. Wait for `BiddingStartedStage` by running `show-current-stage -n some-auction`
-   After that, run `start-bidding -n some-auction -a bob -a carol` on Alice's REPL.
-   This will create an auction where Bob and Carol are authorised to place bets.
-6. After bidding has started, you can place bids, as long as they match the auction terms, which are:
+   You may see their status on `monitor` terminal.
+3. Wait for `BiddingStartedStage`.
+   After that, run `start-bidding -n demo` on Alice's REPL.
+
+4. After bidding has started auction state still resides on L1.
+   You can place bids on L1 before moving state on L2 if you want to.
+
+   Normally, Head will close and return state on L2 on `BiddingEndedStage`.
+   In that case you cannot continue to bet on L1.
+   But in case L2 Head was halted before that, you can continue
+   to place bets on L1.
+   Halting happens then Head cannot reach consensus due to
+   nodes/network failure or maliciant peer actions.
+
+   Bid amount can be placed as long as it match the auction terms, which mean:
    - the first bid should be higher than `configStartingBid`
    - the next bid should always be higher than the previous bid + `configMinimumBidIncrement`
+
    For example place the first bid from Bob's REPL:
-   `new-bid -n foo -b 8000`, where the number in `b` is in ADA
-7. (a) After the `BiddingEndedStage` has started, Bob can run `bidder-buys -n foo` in his REPL and receives
-   his winning lot.
-8. After the `VoucherExpiryStage` has started, Alice can get back their `UTxO`s by running `cleanup -n foo`.
+   `new-bid -n demo -b 100`, where the number in `100` is in ADA.
+5. To move auction state on L2, run `move-to-l2 -n demo`.
+
+   It will take some time for Head to do this,
+   while placing bid on open Head is nearly instantaneous.
+   You can track Head opening progress looking on `monitor` terminal.
+
+   To place a bid on L2 run `new-bid-l2 -n demo -b 100`.
+   Args/requirements are exactly the same as for L1 case.
+6. (a) After the `BiddingEndedStage` has started,
+   Head will be closed automatically.
+
+   Bob can run `bidder-buys -n foo` in his REPL.
+   Thus he will receive his lot and pay bid to seller.
+7. After the `VoucherExpiryStage` has started, Alice can get back their `UTxO`s by running `cleanup -n foo`.
 
 ### Seller reclaims case
 
 Same for all steps except 7.
 
-7. (b) In case of the winner not taking their lot, in the `VoucherExpiryStage`,
+6. (b) In case of the winner not taking their lot
+   until the `VoucherExpiryStage`,
    it can be reclaimed back by its seller.
-   Run `seller-reclaims -n foo` in Alice's REPL.
+   For that run `seller-reclaims -n demo` in Alice's REPL.
+
+### Reuse same auction config again
+
+After those steps auction stage will forever stuck in `Cleanup`.
+To reuse same config for new auction, just run `auction-announce` again.
+This will overwrite dynamic config for old auction
+and you can continue to rest of auction usecase.
 
 ## Development
 
