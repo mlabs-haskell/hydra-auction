@@ -140,7 +140,7 @@ services:
       hydra_net:
     command:
       [ "hydra-auction-delegate"
-      , "--actor", "rupert"
+      , "--actor", "oscar"
       , "--hydra-node", "172.16.238.10:4001"
       , "--websockets-host", "0.0.0.0:8001"
       , "--network-magic", "42"
@@ -186,7 +186,7 @@ services:
       hydra_net:
     command:
       [ "hydra-auction-delegate"
-      , "--actor", "oscar"
+      , "--actor", "rupert"
       , "--hydra-node", "172.16.238.30:4001"
       , "--websockets-host", "0.0.0.0:8001"
       , "--network-magic", "42"
