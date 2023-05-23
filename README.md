@@ -137,6 +137,13 @@ Same for all steps except 7.
    it can be reclaimed back by its seller.
    For that run `seller-reclaims -n demo` in Alice's REPL.
 
+### Reuse same auction config again
+
+After those steps auction stage will forever stuck in `Cleanup`.
+To reuse same config for new auction, just run `auction-announce` again.
+This will overwrite dynamic config for old auction
+and you can continue to rest of auction usecase.
+
 ## Development
 
 You can enter the development shell with:
