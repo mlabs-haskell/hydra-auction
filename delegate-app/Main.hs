@@ -17,6 +17,7 @@ import Control.Concurrent.STM (
   newTChan,
   newTQueue,
   readTChan,
+  tryReadTQueue,
   writeTChan,
   writeTQueue,
  )
@@ -175,36 +176,46 @@ runDelegateLogicSteps
   frontendRequestQueue
   broadcast = do
     flip evalStateT initialState $ forever $ do
+      -- Any Hydra state changes could affect FrontendRequest execution
+      -- That means that we cannot process multiple FrontendRequests
+      -- on same run, cuz interleaving Hydra events might affect them.
+      -- To prevent that we first process all Hydra events in queue,
+      -- and then process not more than one FrontendRequest in a tick.
+
       processQueueWith
         eventQueue
         ( delegateEventStep
             -- All delegateEventStep responses should be brodcasted
             >=> return . fmap (Broadcast,)
         )
-      processQueueWith
-        frontendRequestQueue
-        delegateFrontendRequestStep
+
+      mEvent <- liftIO . atomically $ tryReadTQueue frontendRequestQueue
+      traverse_
+        (performStep delegateFrontendRequestStep)
+        mEvent
+
       -- FIXME: log queues overload and make tick not-static
       liftIO $ threadDelay tick
     where
-      processQueueWith ::
+      performStep ::
         forall req.
         (Show req) =>
-        TQueue req ->
         ( req ->
           StateT
             DelegateState
             CompositeRunner
             [(ClientResponseScope, DelegateResponse)]
         ) ->
+        req ->
         StateT DelegateState CompositeRunner ()
+      performStep step event = do
+        -- FIXME: use logging
+        liftIO $ putStrLn $ "Delegate logic event: " <> show event
+        response <- step event
+        liftIO $ putStrLn $ "Delegate logic response: " <> show response
+        putInToClientsQueue response
       processQueueWith queue step =
-        flushAndTraverseNewElements queue $ \event -> do
-          -- FIXME: use logging
-          liftIO $ putStrLn $ "Delegate logic event: " <> show event
-          response <- step event
-          liftIO $ putStrLn $ "Delegate logic response: " <> show response
-          putInToClientsQueue response
+        flushAndTraverseNewElements queue $ performStep step
       putInToClientsQueue responses = liftIO $ do
         atomically $
           traverse_ (writeTChan broadcast) responses
