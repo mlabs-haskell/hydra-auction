@@ -161,7 +161,8 @@ matchingHydraEvent value =
       HeadIsInitializing <$> retrieveField "headId"
     Just "TxSeen" -> TxSeen <$> retrieveField "tx"
     Just "TxValid" -> TxValid <$> retrieveField "tx"
-    Just "TxInvalid" -> TxInvalid <$> retrieveField "tx"
+    Just "TxInvalid" ->
+      TxInvalid <$> retrieveField "tx" <*> retrieveField "utxo"
     Just "InvlidInput" ->
       InvlidInput <$> retrieveField "reason" <*> retrieveField "input"
     Just "PostTxOnChainFailed" ->

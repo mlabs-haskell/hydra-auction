@@ -47,7 +47,7 @@ data HydraEvent
   = GetUTxOResponse UTxO.UTxO
   | TxSeen Tx
   | TxValid Tx
-  | TxInvalid Tx
+  | TxInvalid UTxO.UTxO Tx
   | InvlidInput {reason :: String, invalidInput :: String}
   | PostTxOnChainFailed {txTag :: String, errorTag :: String}
   | CommandFailed {clientInputTag :: String}
@@ -87,7 +87,7 @@ getHydraEventKind event = case event of
   GetUTxOResponse _ -> GetUTxOResponseKind
   TxSeen _ -> TxSeenKind
   TxValid _ -> TxValidKind
-  TxInvalid _ -> TxInvalidKind
+  TxInvalid {} -> TxInvalidKind
   InvlidInput {} -> InvlidInputKind
   PostTxOnChainFailed {} -> PostTxOnChainFailedKind
   CommandFailed {} -> CommandFailedKind
