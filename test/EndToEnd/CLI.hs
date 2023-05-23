@@ -15,7 +15,11 @@ import Test.Tasty.HUnit (Assertion, testCase)
 
 -- Hydra auction imports
 
-import HydraAuction.Delegate.Interface (DelegateState (..), InitializedState (..))
+import HydraAuction.Delegate.Interface (
+  DelegateState (..),
+  InitializedState (..),
+  OpenHeadUtxo (..),
+ )
 import HydraAuction.OnChain (AuctionScript (..))
 import HydraAuction.Tx.TermsConfig (nonExistentHeadIdStub)
 import HydraAuction.Types (AuctionTerms (..))
@@ -53,7 +57,14 @@ testSuite =
 mockDelegateState :: DelegateState
 mockDelegateState =
   Initialized nonExistentHeadIdStub $
-    Open (error "FIXUP") Nothing
+    Open headUtxo Nothing
+  where
+    headUtxo =
+      MkOpenHeadUtxo
+        { standingBidTerms = Nothing
+        , standingBidUtxo = (error "unused", error "unused")
+        , collateralUtxo = (error "unused", error "unused")
+        }
 
 auctionName :: AuctionName
 auctionName = "test"
