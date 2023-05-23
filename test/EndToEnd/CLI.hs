@@ -51,7 +51,9 @@ testSuite =
       removeFile fn
 
 mockDelegateState :: DelegateState
-mockDelegateState = Initialized nonExistentHeadIdStub (Open Nothing)
+mockDelegateState =
+  Initialized nonExistentHeadIdStub $
+    Open (error "FIXUP") Nothing
 
 auctionName :: AuctionName
 auctionName = "test"

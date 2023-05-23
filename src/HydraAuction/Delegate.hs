@@ -21,6 +21,14 @@ import Control.Monad.Trans (MonadIO (..), MonadTrans (lift))
 -- Cardano imports
 import Cardano.Api.UTxO qualified as UTxO
 
+-- Hydra imports
+import Hydra.Cardano.Api (
+  toPlutusKeyHash,
+  verificationKeyHash,
+  pattern ShelleyAddressInEra,
+  pattern TxOut,
+ )
+
 -- HydraAuction imports
 
 import Hydra.Chain.Direct.Tx (headIdToCurrencySymbol)
@@ -33,15 +41,19 @@ import HydraAuction.Delegate.Interface (
   IncorrectRequestDataReason (..),
   InitializedState (..),
   MissingPrerequisite (..),
+  OpenHeadUtxo (..),
   RequestIgnoredReason (..),
   ResponseReason (..),
   wasOpened,
  )
 import HydraAuction.OnChain.Common (validAuctionTerms)
 import HydraAuction.OnChain.StandingBid (validNewBidTerms)
+import HydraAuction.Tx.Common (createTwoMinAdaUtxo)
 import HydraAuction.Tx.StandingBid (
+  NewBidTxInfo (..),
   createNewBidTx,
   decodeInlineDatum,
+  decodeNewBidTxOnL2,
   moveToHydra,
  )
 import HydraAuction.Types (
@@ -59,17 +71,15 @@ import HydraAuctionUtils.Fixture (partyFor)
 import HydraAuctionUtils.Hydra.Interface (HydraCommand (..), HydraEvent (..))
 import HydraAuctionUtils.Hydra.Monad (MonadHydra (..))
 import HydraAuctionUtils.Monads (
-  MonadQueryUtxo (..),
   MonadSubmitTx (..),
-  UtxoQuery (..),
  )
-import HydraAuctionUtils.Monads.Actors (MonadHasActor (askActor), actorTipUtxo)
+import HydraAuctionUtils.Monads.Actors (
+  MonadHasActor (askActor),
+  addressAndKeys,
+ )
 import HydraAuctionUtils.Tx.Utxo (
-  extractSingleUtxo,
   filterAdaOnlyUtxo,
-  filterNonFuelUtxo,
   filterNotAdaOnlyUtxo,
-  txOutIsAdaOnly,
  )
 
 data DelegateEvent
@@ -115,17 +125,28 @@ delegateFrontendRequestStep (clientId, request) =
             ]
     NewBid {auctionTerms, datum} -> do
       state <- get
+      actor <- askActor
       case state of
-        Initialized headId (Open {standingBidTerms}) -> do
+        Initialized headId (Open utxoState _) -> do
+          let (MkOpenHeadUtxo {standingBidTerms, standingBidUtxo, collateralUtxo}) =
+                utxoState
           validatingAuctionTerms headId auctionTerms $ do
             let newBidTerms = standingBid $ standingBidState datum
             if validNewBidTerms auctionTerms standingBidTerms newBidTerms
               then do
-                _ <- lift $ do
-                  actor <- askActor
-                  runHydraInComposite $ do
-                    tx <- createNewBidTx auctionTerms actor datum
-                    submitTx tx
+                lift $ runHydraInComposite $ do
+                  tx <-
+                    createNewBidTx
+                      auctionTerms
+                      actor
+                      standingBidUtxo
+                      collateralUtxo
+                      datum
+                  submitTx tx
+                -- Caching AuctionTerms on this server
+                put $
+                  Initialized headId $
+                    Open utxoState (Just auctionTerms)
                 return []
               else
                 return
@@ -203,6 +224,53 @@ delegateEventStep event = case event of
       _ -> abort $ ImpossibleHappened IncorrectHydraEvent
   HydraEvent (SnapshotConfirmed _txs utxo) ->
     updateStateWithStandingBidOrAbort utxo
+  HydraEvent (TxInvalid currentUtxo tx) -> do
+    state <- get
+    actor <- askActor
+    (_, delegatePublicKey, _) <- lift $ runL1RunnerInComposite addressAndKeys
+    case state of
+      Initialized _ (Open utxoState mCachedTerms) -> do
+        case (txResentRequired delegatePublicKey, mCachedTerms) of
+          (Just newBidDatum, Just auctionTerms) -> do
+            lift $ resentBid actor utxoState auctionTerms newBidDatum
+            return []
+          (Just _, Nothing) ->
+            -- If tx was sent initialy by this server,
+            -- auction terms should be already cached
+            abort $ ImpossibleHappened IncorrectHydraEvent
+          (Nothing, _) -> return []
+      _ -> abort $ ImpossibleHappened IncorrectHydraEvent
+    where
+      txResentRequired delegatePublicKey =
+        let
+          delegatePKH =
+            toPlutusKeyHash $
+              verificationKeyHash delegatePublicKey
+         in
+          case decodeNewBidTxOnL2 tx currentUtxo of
+            Just
+              ( MkNewBidTxInfo
+                  { submitterPKH
+                  , isStandingBidInvalidated
+                  , newBidDatum
+                  }
+                ) ->
+                if submitterPKH == delegatePKH
+                  && isStandingBidInvalidated
+                  then Just newBidDatum
+                  else Nothing
+            Nothing -> Nothing
+      resentBid actor utxoState auctionTerms newBidDatum = do
+        let (MkOpenHeadUtxo {standingBidUtxo, collateralUtxo}) = utxoState
+        runHydraInComposite $ do
+          newTx <-
+            createNewBidTx
+              auctionTerms
+              actor
+              standingBidUtxo
+              collateralUtxo
+              newBidDatum
+          submitTx newTx
   HydraEvent ReadyToFanout -> do
     sendCommand Fanout
     return []
@@ -252,31 +320,40 @@ delegateEventStep event = case event of
     isStandingBidTx txOut = case decodeInlineDatum txOut of
       Right (_ :: StandingBidDatum) -> True
       Left _ -> False
-    updateStateWithStandingBidOrAbort utxo =
+    updateStateWithStandingBidOrAbort utxo = do
+      state <- get
+      let previousCache = case state of
+            Initialized _ (Open _ x) -> x
+            _ -> Nothing
+      (delegateAddress, _, _) <- lift $ runL1RunnerInComposite addressAndKeys
       case UTxO.pairs $ filterNotAdaOnlyUtxo utxo of
-        [(_, txOut)] -> case decodeStandingBidTerms txOut of
-          Just standingBidDatum ->
-            updateStateAndResponse $
-              Open
-                { standingBidTerms = standingBidDatum
-                }
-          Nothing -> abort'
+        [(txIn, txOut)] ->
+          case ( decodeStandingBidTerms txOut
+               , collateralUtxosOf delegateAddress
+               ) of
+            (Just standingBidDatum, [collateralUtxo]) -> do
+              let utxoState =
+                    MkOpenHeadUtxo
+                      { standingBidTerms = standingBidDatum
+                      , standingBidUtxo = (txIn, txOut)
+                      , collateralUtxo = collateralUtxo
+                      }
+              updateStateAndResponse $ Open utxoState previousCache
+            _ -> abort'
         _ -> abort'
       where
         abort' = abort $ ImpossibleHappened IncorrectStandingBidUtxoOnL2
+        collateralUtxosOf address =
+          UTxO.pairs $ UTxO.filter belongTo $ filterAdaOnlyUtxo utxo
+          where
+            belongTo (TxOut (ShelleyAddressInEra address') _ _ _) =
+              address == address'
+            belongTo _ = False
     commitCollateralAda = do
-      moneyToCommit <-
-        lift $
-          runL1RunnerInComposite $
-            filterAdaOnlyUtxo . filterNonFuelUtxo <$> actorTipUtxo
-      case extractSingleUtxo moneyToCommit of
-        -- FIXME: check commited amount
-        Just forCollateralUtxo -> do
-          lift $
-            runHydraInComposite $
-              sendCommand (Commit forCollateralUtxo)
-          return $ Right ()
-        Nothing -> return $ Left (PrerequisiteMissing AdaForCommit)
+      (forCollateralUtxo, _) <-
+        lift $ runL1RunnerInComposite createTwoMinAdaUtxo
+      sendCommand (Commit $ UTxO.fromPairs [forCollateralUtxo])
+      return $ Right ()
     getDelegateParty = do
       delegateActor <- askActor
       liftIO $ partyFor delegateActor

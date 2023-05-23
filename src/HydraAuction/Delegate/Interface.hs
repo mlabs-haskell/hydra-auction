@@ -9,6 +9,7 @@ module HydraAuction.Delegate.Interface (
   FrontendRequest (..),
   IncorrectRequestDataReason (..),
   ImposibleEvent (..),
+  OpenHeadUtxo (..),
   MissingPrerequisite (..),
   AbortReason (..),
   initialState,
@@ -73,11 +74,18 @@ wasOpened state = case state of
   Initialized _ (AwaitingCommits {}) -> False
   Initialized _ _ -> True
 
+data OpenHeadUtxo = MkOpenHeadUtxo
+  { standingBidTerms :: Maybe BidTerms
+  , standingBidUtxo :: (TxIn, TxOut CtxUTxO)
+  , -- Collateral of current delegate server
+    collateralUtxo :: (TxIn, TxOut CtxUTxO)
+  }
+  deriving stock (Eq, Show, Generic)
+  deriving anyclass (FromJSON, ToJSON)
+
 data InitializedState
   = AwaitingCommits {stangingBidWasCommited :: Bool}
-  | Open
-      { standingBidTerms :: Maybe BidTerms
-      }
+  | Open OpenHeadUtxo (Maybe AuctionTerms)
   | Closed
   | Finalized
   | AbortRequested AbortReason
