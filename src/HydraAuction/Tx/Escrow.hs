@@ -42,6 +42,7 @@ import Cardano.Api.UTxO qualified as UTxO
 -- Hydra auction imports
 import HydraAuction.Addresses (VoucherCS (..))
 import HydraAuction.OnChain (AuctionScript (..), policy, voucherAssetClass)
+import HydraAuction.OnChain.Common (stageToInterval)
 import HydraAuction.Tx.Common (
   scriptAddress,
   scriptPlutusScript,
@@ -54,6 +55,7 @@ import HydraAuction.Types (
   ApprovedBidders (..),
   ApprovedBiddersHash (..),
   AuctionEscrowDatum (..),
+  AuctionStage (..),
   AuctionState (..),
   AuctionTerms (..),
   BidDepositDatum (..),
@@ -135,7 +137,7 @@ announceAuction terms = do
         , outs = [announcedEscrowTxOut]
         , toMint = toForgeStateToken terms MintVoucher
         , changeAddress = sellerAddress
-        , validityBound = (Nothing, Just $ biddingStart terms)
+        , validityBound = stageToInterval terms AnnouncedStage
         }
 
 startBidding :: AuctionTerms -> ApprovedBidders -> L1Runner ()
@@ -210,7 +212,7 @@ startBidding terms approvedBidders = do
         , outs = [txOutStandingBid, txOutEscrow]
         , toMint = TxMintValueNone
         , changeAddress = sellerAddress
-        , validityBound = (Just $ biddingStart terms, Just $ biddingEnd terms)
+        , validityBound = stageToInterval terms BiddingStartedStage
         }
 
 bidderBuys :: AuctionTerms -> L1Runner ()
@@ -303,7 +305,7 @@ bidderBuys terms = do
             ]
         , toMint = TxMintValueNone
         , changeAddress = bidderAddress
-        , validityBound = (Just $ biddingEnd terms, Just $ voucherExpiry terms)
+        , validityBound = stageToInterval terms BiddingEndedStage
         }
 
 sellerReclaims :: AuctionTerms -> L1Runner ()
@@ -364,5 +366,5 @@ sellerReclaims terms = do
             ]
         , toMint = TxMintValueNone
         , changeAddress = sellerAddress
-        , validityBound = (Just $ voucherExpiry terms, Nothing)
+        , validityBound = stageToInterval terms VoucherExpiredStage
         }

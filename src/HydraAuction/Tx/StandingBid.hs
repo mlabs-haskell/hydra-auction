@@ -58,6 +58,7 @@ import HydraAuction.OnChain (
   standingBidValidator,
   voucherAssetClass,
  )
+import HydraAuction.OnChain.Common (stageToInterval)
 import HydraAuctionUtils.Monads.Actors (
   actorTipUtxo,
   addressAndKeys,
@@ -72,6 +73,7 @@ import HydraAuction.Tx.Common (
  )
 import HydraAuction.Types (
   ApprovedBidders (..),
+  AuctionStage (..),
   AuctionTerms (..),
   BidTerms (..),
   StandingBidDatum (..),
@@ -196,7 +198,7 @@ createNewBidTx terms submitingActor bidDatum = do
       , outs = [txOutStandingBid]
       , toMint = TxMintValueNone
       , changeAddress = submitterAddress
-      , validityBound = (Just $ biddingStart terms, Just $ biddingEnd terms)
+      , validityBound = stageToInterval terms BiddingStartedStage
       }
 
 createStandingBidDatum ::
@@ -275,7 +277,7 @@ cleanupTx terms = do
         , outs = []
         , toMint = toForgeStateToken terms BurnVoucher
         , changeAddress = actorAddress
-        , validityBound = (Just $ cleanup terms, Nothing)
+        , validityBound = stageToInterval terms CleanupStage
         }
   where
     standingBidWitness = mkInlinedDatumScriptWitness script Cleanup

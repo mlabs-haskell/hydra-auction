@@ -40,6 +40,7 @@ import Hydra.Cardano.Api (
 -- Hydra auction imports
 import HydraAuction.Addresses (VoucherCS (..))
 import HydraAuction.OnChain (AuctionScript (..), policy)
+import HydraAuction.OnChain.Common (stageToInterval)
 import HydraAuctionUtils.Monads.Actors (
   actorTipUtxo,
   addressAndKeys,
@@ -51,6 +52,7 @@ import HydraAuction.Tx.Common (
   scriptUtxos,
  )
 import HydraAuction.Types (
+  AuctionStage (..),
   AuctionTerms (..),
   BidDepositDatum (..),
   BidDepositRedeemer (..),
@@ -135,7 +137,7 @@ mkDeposit terms depositAmount = do
         , outs = [bidDepositTxOut]
         , toMint = TxMintValueNone
         , changeAddress = bidderAddress
-        , validityBound = (Nothing, Just $ biddingStart terms)
+        , validityBound = stageToInterval terms AnnouncedStage
         }
 
 losingBidderClaimDeposit :: AuctionTerms -> L1Runner ()
@@ -161,7 +163,7 @@ losingBidderClaimDeposit terms = do
         , outs = []
         , toMint = TxMintValueNone
         , changeAddress = bidderAddress
-        , validityBound = (Just $ biddingEnd terms, Nothing)
+        , validityBound = stageToInterval terms BiddingEndedStage
         }
   where
     depositScript = scriptPlutusScript Deposit terms
@@ -192,7 +194,7 @@ sellerClaimDepositFor terms bidderPkh = do
         , outs = []
         , toMint = TxMintValueNone
         , changeAddress = sellerAddress
-        , validityBound = (Just $ voucherExpiry terms, Nothing)
+        , validityBound = stageToInterval terms VoucherExpiredStage
         }
   where
     depositScript = scriptPlutusScript Deposit terms
@@ -220,7 +222,7 @@ cleanupDeposit terms = do
         , outs = []
         , toMint = TxMintValueNone
         , changeAddress = bidderAddress
-        , validityBound = (Just $ cleanup terms, Nothing)
+        , validityBound = stageToInterval terms CleanupStage
         }
   where
     depositScript = scriptPlutusScript Deposit terms

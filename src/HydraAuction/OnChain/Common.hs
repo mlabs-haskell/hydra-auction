@@ -15,7 +15,7 @@ import PlutusTx.Prelude
 import Prelude (div)
 
 -- Plutus imports
-import Plutus.V1.Ledger.Interval (Extended (..), Interval (..), UpperBound (..), contains, from, interval, to)
+import Plutus.V1.Ledger.Interval (Extended (..), Interval (..), LowerBound (..), UpperBound (..), contains, from, lowerBound, strictUpperBound, upperBound)
 import Plutus.V1.Ledger.Time (POSIXTime (..))
 import Plutus.V2.Ledger.Contexts (TxInfo (..))
 
@@ -30,11 +30,19 @@ minAuctionFee = 2_000_000
 {-# INLINEABLE stageToInterval #-}
 stageToInterval :: AuctionTerms -> AuctionStage -> Interval POSIXTime
 stageToInterval terms stage = case stage of
-  AnnouncedStage -> to (biddingStart terms)
-  BiddingStartedStage -> interval (biddingStart terms) (biddingEnd terms)
-  BiddingEndedStage -> interval (biddingEnd terms) (voucherExpiry terms)
-  VoucherExpiredStage -> interval (voucherExpiry terms) (cleanup terms)
+  AnnouncedStage -> strictTo (biddingStart terms)
+  BiddingStartedStage -> rightExclusiveInterval (biddingStart terms) (biddingEnd terms)
+  BiddingEndedStage -> rightExclusiveInterval (biddingEnd terms) (voucherExpiry terms)
+  VoucherExpiredStage -> rightExclusiveInterval (voucherExpiry terms) (cleanup terms)
   CleanupStage -> from (cleanup terms)
+
+{-# INLINEABLE strictTo #-}
+strictTo :: a -> Interval a
+strictTo s = Interval (LowerBound NegInf True) (strictUpperBound s)
+
+{-# INLINEABLE rightExclusiveInterval #-}
+rightExclusiveInterval :: a -> a -> Interval a
+rightExclusiveInterval s s' = Interval (lowerBound s) (strictUpperBound s')
 
 {-# INLINEABLE checkInterval #-}
 checkInterval :: AuctionTerms -> AuctionStage -> TxInfo -> Bool

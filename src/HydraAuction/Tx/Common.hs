@@ -71,7 +71,6 @@ currentAuctionStage terms = do
   let matchingStages = filter (member currentTime . stageToInterval terms) auctionStages
   return $ case matchingStages of
     [stage] -> stage
-    [_, stage] -> stage
     [] -> error "Impossible happend: no matching stages"
     _ -> error "Impossible happend: more than one matching stages"
 

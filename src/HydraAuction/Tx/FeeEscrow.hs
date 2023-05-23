@@ -10,7 +10,7 @@ import Control.Monad (void)
 
 -- Plutus imports
 import Plutus.V1.Ledger.Address (pubKeyHashAddress)
-import Plutus.V2.Ledger.Api (PubKeyHash)
+import Plutus.V2.Ledger.Api (PubKeyHash, always)
 
 -- Cardano node imports
 import Cardano.Api.UTxO qualified as UTxO
@@ -30,6 +30,7 @@ import Hydra.Cardano.Api (
 
 -- Hydra auction imports
 import HydraAuction.OnChain (AuctionScript (..))
+import HydraAuction.OnChain.Common (stageToInterval)
 import HydraAuction.Tx.Common (
   scriptPlutusScript,
   scriptUtxos,
@@ -89,7 +90,7 @@ distributeFee terms = do
         , outs = delegateOuts
         , toMint = TxMintValueNone
         , changeAddress = actorAddress
-        , validityBound = (Nothing, Nothing)
+        , validityBound = always
         }
   where
     feeScript = scriptPlutusScript FeeEscrow terms

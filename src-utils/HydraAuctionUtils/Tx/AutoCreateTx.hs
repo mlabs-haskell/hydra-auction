@@ -18,7 +18,7 @@ import Data.Foldable (Foldable (toList))
 import Cardano.Api.UTxO qualified as UTxO
 
 -- Plutus imports
-import Plutus.V2.Ledger.Api (POSIXTime)
+import Plutus.V2.Ledger.Api (Extended (..), Interval (..), LowerBound (..), POSIXTime (..), UpperBound (..))
 
 -- Hydra imports
 import Hydra.Cardano.Api (
@@ -36,6 +36,8 @@ import Hydra.Cardano.Api (
   TxIn,
   TxMintValue,
   TxOut,
+  TxValidityLowerBound,
+  TxValidityUpperBound,
   UTxO,
   WitCtxTxIn,
   Witness,
@@ -95,8 +97,23 @@ data AutoCreateParams = AutoCreateParams
   , outs :: [TxOut CtxTx]
   , toMint :: TxMintValue BuildTx
   , changeAddress :: Address ShelleyAddr
-  , validityBound :: (Maybe POSIXTime, Maybe POSIXTime)
+  , validityBound :: Interval POSIXTime
   }
+
+type TxValidityRange = (TxValidityLowerBound, TxValidityUpperBound)
+
+intervalToValidityBound :: (MonadBlockchainParams m) => Interval POSIXTime -> m TxValidityRange
+intervalToValidityBound (Interval l u) = (,) <$> lowerBoundToValidityBound l <*> upperBoundToValidityBound u
+
+lowerBoundToValidityBound :: (MonadBlockchainParams m) => LowerBound POSIXTime -> m TxValidityLowerBound
+lowerBoundToValidityBound (LowerBound NegInf _) = pure TxValidityNoLowerBound
+lowerBoundToValidityBound (LowerBound (Finite n) c) = TxValidityLowerBound <$> toSlotNo (POSIXTime $ getPOSIXTime n + toInteger (fromEnum (not c)))
+lowerBoundToValidityBound (LowerBound PosInf _) = error "Unable to create posinf lower bound"
+
+upperBoundToValidityBound :: (MonadBlockchainParams m) => UpperBound POSIXTime -> m TxValidityUpperBound
+upperBoundToValidityBound (UpperBound NegInf _) = error "Unable to create neginf upper bound"
+upperBoundToValidityBound (UpperBound (Finite n) c) = TxValidityUpperBound <$> toSlotNo (POSIXTime $ getPOSIXTime n - toInteger (fromEnum (not c)))
+upperBoundToValidityBound (UpperBound PosInf _) = pure TxValidityNoUpperBound
 
 autoCreateTx ::
   (MonadFail m, MonadBlockchainParams m) =>
@@ -104,16 +121,7 @@ autoCreateTx ::
   m Tx
 -- FIXME: more docs on usage
 autoCreateTx (AutoCreateParams {..}) = do
-  let (lowerBound', upperBound') = validityBound
-  lowerBound <- case lowerBound' of
-    Nothing -> pure TxValidityNoLowerBound
-    Just x -> TxValidityLowerBound <$> toSlotNo x
-  -- FIXUP: more elegant solution to prevent empty interval
-  let hackInc x = if x == 0 then x + 1 else x
-  upperBound <- case upperBound' of
-    Nothing -> pure TxValidityNoUpperBound
-    Just x -> TxValidityUpperBound . hackInc <$> toSlotNo x
-
+  (lowerBound, upperBound) <- intervalToValidityBound validityBound
   MkBlockchainParams {protocolParameters} <-
     queryBlockchainParams
   body <-

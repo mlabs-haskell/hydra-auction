@@ -7,6 +7,8 @@ import Prelude
 import Data.Map qualified as Map
 
 -- Plutus imports
+
+import Plutus.V1.Ledger.Interval (always)
 import Plutus.V1.Ledger.Value (assetClassValue, valueOf)
 import Plutus.V2.Ledger.Api (getMintingPolicy, txOutValue)
 
@@ -92,5 +94,5 @@ mintOneTestNFT = do
       , outs = [txOut]
       , toMint = toMint
       , changeAddress = actorAddress
-      , validityBound = (Nothing, Nothing)
+      , validityBound = always
       }
