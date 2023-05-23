@@ -8,6 +8,7 @@ module HydraAuction.OnChain.Common (
   checkInterval,
   secondsLeftInInterval,
   stageToInterval,
+  strictTo,
 ) where
 
 -- Prelude imports
