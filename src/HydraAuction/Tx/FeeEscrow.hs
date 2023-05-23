@@ -30,7 +30,6 @@ import Hydra.Cardano.Api (
 
 -- Hydra auction imports
 import HydraAuction.OnChain (AuctionScript (..))
-import HydraAuction.OnChain.Common (stageToInterval)
 import HydraAuction.Tx.Common (
   scriptPlutusScript,
   scriptUtxos,

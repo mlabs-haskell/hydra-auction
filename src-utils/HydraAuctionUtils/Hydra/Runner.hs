@@ -150,7 +150,7 @@ instance MonadBlockchainParams HydraRunner where
     return fakeBlockchainParams
 
   -- Hydra slot is always 0, so we just return the only working validity bound
-  convertValidityBound (_, _) =
+  convertValidityBound _ =
     return (TxValidityNoLowerBound, TxValidityUpperBound 1)
 
 matchingHydraEvent :: Value -> Maybe HydraEvent

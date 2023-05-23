@@ -109,7 +109,8 @@ bidderBuysTest = mkAssertion $ do
     -- Place bid on L1
 
     liftIO $
-      executeL1RunnerWithNodeAs node bidder1 $
+      executeL1RunnerWithNodeAs node bidder1 $ do
+        waitUntil $ biddingStart terms
         newBid terms $
           correctBidNo terms 0
 

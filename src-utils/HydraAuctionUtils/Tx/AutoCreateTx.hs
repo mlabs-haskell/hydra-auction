@@ -18,7 +18,7 @@ import Data.Foldable (Foldable (toList))
 import Cardano.Api.UTxO qualified as UTxO
 
 -- Plutus imports
-import Plutus.V2.Ledger.Api (Extended (..), Interval (..), LowerBound (..), POSIXTime (..), UpperBound (..))
+import Plutus.V2.Ledger.Api (Interval, POSIXTime)
 
 -- Hydra imports
 import Hydra.Cardano.Api (
@@ -36,8 +36,6 @@ import Hydra.Cardano.Api (
   TxIn,
   TxMintValue,
   TxOut,
-  TxValidityLowerBound,
-  TxValidityUpperBound,
   UTxO,
   WitCtxTxIn,
   Witness,
@@ -95,21 +93,6 @@ data AutoCreateParams = AutoCreateParams
   , changeAddress :: Address ShelleyAddr
   , validityBound :: Interval POSIXTime
   }
-
-type TxValidityRange = (TxValidityLowerBound, TxValidityUpperBound)
-
-intervalToValidityBound :: (MonadBlockchainParams m) => Interval POSIXTime -> m TxValidityRange
-intervalToValidityBound (Interval l u) = (,) <$> lowerBoundToValidityBound l <*> upperBoundToValidityBound u
-
-lowerBoundToValidityBound :: (MonadBlockchainParams m) => LowerBound POSIXTime -> m TxValidityLowerBound
-lowerBoundToValidityBound (LowerBound NegInf _) = pure TxValidityNoLowerBound
-lowerBoundToValidityBound (LowerBound (Finite n) c) = TxValidityLowerBound <$> toSlotNo (POSIXTime $ getPOSIXTime n + toInteger (fromEnum (not c)))
-lowerBoundToValidityBound (LowerBound PosInf _) = error "Unable to create posinf lower bound"
-
-upperBoundToValidityBound :: (MonadBlockchainParams m) => UpperBound POSIXTime -> m TxValidityUpperBound
-upperBoundToValidityBound (UpperBound NegInf _) = error "Unable to create neginf upper bound"
-upperBoundToValidityBound (UpperBound (Finite n) c) = TxValidityUpperBound <$> toSlotNo (POSIXTime $ getPOSIXTime n - toInteger (fromEnum (not c)))
-upperBoundToValidityBound (UpperBound PosInf _) = pure TxValidityNoUpperBound
 
 autoCreateTx ::
   (MonadFail m, MonadBlockchainParams m) =>
