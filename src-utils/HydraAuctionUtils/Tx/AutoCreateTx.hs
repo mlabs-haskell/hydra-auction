@@ -63,10 +63,6 @@ import Hydra.Cardano.Api (
   pattern TxScriptValidityNone,
   pattern TxTotalCollateralNone,
   pattern TxUpdateProposalNone,
-  pattern TxValidityLowerBound,
-  pattern TxValidityNoLowerBound,
-  pattern TxValidityNoUpperBound,
-  pattern TxValidityUpperBound,
   pattern TxWithdrawalsNone,
   pattern WitnessPaymentKey,
  )
@@ -121,7 +117,8 @@ autoCreateTx ::
   m Tx
 -- FIXME: more docs on usage
 autoCreateTx (AutoCreateParams {..}) = do
-  (lowerBound, upperBound) <- intervalToValidityBound validityBound
+  (lowerBound, upperBound) <- convertValidityBound validityBound
+
   MkBlockchainParams {protocolParameters} <-
     queryBlockchainParams
   body <-

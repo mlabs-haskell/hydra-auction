@@ -5,7 +5,7 @@ import Prelude
 
 -- Haskell imports
 
-import Control.Monad (replicateM_)
+import Control.Monad (replicateM_, void)
 import Control.Monad.Trans (MonadIO (..))
 import Data.Map qualified as Map
 
@@ -18,6 +18,14 @@ import Hydra.Prelude (ask)
 
 -- Hydra auction imports
 
+import HydraAuction.Delegate (abort)
+import HydraAuction.Delegate.Interface (
+  AbortReason (..),
+  DelegateResponse (..),
+  DelegateState (..),
+  InitializedState (..),
+  ResponseReason (..),
+ )
 import HydraAuction.Tx.Escrow (
   bidderBuys,
  )
@@ -25,6 +33,7 @@ import HydraAuction.Tx.StandingBid (newBid)
 import HydraAuction.Tx.TermsConfig (AuctionTermsConfig (..))
 import HydraAuction.Types (AuctionTerms (..))
 import HydraAuctionUtils.Fixture (Actor (..), ActorKind (..), actorsByKind)
+import HydraAuctionUtils.Hydra.Monad (AwaitedHydraEvent (..))
 import HydraAuctionUtils.L1.Runner (
   executeL1RunnerWithNodeAs,
   initWallet,
@@ -35,6 +44,7 @@ import HydraAuctionUtils.L1.Runner.Time (waitUntil)
 import EndToEnd.HydraUtils (
   EmulatorContext (..),
   EmulatorDelegate (..),
+  runCompositeForAllDelegates,
   runCompositeForDelegate,
   runEmulatorInTest,
  )
@@ -53,6 +63,8 @@ testSuite =
     "Ledger-L2"
     [ testCase "bidder-buys" bidderBuysTest
     , testCase "multiple-utxos-to-commit" multipleUtxosToCommitTest
+    , testCase "early-abort" earlyAbort
+    , testCase "late-abort" lateAbort
     ]
 
 config :: AuctionTermsConfig
@@ -174,3 +186,59 @@ multipleUtxosToCommitTest = mkAssertion $ do
     -- Move and commit
 
     emulateCommiting headId terms
+
+-- Abortion testing
+
+earlyAbort :: Assertion
+earlyAbort = mkAssertion $ do
+  runEmulatorInTest $ do
+    headId <- emulateDelegatesStart
+
+    runCompositeForDelegate Main $ do
+      [_response] <- abort RequiredHydraRequestFailed
+      return ()
+
+    void $
+      runCompositeForAllDelegates $
+        delegateStepOnExpectedHydraEvent
+          Any
+          [CurrentDelegateState Updated $ Initialized headId Aborted]
+
+lateAbort :: Assertion
+lateAbort = mkAssertion $ do
+  runEmulatorInTest $ do
+    MkEmulatorContext {l1Node} <- ask
+
+    headId <- emulateDelegatesStart
+
+    actors@[seller, _bidder1, _bidder2] <- return [Alice, Bob, Carol]
+    liftIO $
+      executeL1RunnerWithNodeAs l1Node seller $
+        mapM_ (initWallet 200_000_000) actors
+
+    -- Create
+
+    terms <-
+      liftIO $
+        executeL1RunnerWithNodeAs l1Node seller $
+          createTermsWithTestNFT config headId
+    _ <-
+      liftIO $
+        executeL1RunnerWithNodeAs l1Node seller $
+          announceAndStartBidding terms
+
+    -- Move and commit
+
+    emulateCommiting headId terms
+
+    -- Abort
+
+    runCompositeForDelegate Main $ do
+      [_response] <- abort RequiredHydraRequestFailed
+      return ()
+
+    void $
+      runCompositeForAllDelegates $
+        delegateStepOnExpectedHydraEvent
+          Any
+          [CurrentDelegateState Updated $ Initialized headId Closed]

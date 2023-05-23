@@ -13,6 +13,7 @@ module HydraAuction.Delegate.Interface (
   AbortReason (..),
   initialState,
   isFinalState,
+  wasOpened,
 ) where
 
 -- Prelude imports
@@ -65,6 +66,13 @@ isFinalState :: DelegateState -> Bool
 isFinalState (Initialized _ state) =
   state `elem` [Finalized, Aborted]
 isFinalState NotInitialized = False
+
+wasOpened :: DelegateState -> Bool
+wasOpened state = case state of
+  NotInitialized -> False
+  Initialized _ NotYetOpen -> False
+  Initialized _ (HasCommit {}) -> False
+  Initialized _ _ -> True
 
 data InitializedState
   = NotYetOpen
