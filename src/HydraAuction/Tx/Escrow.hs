@@ -14,8 +14,8 @@ import Prelude
 import Control.Monad (void, when)
 
 -- Plutus imports
-import Plutus.V1.Ledger.Address (pubKeyHashAddress)
-import Plutus.V1.Ledger.Value (
+import PlutusLedgerApi.V1.Address (pubKeyHashAddress)
+import PlutusLedgerApi.V1.Value (
   CurrencySymbol (..),
   assetClassValue,
   unAssetClass,

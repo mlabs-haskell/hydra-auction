@@ -59,5 +59,5 @@
 ## Plutus scripts
 
 * Check out https://plutus.readthedocs.io/en/latest/troubleshooting.html
-* Modules `Api` and `Context` should be imported from `Plutus.V2.Ledger`,
+* Modules `Api` and `Context` should be imported from `PlutusLedgerApi.V2`,
   not `V1`.

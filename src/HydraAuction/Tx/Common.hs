@@ -2,6 +2,7 @@ module HydraAuction.Tx.Common (
   scriptUtxos,
   scriptAddress,
   scriptPlutusScript,
+  createTwoMinAdaUtxo,
   currentAuctionStage,
   toForgeStateToken,
   scriptSingleUtxo,
@@ -11,15 +12,12 @@ module HydraAuction.Tx.Common (
 import Prelude
 
 -- Haskell imports
-import Control.Monad (when)
+import Control.Monad (void, when)
 import Control.Monad.TimeMachine (MonadTime)
+import Control.Monad.Trans (MonadIO)
 
 -- Plutus imports
-import Plutus.V1.Ledger.Interval (member)
-import Plutus.V2.Ledger.Api (
-  getMintingPolicy,
-  getValidator,
- )
+import PlutusLedgerApi.V1.Interval (member)
 
 -- Cardano imports
 import Cardano.Api.UTxO qualified as UTxO
@@ -34,8 +32,16 @@ import Hydra.Cardano.Api (
   TxMintValue,
   TxOut,
   fromPlutusScript,
+  lovelaceToValue,
+  txOutValue,
   pattern PlutusScript,
+  pattern ReferenceScriptNone,
+  pattern ShelleyAddressInEra,
+  pattern TxMintValueNone,
+  pattern TxOut,
+  pattern TxOutDatumNone,
  )
+import Hydra.Chain.Direct.Util (isMarkedOutput)
 
 -- Hydra auction imports
 
@@ -57,12 +63,26 @@ import HydraAuction.Types (
   auctionStages,
  )
 import HydraAuctionUtils.Monads (
+  MonadCardanoClient,
   MonadNetworkId (..),
   MonadQueryUtxo (..),
+  MonadTrace,
   UtxoQuery (..),
  )
+import HydraAuctionUtils.Monads.Actors (
+  MonadHasActor,
+  actorTipUtxo,
+  addressAndKeys,
+ )
 import HydraAuctionUtils.Time (currentPlutusPOSIXTime)
-import HydraAuctionUtils.Tx.Build (mintedTokens, tokenToAsset)
+import HydraAuctionUtils.Tx.AutoCreateTx (
+  AutoCreateParams (..),
+  autoSubmitAndAwaitTx,
+ )
+import HydraAuctionUtils.Tx.Build (minLovelace, mintedTokens, tokenToAsset)
+import HydraAuctionUtils.Tx.Utxo (
+  filterAdaOnlyUtxo,
+ )
 
 currentAuctionStage ::
   (MonadTime timedMonad) => AuctionTerms -> timedMonad AuctionStage
@@ -78,7 +98,7 @@ currentAuctionStage terms = do
 toForgeStateToken :: AuctionTerms -> VoucherForgingRedeemer -> TxMintValue BuildTx
 toForgeStateToken terms redeemer =
   mintedTokens
-    (fromPlutusScript $ getMintingPolicy $ policy terms)
+    (fromPlutusScript $ policy terms)
     redeemer
     [(tokenToAsset $ stateTokenKindToTokenName Voucher, num)]
   where
@@ -86,8 +106,44 @@ toForgeStateToken terms redeemer =
       MintVoucher -> 1
       BurnVoucher -> -1
 
+createTwoMinAdaUtxo ::
+  (MonadIO m, MonadCardanoClient m, MonadTrace m, MonadFail m, MonadHasActor m) =>
+  m ((TxIn, TxOut CtxUTxO), (TxIn, TxOut CtxUTxO))
+createTwoMinAdaUtxo = do
+  (actorAddress, _, actorSk) <- addressAndKeys
+
+  -- FIXUP: cover no money case, use single utxo
+  actorMoneyUtxo <-
+    UTxO.filter (not . isMarkedOutput) . filterAdaOnlyUtxo <$> actorTipUtxo
+
+  void $
+    autoSubmitAndAwaitTx $
+      AutoCreateParams
+        { signedUtxos = [(actorSk, actorMoneyUtxo)]
+        , additionalSigners = []
+        , referenceUtxo = mempty
+        , witnessedUtxos = []
+        , collateral = Nothing
+        , outs = [minAdaOut actorAddress, minAdaOut actorAddress]
+        , toMint = TxMintValueNone
+        , changeAddress = actorAddress
+        , validityBound = (Nothing, Nothing)
+        }
+
+  (utxo1 : utxo2 : _) <-
+    UTxO.pairs . UTxO.filter (\x -> txOutValue x == lovelaceToValue minLovelace) . filterAdaOnlyUtxo <$> actorTipUtxo
+
+  return (utxo1, utxo2)
+  where
+    minAdaOut actorAddress =
+      TxOut
+        (ShelleyAddressInEra actorAddress)
+        (lovelaceToValue minLovelace)
+        TxOutDatumNone
+        ReferenceScriptNone
+
 scriptPlutusScript :: AuctionScript -> AuctionTerms -> PlutusScript
-scriptPlutusScript script terms = fromPlutusScript $ getValidator $ scriptValidatorForTerms script terms
+scriptPlutusScript script terms = fromPlutusScript $ scriptValidatorForTerms script terms
 
 scriptAddress :: MonadNetworkId m => AuctionScript -> AuctionTerms -> m (Address ShelleyAddr)
 scriptAddress script terms =

@@ -11,22 +11,26 @@ import PlutusTx.Prelude
 
 -- Plutus imports
 
-import Plutus.V1.Ledger.Value (assetClass, assetClassValueOf, isZero)
-import Plutus.V2.Ledger.Api (
-  Address,
+import PlutusLedgerApi.V1.Address (Address)
+import PlutusLedgerApi.V1.Scripts (Datum (getDatum))
+import PlutusLedgerApi.V1.Value (
   CurrencySymbol (..),
-  OutputDatum (..),
   TokenName (..),
   Value (..),
-  fromBuiltinData,
-  getDatum,
+  assetClass,
+  assetClassValueOf,
+  isZero,
  )
-import Plutus.V2.Ledger.Contexts (
+import PlutusLedgerApi.V2.Contexts (
   TxInfo (..),
   TxOut (..),
   findDatum,
  )
+import PlutusLedgerApi.V2.Tx (
+  OutputDatum (..),
+ )
 import PlutusTx qualified
+import PlutusTx.IsData.Class (fromBuiltinData)
 
 {-# INLINEABLE decodeOutputDatum #-}
 decodeOutputDatum :: PlutusTx.FromData a => TxInfo -> TxOut -> Maybe a
@@ -50,7 +54,7 @@ isNotAdaOnlyOutput output =
   let value = txOutValue output
    in length (getValue value) > 1
 
--- XXX: Plutus.V1.Ledger.Ada module requires more dependencies
+-- XXX: PlutusLedgerApi.V1.Ada module requires more dependencies
 lovelaceOfOutput :: TxOut -> Integer
 lovelaceOfOutput output = assetClassValueOf (txOutValue output) ac
   where

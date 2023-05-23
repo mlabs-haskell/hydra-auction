@@ -40,7 +40,7 @@ import Hydra.Cardano.Api (
  )
 
 -- Plutus imports
-import Plutus.V1.Ledger.Crypto (PubKeyHash)
+import PlutusLedgerApi.V1.Crypto (PubKeyHash)
 
 -- Hydra Auction imports
 import Hydra.Crypto (AsType (AsHydraKey), HydraKey)
@@ -130,7 +130,7 @@ getActorPubKeyHash actor = do
   return $ toPlutusKeyHash $ verificationKeyHash actorVk
 
 getActorsPubKeyHash :: [Actor] -> IO [PubKeyHash]
-getActorsPubKeyHash actors = sequence $ getActorPubKeyHash <$> actors
+getActorsPubKeyHash = mapM getActorPubKeyHash
 
 actorFromPkh :: PubKeyHash -> IO Actor
 actorFromPkh pkh = do

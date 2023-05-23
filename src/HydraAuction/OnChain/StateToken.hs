@@ -6,9 +6,8 @@ module HydraAuction.OnChain.StateToken (StateTokenKind (..), stateTokenKindToTok
 import PlutusTx.Prelude
 
 -- Plutus imports
-import Plutus.V1.Ledger.Value (Value, singleton)
-import Plutus.V2.Ledger.Api (TokenName (..))
-import Plutus.V2.Ledger.Contexts (ScriptContext, TxInfo, ownCurrencySymbol, scriptContextTxInfo, txInInfoOutRef, txInfoInputs, txInfoMint, txInfoOutputs, txOutAddress)
+import PlutusLedgerApi.V1.Value (TokenName (..), Value, singleton)
+import PlutusLedgerApi.V2.Contexts (ScriptContext, TxInfo, ownCurrencySymbol, scriptContextTxInfo, txInInfoOutRef, txInfoInputs, txInfoMint, txInfoOutputs, txOutAddress)
 
 -- Hydra auction imports
 import HydraAuction.Addresses (EscrowAddress (..), VoucherCS (..))

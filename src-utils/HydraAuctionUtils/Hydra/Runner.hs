@@ -29,7 +29,7 @@ import Data.Aeson.Lens (key)
 import Data.Aeson.Types (parseMaybe)
 import Data.Map qualified as Map
 import Data.Monoid (First)
-import GHC.Natural (Natural)
+import GHC.Natural (Natural, naturalToInt)
 import Test.HUnit.Lang (HUnitFailure)
 
 -- Cardano imports
@@ -113,10 +113,9 @@ instance MonadHydra HydraRunner where
 
   waitForHydraEvent' ::
     Natural -> AwaitedHydraEvent -> HydraRunner (Maybe HydraEvent)
-  waitForHydraEvent' timeout awaitedSpec = do
+  waitForHydraEvent' timeoutSeconds awaitedSpec = do
     MkHydraExecutionContext {node} <- ask
     traceMessage $ AwaitingHydraEvent awaitedSpec
-    -- FIXME: raise custom errors
     mEvent <- liftIO $ try $ waitMatch timeout node matchingHandler
     case mEvent of
       Left (_ :: HUnitFailure) -> return Nothing
@@ -124,6 +123,7 @@ instance MonadHydra HydraRunner where
         traceMessage $ AwaitedHydraEvent event
         return $ Just event
     where
+      timeout = fromInteger $ toInteger $ naturalToInt timeoutSeconds
       matchingHandler value = do
         event <- matchingHydraEvent value
         guard $ matchingPredicate event
@@ -161,7 +161,8 @@ matchingHydraEvent value =
       HeadIsInitializing <$> retrieveField "headId"
     Just "TxSeen" -> TxSeen <$> retrieveField "tx"
     Just "TxValid" -> TxValid <$> retrieveField "tx"
-    Just "TxInvalid" -> TxInvalid <$> retrieveField "tx"
+    Just "TxInvalid" ->
+      TxInvalid <$> retrieveField "tx" <*> retrieveField "utxo"
     Just "InvlidInput" ->
       InvlidInput <$> retrieveField "reason" <*> retrieveField "input"
     Just "PostTxOnChainFailed" ->

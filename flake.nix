@@ -11,21 +11,11 @@
   inputs = {
     # when you upgrade `hydra` input remember to also upgrade revs under
     # `source-repository-package`s in `cabal.project`
-    hydra = {
-      url = "ssh://git@github.com/input-output-hk/hydra?ref=df3f84863028ec4ab5f09b6ac2423b10cbc8d988";
-      type = "git";
-      submodules = true;
-    };
-
+    hydra.url = "github:input-output-hk/hydra/664d298049e74fde69b27538f15fa3215b5436dd";
     haskellNix.url = "github:input-output-hk/haskell.nix";
     # The "empty-flake" is needed until the following is fixed
-    # https://github.com/input-output-hk/cardano-node/issues/4525 
-    cardano-node = {
-      url = "github:input-output-hk/cardano-node/a42ca8801ea31cb0b23a3f53dcc063ce4a5a0be5";
-      inputs.cardano-node-workbench.follows = "empty";
-      inputs.node-measured.follows = "empty";
-    };
-
+    # https://github.com/input-output-hk/cardano-node/issues/4525
+    cardano-node.follows = "hydra/cardano-node";
     empty.url = "github:mlabs-haskell/empty-flake";
     iohk-nix.follows = "hydra/iohk-nix";
     CHaP.follows = "hydra/CHaP";
@@ -69,7 +59,7 @@
               shell.tools = {
                 cabal = "3.8.1.0";
                 fourmolu = "0.9.0.0";
-                haskell-language-server = "latest";
+                # haskell-language-server = "latest";
               };
               shell.buildInputs = with final; [
                 nixpkgs-fmt

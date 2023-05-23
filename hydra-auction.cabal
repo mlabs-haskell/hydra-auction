@@ -40,6 +40,7 @@ common common-lang
     -Wall -Wcompat -Wincomplete-record-updates
     -Wincomplete-uni-patterns -Wredundant-constraints
     -Wmissing-export-lists -Wmissing-deriving-strategies
+    -Wno-redundant-constraints
 
   if !flag(dev)
     ghc-options: -Werror
@@ -151,9 +152,9 @@ executable hydra-auction
     , bech32
     , bech32-th
     , bytestring
-    , cardano-api                     >=1.35.4
-    , cardano-binary                  ==1.5.0
-    , cardano-crypto-class            ==2.0.0
+    , cardano-api
+    , cardano-binary
+    , cardano-crypto-class
     , cardano-ledger-alonzo
     , cardano-ledger-alonzo-test
     , cardano-ledger-babbage
@@ -165,7 +166,7 @@ executable hydra-auction
     , cardano-ledger-shelley-ma-test
     , cardano-ledger-shelley-test
     , cardano-prelude
-    , cardano-slotting                ==0.1.0.0
+    , cardano-slotting
     , cborg
     , containers
     , data-default
@@ -178,11 +179,10 @@ executable hydra-auction
     , hydra-test-utils
     , optparse-applicative
     , ouroboros-network
-    , parsec
     , plutus-tx
     , QuickCheck
     , serialise
-    , strict-containers               ==0.1.0.0
+    , strict-containers               >=0.1.0.0
     , text
 
   hs-source-dirs: app
@@ -201,7 +201,6 @@ executable hydra-auction-delegate
     , hydra-auction
     , hydra-auction-utils
     , optparse-applicative
-    , plutus-ledger-api
 
 library
   import:          common-lang

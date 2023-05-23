@@ -77,6 +77,7 @@ config =
     }
 
 -- Includes testing L1 biding before and after L2 moves
+-- Inculdes testing of placing bid by same delegate who moved standing bid
 bidderBuysTest :: Assertion
 bidderBuysTest = mkAssertion $ do
   runEmulatorInTest $ do
@@ -128,6 +129,9 @@ bidderBuysTest = mkAssertion $ do
     runCompositeForDelegate Second $
       placeNewBidOnL2AndCheck headId terms bidder1 $
         correctBidNo terms 3
+    runCompositeForDelegate Main $
+      placeNewBidOnL2AndCheck headId terms bidder1 $
+        correctBidNo terms 4
 
     -- Close Head
 
@@ -138,7 +142,7 @@ bidderBuysTest = mkAssertion $ do
     liftIO $
       executeL1RunnerWithNodeAs node bidder2 $
         newBid terms $
-          correctBidNo terms 4
+          correctBidNo terms 5
 
     -- Got lot
 

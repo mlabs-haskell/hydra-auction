@@ -16,8 +16,9 @@ import Data.Aeson (FromJSON, ToJSON)
 import GHC.Generics (Generic)
 
 -- Plutus imports
-import Plutus.V1.Ledger.Value (CurrencySymbol)
-import Plutus.V2.Ledger.Api (Address)
+
+import PlutusLedgerApi.V1.Address (Address)
+import PlutusLedgerApi.V1.Value (CurrencySymbol)
 import PlutusTx qualified
 
 -- HydraAuction imports

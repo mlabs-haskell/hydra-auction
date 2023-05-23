@@ -15,7 +15,7 @@ import Control.Monad (forM_, void)
 import Data.IORef (IORef, readIORef)
 
 -- Plutus imports
-import Plutus.V1.Ledger.Address (pubKeyHashAddress)
+import PlutusLedgerApi.V1.Address (pubKeyHashAddress)
 
 -- Hydra imports
 
@@ -148,7 +148,7 @@ handleCliAction sendRequestToDelegate currentDelegateStateRef userAction = do
       terms <- auctionTermsFor auctionName
       winningActor <- do
         winningBidder <- currentWinningBidder terms
-        liftIO $ sequence $ actorFromPkh <$> winningBidder
+        liftIO $ mapM actorFromPkh winningBidder
       liftIO $ print winningActor
     ShowActorsMinDeposit auctionName minDeposit -> do
       terms <- auctionTermsFor auctionName
@@ -196,14 +196,14 @@ handleCliAction sendRequestToDelegate currentDelegateStateRef userAction = do
       terms <- auctionTermsFor auctionName
       doOnMatchingStage terms BiddingStartedStage $ do
         mUtxo <- scriptSingleUtxo StandingBid terms
-        (standingBidTxIn, _) <- case mUtxo of
+        stadingBidUtxo <- case mUtxo of
           Just x -> return x
           Nothing -> fail "No Standing bid found"
         liftIO $
           sendRequestToDelegate $
             DelegateInterface.CommitStandingBid
               { auctionTerms = terms
-              , utxoToCommit = standingBidTxIn
+              , utxoToCommit = stadingBidUtxo
               }
     NewBid auctionName bidAmount layer -> do
       CliEnhancedAuctionTerms {terms, sellerActor} <-

@@ -20,11 +20,12 @@ import Data.Map qualified as Map
 import GHC.Generics (Generic)
 
 -- Plutus imports
-import Plutus.V1.Ledger.Crypto (PubKeyHash)
-import Plutus.V1.Ledger.Time (POSIXTime (..))
-import Plutus.V1.Ledger.Value (AssetClass, CurrencySymbol (..), unCurrencySymbol)
-import Plutus.V2.Ledger.Api (fromBuiltin)
-import Plutus.V2.Ledger.Contexts (TxOutRef)
+
+import PlutusLedgerApi.V1.Crypto (PubKeyHash)
+import PlutusLedgerApi.V1.Time (POSIXTime (..))
+import PlutusLedgerApi.V1.Value (AssetClass, CurrencySymbol (..))
+import PlutusLedgerApi.V2.Contexts (TxOutRef)
+import PlutusTx.Builtins (fromBuiltin)
 
 -- Hydra imports
 import Hydra.Cardano.Api (TxIn, toPlutusTxOutRef)
