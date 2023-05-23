@@ -112,14 +112,14 @@ This is ncurses CLI, which shows current state of auction and Head.
    - the next bid should always be higher than the previous bid + `configMinimumBidIncrement`
 
    For example place the first bid from Bob's REPL:
-   `new-bid -n demo -b 8`, where the number in `8` is in ADA.
+   `new-bid -n demo -b 100`, where the number in `100` is in ADA.
 5. To move auction state on L2, run `move-to-l2 -n demo`.
 
    It will take some time for Head to do this,
    while placing bid on open Head is nearly instantaneous.
    You can track Head opening progress looking on `monitor` terminal.
 
-   To place a bid on L2 run `new-bid-l2 -n demo -b 8`.
+   To place a bid on L2 run `new-bid-l2 -n demo -b 100`.
    Args/requirements are exactly the same as for L1 case.
 6. (a) After the `BiddingEndedStage` has started,
    Head will be closed automatically.
