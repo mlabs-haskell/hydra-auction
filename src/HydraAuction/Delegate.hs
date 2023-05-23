@@ -102,7 +102,7 @@ delegateFrontendRequestStep (clientId, request) =
       let (txIn, txOut) = utxoToCommit
       state <- get
       case state of
-        Initialized headId NotYetOpen ->
+        Initialized headId (AwaitingCommits {stangingBidWasCommited = False}) ->
           validatingAuctionTerms headId auctionTerms $ do
             -- FIXME: Waiting for support by Hydra
             lift $
@@ -173,56 +173,44 @@ delegateEventStep event = case event of
         sendCommand Close
         return []
   AuctionStageStarted _ -> return []
-  HydraEvent (CommandFailed commandName)
-    -- This is okay cuz these are concurrent requests,
-    -- only one of which will be fulfilled
-    | commandName `elem` ["Init", "Fanout"] -> return []
-    -- Preventing infinite loop of Abortions
-    | commandName `elem` ["Abort", "Close"] -> do
-        -- TODO: use logs
-        liftIO $ putStrLn "Abort/Close failed"
-        return []
-    | otherwise -> abort RequiredHydraRequestFailed
-  HydraEvent hydraEvent
-    | notExpected -> abort RequiredHydraRequestFailed
-    where
-      notExpected = case hydraEvent of
-        InvlidInput {} -> True
-        PostTxOnChainFailed {} -> True
-        _ -> False
   HydraEvent Committed {utxo, party} -> do
     state <- get
-    case UTxO.pairs $ filterNotAdaOnlyUtxo utxo of
-      [(_, txOut)] -> do
-        delegateActor <- askActor
-        delegateParty <- liftIO $ partyFor delegateActor
-        case (party == delegateParty, isStandingBidTx txOut, state) of
-          (False, True, Initialized _ NotYetOpen) ->
-            commitCollateralAda
-          (False, True, Initialized _ HasCommit) ->
-            abort $ ImpossibleHappened IncorrectStandingBidUtxoOnL2
-          (False, False, Initialized _ NotYetOpen) ->
-            abort $ ImpossibleHappened IncorrectStandingBidUtxoOnL2
-          (False, False, Initialized _ HasCommit) ->
-            if not $ txOutIsAdaOnly txOut
-              then abort $ ImpossibleHappened IncorrectStandingBidUtxoOnL2
-              else return []
-          (True, _, Initialized _ NotYetOpen) ->
-            updateStateAndResponse HasCommit
-          (True, _, Initialized _ HasCommit) -> return []
-          _ -> return [] -- Other stages shoud not be possible
-      [] -> return [] -- Reaction to collateral commit
-      _ ->
-        abort $ ImpossibleHappened IncorrectStandingBidUtxoOnL2
+    delegateParty <- getDelegateParty
+    case state of
+      Initialized _ (AwaitingCommits {stangingBidWasCommited}) ->
+        case UTxO.pairs $ filterNotAdaOnlyUtxo utxo of
+          [(_, txOut)] | isStandingBidTx txOut ->
+            case (party == delegateParty, stangingBidWasCommited) of
+              -- Cannot commit standing bid twice
+              (_, True) -> abort $ ImpossibleHappened IncorrectCommit
+              (True, False) ->
+                updateStateAndResponse $
+                  AwaitingCommits {stangingBidWasCommited = True}
+              (False, False) -> do
+                result <- commitCollateralAda
+                case result of
+                  Right () ->
+                    updateStateAndResponse $
+                      AwaitingCommits {stangingBidWasCommited = True}
+                  Left reason -> abort reason
+          [] ->
+            -- ADA-only commit case (collateral)
+            if stangingBidWasCommited
+              then return []
+              else -- Standing bid commit should come first
+                abort $ ImpossibleHappened IncorrectCommit
+          _ -> abort $ ImpossibleHappened IncorrectCommit
+      _ -> abort $ ImpossibleHappened IncorrectHydraEvent
   HydraEvent (SnapshotConfirmed _txs utxo) ->
     updateStateWithStandingBidOrAbort utxo
   HydraEvent ReadyToFanout -> do
     sendCommand Fanout
     return []
   HydraEvent (HeadIsInitializing headId) -> do
-    put $ Initialized headId NotYetOpen
+    let newState = AwaitingCommits {stangingBidWasCommited = False}
+    put $ Initialized headId newState
     -- Yes, this is code duplication
-    updateStateAndResponse NotYetOpen
+    updateStateAndResponse newState
   HydraEvent (HeadIsOpen utxo) ->
     updateStateWithStandingBidOrAbort utxo
   HydraEvent HeadIsClosed -> do
@@ -231,7 +219,29 @@ delegateEventStep event = case event of
     updateStateAndResponse Finalized
   HydraEvent HeadIsAborted {} ->
     updateStateAndResponse Aborted
-  HydraEvent _ -> return []
+  HydraEvent hydraEvent -> case hydraEvent of
+    InvlidInput {} -> abort RequiredHydraRequestFailed
+    CommandFailed name -> txFailedCase $ name <> "Tx"
+    PostTxOnChainFailed {txTag, errorTag} ->
+      case (txTag, errorTag) of
+        ("InitTx", _)
+          | errorTag `elem` ["NoSeedInput", "NotEnoughFuel"] ->
+              abort $ PrerequisiteMissing HydraInit
+        (_, _) -> txFailedCase txTag
+    _ -> return [] -- Some unknown cases
+    where
+      -- Seems like both kinds this events could be produced by Hydra
+      -- in similar situations
+      txFailedCase txTag
+        -- This is okay cuz these are concurrent requests,
+        -- only one of which will be fulfilled
+        | txTag `elem` ["InitTx", "FanoutTx"] = return []
+        -- Preventing infinite loop of Abortions
+        | txTag `elem` ["AbortTx", "CloseTx"] = do
+            -- TODO: use logs
+            liftIO $ putStrLn "Abort/Close failed"
+            return []
+        | otherwise = abort RequiredHydraRequestFailed
   where
     decodeStandingBidTerms txOut = case decodeInlineDatum txOut of
       Right standingBidDatum ->
@@ -265,9 +275,11 @@ delegateEventStep event = case event of
           lift $
             runHydraInComposite $
               sendCommand (Commit forCollateralUtxo)
-          updateStateAndResponse HasCommit
-        Nothing ->
-          abort $ PrerequisiteMissing AdaForCommit
+          return $ Right ()
+        Nothing -> return $ Left (PrerequisiteMissing AdaForCommit)
+    getDelegateParty = do
+      delegateActor <- askActor
+      liftIO $ partyFor delegateActor
 
 abort ::
   ( MonadIO (t CompositeRunner)

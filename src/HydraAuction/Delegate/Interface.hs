@@ -70,14 +70,11 @@ isFinalState NotInitialized = False
 wasOpened :: DelegateState -> Bool
 wasOpened state = case state of
   NotInitialized -> False
-  Initialized _ NotYetOpen -> False
-  Initialized _ (HasCommit {}) -> False
+  Initialized _ (AwaitingCommits {}) -> False
   Initialized _ _ -> True
 
 data InitializedState
-  = NotYetOpen
-  | -- FIXME: fix stanging bid address here?
-    HasCommit
+  = AwaitingCommits {stangingBidWasCommited :: Bool}
   | Open
       { standingBidTerms :: Maybe BidTerms
       }
@@ -101,15 +98,19 @@ data RequestIgnoredReason
   deriving stock (Eq, Show, Generic)
   deriving anyclass (FromJSON, ToJSON)
 
+-- It is actually possible if one of Delegates is breaking protocol
 data ImposibleEvent
-  = -- FIXME: actually it is not imposible if one of Delegates is malignant
-    -- FIXME: add docs and/or split on different cases
-    IncorrectStandingBidUtxoOnL2
+  = -- FIXME: add docs and/or split on different cases
+    IncorrectCommit
+  | IncorrectStandingBidUtxoOnL2
+  | IncorrectHydraEvent
   | OnChainInvariantBreaks
   deriving stock (Eq, Show, Generic)
   deriving anyclass (FromJSON, ToJSON)
 
-data MissingPrerequisite = AdaForCommit
+data MissingPrerequisite
+  = AdaForCommit
+  | HydraInit
   deriving stock (Eq, Show, Generic)
   deriving anyclass (FromJSON, ToJSON)
 

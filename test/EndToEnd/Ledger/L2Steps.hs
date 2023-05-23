@@ -74,10 +74,13 @@ emulateDelegatesStart = do
   headId : _ <- runCompositeForAllDelegates $ do
     Just event@(HeadIsInitializing headId) <- waitForHydraEvent Any
     responses <- delegateEventStep $ HydraEvent event
+    let expectedState =
+          Initialized headId $
+            AwaitingCommits {stangingBidWasCommited = False}
     liftIO $
       assertEqual
         "Initializing reaction"
-        [CurrentDelegateState Updated $ Initialized headId NotYetOpen]
+        [CurrentDelegateState Updated expectedState]
         responses
     return headId
   return headId
@@ -110,12 +113,14 @@ emulateCommiting headId terms = do
   -- Secondary delegates should commit money on L2 in reaction
   -- (we do not check that)
   -- They states should reflect existence of first commit now
-
+  let expectedState =
+        Initialized headId $
+          AwaitingCommits {stangingBidWasCommited = True}
   _ <-
     runCompositeForAllDelegates $ do
       delegateStepOnExpectedHydraEvent
         (SpecificKind CommittedKind)
-        [CurrentDelegateState Updated (Initialized headId HasCommit)]
+        [CurrentDelegateState Updated expectedState]
 
   -- Secondary commits creates Commited events, which Delegates should ignore
 

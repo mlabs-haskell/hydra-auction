@@ -77,7 +77,6 @@ import HydraAuctionUtils.Composite.Runner (
   executeCompositeRunner,
   runHydraInComposite,
  )
-import HydraAuctionUtils.Fixture (Actor (..))
 import HydraAuctionUtils.Hydra.Monad (AwaitedHydraEvent (..), waitForHydraEvent)
 import HydraAuctionUtils.Hydra.Runner (HydraRunner, executeHydraRunnerFakingParams)
 import HydraAuctionUtils.L1.Runner (executeL1RunnerWithNodeAs)
