@@ -40,6 +40,7 @@ common common-lang
     -Wall -Wcompat -Wincomplete-record-updates
     -Wincomplete-uni-patterns -Wredundant-constraints
     -Wmissing-export-lists -Wmissing-deriving-strategies
+    -Wno-redundant-constraints
 
   if !flag(dev)
     ghc-options: -Werror
@@ -199,6 +200,7 @@ executable hydra-auction-delegate
   build-depends:
     , hydra-auction
     , hydra-auction-utils
+    , optparse-applicative
 
 library
   import:          common-lang
