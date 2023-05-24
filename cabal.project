@@ -15,8 +15,8 @@ repository cardano-haskell-packages
 source-repository-package
     type: git
     location: https://github.com/input-output-hk/hydra
-    tag: 664d298049e74fde69b27538f15fa3215b5436dd
-    --sha256: sha256-79TB1+fVFcP53kaE46H46jBgfsYy8JzSYR/y6hFxL2s=
+    tag: 2d60dc55511d942188ccb70442fc38dbfdeec286
+    --sha256: sha256-B/PzhamotMk85sY6CaQSPGMzf2ir583v+sD4offQpzE=
     subdir:
       hydra-cardano-api
       hydra-prelude
