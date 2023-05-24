@@ -40,7 +40,7 @@ import Cardano.Api (NetworkId (Testnet))
 import Hydra.Cardano.Api (
   NetworkMagic (NetworkMagic),
   pattern TxValidityNoLowerBound,
-  pattern TxValidityUpperBound,
+  pattern TxValidityNoUpperBound,
  )
 import HydraNode (
   HydraClient,
@@ -149,9 +149,9 @@ instance MonadBlockchainParams HydraRunner where
     MkHydraExecutionContext {fakeBlockchainParams} <- ask
     return fakeBlockchainParams
 
-  -- Hydra slot is always 0, so we just return the only working validity bound
+  -- FIXME: Hydra started to support time but we still do not
   convertValidityBound (_, _) =
-    return (TxValidityNoLowerBound, TxValidityUpperBound 1)
+    return (TxValidityNoLowerBound, TxValidityNoUpperBound)
 
 matchingHydraEvent :: Value -> Maybe HydraEvent
 matchingHydraEvent value =
