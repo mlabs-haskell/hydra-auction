@@ -732,8 +732,8 @@ validNewBid
   -> Bool
 validNewBid AuctionTerms{..} voucherCS oldStandingBidState newStandingBidState =
   isJust $ do
-    let StandingBidState oldApprovedBidders oldBid = oldStandingBidState
-    let StandingBidState newApprovedBidders newBid = newStandingBidState
+    let StandingBidState oldBid = oldStandingBidState
+    let StandingBidState newBid = newStandingBidState
     BidTerms bidderPKH newPrice sellerSignature <- newBid
     -- The seller has allowed the bidder to participate in the auction
     guard $ verifyEd25519Signature (sellerVK terms) (sellerSignatureMessage voucherCS bidderPKH) sellerSignature
@@ -832,8 +832,8 @@ validNewBid
   -> Bool
 validNewBid AuctionTerms{..} voucherCS oldStandingBidState newStandingBidState =
   isJust $ do
-    let StandingBidState oldApprovedBidders oldBid = oldStandingBidState
-    let StandingBidState newApprovedBidders newBid = newStandingBidState
+    let StandingBidState oldBid = oldStandingBidState
+    let StandingBidState newBid = newStandingBidState
     BidTerms bidderPKH bidderVK newPrice bidderSignature sellerSignature <- newBid
     -- The seller has allowed the bidder to participate in the auction
     guard $ verifyEd25519Signature (sellerVK terms) (sellerSignatureMessage voucherCS bidderPKH bidderVK) sellerSignature

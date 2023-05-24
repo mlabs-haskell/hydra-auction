@@ -23,7 +23,6 @@ import Cardano.Api.UTxO qualified as UTxO
 -- HydraAuction imports
 
 import Hydra.Chain.Direct.Tx (headIdToCurrencySymbol)
-import HydraAuction.Addresses (VoucherCS (..))
 import HydraAuction.Delegate.Interface (
   AbortReason (..),
   DelegateResponse (..),
@@ -134,7 +133,7 @@ delegateFrontendRequestStep (clientId, request) =
         Initialized headId (Open {standingBidTerms}) -> do
           validatingAuctionTerms headId auctionTerms $ do
             let newBidTerms = standingBid $ standingBidState datum
-                newVoucherCS = unVoucherCS $ standingBidVoucherCS datum
+                newVoucherCS = standingBidVoucherCS datum
             if validNewBidTerms auctionTerms newVoucherCS standingBidTerms newBidTerms
               then do
                 _ <- lift $ do

@@ -264,6 +264,7 @@ handleCliAction sendRequestToDelegate currentDelegateStateRef userAction = do
               <> " ADA in auction "
               <> show auctionName
               <> "."
+          -- FIXME: temporaral stub until Platform server
           sellerSignature <- liftIO $ sellerSignatureForActor terms actor
           doOnMatchingStage terms BiddingStartedStage $
             case layer of

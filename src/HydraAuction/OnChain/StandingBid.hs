@@ -86,7 +86,7 @@ mkStandingBidValidator terms datum redeemer context =
     standingBidAddress = scriptHashAddress $ ownHash context
     inOutsByAddress address =
       byAddress address $ txInInfoResolved <$> txInfoInputs info
-    validNewBid :: CurrencySymbol -> StandingBidState -> StandingBidState -> Bool
+    validNewBid :: VoucherCS -> StandingBidState -> StandingBidState -> Bool
     validNewBid voucherCS (StandingBidState oldBid) (StandingBidState newBid) =
       validNewBidTerms terms voucherCS oldBid newBid
     checkCorrectNewBidOutput inputOut =
@@ -103,7 +103,7 @@ mkStandingBidValidator terms datum redeemer context =
               inBid = standingBidState <$> inDatum
               Just inVoucherCS = standingBidVoucherCS <$> inDatum
               outBid = standingBidState <$> decodeOutputDatum info out
-           in case validNewBid (unVoucherCS inVoucherCS) <$> inBid <*> outBid of
+           in case validNewBid inVoucherCS <$> inBid <*> outBid of
                 Just x -> traceIfFalse "Incorrect bid" x
                 Nothing ->
                   traceError "Incorrect encoding for input or output datum"
@@ -122,10 +122,10 @@ mkStandingBidValidator terms datum redeemer context =
         )
 
 {-# INLINEABLE validNewBidTerms #-}
-validNewBidTerms :: AuctionTerms -> CurrencySymbol -> Maybe BidTerms -> Maybe BidTerms -> Bool
-validNewBidTerms terms voucherCS oldBid (Just newBidTerms) =
+validNewBidTerms :: AuctionTerms -> VoucherCS -> Maybe BidTerms -> Maybe BidTerms -> Bool
+validNewBidTerms terms (VoucherCS voucherCS) oldBid (Just newBidTerms) =
   -- The seller has allowed the bidder to participate in the auction
-  traceIfFalse "User is not an autorised bider" (verifyEd25519Signature (sellerVK terms) sellerMessage sellerSignature)
+  traceIfFalse "User is not an authorised bider" (verifyEd25519Signature (sellerVK terms) sellerMessage sellerSignature)
     -- The bidder has correctly signed the datum
     && traceIfFalse "New bid datum is not signed correctly" (verifyEd25519Signature bidderVK bidderMessage bidderSignature)
     && case oldBid of
@@ -137,9 +137,8 @@ validNewBidTerms terms voucherCS oldBid (Just newBidTerms) =
           startingBid terms <= bidAmount newBidTerms
   where
     BidTerms bidderPKH bidderVK newPrice bidderSignature sellerSignature = newBidTerms
-    auctionId = voucherCS
-    sellerMessage = sellerSignatureMessage auctionId bidderVK bidderPKH
-    bidderMessage = bidderSignatureMessage auctionId newPrice bidderPKH
+    sellerMessage = sellerSignatureMessage voucherCS bidderVK bidderPKH
+    bidderMessage = bidderSignatureMessage voucherCS newPrice bidderPKH
 validNewBidTerms _ _ _ Nothing =
   traceIfFalse "Bid cannot be empty" False
 
