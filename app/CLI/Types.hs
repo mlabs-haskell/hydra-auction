@@ -60,4 +60,5 @@ data CliAction
   | SellerReclaims !AuctionName
   | SellerClaimsDepositFor !AuctionName !Actor
   | Cleanup !AuctionName
+  | CleanupDeposit !AuctionName
   deriving stock (Show)

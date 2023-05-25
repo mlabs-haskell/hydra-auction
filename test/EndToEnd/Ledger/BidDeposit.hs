@@ -14,7 +14,12 @@ import Test.Tasty.HUnit (Assertion, testCase)
 
 -- Hydra auction imports
 import HydraAuction.OnChain (AuctionScript (..))
-import HydraAuction.Tx.Deposit (cleanupDeposit, losingBidderClaimDeposit, mkDeposit, sellerClaimDepositFor)
+import HydraAuction.Tx.Deposit (
+  cleanupDeposit,
+  losingBidderClaimDeposit,
+  mkDeposit,
+  sellerClaimDepositFor,
+ )
 import HydraAuction.Tx.Escrow (
   announceAuction,
   bidderBuys,
