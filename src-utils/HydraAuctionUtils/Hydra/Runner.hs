@@ -163,8 +163,8 @@ matchingHydraEvent value =
     Just "TxValid" -> TxValid <$> retrieveField "tx"
     Just "TxInvalid" ->
       TxInvalid <$> retrieveField "tx" <*> retrieveField "utxo"
-    Just "InvlidInput" ->
-      InvlidInput <$> retrieveField "reason" <*> retrieveField "input"
+    Just "InvalidInput" ->
+      InvalidInput <$> retrieveField "reason" <*> retrieveField "input"
     Just "PostTxOnChainFailed" ->
       PostTxOnChainFailed
         <$> retrieveField' (key "postChainTx" . key "tag")

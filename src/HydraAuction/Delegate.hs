@@ -288,7 +288,7 @@ delegateEventStep event = case event of
   HydraEvent HeadIsAborted {} ->
     updateStateAndResponse Aborted
   HydraEvent hydraEvent -> case hydraEvent of
-    InvlidInput {} -> abort RequiredHydraRequestFailed
+    InvalidInput {} -> abort RequiredHydraRequestFailed
     CommandFailed name -> txFailedCase $ name <> "Tx"
     PostTxOnChainFailed {txTag, errorTag} ->
       case (txTag, errorTag) of
