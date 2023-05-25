@@ -136,8 +136,10 @@ cliActionParser =
           ( info (NewBid <$> auctionName <*> bidAmount <*> pure L2) (progDesc "Actor places new bid on L2 after Standing Bid was moved on L2")
           )
       , command "bidder-buys" (info (BidderBuys <$> auctionName) (progDesc "Pay and recieve a lot after auction end"))
+      , command "losing-bidder-reclaims-deposit" (info (BidderClaimsDeposit <$> auctionName) (progDesc "Recieve deposit back after losing on auction"))
       , command "seller-reclaims" (info (SellerReclaims <$> auctionName) (progDesc "Seller reclaims lot after voucher end time"))
-      , command "cleanup" (info (Cleanup <$> auctionName) (progDesc "Remove standing bid UTxO after cleanup time"))
+      , command "seller-claims-deposit" (info (SellerClaimsDepositFor <$> auctionName <*> actor) (progDesc "Seller claims deposit from winning bidder, who did not pay in time"))
+      , command "cleanup" (info (Cleanup <$> auctionName) (progDesc "Remove standing bid UTxO after cleanup time. Is performed by seller."))
       ]
 
 auctionName :: Parser AuctionName

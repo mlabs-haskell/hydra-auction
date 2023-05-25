@@ -36,6 +36,7 @@ import HydraAuction.Tx.Common (
   scriptUtxos,
  )
 import HydraAuction.Tx.Deposit (
+  cleanupDeposit,
   filterDepositGreaterThan,
   losingBidderClaimDeposit,
   mkDeposit,
@@ -255,6 +256,11 @@ handleCliAction sendRequestToDelegate currentDelegateStateRef userAction = do
       doOnMatchingStage terms BiddingEndedStage $ do
         announceActionExecution userAction
         losingBidderClaimDeposit terms
+    CleanupDeposit auctionName -> do
+      terms <- auctionTermsFor auctionName
+      doOnMatchingStage terms CleanupStage $ do
+        announceActionExecution userAction
+        cleanupDeposit terms
     SellerReclaims auctionName -> do
       terms <- auctionTermsFor auctionName
       doOnMatchingStage terms VoucherExpiredStage $ do
