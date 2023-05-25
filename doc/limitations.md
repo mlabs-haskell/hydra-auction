@@ -9,14 +9,10 @@
   * Multiple UTxO commits not supported
     by both Hydra API and on-chain scripts.
     We need them to put commit collateral UTxO for delegate commiting standing bid.
-* Hydra cannot validate tx time frame validity on-chain.
-  That means that we cannot check bidding end time on L2.
-  Instread we close Hean on that moment by all delegate servers.
-  If they all are malignant, then they can create any bid state anyway.
-  https://github.com/input-output-hk/hydra/issues/196
 * Querying different L2 protocol parameters is not supported.
-  Now we using one from L1, and that seems to work,
-  but not sure that this is stable solution.
+  Now we just ignoring that fact and relying on clients
+  knowing L2 protocol-parameters used by L2,
+  cuz they are always the same and saved in repo.
   Issue on that: https://github.com/input-output-hk/hydra/issues/735
 * Hydra Head can only host one auction and cannot be reused.
   * Later, when Hydra will support incremental commits and decommits,
