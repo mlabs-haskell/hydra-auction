@@ -60,6 +60,7 @@ data Actor
   | Oscar
   | Patricia
   | Rupert
+  | Faucet
   deriving stock (Eq, Show, Enum, Bounded, Generic)
 
 instance Aeson.FromJSON Actor
@@ -69,7 +70,7 @@ allActors :: [Actor]
 allActors = [minBound .. maxBound]
 
 -- HydraNodeActor are supposed to be used as Hydra node admins
-data ActorKind = RegularActor | HydraNodeActor
+data ActorKind = RegularActor | HydraNodeActor | FaucetActor
   deriving stock (Show, Eq, Ord, Enum, Bounded)
 
 actorsByKind :: Map ActorKind [Actor]
@@ -77,13 +78,16 @@ actorsByKind =
   Map.fromList
     [ (RegularActor, [minBound .. Hans])
     , (HydraNodeActor, [Oscar, Patricia, Rupert])
+    , (FaucetActor, [Faucet])
     ]
 
 getActorKind :: Actor -> ActorKind
 getActorKind actor
   | actor `elem` (Map.!) actorsByKind RegularActor =
       RegularActor
-  | otherwise = HydraNodeActor
+  | actor `elem` (Map.!) actorsByKind HydraNodeActor =
+      HydraNodeActor
+  | otherwise = FaucetActor
 
 -- | Get the "well-known" keys for given actor.
 keysFor :: Actor -> IO (VerificationKey PaymentKey, SigningKey PaymentKey)
