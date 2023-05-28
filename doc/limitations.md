@@ -10,9 +10,11 @@
     by both Hydra API and on-chain scripts.
     We need them to put commit collateral UTxO for delegate commiting standing bid.
 * Querying different L2 protocol parameters is not supported.
-  Now we just ignoring that fact and relying on clients
+  Now we just ignoring that and relying on delegate server
   knowing L2 protocol-parameters used by L2,
   cuz they are always the same and saved in repo.
+  This should work well, cuz our topology presumes same operator
+  for Delegate server and Hydra node.
   Issue on that: https://github.com/input-output-hk/hydra/issues/735
 * Hydra Head can only host one auction and cannot be reused.
   * Later, when Hydra will support incremental commits and decommits,
@@ -22,9 +24,8 @@
 * All Hydra nodes should know each others IPs before starting a node.
   This limits cluster construction and makes them dependent
   on some form of communication or centralization.
-* Multiple delegates cannot share a single Hydra node,
-  due to the Hydra API allowing any actions from any client.
-  So we have one Hydra node to one Delegate server correspondence for now.
+  This issue covers the matter:
+  https://github.com/input-output-hk/hydra/issues/240
 
 ## Limitations inherent in Hydra
 
@@ -42,6 +43,20 @@
 * While we can (and do) disable script fees, collaterals are required by
   ledger any way.
   To work with that we commit collateral UTxOs by all delegates.
+
+## Limitations inherent in our implementation
+
+* Topology presumes delegate and hydra nodes are 1-1,
+  and each pair is operated by same actor.
+
+  Currently, multiple delegates cannot share a single Hydra node,
+  due to the Hydra API allowing any actions from any client.
+  So any client can close Head, and essegintally,
+  Node should trust any client.
+
+  But our model is dependent to 1-1 arch as well.
+  Fees are distributed per delegate and node, and that means that
+  Delegate actor should be the same as Node.
 
 ## Limitations in current implementation
 
