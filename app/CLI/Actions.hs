@@ -11,15 +11,21 @@ import Hydra.Prelude (MonadIO, ask, liftIO)
 import Prelude
 
 -- Haskell imports
+
 import Control.Monad (forM_, void)
 import Data.IORef (IORef, readIORef)
+import Data.Text qualified as T
 
 -- Plutus imports
 import PlutusLedgerApi.V1.Address (pubKeyHashAddress)
 
 -- Hydra imports
 
-import Hydra.Cardano.Api (Lovelace, pattern ShelleyAddressInEra)
+import Hydra.Cardano.Api (
+  Lovelace,
+  serialiseAddress,
+  pattern ShelleyAddressInEra,
+ )
 import Hydra.Chain.Direct.Tx (headIdToCurrencySymbol)
 
 -- Cardano node imports
@@ -135,6 +141,12 @@ handleCliAction sendRequestToDelegate currentDelegateStateRef userAction = do
       terms <- auctionTermsFor auctionName
       utxos <- scriptUtxos script terms
       liftIO $ prettyPrintUtxo utxos
+    ShowAddress -> do
+      (address, _, _) <- addressAndKeys
+      liftIO $
+        putStrLn $
+          "Address for current actor is: "
+            <> T.unpack (serialiseAddress address)
     ShowUtxos -> prettyPrintCurrentActorUtxos
     ShowAllUtxos -> do
       announceActionExecution userAction

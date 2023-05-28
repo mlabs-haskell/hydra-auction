@@ -42,6 +42,7 @@ data Layer = L1 | L2 deriving stock (Show)
 
 data CliAction
   = ShowCurrentStage !AuctionName
+  | ShowAddress
   | ShowScriptUtxos !AuctionName !AuctionScript
   | ShowUtxos
   | ShowAllUtxos
