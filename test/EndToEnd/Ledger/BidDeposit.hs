@@ -24,8 +24,8 @@ import HydraAuction.Tx.StandingBid (cleanupTx, newBid, sellerSignatureForActor)
 import HydraAuction.Tx.TermsConfig (
   nonExistentHeadIdStub,
  )
-import HydraAuction.Types (ApprovedBidders (..), AuctionTerms (..))
-import HydraAuctionUtils.Fixture (Actor (..), getActorsPubKeyHash)
+import HydraAuction.Types (AuctionTerms (..))
+import HydraAuctionUtils.Fixture (Actor (..), getActorPubKeyHash)
 import HydraAuctionUtils.L1.Runner (
   initWallet,
   withActor,

@@ -140,8 +140,7 @@ bidderBuysTest = mkAssertion $ do
     bidder2SellerSignature <- liftIO $ sellerSignatureForActor terms bidder2
     liftIO $
       executeL1RunnerWithNodeAs node bidder2 $
-        newBid terms $
-          correctBidNo terms 5 bidder2SellerSignature
+        newBid terms (correctBidNo terms 5) bidder2SellerSignature
 
     -- Got lot
 

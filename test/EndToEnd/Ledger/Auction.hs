@@ -26,9 +26,8 @@ import HydraAuction.Tx.StandingBid (cleanupTx, newBid, sellerSignatureForActor)
 import HydraAuction.Tx.TermsConfig (
   nonExistentHeadIdStub,
  )
-import HydraAuction.Tx.TestNFT (mintOneTestNFT)
-import HydraAuction.Types (ApprovedBidders (..), AuctionTerms (..))
-import HydraAuctionUtils.Fixture (Actor (..), ActorKind (..), actorsByKind, getActorsPubKeyHash)
+import HydraAuction.Types (AuctionTerms (..))
+import HydraAuctionUtils.Fixture (Actor (..), ActorKind (..), actorsByKind)
 import HydraAuctionUtils.L1.Runner (
   initWallet,
   withActor,
@@ -119,12 +118,12 @@ distributeFeeTest = mkAssertion $ do
   announceAuction terms
 
   waitUntil $ biddingStart terms
-  actorsPkh <- liftIO $ getActorsPubKeyHash [buyer1, buyer2]
-  startBidding terms (ApprovedBidders actorsPkh)
+  startBidding terms
 
   assertNFTNumEquals seller 0
 
-  withActor buyer2 $ newBid terms $ startingBid terms + minimumBidIncrement terms
+  buyer2SellerSignature <- liftIO $ sellerSignatureForActor terms buyer2
+  withActor buyer2 $ newBid terms (startingBid terms + minimumBidIncrement terms) buyer2SellerSignature
 
   waitUntil $ biddingEnd terms
   withActor buyer2 $ bidderBuys terms
@@ -150,12 +149,7 @@ unauthorisedBidderTest = mkAssertion $ do
 
   mapM_ (initWallet 100_000_000) [seller, buyer1, buyer2]
 
-  nftTx <- mintOneTestNFT
-  let utxoRef = mkTxIn nftTx 0
-
-  terms <- liftIO $ do
-    dynamicState <- constructTermsDynamic seller utxoRef nonExistentHeadIdStub
-    configToAuctionTerms config dynamicState
+  terms <- createTermsWithTestNFT config nonExistentHeadIdStub
 
   assertNFTNumEquals seller 1
 
