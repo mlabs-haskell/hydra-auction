@@ -26,9 +26,7 @@ import Data.Maybe (listToMaybe, mapMaybe)
 -- Plutus imports
 
 import PlutusLedgerApi.V1.Crypto (PubKeyHash)
-import PlutusLedgerApi.V1.Value (assetClassValue)
-import PlutusLedgerApi.V2 (BuiltinByteString, FromData, PubKeyHash, fromBuiltin, fromData, toBuiltin)
-import PlutusTx.IsData.Class (FromData, fromData)
+import PlutusLedgerApi.V2 (BuiltinByteString, FromData, fromBuiltin, fromData, toBuiltin)
 
 -- Hydra imports
 import Cardano.Api.UTxO qualified as UTxO
@@ -41,11 +39,9 @@ import Hydra.Cardano.Api (
   TxIn,
   TxOut,
   fromPlutusScript,
-  fromPlutusValue,
   fromScriptData,
   getScriptData,
   getTxBody,
-  lovelaceToValue,
   serialiseToRawBytes,
   toPlutusData,
   toPlutusKeyHash,
@@ -54,9 +50,7 @@ import Hydra.Cardano.Api (
   txOutDatum,
   txOuts,
   verificationKeyHash,
-  pattern KeyWitness,
   pattern ReferenceScriptNone,
-  pattern ScriptWitness,
   pattern ShelleyAddressInEra,
   pattern TxBody,
   pattern TxBodyContent,
@@ -75,7 +69,6 @@ import HydraAuction.OnChain (
   AuctionScript (StandingBid),
   policy,
   standingBidValidator,
-  voucherAssetClass,
   voucherCurrencySymbol,
  )
 import HydraAuction.OnChain.StandingBid (

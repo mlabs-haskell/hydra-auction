@@ -128,19 +128,22 @@ validNewBidTerms terms (VoucherCS voucherCS) oldBid (Just newBidTerms) =
   traceIfFalse "User is not an authorised bider" (verifyEd25519Signature (sellerVK terms) sellerMessage sellerSignature)
     -- The bidder has correctly signed the datum
     && traceIfFalse "New bid datum is not signed correctly" (verifyEd25519Signature bidderVK bidderMessage bidderSignature)
-    && case oldBid of
-      Just oldBidTerms ->
-        traceIfFalse "Bid increment is not greater than minimumBidIncrement" $
-          bidAmount oldBidTerms + minimumBidIncrement terms <= bidAmount newBidTerms
-      Nothing ->
-        traceIfFalse "Bid is not greater than startingBid" $
-          startingBid terms <= bidAmount newBidTerms
+    && checkBidTerms terms oldBid newBidTerms
   where
     BidTerms bidderPKH bidderVK newPrice bidderSignature sellerSignature = newBidTerms
     sellerMessage = sellerSignatureMessage voucherCS bidderVK bidderPKH
     bidderMessage = bidderSignatureMessage voucherCS newPrice bidderPKH
 validNewBidTerms _ _ _ Nothing =
   traceIfFalse "Bid cannot be empty" False
+
+{-# INLINEABLE checkBidTerms #-}
+checkBidTerms :: AuctionTerms -> Maybe BidTerms -> BidTerms -> Bool
+checkBidTerms terms (Just oldBidTerms) newBidTerms =
+  traceIfFalse "Bid increment is not greater than minimumBidIncrement" $
+    bidAmount oldBidTerms + minimumBidIncrement terms <= bidAmount newBidTerms
+checkBidTerms terms Nothing newBidTerms =
+  traceIfFalse "Bid is not greater than startingBid" $
+    startingBid terms <= bidAmount newBidTerms
 
 {-# INLINEABLE bidderSignatureMessage #-}
 bidderSignatureMessage :: CurrencySymbol -> Natural -> PubKeyHash -> BuiltinByteString
