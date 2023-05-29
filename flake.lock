@@ -2835,17 +2835,17 @@
         ]
       },
       "locked": {
-        "lastModified": 1684328956,
-        "narHash": "sha256-9+Qd2tLmleY7jA8QatdinibEDIDbH8rSM9+L9EkAA9s=",
+        "lastModified": 1685101652,
+        "narHash": "sha256-SxPqUl4W0s4emwyYDmTtvgP5tkBUcE8ViF6nzjmMlHE=",
         "owner": "input-output-hk",
         "repo": "hydra",
-        "rev": "2d60dc55511d942188ccb70442fc38dbfdeec286",
+        "rev": "85e650ca951feba2b3f139eda4bc58cafeab07f9",
         "type": "github"
       },
       "original": {
         "owner": "input-output-hk",
         "repo": "hydra",
-        "rev": "2d60dc55511d942188ccb70442fc38dbfdeec286",
+        "rev": "85e650ca951feba2b3f139eda4bc58cafeab07f9",
         "type": "github"
       }
     },
