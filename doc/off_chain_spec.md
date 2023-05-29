@@ -192,10 +192,20 @@ abusing fact that all `DelegateState` changes are broadcasted to client.
 
 ### Platform server
 
-#### Overall principles
+#### Motivation
 
-The purpose of Platform server is to be the way for sellers to find
-suitable and available Hydra Head and to 1
+The purpose of Platform server is to provide an central registy
+of available Heads and announced auctions.
+Their existence is registered by sellers/delegates requests,
+and then queried upon for selection of suitable option.
+
+Delegate servers can only communicate to each over by L2 state,
+they have no p2p data channel.
+That means that they cannot be used to pass offchain data between clients.
+This is another usecase for Platform server.
+Sellers can post their approvals and clients query on them.
+
+#### Overall principles
 
 Just like Delegate server, Platform server is based on event driven
 architecture. It only does something on events.
