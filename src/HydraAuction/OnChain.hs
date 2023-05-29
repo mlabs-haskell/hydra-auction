@@ -15,12 +15,13 @@ module HydraAuction.OnChain (
 
 -- Prelude imports
 
+import GHC.Stack (HasCallStack)
 import PlutusTx.Prelude
 import Prelude qualified
 
 -- Plutus imports
-import Plutus.V1.Ledger.Value (AssetClass (..))
-import Plutus.V2.Ledger.Api (CurrencySymbol, MintingPolicy, ScriptContext, Validator, mkMintingPolicyScript, mkValidatorScript)
+import PlutusLedgerApi.Common (SerialisedScript, serialiseCompiledCode)
+import PlutusLedgerApi.V1.Value (AssetClass (..), CurrencySymbol)
 import PlutusTx qualified
 
 -- Hydra auction imports
@@ -32,6 +33,7 @@ import HydraAuction.Addresses (
  )
 import HydraAuction.OnChain.Deposit (mkDepositValidator)
 import HydraAuction.OnChain.Escrow (mkEscrowValidator)
+import HydraAuction.OnChain.FeeEscrow (mkFeeEscrowValidator)
 import HydraAuction.OnChain.StandingBid (mkStandingBidValidator)
 import HydraAuction.OnChain.StateToken (
   StateTokenKind (..),
@@ -56,7 +58,7 @@ data AuctionScript = Escrow | StandingBid | FeeEscrow | Deposit
 singleUtxoScripts :: [AuctionScript]
 singleUtxoScripts = [Escrow, StandingBid, FeeEscrow]
 
-scriptValidatorForTerms :: AuctionScript -> AuctionTerms -> Validator
+scriptValidatorForTerms :: AuctionScript -> AuctionTerms -> SerialisedScript
 scriptValidatorForTerms Escrow = escrowValidator
 scriptValidatorForTerms StandingBid = standingBidValidator
 scriptValidatorForTerms FeeEscrow = feeEscrowValidator
@@ -64,9 +66,9 @@ scriptValidatorForTerms Deposit = depositValidator
 
 -- State Tokens
 
-policy :: AuctionTerms -> MintingPolicy
+policy :: AuctionTerms -> SerialisedScript
 policy terms =
-  mkMintingPolicyScript $
+  serialiseCompiledCode $
     $$(PlutusTx.compile [||wrapMintingPolicy . mkPolicy||])
       `PlutusTx.applyCode` PlutusTx.liftCode (escrowAddress terms, terms)
 
@@ -79,9 +81,9 @@ voucherAssetClass terms = AssetClass (voucherCurrencySymbol terms, stateTokenKin
 -- Escrow contract
 
 {-# INLINEABLE escrowValidator #-}
-escrowValidator :: AuctionTerms -> Validator
+escrowValidator :: AuctionTerms -> SerialisedScript
 escrowValidator terms =
-  mkValidatorScript $
+  serialiseCompiledCode $
     $$(PlutusTx.compile [||wrapValidator . mkEscrowValidator||])
       `PlutusTx.applyCode` PlutusTx.liftCode (standingBidAddress terms, feeEscrowAddress terms, terms)
 
@@ -92,9 +94,9 @@ escrowAddress = EscrowAddress . validatorAddress . escrowValidator
 -- Standing bid contract
 
 {-# INLINEABLE standingBidValidator #-}
-standingBidValidator :: AuctionTerms -> Validator
+standingBidValidator :: AuctionTerms -> SerialisedScript
 standingBidValidator terms =
-  mkValidatorScript $
+  serialiseCompiledCode $
     $$(PlutusTx.compile [||wrapValidator . mkStandingBidValidator||])
       `PlutusTx.applyCode` PlutusTx.liftCode terms
 
@@ -104,13 +106,10 @@ standingBidAddress = StandingBidAddress . validatorAddress . standingBidValidato
 
 -- Fee escrow
 
-mkFeeEscrowValidator :: AuctionTerms -> () -> () -> ScriptContext -> Bool
-mkFeeEscrowValidator _terms _datum () _context = True -- FIXUP: Implement
-
 {-# INLINEABLE feeEscrowValidator #-}
-feeEscrowValidator :: AuctionTerms -> Validator
+feeEscrowValidator :: AuctionTerms -> SerialisedScript
 feeEscrowValidator terms =
-  mkValidatorScript $
+  serialiseCompiledCode $
     $$(PlutusTx.compile [||wrapValidator . mkFeeEscrowValidator||])
       `PlutusTx.applyCode` PlutusTx.liftCode terms
 
@@ -120,10 +119,11 @@ feeEscrowAddress = FeeEscrowAddress . validatorAddress . feeEscrowValidator
 
 -- Deposit
 
+-- HACK: compilies incorrectly without HasCallStack
 {-# INLINEABLE depositValidator #-}
-depositValidator :: AuctionTerms -> Validator
+depositValidator :: HasCallStack => AuctionTerms -> SerialisedScript
 depositValidator terms =
-  mkValidatorScript $
+  serialiseCompiledCode $
     $$(PlutusTx.compile [||wrapValidator . mkDepositValidator||])
       `PlutusTx.applyCode` PlutusTx.liftCode (standingBidAddress terms, escrowAddress terms, terms)
 

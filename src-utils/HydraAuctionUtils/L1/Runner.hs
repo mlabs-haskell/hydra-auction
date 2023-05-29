@@ -11,6 +11,7 @@ module HydraAuctionUtils.L1.Runner (
   ExecutionContext (..),
   withActor,
   fileTracer,
+  toSlotNo,
   initWallet,
   stdoutOrNullTracer,
 ) where
@@ -35,6 +36,8 @@ import Prelude
 import Control.Monad (void)
 import Control.Monad.Catch (MonadCatch, MonadMask, MonadThrow)
 import Control.Tracer (nullTracer, stdoutTracer, traceWith)
+import Data.Time (secondsToNominalDiffTime)
+import Data.Time.Clock.POSIX (posixSecondsToUTCTime)
 
 -- Cardano imports
 import CardanoClient (
@@ -56,19 +59,23 @@ import CardanoNode (
  )
 
 -- Plutus imports
-import Data.Time (secondsToNominalDiffTime)
-import Data.Time.Clock.POSIX (posixSecondsToUTCTime)
-import Hydra.Chain.Direct.TimeHandle (TimeHandle (..), queryTimeHandle)
-import Plutus.V2.Ledger.Api (POSIXTime (getPOSIXTime))
+import PlutusLedgerApi.V1.Time (POSIXTime (getPOSIXTime))
 
 -- Hydra imports
+
 import Hydra.Cardano.Api (
   Lovelace,
   NetworkId (Testnet),
   NetworkMagic (NetworkMagic),
+  SlotNo,
   Tx,
   UTxO,
+  pattern TxValidityLowerBound,
+  pattern TxValidityNoLowerBound,
+  pattern TxValidityNoUpperBound,
+  pattern TxValidityUpperBound,
  )
+import Hydra.Chain.Direct.TimeHandle (TimeHandle (..), queryTimeHandle)
 import Hydra.Cluster.Faucet (Marked (Normal), seedFromFaucet)
 import Hydra.Logging (Tracer)
 import HydraNode (EndToEndLog (FromCardanoNode, FromFaucet))
@@ -148,16 +155,26 @@ instance MonadBlockchainParams L1Runner where
         <*> queryEraHistory networkId nodeSocket QueryTip
         <*> queryStakePools networkId nodeSocket QueryTip
 
-  toSlotNo ptime = do
-    MkExecutionContext {node} <- ask
-    let RunningNode {networkId, nodeSocket} = node
-    timeHandle <-
-      liftIO $ queryTimeHandle networkId nodeSocket
-    let timeInSeconds = getPOSIXTime ptime `div` 1000
-        ndtime = secondsToNominalDiffTime $ fromInteger timeInSeconds
-        utcTime = posixSecondsToUTCTime ndtime
-    either (error . show) return $
-      slotFromUTCTime timeHandle utcTime
+  convertValidityBound (lowerBound', upperBound') = do
+    lowerBound <- case lowerBound' of
+      Nothing -> pure TxValidityNoLowerBound
+      Just x -> TxValidityLowerBound <$> toSlotNo x
+    upperBound <- case upperBound' of
+      Nothing -> pure TxValidityNoUpperBound
+      Just x -> TxValidityUpperBound <$> toSlotNo x
+    return (lowerBound, upperBound)
+
+toSlotNo :: POSIXTime -> L1Runner SlotNo
+toSlotNo ptime = do
+  MkExecutionContext {node} <- ask
+  let RunningNode {networkId, nodeSocket} = node
+  timeHandle <-
+    liftIO $ queryTimeHandle networkId nodeSocket
+  let timeInSeconds = getPOSIXTime ptime `div` 1000
+      ndtime = secondsToNominalDiffTime $ fromInteger timeInSeconds
+      utcTime = posixSecondsToUTCTime ndtime
+  either (error . show) return $
+    slotFromUTCTime timeHandle utcTime
 
 callWithTx ::
   (MonadReader ExecutionContext m, MonadIO m) =>

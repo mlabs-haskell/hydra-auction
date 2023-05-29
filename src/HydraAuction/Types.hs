@@ -15,7 +15,8 @@ module HydraAuction.Types (
   AuctionEscrowDatum (..),
   EscrowRedeemer (..),
   StandingBidRedeemer (..),
-  AuctionFeeEscrowDatum,
+  FeeEscrowDatum,
+  FeeEscrowRedeemer (..),
   VoucherForgingRedeemer (..),
   calculateTotalFee,
   AuctionStage (..),
@@ -33,10 +34,10 @@ import Data.Aeson (FromJSON, ToJSON)
 import GHC.Generics (Generic)
 
 -- Plutus imports
-import Plutus.V1.Ledger.Crypto (PubKeyHash)
-import Plutus.V1.Ledger.Time (POSIXTime)
-import Plutus.V1.Ledger.Value (AssetClass, CurrencySymbol)
-import Plutus.V2.Ledger.Contexts (TxOutRef)
+import PlutusLedgerApi.V1.Crypto (PubKeyHash)
+import PlutusLedgerApi.V1.Time (POSIXTime)
+import PlutusLedgerApi.V1.Value (AssetClass, CurrencySymbol)
+import PlutusLedgerApi.V2.Contexts (TxOutRef)
 import PlutusTx qualified
 
 -- Hydra auction imports
@@ -220,7 +221,7 @@ instance Eq BidDepositDatum where
 PlutusTx.makeIsDataIndexed ''BidDepositDatum [('BidDepositDatum, 0)]
 PlutusTx.makeLift ''BidDepositDatum
 
-type AuctionFeeEscrowDatum = ()
+type FeeEscrowDatum = ()
 
 -- Redeemers
 
@@ -235,3 +236,6 @@ PlutusTx.makeIsDataIndexed ''VoucherForgingRedeemer [('MintVoucher, 0), ('BurnVo
 
 data BidDepositRedeemer = LosingBidder | WinningBidder | SellerClaimsDeposit | CleanupDeposit
 PlutusTx.makeIsDataIndexed ''BidDepositRedeemer [('LosingBidder, 0), ('WinningBidder, 1), ('SellerClaimsDeposit, 2), ('CleanupDeposit, 3)]
+
+data FeeEscrowRedeemer = DistributeFees
+PlutusTx.makeIsDataIndexed ''FeeEscrowRedeemer [('DistributeFees, 0)]

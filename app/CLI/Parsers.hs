@@ -3,13 +3,12 @@ module CLI.Parsers (
   parseCliAction,
   CliInput (..),
   CliOptions (..),
-  DelegateSettings (..),
   PromptOptions (..),
 ) where
 
 -- Prelude imports
 
-import Cardano.Prelude (asum, guard, note, readMaybe)
+import Cardano.Prelude (asum)
 import Prelude
 
 -- Haskell imports
@@ -41,27 +40,32 @@ import Options.Applicative.Builder (
   ReadM,
   eitherReader,
   option,
-  showDefaultWith,
-  value,
  )
 
 -- Cardano node imports
-import Cardano.Api (NetworkId, NetworkMagic (..), fromNetworkMagic)
+import CardanoNode (RunningNode (..))
+
+-- Hydra imports
+import Hydra.Network (Host)
 
 -- Hydra auction imports
 import HydraAuction.OnChain (AuctionScript (..))
 import HydraAuctionUtils.Fixture (Actor (..))
-import HydraAuctionUtils.Parsers (parseActor, parseAda, parseNetworkMagic)
+import HydraAuctionUtils.Parsers (
+  cardanoRunningNodeParser,
+  parseActor,
+  parseAda,
+  parseHost,
+ )
 import HydraAuctionUtils.Types.Natural (Natural)
 
 -- Hydra auction CLI imports
 import CLI.Actions (CliAction (..), Layer (..), seedAmount)
 import CLI.Config (AuctionName (..))
-import Hydra.Network (IP, PortNumber)
 
 data CliInput = CliInput
   { cliOptions :: CliOptions
-  , delegateSettings :: DelegateSettings
+  , delegateSettings :: Host
   }
 
 data CliOptions
@@ -71,8 +75,7 @@ data CliOptions
 data PromptOptions = MkPromptOptions
   { cliActor :: !Actor
   , cliVerbosity :: !Bool
-  , cliNodeSocket :: !String
-  , cliNetworkId :: !NetworkId
+  , cliCardanoNode :: !RunningNode
   }
 
 getCliInput :: IO CliInput
@@ -92,7 +95,7 @@ cliOptionsParser =
   asum
     [ Watch <$> watchAuction
     , InteractivePrompt
-        <$> (MkPromptOptions <$> actor <*> verboseParser <*> socketDir <*> (fromNetworkMagic <$> networkMagic))
+        <$> (MkPromptOptions <$> actor <*> verboseParser <*> cardanoRunningNodeParser)
     ]
 
 parseCliAction :: [String] -> Either String CliAction
@@ -155,57 +158,14 @@ actor =
         <> help "Actor running the cli tool"
     )
 
-data DelegateSettings = DelegateSettings
-  { delegateIP :: IP
-  , delegatePort :: PortNumber
-  }
-
-delegate :: Parser DelegateSettings
-delegate = DelegateSettings <$> dlgtIP <*> (dlgtPort <*> dlgtNumber)
-
-dlgtIP :: Parser IP
-dlgtIP =
-  option parseIP $
-    mconcat
-      [ short 'i'
-      , long "ip"
-      , metavar "DELEGATE_IP"
-      , help "the IP address of the delegate server"
-      ]
-  where
-    parseIP :: ReadM IP
-    parseIP = eitherReader $ note "not a valid IP address" . readMaybe
-
-dlgtNumber :: Parser Int
-dlgtNumber =
-  option parseNumber $
-    mconcat
-      [ short 'd'
-      , long "delegate-number"
-      , metavar "DELEGATE_NUMBER"
-      , help "the number delegate-number"
-      ]
-  where
-    parseNumber :: ReadM Int
-    parseNumber = eitherReader $ \s -> do
-      num <- note "the input is not a number" $ readMaybe s
-      guard (num >= 0)
-      pure num
-
-dlgtPort :: Parser (Int -> PortNumber)
-dlgtPort =
-  option parsePort $
-    mconcat
-      [ short 'p'
-      , long "port"
-      , metavar "DELEGATE_PORT"
-      , help "the PORT of the delegate server"
-      , value $ fromIntegral . (8000 +)
-      , showDefaultWith (const "8000 + delegateNumber")
-      ]
-  where
-    parsePort :: ReadM (Int -> PortNumber)
-    parsePort = eitherReader $ fmap const . note "not a valid port number" . readMaybe
+delegate :: Parser Host
+delegate =
+  option
+    (parseHost Nothing)
+    ( short 'd'
+        <> metavar "DELEGATE"
+        <> help "Host and port of delegate server"
+    )
 
 script :: Parser AuctionScript
 script =
@@ -234,23 +194,6 @@ watchAuction =
           <> metavar "AUCTION"
           <> help "Watch the status of the given auction"
       )
-
-socketDir :: Parser String
-socketDir =
-  strOption
-    ( long "cardano-node-socket"
-        <> metavar "CARDANO_NODE_SOCKET"
-        <> help "Absolute path to the cardano node socket"
-    )
-
-networkMagic :: Parser NetworkMagic
-networkMagic =
-  option
-    parseNetworkMagic
-    ( long "network-magic"
-        <> metavar "NETWORK_MAGIC"
-        <> help "Network magic for cardano"
-    )
 
 parseScript :: ReadM AuctionScript
 parseScript = eitherReader $ \case

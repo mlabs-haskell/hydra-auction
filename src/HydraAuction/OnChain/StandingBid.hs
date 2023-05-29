@@ -11,22 +11,20 @@ module HydraAuction.OnChain.StandingBid (
 import PlutusTx.Prelude
 
 -- Plutus imports
-import Plutus.V1.Ledger.Address (pubKeyHashAddress, scriptHashAddress)
-import Plutus.V1.Ledger.Interval (contains, to)
-import Plutus.V1.Ledger.Value (CurrencySymbol (..), assetClass, assetClassValueOf)
-import Plutus.V2.Ledger.Api (
-  PubKeyHash (..),
-  TxInfo,
+
+import PlutusLedgerApi.V1.Address (pubKeyHashAddress)
+import PlutusLedgerApi.V1.Interval (contains, to)
+import PlutusLedgerApi.V1.Value (CurrencySymbol (..), assetClass, assetClassValueOf)
+import PlutusLedgerApi.V2 (PubKeyHash (..), txInInfoResolved)
+import PlutusLedgerApi.V2.Contexts (
+  ScriptContext (..),
+  TxInfo (..),
+  findOwnInput,
+ )
+import PlutusLedgerApi.V2.Tx (
   TxOut (..),
-  scriptContextTxInfo,
-  txInInfoResolved,
-  txInfoInputs,
-  txInfoMint,
-  txInfoOutputs,
-  txInfoValidRange,
   txOutAddress,
  )
-import Plutus.V2.Ledger.Contexts (ScriptContext, ownHash)
 
 -- Hydra imporst
 import Hydra.Contract.Head (hasPT)
@@ -83,7 +81,9 @@ mkStandingBidValidator terms datum redeemer context =
   where
     info :: TxInfo
     info = scriptContextTxInfo context
-    standingBidAddress = scriptHashAddress $ ownHash context
+    standingBidAddress = case findOwnInput context of
+      Just x -> txOutAddress $ txInInfoResolved x
+      Nothing -> traceError "Impossible happened"
     inOutsByAddress address =
       byAddress address $ txInInfoResolved <$> txInfoInputs info
     validNewBid :: VoucherCS -> StandingBidState -> StandingBidState -> Bool
@@ -94,16 +94,16 @@ mkStandingBidValidator terms datum redeemer context =
         [out] ->
           traceIfFalse
             "Output is not into standing bid"
-            (txOutAddress out == scriptHashAddress (ownHash context))
+            (txOutAddress out == standingBidAddress)
             && checkValidNewBid out
         _ -> traceError "Not exactly one ouput"
       where
         checkValidNewBid out =
           let inDatum = decodeOutputDatum info inputOut
               inBid = standingBidState <$> inDatum
-              Just inVoucherCS = standingBidVoucherCS <$> inDatum
+              inVoucherCS = standingBidVoucherCS <$> inDatum
               outBid = standingBidState <$> decodeOutputDatum info out
-           in case validNewBid inVoucherCS <$> inBid <*> outBid of
+           in case validNewBid <$> inVoucherCS <*> inBid <*> outBid of
                 Just x -> traceIfFalse "Incorrect bid" x
                 Nothing ->
                   traceError "Incorrect encoding for input or output datum"

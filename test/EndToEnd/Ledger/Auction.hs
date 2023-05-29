@@ -5,34 +5,30 @@ import Hydra.Prelude (MonadIO (liftIO), SomeException, fail)
 import PlutusTx.Prelude
 
 -- Haskell imports
-
 import Control.Monad (void)
 import Control.Monad.Catch (try)
+import Data.Map qualified as Map
 
 -- Haskell test imports
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (Assertion, testCase)
 
--- Hydra imports
-import Hydra.Cardano.Api (mkTxIn)
-
 -- Hydra auction imports
-
+import HydraAuction.OnChain (AuctionScript (..))
 import HydraAuction.Tx.Escrow (
   announceAuction,
   bidderBuys,
   sellerReclaims,
   startBidding,
  )
+import HydraAuction.Tx.FeeEscrow (distributeFee)
 import HydraAuction.Tx.StandingBid (cleanupTx, newBid, sellerSignatureForActor)
 import HydraAuction.Tx.TermsConfig (
-  configToAuctionTerms,
-  constructTermsDynamic,
   nonExistentHeadIdStub,
  )
 import HydraAuction.Tx.TestNFT (mintOneTestNFT)
-import HydraAuction.Types (AuctionTerms (..))
-import HydraAuctionUtils.Fixture (Actor (..))
+import HydraAuction.Types (ApprovedBidders (..), AuctionTerms (..))
+import HydraAuctionUtils.Fixture (Actor (..), ActorKind (..), actorsByKind, getActorsPubKeyHash)
 import HydraAuctionUtils.L1.Runner (
   initWallet,
   withActor,
@@ -40,7 +36,8 @@ import HydraAuctionUtils.L1.Runner (
 import HydraAuctionUtils.L1.Runner.Time (waitUntil)
 
 -- Hydra auction test imports
-import EndToEnd.Utils (assertNFTNumEquals, config, mkAssertion)
+import EndToEnd.Ledger.L1Steps (createTermsWithTestNFT)
+import EndToEnd.Utils (assertNFTNumEquals, assertUTxOsInScriptEquals, config, mkAssertion)
 
 testSuite :: TestTree
 testSuite =
@@ -49,6 +46,7 @@ testSuite =
     [ testCase "bidder-buys" bidderBuysTest
     , testCase "seller-reclaims" sellerReclaimsTest
     , testCase "unauthorised-bidder" unauthorisedBidderTest
+    , testCase "distribute-fees" distributeFeeTest
     ]
 
 bidderBuysTest :: Assertion
@@ -59,14 +57,7 @@ bidderBuysTest = mkAssertion $ do
 
   mapM_ (initWallet 100_000_000) [seller, buyer1, buyer2]
 
-  nftTx <- mintOneTestNFT
-  let utxoRef = mkTxIn nftTx 0
-
-  terms <- liftIO $ do
-    dynamicState <- constructTermsDynamic seller utxoRef nonExistentHeadIdStub
-    configToAuctionTerms config dynamicState
-
-  assertNFTNumEquals seller 1
+  terms <- createTermsWithTestNFT config nonExistentHeadIdStub
 
   announceAuction terms
 
@@ -83,6 +74,8 @@ bidderBuysTest = mkAssertion $ do
   waitUntil $ biddingEnd terms
   withActor buyer2 $ bidderBuys terms
 
+  assertUTxOsInScriptEquals FeeEscrow terms 1
+
   assertNFTNumEquals seller 0
   assertNFTNumEquals buyer1 0
   assertNFTNumEquals buyer2 1
@@ -96,14 +89,8 @@ sellerReclaimsTest = mkAssertion $ do
 
   void $ initWallet 100_000_000 seller
 
-  nftTx <- mintOneTestNFT
-  let utxoRef = mkTxIn nftTx 0
+  terms <- createTermsWithTestNFT config nonExistentHeadIdStub
 
-  terms <- liftIO $ do
-    dynamicState <- constructTermsDynamic seller utxoRef nonExistentHeadIdStub
-    configToAuctionTerms config dynamicState
-
-  assertNFTNumEquals seller 1
   announceAuction terms
 
   waitUntil $ biddingStart terms
@@ -114,6 +101,43 @@ sellerReclaimsTest = mkAssertion $ do
   sellerReclaims terms
 
   assertNFTNumEquals seller 1
+  assertUTxOsInScriptEquals FeeEscrow terms 1
+
+  waitUntil $ cleanup terms
+  cleanupTx terms
+
+distributeFeeTest :: Assertion
+distributeFeeTest = mkAssertion $ do
+  let seller = Alice
+      buyer1 = Bob
+      buyer2 = Carol
+
+  mapM_ (initWallet 100_000_000) $ [seller, buyer1, buyer2] <> (Map.!) actorsByKind HydraNodeActor
+
+  terms <- createTermsWithTestNFT config nonExistentHeadIdStub
+
+  announceAuction terms
+
+  waitUntil $ biddingStart terms
+  actorsPkh <- liftIO $ getActorsPubKeyHash [buyer1, buyer2]
+  startBidding terms (ApprovedBidders actorsPkh)
+
+  assertNFTNumEquals seller 0
+
+  withActor buyer2 $ newBid terms $ startingBid terms + minimumBidIncrement terms
+
+  waitUntil $ biddingEnd terms
+  withActor buyer2 $ bidderBuys terms
+
+  assertUTxOsInScriptEquals FeeEscrow terms 1
+
+  withActor Oscar $ distributeFee terms
+
+  assertNFTNumEquals seller 0
+  assertNFTNumEquals buyer1 0
+  assertNFTNumEquals buyer2 1
+
+  assertUTxOsInScriptEquals FeeEscrow terms 0
 
   waitUntil $ cleanup terms
   cleanupTx terms

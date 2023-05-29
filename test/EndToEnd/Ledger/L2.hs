@@ -4,8 +4,10 @@ module EndToEnd.Ledger.L2 (testSuite) where
 import Prelude
 
 -- Haskell imports
-import Control.Monad (replicateM_)
+
+import Control.Monad (replicateM_, void)
 import Control.Monad.Trans (MonadIO (..))
+import Data.Map qualified as Map
 
 -- Haskell test imports
 import Test.Tasty (TestTree, testGroup)
@@ -16,13 +18,22 @@ import Hydra.Prelude (ask)
 
 -- Hydra auction imports
 
+import HydraAuction.Delegate (abort)
+import HydraAuction.Delegate.Interface (
+  AbortReason (..),
+  DelegateResponse (..),
+  DelegateState (..),
+  InitializedState (..),
+  ResponseReason (..),
+ )
 import HydraAuction.Tx.Escrow (
   bidderBuys,
  )
 import HydraAuction.Tx.StandingBid (newBid, sellerSignatureForActor)
 import HydraAuction.Tx.TermsConfig (AuctionTermsConfig (..))
 import HydraAuction.Types (AuctionTerms (..))
-import HydraAuctionUtils.Fixture (Actor (..), hydraNodeActors)
+import HydraAuctionUtils.Fixture (Actor (..), ActorKind (..), actorsByKind)
+import HydraAuctionUtils.Hydra.Monad (AwaitedHydraEvent (..))
 import HydraAuctionUtils.L1.Runner (
   executeL1RunnerWithNodeAs,
   initWallet,
@@ -33,6 +44,7 @@ import HydraAuctionUtils.L1.Runner.Time (waitUntil)
 import EndToEnd.HydraUtils (
   EmulatorContext (..),
   EmulatorDelegate (..),
+  runCompositeForAllDelegates,
   runCompositeForDelegate,
   runEmulatorInTest,
  )
@@ -51,6 +63,8 @@ testSuite =
     "Ledger-L2"
     [ testCase "bidder-buys" bidderBuysTest
     , testCase "multiple-utxos-to-commit" multipleUtxosToCommitTest
+    , testCase "early-abort" earlyAbort
+    , testCase "late-abort" lateAbort
     ]
 
 config :: AuctionTermsConfig
@@ -63,6 +77,7 @@ config =
     }
 
 -- Includes testing L1 biding before and after L2 moves
+-- Inculdes testing of placing bid by same delegate who moved standing bid
 bidderBuysTest :: Assertion
 bidderBuysTest = mkAssertion $ do
   runEmulatorInTest $ do
@@ -113,6 +128,9 @@ bidderBuysTest = mkAssertion $ do
     runCompositeForDelegate Second $
       placeNewBidOnL2AndCheck headId terms bidder1 $
         correctBidNo terms 3
+    runCompositeForDelegate Main $
+      placeNewBidOnL2AndCheck headId terms bidder1 $
+        correctBidNo terms 4
 
     -- Close Head
 
@@ -122,7 +140,8 @@ bidderBuysTest = mkAssertion $ do
     bidder2SellerSignature <- liftIO $ sellerSignatureForActor terms bidder2
     liftIO $
       executeL1RunnerWithNodeAs node bidder2 $
-        newBid terms (correctBidNo terms 4) bidder2SellerSignature
+        newBid terms $
+          correctBidNo terms 5 bidder2SellerSignature
 
     -- Got lot
 
@@ -149,7 +168,8 @@ multipleUtxosToCommitTest = mkAssertion $ do
     replicateM_ 3 $
       liftIO $
         executeL1RunnerWithNodeAs node seller $
-          mapM_ (initWallet 200_000_000) hydraNodeActors
+          mapM_ (initWallet 200_000_000) $
+            (Map.!) actorsByKind HydraNodeActor
 
     -- Init hydra
 
@@ -169,3 +189,59 @@ multipleUtxosToCommitTest = mkAssertion $ do
     -- Move and commit
 
     emulateCommiting headId terms
+
+-- Abortion testing
+
+earlyAbort :: Assertion
+earlyAbort = mkAssertion $ do
+  runEmulatorInTest $ do
+    headId <- emulateDelegatesStart
+
+    runCompositeForDelegate Main $ do
+      [_response] <- abort RequiredHydraRequestFailed
+      return ()
+
+    void $
+      runCompositeForAllDelegates $
+        delegateStepOnExpectedHydraEvent
+          Any
+          [CurrentDelegateState Updated $ Initialized headId Aborted]
+
+lateAbort :: Assertion
+lateAbort = mkAssertion $ do
+  runEmulatorInTest $ do
+    MkEmulatorContext {l1Node} <- ask
+
+    headId <- emulateDelegatesStart
+
+    actors@[seller, _bidder1, _bidder2] <- return [Alice, Bob, Carol]
+    liftIO $
+      executeL1RunnerWithNodeAs l1Node seller $
+        mapM_ (initWallet 200_000_000) actors
+
+    -- Create
+
+    terms <-
+      liftIO $
+        executeL1RunnerWithNodeAs l1Node seller $
+          createTermsWithTestNFT config headId
+    _ <-
+      liftIO $
+        executeL1RunnerWithNodeAs l1Node seller $
+          announceAndStartBidding terms
+
+    -- Move and commit
+
+    emulateCommiting headId terms
+
+    -- Abort
+
+    runCompositeForDelegate Main $ do
+      [_response] <- abort RequiredHydraRequestFailed
+      return ()
+
+    void $
+      runCompositeForAllDelegates $
+        delegateStepOnExpectedHydraEvent
+          Any
+          [CurrentDelegateState Updated $ Initialized headId Closed]

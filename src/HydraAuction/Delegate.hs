@@ -8,6 +8,7 @@ module HydraAuction.Delegate (
   ClientResponseScope (..),
   ClientId,
   clientIsInScope,
+  abort,
 ) where
 
 -- Prelude imports
@@ -19,6 +20,14 @@ import Control.Monad.Trans (MonadIO (..), MonadTrans (lift))
 
 -- Cardano imports
 import Cardano.Api.UTxO qualified as UTxO
+
+-- Hydra imports
+import Hydra.Cardano.Api (
+  toPlutusKeyHash,
+  verificationKeyHash,
+  pattern ShelleyAddressInEra,
+  pattern TxOut,
+ )
 
 -- HydraAuction imports
 
@@ -32,14 +41,19 @@ import HydraAuction.Delegate.Interface (
   IncorrectRequestDataReason (..),
   InitializedState (..),
   MissingPrerequisite (..),
+  OpenHeadUtxo (..),
   RequestIgnoredReason (..),
   ResponseReason (..),
+  wasOpened,
  )
 import HydraAuction.OnChain.Common (validAuctionTerms)
 import HydraAuction.OnChain.StandingBid (validNewBidTerms)
+import HydraAuction.Tx.Common (createTwoMinAdaUtxo)
 import HydraAuction.Tx.StandingBid (
+  NewBidTxInfo (..),
   createNewBidTx,
   decodeInlineDatum,
+  decodeNewBidTxOnL2,
   moveToHydra,
  )
 import HydraAuction.Types (
@@ -57,17 +71,15 @@ import HydraAuctionUtils.Fixture (partyFor)
 import HydraAuctionUtils.Hydra.Interface (HydraCommand (..), HydraEvent (..))
 import HydraAuctionUtils.Hydra.Monad (MonadHydra (..))
 import HydraAuctionUtils.Monads (
-  MonadQueryUtxo (..),
   MonadSubmitTx (..),
-  UtxoQuery (..),
  )
-import HydraAuctionUtils.Monads.Actors (MonadHasActor (askActor), actorTipUtxo)
+import HydraAuctionUtils.Monads.Actors (
+  MonadHasActor (askActor),
+  addressAndKeys,
+ )
 import HydraAuctionUtils.Tx.Utxo (
-  extractSingleUtxo,
   filterAdaOnlyUtxo,
-  filterNonFuelUtxo,
   filterNotAdaOnlyUtxo,
-  txOutIsAdaOnly,
  )
 
 data DelegateEvent
@@ -97,52 +109,46 @@ delegateFrontendRequestStep (clientId, request) =
       state <- get
       return [(PerClient clientId, CurrentDelegateState WasQueried state)]
     CommitStandingBid {auctionTerms, utxoToCommit} -> do
+      let (txIn, txOut) = utxoToCommit
       state <- get
       case state of
-        Initialized headId NotYetOpen -> do
-          -- FIXME: do not query
-          standingBidUtxo <-
+        Initialized headId (AwaitingCommits {stangingBidWasCommited = False}) ->
+          validatingAuctionTerms headId auctionTerms $ do
+            -- FIXME: Waiting for support by Hydra
             lift $
               runL1RunnerInComposite $
-                UTxO.pairs <$> queryUtxo (ByTxIns [utxoToCommit])
-          case standingBidUtxo of
-            [(txIn, txOut)] -> do
-              validatingAuctionTerms headId auctionTerms $ do
-                -- FIXME: Waiting for support by Hydra
-                lift $
-                  runL1RunnerInComposite $
-                    moveToHydra headId auctionTerms (txIn, txOut)
-                return [(Broadcast, AuctionSet auctionTerms)]
-            [] ->
-              return
-                [
-                  ( PerClient clientId
-                  , RequestIgnored $ IncorrectRequestData TxIdDoesNotExist
-                  )
-                ]
-            _ -> do
-              responses <- abort $ ImpossibleHappened OnChainInvariantBreaks
-              return $ map (Broadcast,) responses
+                moveToHydra headId auctionTerms (txIn, txOut)
+            return [(Broadcast, AuctionSet auctionTerms)]
         _ ->
           return
             [ (PerClient clientId, RequestIgnored $ WrongDelegateState state)
             ]
     NewBid {auctionTerms, datum} -> do
       state <- get
+      actor <- askActor
       case state of
-        Initialized headId (Open {standingBidTerms}) -> do
+        Initialized headId (Open utxoState _) -> do
+          let (MkOpenHeadUtxo {standingBidTerms, standingBidUtxo, collateralUtxo}) =
+                utxoState
           validatingAuctionTerms headId auctionTerms $ do
             let newBidTerms = standingBid $ standingBidState datum
                 newVoucherCS = standingBidVoucherCS datum
             if validNewBidTerms auctionTerms newVoucherCS standingBidTerms newBidTerms
               then do
-                _ <- lift $ do
-                  actor <- askActor
-                  runHydraInComposite $ do
-                    tx <- createNewBidTx auctionTerms actor datum
-                    submitTx tx
-                -- FIXME: return closing transaction
-                return [(PerClient clientId, ClosingTxTemplate)]
+                lift $ runHydraInComposite $ do
+                  tx <-
+                    createNewBidTx
+                      auctionTerms
+                      actor
+                      standingBidUtxo
+                      collateralUtxo
+                      datum
+                  submitTx tx
+                -- Caching AuctionTerms on this server
+                put $
+                  Initialized headId $
+                    Open utxoState (Just auctionTerms)
+                return []
               else
                 return
                   [
@@ -189,54 +195,91 @@ delegateEventStep event = case event of
         sendCommand Close
         return []
   AuctionStageStarted _ -> return []
-  HydraEvent (CommandFailed commandName)
-    -- This is okay cuz of concurrent requests,
-    -- only one of which will be fulfilled
-    | commandName `elem` ["Init", "Fanout"] -> return []
-    | commandName == "Abort" -> do
-        -- FIXME
-        liftIO $ putStrLn "Abort failed"
-        return []
-    | otherwise -> abort RequiredHydraRequestFailed
-  HydraEvent hydraEvent
-    | notExpected -> abort RequiredHydraRequestFailed
-    where
-      notExpected = case hydraEvent of
-        InvlidInput {} -> True
-        PostTxOnChainFailed {} -> True
-        _ -> False
   HydraEvent Committed {utxo, party} -> do
     state <- get
-    case UTxO.pairs utxo of
-      [(_, txOut)] -> do
-        delegateActor <- askActor
-        delegateParty <- liftIO $ partyFor delegateActor
-        case (party == delegateParty, isStandingBidTx txOut, state) of
-          (False, True, Initialized _ NotYetOpen) ->
-            commitCollateralAda
-          (False, True, Initialized _ HasCommit) ->
-            abort $ ImpossibleHappened IncorrectStandingBidUtxoOnL2
-          (False, False, Initialized _ NotYetOpen) ->
-            abort $ ImpossibleHappened IncorrectStandingBidUtxoOnL2
-          (False, False, Initialized _ HasCommit) ->
-            if not $ txOutIsAdaOnly txOut
-              then abort $ ImpossibleHappened IncorrectStandingBidUtxoOnL2
-              else return []
-          (True, _, Initialized _ NotYetOpen) ->
-            updateStateAndResponse HasCommit
-          (True, _, Initialized _ HasCommit) -> return []
-          _ -> return [] -- Other stages shoud not be possible
-      _ ->
-        abort $ ImpossibleHappened IncorrectStandingBidUtxoOnL2
+    delegateParty <- getDelegateParty
+    case state of
+      Initialized _ (AwaitingCommits {stangingBidWasCommited}) ->
+        case UTxO.pairs $ filterNotAdaOnlyUtxo utxo of
+          [(_, txOut)] | isStandingBidTx txOut ->
+            case (party == delegateParty, stangingBidWasCommited) of
+              -- Cannot commit standing bid twice
+              (_, True) -> abort $ ImpossibleHappened IncorrectCommit
+              (True, False) ->
+                updateStateAndResponse $
+                  AwaitingCommits {stangingBidWasCommited = True}
+              (False, False) -> do
+                result <- commitCollateralAda
+                case result of
+                  Right () ->
+                    updateStateAndResponse $
+                      AwaitingCommits {stangingBidWasCommited = True}
+                  Left reason -> abort reason
+          [] ->
+            -- ADA-only commit case (collateral)
+            if stangingBidWasCommited
+              then return []
+              else -- Standing bid commit should come first
+                abort $ ImpossibleHappened IncorrectCommit
+          _ -> abort $ ImpossibleHappened IncorrectCommit
+      _ -> abort $ ImpossibleHappened IncorrectHydraEvent
   HydraEvent (SnapshotConfirmed _txs utxo) ->
     updateStateWithStandingBidOrAbort utxo
+  HydraEvent (TxInvalid currentUtxo tx) -> do
+    state <- get
+    actor <- askActor
+    (_, delegatePublicKey, _) <- lift $ runL1RunnerInComposite addressAndKeys
+    case state of
+      Initialized _ (Open utxoState mCachedTerms) -> do
+        case (txResentRequired delegatePublicKey, mCachedTerms) of
+          (Just newBidDatum, Just auctionTerms) -> do
+            lift $ resentBid actor utxoState auctionTerms newBidDatum
+            return []
+          (Just _, Nothing) ->
+            -- If tx was sent initialy by this server,
+            -- auction terms should be already cached
+            abort $ ImpossibleHappened IncorrectHydraEvent
+          (Nothing, _) -> return []
+      _ -> abort $ ImpossibleHappened IncorrectHydraEvent
+    where
+      txResentRequired delegatePublicKey =
+        let
+          delegatePKH =
+            toPlutusKeyHash $
+              verificationKeyHash delegatePublicKey
+         in
+          case decodeNewBidTxOnL2 tx currentUtxo of
+            Just
+              ( MkNewBidTxInfo
+                  { submitterPKH
+                  , isStandingBidInvalidated
+                  , newBidDatum
+                  }
+                ) ->
+                if submitterPKH == delegatePKH
+                  && isStandingBidInvalidated
+                  then Just newBidDatum
+                  else Nothing
+            Nothing -> Nothing
+      resentBid actor utxoState auctionTerms newBidDatum = do
+        let (MkOpenHeadUtxo {standingBidUtxo, collateralUtxo}) = utxoState
+        runHydraInComposite $ do
+          newTx <-
+            createNewBidTx
+              auctionTerms
+              actor
+              standingBidUtxo
+              collateralUtxo
+              newBidDatum
+          submitTx newTx
   HydraEvent ReadyToFanout -> do
     sendCommand Fanout
     return []
   HydraEvent (HeadIsInitializing headId) -> do
-    put $ Initialized headId NotYetOpen
+    let newState = AwaitingCommits {stangingBidWasCommited = False}
+    put $ Initialized headId newState
     -- Yes, this is code duplication
-    updateStateAndResponse NotYetOpen
+    updateStateAndResponse newState
   HydraEvent (HeadIsOpen utxo) ->
     updateStateWithStandingBidOrAbort utxo
   HydraEvent HeadIsClosed -> do
@@ -245,7 +288,29 @@ delegateEventStep event = case event of
     updateStateAndResponse Finalized
   HydraEvent HeadIsAborted {} ->
     updateStateAndResponse Aborted
-  HydraEvent _ -> return []
+  HydraEvent hydraEvent -> case hydraEvent of
+    InvlidInput {} -> abort RequiredHydraRequestFailed
+    CommandFailed name -> txFailedCase $ name <> "Tx"
+    PostTxOnChainFailed {txTag, errorTag} ->
+      case (txTag, errorTag) of
+        ("InitTx", _)
+          | errorTag `elem` ["NoSeedInput", "NotEnoughFuel"] ->
+              abort $ PrerequisiteMissing HydraInit
+        (_, _) -> txFailedCase txTag
+    _ -> return [] -- Some unknown cases
+    where
+      -- Seems like both kinds this events could be produced by Hydra
+      -- in similar situations
+      txFailedCase txTag
+        -- This is okay cuz these are concurrent requests,
+        -- only one of which will be fulfilled
+        | txTag `elem` ["InitTx", "FanoutTx"] = return []
+        -- Preventing infinite loop of Abortions
+        | txTag `elem` ["AbortTx", "CloseTx"] = do
+            -- TODO: use logs
+            liftIO $ putStrLn "Abort/Close failed"
+            return []
+        | otherwise = abort RequiredHydraRequestFailed
   where
     decodeStandingBidTerms txOut = case decodeInlineDatum txOut of
       Right standingBidDatum ->
@@ -256,28 +321,43 @@ delegateEventStep event = case event of
     isStandingBidTx txOut = case decodeInlineDatum txOut of
       Right (_ :: StandingBidDatum) -> True
       Left _ -> False
-    updateStateWithStandingBidOrAbort utxo =
+    updateStateWithStandingBidOrAbort utxo = do
+      state <- get
+      let previousCache = case state of
+            Initialized _ (Open _ x) -> x
+            _ -> Nothing
+      (delegateAddress, _, _) <- lift $ runL1RunnerInComposite addressAndKeys
       case UTxO.pairs $ filterNotAdaOnlyUtxo utxo of
-        [(_, txOut)] -> case decodeStandingBidTerms txOut of
-          Just standingBid -> updateStateAndResponse $ Open standingBid
-          Nothing -> abort'
+        [(txIn, txOut)] ->
+          case ( decodeStandingBidTerms txOut
+               , collateralUtxosOf delegateAddress
+               ) of
+            (Just standingBidDatum, [collateralUtxo]) -> do
+              let utxoState =
+                    MkOpenHeadUtxo
+                      { standingBidTerms = standingBidDatum
+                      , standingBidUtxo = (txIn, txOut)
+                      , collateralUtxo = collateralUtxo
+                      }
+              updateStateAndResponse $ Open utxoState previousCache
+            _ -> abort'
         _ -> abort'
       where
         abort' = abort $ ImpossibleHappened IncorrectStandingBidUtxoOnL2
+        collateralUtxosOf address =
+          UTxO.pairs $ UTxO.filter belongTo $ filterAdaOnlyUtxo utxo
+          where
+            belongTo (TxOut (ShelleyAddressInEra address') _ _ _) =
+              address == address'
+            belongTo _ = False
     commitCollateralAda = do
-      moneyToCommit <-
-        lift $
-          runL1RunnerInComposite $
-            filterAdaOnlyUtxo . filterNonFuelUtxo <$> actorTipUtxo
-      case extractSingleUtxo moneyToCommit of
-        -- FIXME: check commited amount
-        Just forCollateralUtxo -> do
-          lift $
-            runHydraInComposite $
-              sendCommand (Commit forCollateralUtxo)
-          updateStateAndResponse HasCommit
-        Nothing ->
-          abort $ PrerequisiteMissing AdaForCommit
+      (forCollateralUtxo, _) <-
+        lift $ runL1RunnerInComposite createTwoMinAdaUtxo
+      sendCommand (Commit $ UTxO.fromPairs [forCollateralUtxo])
+      return $ Right ()
+    getDelegateParty = do
+      delegateActor <- askActor
+      liftIO $ partyFor delegateActor
 
 abort ::
   ( MonadIO (t CompositeRunner)
@@ -288,7 +368,9 @@ abort ::
   AbortReason ->
   t CompositeRunner [DelegateResponse]
 abort reason = do
-  lift $ runHydraInComposite $ sendCommand Abort
+  state <- get
+  let command = if wasOpened state then Close else Abort
+  lift $ runHydraInComposite $ sendCommand command
   updateStateAndResponse $ AbortRequested reason
 
 updateStateAndResponse ::

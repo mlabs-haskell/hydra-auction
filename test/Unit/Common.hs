@@ -20,10 +20,11 @@ import Test.Tasty.HUnit (Assertion, testCase, (@?=))
 
 -- Hydra
 import Hydra.Cardano.Api (TxIn)
+import Hydra.Chain.Direct.Tx (headIdToCurrencySymbol)
 import Hydra.Ledger.Cardano ()
 
 -- Plutus imports
-import Plutus.V1.Ledger.Interval (from, interval, to)
+import PlutusLedgerApi.V1.Interval (from, interval, to)
 
 -- Hydra auction imports
 import HydraAuction.OnChain.Common (secondsLeftInInterval)
@@ -69,7 +70,7 @@ testCurrentAuctionStage = do
   nonce <- generate arbitrary :: Prelude.IO TxIn
 
   terms <- liftIO $ do
-    dynamicState <- constructTermsDynamic Alice nonce nonExistentHeadIdStub
+    dynamicState <- constructTermsDynamic Alice nonce (headIdToCurrencySymbol nonExistentHeadIdStub)
     configToAuctionTerms config dynamicState
 
   assertStageAtTime terms (0 `minutes` later) AnnouncedStage

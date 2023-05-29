@@ -14,7 +14,8 @@ import Prelude
 import Control.Monad (void)
 
 -- Plutus imports
-import Plutus.V2.Ledger.Api (PubKeyHash, fromData)
+import PlutusLedgerApi.V1.Crypto (PubKeyHash)
+import PlutusTx.IsData.Class (fromData)
 
 -- Cardano node imports
 import Cardano.Api.UTxO qualified as UTxO
@@ -23,6 +24,7 @@ import Cardano.Api.UTxO qualified as UTxO
 import Hydra.Cardano.Api (
   Lovelace (..),
   TxOut,
+  getScriptData,
   lovelaceToValue,
   toPlutusData,
   toPlutusKeyHash,
@@ -79,7 +81,7 @@ import HydraAuctionUtils.Types.Natural (
 parseBidDepositDatum :: TxOut ctx -> BidDepositDatum
 parseBidDepositDatum out = case txOutDatum out of
   TxOutDatumInline scriptData ->
-    case fromData $ toPlutusData scriptData of
+    case fromData $ toPlutusData $ getScriptData scriptData of
       Just bidDepositDatum -> bidDepositDatum
       Nothing ->
         error "Impossible happened: Cannot decode bid deposit datum"

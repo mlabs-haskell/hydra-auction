@@ -13,16 +13,13 @@ import System.Directory (removeFile)
 import Test.Tasty (TestTree, testGroup, withResource)
 import Test.Tasty.HUnit (Assertion, testCase)
 
--- Plutus imports
-import Plutus.V1.Ledger.Value (unCurrencySymbol)
-import Plutus.V2.Ledger.Api (fromBuiltin)
-
--- Hydra imports
-import Hydra.Chain (HeadId (..))
-
 -- Hydra auction imports
 
-import HydraAuction.Delegate.Interface (DelegateState (..), InitializedState (..))
+import HydraAuction.Delegate.Interface (
+  DelegateState (..),
+  InitializedState (..),
+  OpenHeadUtxo (..),
+ )
 import HydraAuction.OnChain (AuctionScript (..))
 import HydraAuction.Tx.TermsConfig (nonExistentHeadIdStub)
 import HydraAuction.Types (AuctionTerms (..))
@@ -58,7 +55,16 @@ testSuite =
       removeFile fn
 
 mockDelegateState :: DelegateState
-mockDelegateState = Initialized (HeadId . fromBuiltin . unCurrencySymbol $ nonExistentHeadIdStub) (Open Nothing)
+mockDelegateState =
+  Initialized nonExistentHeadIdStub $
+    Open headUtxo Nothing
+  where
+    headUtxo =
+      MkOpenHeadUtxo
+        { standingBidTerms = Nothing
+        , standingBidUtxo = (error "unused", error "unused")
+        , collateralUtxo = (error "unused", error "unused")
+        }
 
 auctionName :: AuctionName
 auctionName = "test"

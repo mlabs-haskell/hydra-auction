@@ -62,8 +62,9 @@ import HydraAuctionUtils.Composite.Runner (
  )
 import HydraAuctionUtils.Fixture (
   Actor (..),
+  ActorKind (..),
+  actorsByKind,
   hydraKeysFor,
-  hydraNodeActors,
   keysFor,
  )
 import HydraAuctionUtils.Hydra.Runner (executeHydraRunnerFakingParams)
@@ -120,7 +121,9 @@ spinUpHeads clusterIx hydraScriptsTxId cont = do
           seedFromFaucet_ node oscarCardanoVk 100_000_000 Normal faucetTracer
           seedFromFaucet_ node patriciaCardanoVk 100_000_000 Normal faucetTracer
           seedFromFaucet_ node rupertCardanoVk 100_000_000 Normal faucetTracer
-          [actor1, actor2, actor3] <- return hydraNodeActors
+          [actor1, actor2, actor3] <-
+            return $
+              (Map.!) actorsByKind HydraNodeActor
           executeL1Runner ctx $ do
             let threeClients =
                   Map.fromList
@@ -139,7 +142,9 @@ runningThreeNodesDockerComposeHydra cont = do
   -- FIXME: more relaible wait (not sure for what, guess sockets opening)
   threadDelay 2_000_000
 
-  [actor1, actor2, actor3] <- return hydraNodeActors
+  [actor1, actor2, actor3] <-
+    return $
+      (Map.!) actorsByKind HydraNodeActor
 
   runHydraClientN 1 $
     \n1 -> runHydraClientN 2 $

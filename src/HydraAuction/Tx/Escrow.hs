@@ -14,8 +14,8 @@ import Prelude
 import Control.Monad (void)
 
 -- Plutus imports
-import Plutus.V1.Ledger.Address (pubKeyHashAddress)
-import Plutus.V1.Ledger.Value (
+import PlutusLedgerApi.V1.Address (pubKeyHashAddress)
+import PlutusLedgerApi.V1.Value (
   CurrencySymbol (..),
   assetClassValue,
   unAssetClass,
@@ -245,7 +245,7 @@ bidderBuys terms = do
               <> lovelaceToValue minLovelace
 
       txOutFeeEscrow =
-        TxOut (ShelleyAddressInEra feeEscrowAddress) value TxOutDatumNone ReferenceScriptNone
+        TxOut (ShelleyAddressInEra feeEscrowAddress) value (mkInlineDatum ()) ReferenceScriptNone
         where
           value = lovelaceToValue $ Lovelace $ calculateTotalFee terms
 
@@ -323,7 +323,7 @@ sellerReclaims terms = do
         TxOut
           (ShelleyAddressInEra feeEscrowAddress)
           value
-          TxOutDatumNone
+          (mkInlineDatum ())
           ReferenceScriptNone
         where
           value = lovelaceToValue $ Lovelace $ calculateTotalFee terms

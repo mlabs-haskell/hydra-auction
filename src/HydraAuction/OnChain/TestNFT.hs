@@ -4,17 +4,21 @@ module HydraAuction.OnChain.TestNFT (testNftPolicy, testNftCurrencySymbol, testN
 import PlutusTx.Prelude
 
 -- Plutus imports
-import Plutus.V1.Ledger.Value (AssetClass (..))
-import Plutus.V2.Ledger.Api (CurrencySymbol, MintingPolicy, TokenName (..), mkMintingPolicyScript)
+import PlutusLedgerApi.Common (SerialisedScript, serialiseCompiledCode)
+import PlutusLedgerApi.V1.Value (
+  AssetClass (..),
+  CurrencySymbol,
+  TokenName (..),
+ )
 import PlutusTx qualified
 
 -- Hydra auction imports
 import HydraAuctionUtils.Extras.Plutus (scriptCurrencySymbol)
 
-testNftPolicy :: MintingPolicy
+testNftPolicy :: SerialisedScript
 testNftPolicy =
-  mkMintingPolicyScript $
-    $$(PlutusTx.compile [||\_ _ -> ()||])
+  serialiseCompiledCode $
+    $$(PlutusTx.compile [||\(_ :: BuiltinData) (_ :: BuiltinData) -> ()||])
 
 testNftCurrencySymbol :: CurrencySymbol
 testNftCurrencySymbol = scriptCurrencySymbol testNftPolicy

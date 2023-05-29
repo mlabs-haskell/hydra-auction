@@ -1,13 +1,16 @@
 module HydraAuctionUtils.Fixture (
   Actor (..),
+  ActorKind (..),
+  actorName,
   keysFor,
   hydraKeysFor,
-  hydraNodeActors,
+  actorsByKind,
   partyFor,
   allActors,
   actorFromPkh,
   getActorPubKeyHash,
   getActorsPubKeyHash,
+  getActorKind,
 ) where
 
 -- Prelude imports
@@ -17,6 +20,9 @@ import Prelude
 import Control.Monad.Extra (findM, unless)
 import Data.Aeson qualified as Aeson
 import Data.Bifunctor (first)
+import Data.Char (toLower)
+import Data.Map (Map)
+import Data.Map qualified as Map
 import GHC.Generics (Generic)
 import System.FilePath ((<.>), (</>))
 
@@ -34,7 +40,7 @@ import Hydra.Cardano.Api (
  )
 
 -- Plutus imports
-import Plutus.V1.Ledger.Crypto (PubKeyHash)
+import PlutusLedgerApi.V1.Crypto (PubKeyHash)
 
 -- Hydra Auction imports
 import Hydra.Crypto (AsType (AsHydraKey), HydraKey)
@@ -59,9 +65,25 @@ data Actor
 instance Aeson.FromJSON Actor
 instance Aeson.ToJSON Actor
 
--- These actors are supposed to be used as Hydra node admins
-hydraNodeActors :: [Actor]
-hydraNodeActors = [Oscar, Patricia, Rupert]
+allActors :: [Actor]
+allActors = [minBound .. maxBound]
+
+-- HydraNodeActor are supposed to be used as Hydra node admins
+data ActorKind = RegularActor | HydraNodeActor
+  deriving stock (Show, Eq, Ord, Enum, Bounded)
+
+actorsByKind :: Map ActorKind [Actor]
+actorsByKind =
+  Map.fromList
+    [ (RegularActor, [minBound .. Hans])
+    , (HydraNodeActor, [Oscar, Patricia, Rupert])
+    ]
+
+getActorKind :: Actor -> ActorKind
+getActorKind actor
+  | actor `elem` (Map.!) actorsByKind RegularActor =
+      RegularActor
+  | otherwise = HydraNodeActor
 
 -- | Get the "well-known" keys for given actor.
 keysFor :: Actor -> IO (VerificationKey PaymentKey, SigningKey PaymentKey)
@@ -89,7 +111,7 @@ partyFor actor = do
 
 hydraKeysFor :: Actor -> IO (VerificationKey HydraKey, SigningKey HydraKey)
 hydraKeysFor actor = do
-  unless (actor `elem` hydraNodeActors) $
+  unless (getActorKind actor == HydraNodeActor) $
     fail "Only Hydra Node actors do have hydra keys"
   bs <-
     readDataFile $
@@ -102,16 +124,13 @@ hydraKeysFor actor = do
       fail $ "cannot decode text envelope from '" <> show bs <> "', error: " <> show err
     Right sk -> return (getVerificationKey sk, sk)
 
-allActors :: [Actor]
-allActors = [minBound .. maxBound]
-
 getActorPubKeyHash :: Actor -> IO PubKeyHash
 getActorPubKeyHash actor = do
   (actorVk, _) <- keysFor actor
   return $ toPlutusKeyHash $ verificationKeyHash actorVk
 
 getActorsPubKeyHash :: [Actor] -> IO [PubKeyHash]
-getActorsPubKeyHash actors = sequence $ getActorPubKeyHash <$> actors
+getActorsPubKeyHash = mapM getActorPubKeyHash
 
 actorFromPkh :: PubKeyHash -> IO Actor
 actorFromPkh pkh = do
@@ -127,15 +146,4 @@ actorFromPkh pkh = do
     Nothing -> fail $ "Unable to find actor matching key: " <> show pkh
 
 actorName :: Actor -> String
-actorName = \case
-  Alice -> "alice"
-  Bob -> "bob"
-  Carol -> "carol"
-  Dave -> "dave"
-  Eve -> "eve"
-  Frank -> "frank"
-  Grace -> "grace"
-  Hans -> "hans"
-  Oscar -> "oscar"
-  Patricia -> "patricia"
-  Rupert -> "rupert"
+actorName = map toLower . show

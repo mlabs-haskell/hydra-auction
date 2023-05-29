@@ -134,17 +134,17 @@ services:
     volumes:
       - ./data/hydra-keys:/keys:ro
       - ./devnet:/devnet
-    environment:
-      - HYDRA_NODE_NUMBER=1
     ports:
       - "8001:8001"
     networks:
       hydra_net:
     command:
       [ "hydra-auction-delegate"
-      , "--actor", "rupert"
-      , "--hydra-host", "127.0.0.1"
-      , "--hydra-port", "4001"
+      , "--actor", "oscar"
+      , "--hydra-node", "172.16.238.10:4001"
+      , "--websockets-host", "0.0.0.0:8001"
+      , "--network-magic", "42"
+      , "--cardano-node-socket", "/devnet/node.socket"
       ]
 
   delegate-server-2:
@@ -157,8 +157,6 @@ services:
     volumes:
       - ./data/hydra-keys:/keys:ro
       - ./devnet:/devnet
-    environment:
-      - HYDRA_NODE_NUMBER=2
     ports:
       - "8002:8001"
     networks:
@@ -166,8 +164,10 @@ services:
     command:
       [ "hydra-auction-delegate"
       , "--actor", "patricia"
-      , "--hydra-host", "127.0.0.1"
-      , "--hydra-port", "4002"
+      , "--hydra-node", "172.16.238.20:4001"
+      , "--websockets-host", "0.0.0.0:8001"
+      , "--network-magic", "42"
+      , "--cardano-node-socket", "/devnet/node.socket"
       ]
 
   delegate-server-3:
@@ -180,17 +180,17 @@ services:
     volumes:
       - ./data/hydra-keys:/keys:ro
       - ./devnet:/devnet
-    environment:
-      - HYDRA_NODE_NUMBER=3
     ports:
       - "8003:8001"
     networks:
       hydra_net:
     command:
       [ "hydra-auction-delegate"
-      , "--actor", "oscar"
-      , "--hydra-host", "127.0.0.1"
-      , "--hydra-port", "4003"
+      , "--actor", "rupert"
+      , "--hydra-node", "172.16.238.30:4001"
+      , "--websockets-host", "0.0.0.0:8001"
+      , "--network-magic", "42"
+      , "--cardano-node-socket", "/devnet/node.socket"
       ]
 
 networks:

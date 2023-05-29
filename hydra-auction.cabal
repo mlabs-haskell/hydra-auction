@@ -40,6 +40,7 @@ common common-lang
     -Wall -Wcompat -Wincomplete-record-updates
     -Wincomplete-uni-patterns -Wredundant-constraints
     -Wmissing-export-lists -Wmissing-deriving-strategies
+    -Wno-redundant-constraints
 
   if !flag(dev)
     ghc-options: -Werror
@@ -140,7 +141,7 @@ executable hydra-auction
     CLI.Actions
     CLI.Config
     CLI.Parsers
-    CLI.Parsers.TxIn
+    CLI.Printing
     CLI.Types
     CLI.Watch
 
@@ -152,9 +153,9 @@ executable hydra-auction
     , bech32
     , bech32-th
     , bytestring
-    , cardano-api                     >=1.35.4
-    , cardano-binary                  ==1.5.0
-    , cardano-crypto-class            ==2.0.0
+    , cardano-api
+    , cardano-binary
+    , cardano-crypto-class
     , cardano-ledger-alonzo
     , cardano-ledger-alonzo-test
     , cardano-ledger-babbage
@@ -166,7 +167,7 @@ executable hydra-auction
     , cardano-ledger-shelley-ma-test
     , cardano-ledger-shelley-test
     , cardano-prelude
-    , cardano-slotting                ==0.1.0.0
+    , cardano-slotting
     , cborg
     , containers
     , data-default
@@ -178,12 +179,11 @@ executable hydra-auction
     , hydra-plutus
     , hydra-test-utils
     , optparse-applicative
-    , ouroboros-network               ==0.1.0.1
-    , parsec
+    , ouroboros-network
     , plutus-tx
     , QuickCheck
     , serialise
-    , strict-containers               ==0.1.0.0
+    , strict-containers               >=0.1.0.0
     , text
 
   hs-source-dirs: app
@@ -192,13 +192,16 @@ executable hydra-auction
 executable hydra-auction-delegate
   import:         common-lang
   main-is:        Main.hs
-  other-modules:  HydraAuction.Delegate.Server
+  other-modules:
+    DelegateServer.Parsers
+    HydraAuction.Delegate.Server
+
   hs-source-dirs: delegate-app
   ghc-options:    -threaded -rtsopts
   build-depends:
     , hydra-auction
     , hydra-auction-utils
-    , plutus-ledger-api
+    , optparse-applicative
 
 library
   import:          common-lang
@@ -213,6 +216,7 @@ library
     HydraAuction.Tx.Common
     HydraAuction.Tx.Deposit
     HydraAuction.Tx.Escrow
+    HydraAuction.Tx.FeeEscrow
     HydraAuction.Tx.StandingBid
     HydraAuction.Tx.TermsConfig
     HydraAuction.Tx.TestNFT
@@ -222,6 +226,7 @@ library
   other-modules:
     HydraAuction.OnChain.Deposit
     HydraAuction.OnChain.Escrow
+    HydraAuction.OnChain.FeeEscrow
     HydraAuction.OnChain.StandingBid
     HydraAuction.OnChain.StateToken
 
@@ -258,7 +263,9 @@ library hydra-auction-utils
     HydraAuctionUtils.L1.Runner.Time
     HydraAuctionUtils.Monads
     HydraAuctionUtils.Monads.Actors
+    HydraAuctionUtils.Network
     HydraAuctionUtils.Parsers
+    HydraAuctionUtils.Parsers.TxIn
     HydraAuctionUtils.Plutus
     HydraAuctionUtils.PrettyPrinting
     HydraAuctionUtils.Time
@@ -271,10 +278,12 @@ library hydra-auction-utils
 
   other-modules:   HydraAuctionUtils.L1.Runner.Tracer
   build-depends:
+    , HostAndPort
     , HUnit
     , hydra-plutus
     , hydra-test-utils
     , optparse-applicative
+    , parsec
     , plutus-tx
     , protolude
 
@@ -285,6 +294,8 @@ test-suite hydra-auction-test
   other-modules:
     CLI.Actions
     CLI.Config
+    CLI.Printing
+    CLI.Types
     EndToEnd.CLI
     EndToEnd.HydraUtils
     EndToEnd.Ledger.Auction

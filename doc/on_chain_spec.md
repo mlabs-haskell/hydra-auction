@@ -625,9 +625,8 @@ Under the **distribute fees** redeemer, we enforce that:
 
 - There is one input spent from the fee escrow validator,
 defining the delegates.
-- There is one output per delegate.
-The conditions in `validFeeDistribution` are satisfied
-when applied to these outputs and the transaction fee.
+- There is at least one output per delegate such that
+the ada contained in that output is >= `auctionFeePerDelegate`
 - No tokens are minted or burned.
 
 ```mermaid
@@ -642,26 +641,6 @@ flowchart LR
 ```
 
 The fee distribution to delegates must satisfy the following conditions:
-
-```haskell
-validFeeDistribution :: AuctionTerms -> [TxOut] -> Value -> Bool
-validFeeDistribution AuctionTerms{..} outputsToDelegates txFee =
-    allAdaDistributed
-      && adaDistributedEvenly
-  where
-    -- Each delegate received the `auctionFeePerDelegate`,
-    -- after deducting the transaction fees from the total.
-    allAdaDistributed = actualTotalAda == expectedTotalAda
-    actualTotalAda = sum actualAdaValues + adaValueOf txFee
-    expectedTotalAda = length delegates * auctionFeePerDelegate
-
-    -- The amount received by any delegate differs by at most one lovelace
-    -- from what any other delegate received.
-    adaDistributedEvenly = 1 > maximum actualAdaValues - minimum actualAdaValues
-
-    adaValueOf = valueOf adaSymbol adaToken
-    actualAdaValues = adaValueOf . txOutValue <$> outputsToDelegates
-```
 
 To keep things simple in this design, we require
 the number of delegates in an auction to be small enough

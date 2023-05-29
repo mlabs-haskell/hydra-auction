@@ -39,34 +39,11 @@ In the rest of this document,
 we will describe each of these systems
 and the request types that people can submit to those systems.
 
-## Limitations and assumptions of the current approach
+# Decisions
 
-* All auction users are from a predefined list of actors
-  (with fixed keys laying in `data/credentials`).
-  This is only to simplify demonstration,
-  no real limitation for that in scripts exists.
-* Hardcoded auction lot asset class is used.
-* All Hydra nodes know each others' IPs before starting a node
-  (this is a current limitation of Hydra).
-* Multiple delegates cannot share a single Hydra node,
-  due to the Hydra API allowing any actions from any client.
-  So we have one Hydra node to one Delegate server correspondence for now.
-* An auction can only be hosted on a single Hydra Head
-  and a Hydra Head can only host one auction.
-  * Later, when Hydra will support incremental commits and decommits
-    (see Hydra spec for details), same Hydra Head and set of delegates
-    can be reused for multiple Auctions.
-
-## Decisions
-
-* Anyone can place auction into Hydra Head.
+* Anyone can ask Delegate server to place auction into Hydra Head.
     * At the same time any Auction has its Hydra Head Id recorded on-chain
     and cannot be placed on any other Hydra Head.
-
-## To be decided
-
-* Should Delegate server validate transactions before posting them to L2
-  or only Hydra Ledger and Frontend should do that.
 
 ## Off-chain workflow
 
@@ -141,29 +118,151 @@ The delegate server may send the following commands to the Hydra node:
 
 Hydra API reference: https://hydra.family/head-protocol/api-reference
 
-### Delegate server
+### Delgate server
 
-The delegate server is responsible for
-responding to requests from the Frontend CLI,
-constructing queries or transactions as necessary
-to submit to the delegate’s Hydra node.
+#### Overall principles
 
-Each delegate should have its own delegate server and Hydra node running.
+Delegate server works on event-based architecture.
+Delegate domain logic state is fully determined by `DelegateState`.
+This state is public and broadcasted to all clients on any change.
 
-<table><tr><td>
+Delegate does anything only reacting to events.
+It can change its state, put transactions on L2 or message client(s).
+Possible events are: delegate start, received output from Hydra Node,received client request, current auction stage change.
 
-**start.** Start a delegate server and an associated Hydra Node.
+There is also some technical state, like client connections,
+but they do not matter for domain logic.
 
-Command parameters:
+It is hard to coordinate, which Delegate will request
+state change one Hydra Head, so they just do that all at once.
+Head should handle that situation correctly.
 
-- Delegate server ID
-- Delegate server config
+Clients are connected by WebSockets async event messaging protocol.
 
-</td></tr><tr></tr><tr><td>
+#### State machine
 
-**stop.** Stop the delegate server and its associated Hydra node.
+`DelegateState` is mainly just reflecting Head state machine.
+That way it cand be fully restored by replaing Head outpus
+if delegate server fails and all problems of maintaining states
+in sync is delegated to Hydra Nodes.
+Apart from things specified by Hydra state machine,
+`DelegateState` also stores UTxO state (from commited or open head)
+in parser domain-specific form.
 
-</td></tr></table>
+Fact that `DelegateState` only stores Head state means
+that it does not know `AuctionTerms`,
+because it cannot be determined from Standing Bid transaction.
+That is why any client request should attach `AuctionTerms`,
+and delegate server only checks that they do match one used
+in standing bid.
+
+There are two exceptions from this scheme:
+
+Any initialized state contains `HeadParams`,
+which is known by any delegate from CLI start
+and consist of params required by seller to select Head,
+like `auctionFeePerDelegate` field.
+This works because `DelegateState` is shared by Platform server
+to all clients.
+
+There is also a state `AbortRequested AbortReason`,
+because it is not determined by Hydra outputs log.
+It is used only for storing/communicating debug information,
+abusing fact that all `DelegateState` changes are broadcasted to client.
+
+### Requests
+
+* `QueryCurrentDelegateState` - returns `CurrentDelegateState`.
+* `CommitStandingBid` - asks to commit standing bid.
+   Could only be performed if delegate state is `NotYetOpen`.
+* `NewBid` - asks to perform new bid.
+  Client gives `StandingBidDatum` for that, which contains
+  bid amount and signatures.
+  Could only be performed if delegate state is `Open`.
+  If another bid was placed on L2 concurenlty, but bid is still valid,
+  then delegate server will try to place it any way.
+
+### Generic responses
+
+* `CurrentDelegateState` - delegate state was updated or queried.
+* `RequestIgnored IncorrectRequestData` - something wrong
+   in request data. For example wrong bid amount or auction terms.
+* `RequestIgnored WrongDelegateState` - command cannot be performed
+  in current state
+
+### Platform server
+
+#### Overall principles
+
+The purpose of Platform server is to be the way for sellers to find
+suitable and available Hydra Head and to 1
+
+Just like Delegate server, Platform server is based on event driven
+architecture. It only does something on events.
+
+But unlike Delegate server its logic is not state machine.
+It works with data in CQRS-like way
+and stores entities in durable and queryable storage.
+
+All entities are reflecting some L1 state.
+In theory server could monitor L1 for entities creation/state changes.
+But for now it only accepts requests from
+and query L1 to check that they are honest.
+
+All entities are public and can be queried.
+All queried can be limited by enitity count.
+
+Platform server clients could be both Frontend CLI and Delegate server.
+
+#### Stored entities
+
+* Initialize Hydra Heads:
+  stores their current `DelegateState`
+  and list of Delegate server addresses.
+  L2 standing bid state is not tracked,
+  for that client should connect to some Delegate server.
+  Could be filtered:
+  by current state constuctor (opened, closed, etc),
+  by Head ID,
+  by including Head Node,
+  and by `auctionFeePerDelegate` upper bound (`lte`).
+  Ordered by `auctionFeePerDelegate` from lower to higher.
+* Announced Auctions: only static `AuctionTerms`.
+  Can be filtered by `Head ID` and `AuctionTermsHash`.
+  For information if Auction is on L2,
+  client shoud query matching for Head entity.
+* `BidderApproval`: only stores itself.
+  Can be filtered by `AuctionTermsHash` and bidder `PubKeyHash`.
+
+#### Query requests
+
+* `Query EnitityQuery` - query any stored entity
+  by available filter fields.
+  Returns `QueryResponse [Entity]`
+* `SubscribeForBidderApproval AuctionTermsHash`.
+  Will send `NewBidderApproval` response for any new `BidderApproval`
+  for matching auction.
+
+#### Command requests
+
+* `PutHydraHead` - this should be called by Delegate for Initialized Head.
+  Duplicate requests are ignored with `AlreadyKnownHead` response.
+  After command success, Platform server connects to Delegate as a client
+  to monitor `DelegateState` changes.
+* `PutAuction AuctionTerms` - this should be called by seller client
+  for announced auction.
+  Server checks auction state is actually announced on L1.
+* `PutBidderApproval` - this should be called by seller
+  Server checks existence of matching auction entity
+  and consistency of `BiddingApproval`.
+
+#### Generic responses
+
+* `DuplicateCommand` - if enitity is already known, this is response.
+* `WrongCommand NotMatchingL1State` - is returned then L1 does not seem to
+  match the one that Command should require.
+  For example `PutAuction` was called for auction,
+  which is not not nnounced yet.
 
 ### Frontend CLI
 

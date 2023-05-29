@@ -7,10 +7,9 @@ import PlutusTx.Prelude (toBuiltin)
 import Prelude
 
 -- Plutus imports
-import Plutus.V1.Ledger.Address (Address, scriptHashAddress)
-import Plutus.V1.Ledger.Scripts (MintingPolicy, unMintingPolicyScript, unValidatorScript)
-import Plutus.V1.Ledger.Value (CurrencySymbol (..))
-import Plutus.V2.Ledger.Api (Validator)
+import PlutusLedgerApi.Common (SerialisedScript)
+import PlutusLedgerApi.V1.Address (Address, scriptHashAddress)
+import PlutusLedgerApi.V1.Value (CurrencySymbol (..))
 
 -- Plutus extra imports
 import Plutus.Extras as X
@@ -23,11 +22,11 @@ import Hydra.Cardano.Api (
   pattern PlutusScript,
  )
 
-validatorAddress :: Validator -> Address
-validatorAddress = scriptHashAddress . scriptValidatorHash . unValidatorScript
+validatorAddress :: SerialisedScript -> Address
+validatorAddress = scriptHashAddress . scriptValidatorHash
 
 {-# INLINEABLE scriptCurrencySymbol #-}
-scriptCurrencySymbol :: MintingPolicy -> CurrencySymbol
+scriptCurrencySymbol :: SerialisedScript -> CurrencySymbol
 scriptCurrencySymbol =
   CurrencySymbol
     . toBuiltin
@@ -35,4 +34,3 @@ scriptCurrencySymbol =
     . hashScript
     . PlutusScript
     . fromPlutusScript
-    . unMintingPolicyScript

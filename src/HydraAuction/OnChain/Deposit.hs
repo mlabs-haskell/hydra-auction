@@ -7,10 +7,15 @@ import PlutusTx.Prelude
 
 -- Plutus imports
 
-import Plutus.V1.Ledger.Address (Address, pubKeyHashAddress)
-import Plutus.V1.Ledger.Interval (contains, from)
-import Plutus.V2.Ledger.Api (TxInfo, scriptContextTxInfo, txInInfoResolved, txInfoInputs, txInfoOutputs, txInfoReferenceInputs, txInfoValidRange, txOutAddress)
-import Plutus.V2.Ledger.Contexts (ScriptContext, txSignedBy)
+import PlutusLedgerApi.V1.Address (Address, pubKeyHashAddress)
+import PlutusLedgerApi.V1.Interval (contains, from)
+import PlutusLedgerApi.V2.Contexts (
+  ScriptContext (..),
+  TxInfo (..),
+  txInInfoResolved,
+  txSignedBy,
+ )
+import PlutusLedgerApi.V2.Tx (txOutAddress)
 import PlutusTx qualified
 
 -- Hydra auction imports

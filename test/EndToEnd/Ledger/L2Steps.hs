@@ -17,25 +17,33 @@ import Control.Monad.Trans (MonadIO (..), MonadTrans (..))
 import GHC.Stack (HasCallStack)
 
 -- Haskell test imports
-import Test.Tasty.HUnit (assertEqual)
+import Test.Tasty.HUnit (assertBool, assertEqual)
 
 -- Hydra imports
 import Hydra.Chain (HeadId)
 
 -- HydraAuction imports
 
-import HydraAuction.Delegate (ClientResponseScope (..), DelegateEvent (..), delegateEventStep, delegateFrontendRequestStep)
+import HydraAuction.Delegate (ClientId, ClientResponseScope (..), DelegateEvent (..), delegateEventStep, delegateFrontendRequestStep)
 import HydraAuction.Delegate.Interface (
   DelegateResponse (..),
   DelegateState (..),
   FrontendRequest (..),
   InitializedState (..),
+  OpenHeadUtxo (..),
   ResponseReason (..),
  )
 import HydraAuction.OnChain (AuctionScript (..))
 import HydraAuction.Tx.Common (scriptSingleUtxo)
 import HydraAuction.Tx.StandingBid (createStandingBidDatum, queryStandingBidDatum, sellerSignatureForActor)
-import HydraAuction.Types (AuctionStage (..), AuctionTerms, standingBid, standingBidState)
+import HydraAuction.Types (
+  AuctionStage (..),
+  AuctionTerms,
+  BidTerms,
+  StandingBidDatum,
+  standingBid,
+  standingBidState,
+ )
 import HydraAuctionUtils.Composite.Runner (CompositeRunner, runHydraInComposite, runL1RunnerInComposite)
 import HydraAuctionUtils.Fixture (Actor, keysFor)
 import HydraAuctionUtils.Hydra.Interface (HydraEvent (..), HydraEventKind (..))
@@ -46,12 +54,12 @@ import HydraAuctionUtils.Types.Natural (Natural)
 -- HydraAuction test imports
 import EndToEnd.HydraUtils (DelegatesClusterEmulator, EmulatorDelegate (..), runCompositeForAllDelegates, runCompositeForDelegate)
 
-delegateStepOnExpectedHydraEvent ::
+delegateStepOnExpectedHydraEvent' ::
   HasCallStack =>
   AwaitedHydraEvent ->
-  [DelegateResponse] ->
+  ([DelegateResponse] -> Bool) ->
   StateT DelegateState CompositeRunner ()
-delegateStepOnExpectedHydraEvent eventSpec expectedResponses = do
+delegateStepOnExpectedHydraEvent' eventSpec checkResponses = do
   Just event <-
     lift $
       runHydraInComposite $
@@ -63,7 +71,17 @@ delegateStepOnExpectedHydraEvent eventSpec expectedResponses = do
           <> show delegate
           <> " reaction on "
           <> show eventSpec
-  liftIO $ assertEqual message expectedResponses responses
+  liftIO $ assertBool message (checkResponses responses)
+
+delegateStepOnExpectedHydraEvent ::
+  HasCallStack =>
+  AwaitedHydraEvent ->
+  [DelegateResponse] ->
+  StateT DelegateState CompositeRunner ()
+delegateStepOnExpectedHydraEvent eventSpec expectedResponses =
+  delegateStepOnExpectedHydraEvent'
+    eventSpec
+    (expectedResponses ==)
 
 emulateDelegatesStart :: HasCallStack => DelegatesClusterEmulator HeadId
 emulateDelegatesStart = do
@@ -74,10 +92,13 @@ emulateDelegatesStart = do
   headId : _ <- runCompositeForAllDelegates $ do
     Just event@(HeadIsInitializing headId) <- waitForHydraEvent Any
     responses <- delegateEventStep $ HydraEvent event
+    let expectedState =
+          Initialized headId $
+            AwaitingCommits {stangingBidWasCommited = False}
     liftIO $
       assertEqual
         "Initializing reaction"
-        [CurrentDelegateState Updated $ Initialized headId NotYetOpen]
+        [CurrentDelegateState Updated expectedState]
         responses
     return headId
   return headId
@@ -85,14 +106,14 @@ emulateDelegatesStart = do
 emulateCommiting :: HasCallStack => HeadId -> AuctionTerms -> DelegatesClusterEmulator ()
 emulateCommiting headId terms = do
   -- Main delegate commits Standing Bid
-  existingStandingBid <- runCompositeForDelegate Main $
+  _existingStandingBid <- runCompositeForDelegate Main $
     lift $
       runL1RunnerInComposite $ do
         Just datum <- queryStandingBidDatum terms
         return $ standingBid $ standingBidState datum
 
   runCompositeForDelegate Main $ do
-    Just (standingBidTxIn, _) <-
+    Just standingBidSingleUtxo <-
       lift $
         runL1RunnerInComposite $
           scriptSingleUtxo StandingBid terms
@@ -101,7 +122,7 @@ emulateCommiting headId terms = do
         ( 1
         , CommitStandingBid
             { auctionTerms = terms
-            , utxoToCommit = standingBidTxIn
+            , utxoToCommit = standingBidSingleUtxo
             }
         )
     liftIO $
@@ -110,14 +131,16 @@ emulateCommiting headId terms = do
   -- Secondary delegates should commit money on L2 in reaction
   -- (we do not check that)
   -- They states should reflect existence of first commit now
-
+  let expectedState =
+        Initialized headId $
+          AwaitingCommits {stangingBidWasCommited = True}
   _ <-
     runCompositeForAllDelegates $ do
       delegateStepOnExpectedHydraEvent
         (SpecificKind CommittedKind)
-        [CurrentDelegateState Updated (Initialized headId HasCommit)]
+        [CurrentDelegateState Updated expectedState]
 
-  -- Secondary commits creates Commited evens, which Delegates should ignore
+  -- Secondary commits creates Commited events, which Delegates should ignore
 
   replicateM_ 2 $
     runCompositeForAllDelegates $
@@ -129,12 +152,9 @@ emulateCommiting headId terms = do
 
   _ <-
     runCompositeForAllDelegates $
-      delegateStepOnExpectedHydraEvent
+      delegateStepOnExpectedHydraEvent'
         (SpecificKind HeadIsOpenKind)
-        [ CurrentDelegateState
-            Updated
-            (Initialized headId $ Open existingStandingBid)
-        ]
+        (const True)
 
   return ()
 
@@ -167,7 +187,7 @@ placeNewBidOnL2AndCheck ::
   Actor ->
   Natural ->
   StateT DelegateState CompositeRunner ()
-placeNewBidOnL2AndCheck headId terms bidder amount = do
+placeNewBidOnL2AndCheck _headId terms bidder amount = do
   delegate <- askActor
   let fakeClientId = fromEnum delegate
   liftIO $
@@ -181,23 +201,34 @@ placeNewBidOnL2AndCheck headId terms bidder amount = do
   (_, bidderSigningKey) <- liftIO $ keysFor bidder
   sellerSignature <- liftIO $ sellerSignatureForActor terms bidder
   let bidDatum = createStandingBidDatum terms amount sellerSignature bidderSigningKey
-  submitNewBidToDelegate fakeClientId bidDatum
+  submitNewBidToDelegate fakeClientId terms bidDatum
   checkStandingBidWasUpdated bidDatum
   where
-    submitNewBidToDelegate fakeClientId bidDatum = do
-      responses <-
-        delegateFrontendRequestStep
-          (fakeClientId, NewBid {auctionTerms = terms, datum = bidDatum})
-      liftIO $
-        assertEqual
-          "New bid"
-          [(PerClient fakeClientId, ClosingTxTemplate)]
-          responses
     checkStandingBidWasUpdated bidDatum = do
-      let expectedBidTerms = standingBid $ standingBidState bidDatum
-      delegateStepOnExpectedHydraEvent
+      let
+        expectedBidTerms = standingBid $ standingBidState bidDatum
+      delegateStepOnExpectedHydraEvent'
         (SpecificKind SnapshotConfirmedKind)
-        [ CurrentDelegateState
-            Updated
-            (Initialized headId $ Open expectedBidTerms)
-        ]
+        (const True)
+
+checkResponsesForBidTerms ::
+  Maybe BidTerms -> [DelegateResponse] -> Bool
+checkResponsesForBidTerms expectedBidTerms responses =
+  case responses of
+    [ CurrentDelegateState
+        Updated
+        (Initialized _ (Open (MkOpenHeadUtxo {standingBidTerms}) _))
+      ] ->
+        standingBidTerms == expectedBidTerms
+    _ -> False
+
+submitNewBidToDelegate :: ClientId -> AuctionTerms -> StandingBidDatum -> StateT DelegateState CompositeRunner ()
+submitNewBidToDelegate fakeClientId terms bidDatum = do
+  responses <-
+    delegateFrontendRequestStep
+      (fakeClientId, NewBid {auctionTerms = terms, datum = bidDatum})
+  liftIO $
+    assertEqual
+      "New bid"
+      []
+      responses

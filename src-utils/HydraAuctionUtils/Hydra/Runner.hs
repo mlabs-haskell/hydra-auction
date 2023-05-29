@@ -29,7 +29,7 @@ import Data.Aeson.Lens (key)
 import Data.Aeson.Types (parseMaybe)
 import Data.Map qualified as Map
 import Data.Monoid (First)
-import GHC.Natural (Natural)
+import GHC.Natural (Natural, naturalToInt)
 import Test.HUnit.Lang (HUnitFailure)
 
 -- Cardano imports
@@ -37,7 +37,11 @@ import Cardano.Api.UTxO qualified as UTxO
 
 -- Hydra imports
 import Cardano.Api (NetworkId (Testnet))
-import Hydra.Cardano.Api (NetworkMagic (NetworkMagic))
+import Hydra.Cardano.Api (
+  NetworkMagic (NetworkMagic),
+  pattern TxValidityNoLowerBound,
+  pattern TxValidityUpperBound,
+ )
 import HydraNode (
   HydraClient,
   input,
@@ -109,10 +113,9 @@ instance MonadHydra HydraRunner where
 
   waitForHydraEvent' ::
     Natural -> AwaitedHydraEvent -> HydraRunner (Maybe HydraEvent)
-  waitForHydraEvent' timeout awaitedSpec = do
+  waitForHydraEvent' timeoutSeconds awaitedSpec = do
     MkHydraExecutionContext {node} <- ask
     traceMessage $ AwaitingHydraEvent awaitedSpec
-    -- FIXME: raise custom errors
     mEvent <- liftIO $ try $ waitMatch timeout node matchingHandler
     case mEvent of
       Left (_ :: HUnitFailure) -> return Nothing
@@ -120,6 +123,7 @@ instance MonadHydra HydraRunner where
         traceMessage $ AwaitedHydraEvent event
         return $ Just event
     where
+      timeout = fromInteger $ toInteger $ naturalToInt timeoutSeconds
       matchingHandler value = do
         event <- matchingHydraEvent value
         guard $ matchingPredicate event
@@ -145,9 +149,9 @@ instance MonadBlockchainParams HydraRunner where
     MkHydraExecutionContext {fakeBlockchainParams} <- ask
     return fakeBlockchainParams
 
-  -- Hydra slot is always 0, so it probably safe to use it
-  -- for interval conversion
-  toSlotNo _ = return 0
+  -- Hydra slot is always 0, so we just return the only working validity bound
+  convertValidityBound (_, _) =
+    return (TxValidityNoLowerBound, TxValidityUpperBound 1)
 
 matchingHydraEvent :: Value -> Maybe HydraEvent
 matchingHydraEvent value =
@@ -157,7 +161,8 @@ matchingHydraEvent value =
       HeadIsInitializing <$> retrieveField "headId"
     Just "TxSeen" -> TxSeen <$> retrieveField "tx"
     Just "TxValid" -> TxValid <$> retrieveField "tx"
-    Just "TxInvalid" -> TxInvalid <$> retrieveField "tx"
+    Just "TxInvalid" ->
+      TxInvalid <$> retrieveField "tx" <*> retrieveField "utxo"
     Just "InvlidInput" ->
       InvlidInput <$> retrieveField "reason" <*> retrieveField "input"
     Just "PostTxOnChainFailed" ->
@@ -182,6 +187,7 @@ matchingHydraEvent value =
     Just "HeadIsClosed" -> Just HeadIsClosed
     Just "ReadyToFanout" -> Just ReadyToFanout
     Just "HeadIsFinalized" -> HeadIsFinalized <$> retrieveField "utxo"
+    Just "HeadIsAborted" -> Just HeadIsAborted
     _ -> Nothing
   where
     getUtxoValueHandler =

@@ -1,7 +1,7 @@
 module Main (main) where
 
 -- Prelude imports
-import Hydra.Prelude (lookupEnv, readMaybe, traverse_)
+import Hydra.Prelude (traverse_)
 import Prelude
 
 -- Haskell imports
@@ -17,6 +17,7 @@ import Control.Concurrent.STM (
   newTChan,
   newTQueue,
   readTChan,
+  tryReadTQueue,
   writeTChan,
   writeTQueue,
  )
@@ -24,15 +25,12 @@ import Control.Monad (forever, void, when, (>=>))
 import Control.Monad.Reader (MonadReader (..))
 import Control.Monad.State (StateT, evalStateT)
 import Control.Monad.Trans (MonadIO (liftIO))
-import Control.Tracer (Tracer, contramap, nullTracer, stdoutTracer)
+import Control.Tracer (Tracer, contramap, stdoutTracer)
 import Data.Aeson (ToJSON, eitherDecode, encode)
-import Data.Maybe (fromMaybe)
-import GHC.Stack (HasCallStack)
 import Network.WebSockets (
   Connection,
   acceptRequest,
   receiveData,
-  runClient,
   runServer,
   sendTextData,
   withPingThread,
@@ -41,11 +39,13 @@ import Prettyprinter (Pretty (pretty))
 import System.IO (BufferMode (LineBuffering), hSetBuffering, stderr, stdout)
 
 -- Hydra imports
-import Hydra.Network (IP, PortNumber)
-import HydraNode (HydraClient (..))
+import Hydra.Network (Host (..))
 
 -- HydraAuction imports
 
+import Data.Text qualified as Text
+import DelegateServer.Parsers (delegateConfigParser)
+import GHC.Stack (HasCallStack)
 import HydraAuction.Delegate (
   ClientId,
   ClientResponseScope (Broadcast),
@@ -78,10 +78,11 @@ import HydraAuctionUtils.Composite.Runner (
   executeCompositeRunner,
   runHydraInComposite,
  )
-import HydraAuctionUtils.Fixture (Actor (..))
 import HydraAuctionUtils.Hydra.Monad (AwaitedHydraEvent (..), waitForHydraEvent)
 import HydraAuctionUtils.Hydra.Runner (HydraRunner, executeHydraRunnerFakingParams)
-import HydraAuctionUtils.L1.Runner (dockerNode, executeL1RunnerWithNodeAs)
+import HydraAuctionUtils.L1.Runner (executeL1RunnerWithNodeAs)
+import HydraAuctionUtils.Network (runHydraClient)
+import HydraAuctionUtils.Parsers (execParserForCliArgs)
 import HydraAuctionUtils.Time (currentPlutusPOSIXTime)
 import HydraAuctionUtils.Tracing (
   MonadTracer (trace),
@@ -175,36 +176,46 @@ runDelegateLogicSteps
   frontendRequestQueue
   broadcast = do
     flip evalStateT initialState $ forever $ do
+      -- Any Hydra state changes could affect FrontendRequest execution
+      -- That means that we cannot process multiple FrontendRequests
+      -- on same run, cuz interleaving Hydra events might affect them.
+      -- To prevent that we first process all Hydra events in queue,
+      -- and then process not more than one FrontendRequest in a tick.
+
       processQueueWith
         eventQueue
         ( delegateEventStep
             -- All delegateEventStep responses should be brodcasted
             >=> return . fmap (Broadcast,)
         )
-      processQueueWith
-        frontendRequestQueue
-        delegateFrontendRequestStep
+
+      mEvent <- liftIO . atomically $ tryReadTQueue frontendRequestQueue
+      traverse_
+        (performStep delegateFrontendRequestStep)
+        mEvent
+
       -- FIXME: log queues overload and make tick not-static
       liftIO $ threadDelay tick
     where
-      processQueueWith ::
+      performStep ::
         forall req.
         (Show req) =>
-        TQueue req ->
         ( req ->
           StateT
             DelegateState
             CompositeRunner
             [(ClientResponseScope, DelegateResponse)]
         ) ->
+        req ->
         StateT DelegateState CompositeRunner ()
+      performStep step event = do
+        -- FIXME: use logging
+        liftIO $ putStrLn $ "Delegate logic event: " <> show event
+        response <- step event
+        liftIO $ putStrLn $ "Delegate logic response: " <> show response
+        putInToClientsQueue response
       processQueueWith queue step =
-        flushAndTraverseNewElements queue $ \event -> do
-          -- FIXME: use logging
-          liftIO $ putStrLn $ "Delegate logic event: " <> show event
-          response <- step event
-          liftIO $ putStrLn $ "Delegate logic response: " <> show response
-          putInToClientsQueue response
+        flushAndTraverseNewElements queue $ performStep step
       putInToClientsQueue responses = liftIO $ do
         atomically $
           traverse_ (writeTChan broadcast) responses
@@ -214,12 +225,11 @@ runDelegateLogicSteps
 
 -- | run a delegate server
 runDelegateServer ::
+  HasCallStack =>
   -- | the configuration of the delegate server
   DelegateServerConfig ->
   DelegateTracerT IO ()
 runDelegateServer conf = do
-  trace (Started $ port conf)
-
   tracer <- askTracer
 
   eventQueue <- liftIO . atomically $ do
@@ -235,8 +245,9 @@ runDelegateServer conf = do
         withStartStopTrace threadSort $
           case threadSort of
             WebsocketThread -> do
+              let host = websocketsHost conf
               liftIO $
-                runServer (show $ host conf) (fromIntegral $ port conf) $
+                runServer (Text.unpack $ hostname host) (fromIntegral $ port host) $
                   runWithTracer' tracer
                     . websocketsServer
                       (ping conf)
@@ -253,7 +264,7 @@ runDelegateServer conf = do
                       frontendRequestQueue
                       toClientsChannel
             QueueAuctionStageThread ->
-              mbQueueAuctionPhases eventQueue toClientsChannel
+              mbQueueAuctionPhases (tick conf) eventQueue toClientsChannel
             QueueHydraEventsThread ->
               liftIO $
                 executeCompositeRunnerForConfig . runHydraInComposite $
@@ -273,8 +284,8 @@ runDelegateServer conf = do
       putMVar clientCounter (v + 1)
       return v
     executeCompositeRunnerForConfig action =
-      runHydraClientN (hydraServerNumber conf) $ \hydraClient -> do
-        context <- executeL1RunnerWithNodeAs dockerNode Alice $ do
+      runHydraClient (hydraNodeHost conf) True $ \hydraClient -> do
+        context <- executeL1RunnerWithNodeAs (cardanoNode conf) (l1Actor conf) $ do
           l1Context <- ask
           executeHydraRunnerFakingParams hydraClient $ do
             hydraContext <- ask
@@ -304,10 +315,11 @@ withStartStopTrace threadSort action = do
   trace $ ThreadEvent ThreadCancelled threadSort
 
 mbQueueAuctionPhases ::
+  Int ->
   TQueue DelegateEvent ->
   TChan (ClientResponseScope, DelegateResponse) ->
   DelegateTracerT IO ()
-mbQueueAuctionPhases delegateEvents toClientsChannel = do
+mbQueueAuctionPhases tick delegateEvents toClientsChannel = do
   terms <-
     liftIO $
       awaitForAuctionSetTerms =<< atomically (dupTChan toClientsChannel)
@@ -323,8 +335,7 @@ mbQueueAuctionPhases delegateEvents toClientsChannel = do
       atomically (readTChan chan) >>= \case
         (Broadcast, AuctionSet terms) -> pure terms
         _ -> do
-          -- TODO: use tick
-          threadDelay 1000
+          threadDelay tick
           awaitForAuctionSetTerms chan
 
     queueCurrentStageAndWaitForNextLoop :: AuctionTerms -> IO ()
@@ -343,72 +354,22 @@ mbQueueAuctionPhases delegateEvents toClientsChannel = do
           <> show currentStage
           <> " , awaiting "
           <> show mSecsLeft
-          <> "until next stage."
+          <> " until next stage."
       case mSecsLeft of
         Nothing -> pure ()
         Just s -> do
           threadDelay (fromInteger s * 1_000_000)
           queueCurrentStageAndWaitForNextLoop terms
 
-{- | start a delegate server at a @$PORT@,
-   it accepts incoming websocket connections
-   and runs the delegate.
--}
 main :: HasCallStack => IO ()
 main = do
   --- XXX: this prevents logging issues in Docker
   hSetBuffering stdout LineBuffering
   hSetBuffering stderr LineBuffering
-  port <- lookupEnv "PORT"
-  -- FIXUP: parse actual adress and other params
-  envHydraNode <- lookupEnv "HYDRA_NODE_NUMBER"
-  hydraNodeNumber <-
-    maybe
-      (fail "could not find HYDRA_NODE_NUMBER environment variable")
-      pure
-      $ readMaybe =<< envHydraNode
-
-  putStrLn $ "With number: " <> show hydraNodeNumber
-  let actor = case hydraNodeNumber of
-        1 -> Oscar
-        2 -> Patricia
-        3 -> Rupert
-        _ -> error "Wrong HYDRA_NODE_NUMBER"
-  let conf :: DelegateServerConfig
-      conf =
-        DelegateServerConfig
-          { host
-          , port = fromMaybe portDefault $ port >>= readMaybe
-          , tick = tick
-          , ping = ping
-          , l1Actor = actor
-          , hydraServerNumber = hydraNodeNumber
-          }
-  runWithTracer' tracer $ runDelegateServer conf
+  conf <- execParserForCliArgs delegateConfigParser
+  runWithTracer' tracer $ do
+    trace $ Started conf
+    runDelegateServer conf
   where
     tracer :: Tracer IO DelegateServerLog
     tracer = contramap (show . pretty) stdoutTracer
-
-    host :: IP
-    host = "0.0.0.0"
-
-    tick :: Int
-    tick = 1_000
-
-    ping :: Int
-    ping = 30
-
-    portDefault :: PortNumber
-    portDefault = 8001
-
-runHydraClientN :: Int -> (HydraClient -> IO b) -> IO b
-runHydraClientN n cont' = do
-  putStrLn $ "Hydra connection opened for " <> show n
-  runClient ("172.16.238." <> show (10 * n)) 4001 "/history=yes" $
-    \connection ->
-      cont' $
-        HydraClient
-          { hydraNodeId = n
-          , connection = connection
-          , tracer = contramap show nullTracer
-          }
