@@ -46,8 +46,8 @@ import Hydra.Cardano.Api (
  )
 
 -- Plutus imports
-import Plutus.V1.Ledger.Address qualified as PlutusAddress
-import Plutus.V1.Ledger.Api (Interval, POSIXTime)
+import PlutusLedgerApi.V1 (Interval, POSIXTime)
+import PlutusLedgerApi.V1.Address qualified as PlutusAddress
 
 -- HydraAuction imports
 import CardanoClient (buildAddress)

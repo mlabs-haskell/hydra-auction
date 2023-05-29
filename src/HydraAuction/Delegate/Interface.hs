@@ -9,6 +9,7 @@ module HydraAuction.Delegate.Interface (
   FrontendRequest (..),
   IncorrectRequestDataReason (..),
   ImposibleEvent (..),
+  OpenHeadUtxo (..),
   MissingPrerequisite (..),
   AbortReason (..),
   initialState,
@@ -20,12 +21,12 @@ module HydraAuction.Delegate.Interface (
 import Prelude
 
 -- Haskell imports
+
+import Data.Aeson (FromJSON, ToJSON)
 import GHC.Generics (Generic)
 
--- Cardano imports
-import Cardano.Api
-
 -- Hydra imports
+import Hydra.Cardano.Api (CtxUTxO, TxIn, TxOut)
 import Hydra.Chain (HeadId)
 
 -- HydraAuction imports
@@ -35,7 +36,7 @@ data FrontendRequest
   = QueryCurrentDelegateState
   | CommitStandingBid
       { auctionTerms :: AuctionTerms
-      , utxoToCommit :: TxIn
+      , utxoToCommit :: (TxIn, TxOut CtxUTxO)
       }
   | NewBid
       { auctionTerms :: AuctionTerms
@@ -70,17 +71,21 @@ isFinalState NotInitialized = False
 wasOpened :: DelegateState -> Bool
 wasOpened state = case state of
   NotInitialized -> False
-  Initialized _ NotYetOpen -> False
-  Initialized _ (HasCommit {}) -> False
+  Initialized _ (AwaitingCommits {}) -> False
   Initialized _ _ -> True
 
+data OpenHeadUtxo = MkOpenHeadUtxo
+  { standingBidTerms :: Maybe BidTerms
+  , standingBidUtxo :: (TxIn, TxOut CtxUTxO)
+  , -- Collateral of current delegate server
+    collateralUtxo :: (TxIn, TxOut CtxUTxO)
+  }
+  deriving stock (Eq, Show, Generic)
+  deriving anyclass (FromJSON, ToJSON)
+
 data InitializedState
-  = NotYetOpen
-  | -- FIXME: fix stanging bid address here?
-    HasCommit
-  | Open
-      { standingBidTerms :: Maybe BidTerms
-      }
+  = AwaitingCommits {stangingBidWasCommited :: Bool}
+  | Open OpenHeadUtxo (Maybe AuctionTerms)
   | Closed
   | Finalized
   | AbortRequested AbortReason
@@ -101,15 +106,19 @@ data RequestIgnoredReason
   deriving stock (Eq, Show, Generic)
   deriving anyclass (FromJSON, ToJSON)
 
+-- It is actually possible if one of Delegates is breaking protocol
 data ImposibleEvent
-  = -- FIXME: actually it is not imposible if one of Delegates is malignant
-    -- FIXME: add docs and/or split on different cases
-    IncorrectStandingBidUtxoOnL2
+  = -- FIXME: add docs and/or split on different cases
+    IncorrectCommit
+  | IncorrectStandingBidUtxoOnL2
+  | IncorrectHydraEvent
   | OnChainInvariantBreaks
   deriving stock (Eq, Show, Generic)
   deriving anyclass (FromJSON, ToJSON)
 
-data MissingPrerequisite = AdaForCommit
+data MissingPrerequisite
+  = AdaForCommit
+  | HydraInit
   deriving stock (Eq, Show, Generic)
   deriving anyclass (FromJSON, ToJSON)
 

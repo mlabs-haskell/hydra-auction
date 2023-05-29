@@ -7,10 +7,9 @@ import Prelude
 import Data.Map qualified as Map
 
 -- Plutus imports
-
-import Plutus.V1.Ledger.Interval (always)
-import Plutus.V1.Ledger.Value (assetClassValue, valueOf)
-import Plutus.V2.Ledger.Api (getMintingPolicy, txOutValue)
+import PlutusLedgerApi.V1.Value (assetClassValue, valueOf)
+import PlutusLedgerApi.V2 (always)
+import PlutusLedgerApi.V2.Tx (txOutValue)
 
 -- Hydra imports
 import Cardano.Api.UTxO qualified as UTxO
@@ -80,7 +79,7 @@ mintOneTestNFT = do
 
       toMint =
         mintedTokens
-          (fromPlutusScript $ getMintingPolicy testNftPolicy)
+          (fromPlutusScript testNftPolicy)
           ()
           [(tokenToAsset testNftTokenName, 1)]
 

@@ -6,22 +6,25 @@ module HydraAuction.Tx.StandingBid (
   currentWinningBidder,
   createNewBidTx,
   createStandingBidDatum,
+  decodeNewBidTxOnL2,
   moveToHydra,
+  NewBidTxInfo (..),
 ) where
 
--- Prelude imports
 -- Prelude imports
 import Hydra.Prelude (MonadIO, rightToMaybe, void)
 import Prelude
 
 -- Haskell imports
-import Control.Monad (when)
+
 import Control.Monad.IO.Class (MonadIO (..))
 import Control.Monad.Reader (MonadReader (ask))
+import Data.Maybe (listToMaybe, mapMaybe)
 
 -- Plutus imports
-import Plutus.V1.Ledger.Value (assetClassValue)
-import Plutus.V2.Ledger.Api (FromData, PubKeyHash, fromData, getValidator)
+
+import PlutusLedgerApi.V1.Crypto (PubKeyHash)
+import PlutusTx.IsData.Class (FromData, fromData)
 
 -- Hydra imports
 import Cardano.Api.UTxO qualified as UTxO
@@ -35,13 +38,24 @@ import Hydra.Cardano.Api (
   TxOut,
   fromPlutusScript,
   fromPlutusValue,
+  fromScriptData,
+  getScriptData,
+  getTxBody,
   lovelaceToValue,
   toPlutusData,
   toPlutusKeyHash,
+  txExtraKeyWits,
+  txIns,
   txOutDatum,
+  txOuts,
   verificationKeyHash,
+  pattern KeyWitness,
   pattern ReferenceScriptNone,
+  pattern ScriptWitness,
   pattern ShelleyAddressInEra,
+  pattern TxBody,
+  pattern TxBodyContent,
+  pattern TxExtraKeyWitnesses,
   pattern TxMintValueNone,
   pattern TxOut,
   pattern TxOutDatumInline,
@@ -56,16 +70,16 @@ import HydraAuction.OnChain (
   AuctionScript (StandingBid),
   policy,
   standingBidValidator,
-  voucherAssetClass,
  )
 import HydraAuction.OnChain.Common (stageToInterval)
 import HydraAuctionUtils.Monads.Actors (
   actorTipUtxo,
   addressAndKeys,
+  askActor,
  )
 
 import HydraAuction.Tx.Common (
-  scriptAddress,
+  createTwoMinAdaUtxo,
   scriptPlutusScript,
   scriptSingleUtxo,
   scriptUtxos,
@@ -89,7 +103,6 @@ import HydraAuctionUtils.Monads (
   MonadNetworkId,
   MonadQueryUtxo (..),
   MonadTrace,
-  UtxoQuery (..),
   addressAndKeysForActor,
   logMsg,
   submitAndAwaitTx,
@@ -100,7 +113,6 @@ import HydraAuctionUtils.Tx.AutoCreateTx (
   autoSubmitAndAwaitTx,
  )
 import HydraAuctionUtils.Tx.Build (
-  minLovelace,
   mkInlineDatum,
   mkInlinedDatumScriptWitness,
  )
@@ -117,7 +129,7 @@ decodeInlineDatum ::
 decodeInlineDatum out =
   case txOutDatum out of
     TxOutDatumInline scriptData ->
-      case fromData $ toPlutusData scriptData of
+      case fromData $ toPlutusData $ getScriptData scriptData of
         Just standingBidDatum -> Right standingBidDatum
         Nothing -> Left CannotDecodeDatum
     _ -> Left NoInlineDatum
@@ -145,50 +157,50 @@ currentWinningBidder terms = do
 
 newBid :: AuctionTerms -> Natural -> L1Runner ()
 newBid terms bidAmount = do
-  MkExecutionContext {actor} <- ask
-  (_, submitterVk, _) <- addressAndKeysForActor actor
+  actor <- askActor
+  (_, submitterVk, _) <- addressAndKeys
   let datum = createStandingBidDatum terms bidAmount submitterVk
-  tx <- createNewBidTx terms actor datum
-  submitAndAwaitTx tx
-
-createNewBidTx ::
-  (MonadIO m, MonadFail m, MonadCardanoClient m, MonadTrace m) =>
-  AuctionTerms ->
-  Actor ->
-  StandingBidDatum ->
-  m Tx
-createNewBidTx terms submitingActor bidDatum = do
-  -- Actor is not neccesary bidder, on L2 it may be commiter
-  logMsg "Creating new bid transaction"
-
-  (submitterAddress, _, submitterSk) <- addressAndKeysForActor submitingActor
-  submitterMoneyUtxo <- queryUtxo (ByAddress submitterAddress)
-  validateHasSingleUtxo submitterMoneyUtxo "submitterMoneyUtxo"
 
   mStandingBidUtxo <- scriptSingleUtxo StandingBid terms
   standingBidSingleUtxo <- case mStandingBidUtxo of
     Just x -> return x
     Nothing -> fail "Standing bid cannot be found"
 
-  standingBidAddress <- scriptAddress StandingBid terms
+  moneyUtxo <- filterAdaOnlyUtxo <$> actorTipUtxo
+  submitterMoneyUtxo <- case listToMaybe $ UTxO.pairs moneyUtxo of
+    Just x -> return x
+    Nothing -> fail "Submiter does not have money for transaction"
 
-  let txOutStandingBid =
-        TxOut
-          (ShelleyAddressInEra standingBidAddress)
-          valueStandingBid
-          (mkInlineDatum bidDatum)
-          ReferenceScriptNone
-        where
-          valueStandingBid =
-            fromPlutusValue (assetClassValue (voucherAssetClass terms) 1)
-              <> lovelaceToValue minLovelace
-      standingBidWitness = mkInlinedDatumScriptWitness script NewBid
-        where
-          script = scriptPlutusScript StandingBid terms
+  tx <-
+    createNewBidTx
+      terms
+      actor
+      standingBidSingleUtxo
+      submitterMoneyUtxo
+      datum
+  submitAndAwaitTx tx
+
+createNewBidTx ::
+  ( MonadIO m
+  , MonadFail m
+  , MonadCardanoClient m
+  , MonadTrace m
+  ) =>
+  AuctionTerms ->
+  Actor ->
+  (TxIn, TxOut CtxUTxO) ->
+  (TxIn, TxOut CtxUTxO) ->
+  StandingBidDatum ->
+  m Tx
+createNewBidTx terms actor standingBidSingleUtxo submitterMoneyUtxo bidDatum = do
+  -- Actor is not neccesary bidder, on L2 it may be commiter
+  logMsg "Creating new bid transaction"
+
+  (submitterAddress, _, submitterSk) <- addressAndKeysForActor actor
 
   autoCreateTx $
     AutoCreateParams
-      { signedUtxos = [(submitterSk, submitterMoneyUtxo)]
+      { signedUtxos = [(submitterSk, UTxO.fromPairs [submitterMoneyUtxo])]
       , additionalSigners = []
       , referenceUtxo = mempty
       , witnessedUtxos =
@@ -200,6 +212,46 @@ createNewBidTx terms submitingActor bidDatum = do
       , changeAddress = submitterAddress
       , validityBound = stageToInterval terms BiddingStartedStage
       }
+  where
+    TxOut (ShelleyAddressInEra standingBidAddress) valueStandingBid _ _ =
+      snd standingBidSingleUtxo
+    txOutStandingBid =
+      TxOut
+        (ShelleyAddressInEra standingBidAddress)
+        valueStandingBid
+        (mkInlineDatum bidDatum)
+        ReferenceScriptNone
+    standingBidWitness = mkInlinedDatumScriptWitness script NewBid
+      where
+        script = scriptPlutusScript StandingBid terms
+
+data NewBidTxInfo = MkNewBidTxInfo
+  { submitterPKH :: PubKeyHash
+  , isStandingBidInvalidated :: Bool
+  -- ^ Means that StandingBid used as input is no longer alive
+  , newBidDatum :: StandingBidDatum
+  }
+
+decodeNewBidTxOnL2 :: Tx -> UTxO.UTxO -> Maybe NewBidTxInfo
+decodeNewBidTxOnL2 tx currentUtxo = do
+  [newBidDatum] <- return $ mapMaybe parseStandingBidTxOut txOuts
+  TxExtraKeyWitnesses [submitterPKH'] <- return txExtraKeyWits
+  return $
+    MkNewBidTxInfo
+      { submitterPKH = toPlutusKeyHash submitterPKH'
+      , isStandingBidInvalidated
+      , newBidDatum
+      }
+  where
+    TxBody TxBodyContent {txIns, txOuts, txExtraKeyWits} = getTxBody tx
+    resolveInput input = UTxO.resolve input currentUtxo
+    resolvedInputs = mapMaybe (resolveInput . fst) txIns
+    parseStandingBidTxOut (TxOut _ _ (TxOutDatumInline datum) _) =
+      fromScriptData datum :: Maybe StandingBidDatum
+    parseStandingBidTxOut _ = Nothing
+    -- Standing bid is already invalidated if it is not in current utxo
+    isStandingBidInvalidated =
+      null $ mapMaybe parseStandingBidTxOut resolvedInputs
 
 createStandingBidDatum ::
   AuctionTerms ->
@@ -236,23 +288,20 @@ moveToHydra headId terms (standingBidTxIn, standingBidTxOut) = do
     MkExecutionContext {node} <- ask
     liftIO $ prepareScriptRegistry node
 
+  (utxo1, utxo2) <- createTwoMinAdaUtxo
+
   void $
     submitAndAwaitCommitTx
       scriptRegistry
       headId
+      utxo1
+      (UTxO.fromPairs [utxo2])
       (standingBidTxIn, standingBidTxOut, standingBidWitness)
   where
     script =
       fromPlutusScript @PlutusScriptV2 $
-        getValidator $
-          standingBidValidator terms
+        standingBidValidator terms
     standingBidWitness = mkInlinedDatumScriptWitness script MoveToHydra
-
-validateHasSingleUtxo :: MonadFail m => UTxO.UTxO -> String -> m ()
-validateHasSingleUtxo utxo utxoName =
-  when (length utxo /= 1) $
-    fail $
-      utxoName <> " UTxO has not exactly one TxIn"
 
 cleanupTx :: AuctionTerms -> L1Runner ()
 cleanupTx terms = do
@@ -284,5 +333,4 @@ cleanupTx terms = do
       where
         script =
           fromPlutusScript @PlutusScriptV2 $
-            getValidator $
-              standingBidValidator terms
+            standingBidValidator terms

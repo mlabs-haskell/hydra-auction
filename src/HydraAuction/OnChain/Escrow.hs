@@ -4,10 +4,16 @@ module HydraAuction.OnChain.Escrow (mkEscrowValidator) where
 import PlutusTx.Prelude
 
 -- Plutus imports
-import Plutus.V1.Ledger.Address (pubKeyHashAddress, scriptHashAddress)
-import Plutus.V1.Ledger.Value (assetClass, assetClassValueOf, getValue)
-import Plutus.V2.Ledger.Api (Address, TxInfo, TxOut, scriptContextTxInfo, txInInfoResolved, txInfoInputs, txInfoOutputs, txInfoReferenceInputs, txOutValue)
-import Plutus.V2.Ledger.Contexts (ScriptContext, ownHash, txSignedBy)
+import PlutusLedgerApi.V1.Address (Address, pubKeyHashAddress)
+import PlutusLedgerApi.V1.Value (assetClass, assetClassValueOf, getValue)
+import PlutusLedgerApi.V2.Contexts (
+  ScriptContext (..),
+  TxInfo (..),
+  findOwnInput,
+  txInInfoResolved,
+  txSignedBy,
+ )
+import PlutusLedgerApi.V2.Tx (TxOut (..))
 
 -- Hydra auction imports
 import HydraAuction.Addresses (
@@ -63,6 +69,9 @@ mkEscrowValidator (StandingBidAddress standingBidAddressLocal, FeeEscrowAddress 
               && checkBidderBuys escrowInputOutput
       )
   where
+    ownAddress = case findOwnInput context of
+      Just x -> txOutAddress $ txInInfoResolved x
+      Nothing -> traceError "Impossible happened"
     checkHasSingleEscrowInput cont =
       case escrowInputsOuts of
         [output] -> cont output
@@ -96,7 +105,7 @@ mkEscrowValidator (StandingBidAddress standingBidAddressLocal, FeeEscrowAddress 
               lovelaceOfOutput output == expectedAmount
         )
     checkStartBiddingOutputs =
-      case byAddress (scriptHashAddress $ ownHash context) outputs of
+      case byAddress ownAddress outputs of
         [out] -> traceIfFalse "Auction state is not started" $
           case isStarted <$> (auctionState <$> decodeOutputDatum info out) of
             Just True -> True
@@ -165,4 +174,4 @@ mkEscrowValidator (StandingBidAddress standingBidAddressLocal, FeeEscrowAddress 
     sellerAddress = pubKeyHashAddress $ seller terms
     totalFeeToPay = calculateTotalFee terms
     escrowInputsOuts :: [TxOut]
-    escrowInputsOuts = byAddress (scriptHashAddress $ ownHash context) $ txInInfoResolved <$> txInfoInputs info
+    escrowInputsOuts = byAddress ownAddress $ txInInfoResolved <$> txInfoInputs info

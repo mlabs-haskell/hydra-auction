@@ -12,9 +12,7 @@ import Control.Monad.TimeMachine (MonadTime (getCurrentTime))
 import Data.Time.Clock.POSIX qualified as POSIXTime
 
 -- Plutus imports
-import Plutus.V2.Ledger.Api (
-  POSIXTime (..),
- )
+import PlutusLedgerApi.V1.Time (POSIXTime (..))
 
 currentTimeSeconds :: MonadTime timedMonad => timedMonad Integer
 currentTimeSeconds =

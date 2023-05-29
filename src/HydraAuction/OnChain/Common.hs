@@ -16,9 +16,9 @@ import PlutusTx.Prelude
 import Prelude (div)
 
 -- Plutus imports
-import Plutus.V1.Ledger.Interval (Extended (..), Interval (..), LowerBound (..), UpperBound (..), contains, from, lowerBound, strictUpperBound)
-import Plutus.V1.Ledger.Time (POSIXTime (..))
-import Plutus.V2.Ledger.Contexts (TxInfo (..))
+import PlutusLedgerApi.V1.Interval (Extended (..), Interval (..), LowerBound (..), UpperBound (..), contains, from, lowerBound, strictUpperBound)
+import PlutusLedgerApi.V1.Time (POSIXTime (..))
+import PlutusLedgerApi.V2.Contexts (TxInfo (..))
 
 -- Hydra auction imports
 import HydraAuction.Types (AuctionStage (..), AuctionTerms (..))

@@ -24,7 +24,7 @@ import Hydra.Chain.Direct.Tx (headIdToCurrencySymbol)
 import Hydra.Ledger.Cardano ()
 
 -- Plutus imports
-import Plutus.V1.Ledger.Interval (from, interval, to)
+import PlutusLedgerApi.V1.Interval (from, interval, to)
 
 -- Hydra auction imports
 import HydraAuction.OnChain.Common (secondsLeftInInterval)

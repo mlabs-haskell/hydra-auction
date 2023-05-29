@@ -13,7 +13,7 @@ import Prelude
 import Control.Concurrent (threadDelay)
 
 -- Plutus imports
-import Plutus.V1.Ledger.Time (POSIXTime (..))
+import PlutusLedgerApi.V1.Time (POSIXTime (..))
 
 -- Hydra imports
 import CardanoClient (queryTip)

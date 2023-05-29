@@ -18,7 +18,7 @@ import Data.Foldable (Foldable (toList))
 import Cardano.Api.UTxO qualified as UTxO
 
 -- Plutus imports
-import Plutus.V2.Ledger.Api (Interval, POSIXTime)
+import PlutusLedgerApi.V1 (Interval, POSIXTime)
 
 -- Hydra imports
 import Hydra.Cardano.Api (
@@ -44,9 +44,9 @@ import Hydra.Cardano.Api (
   makeShelleyKeyWitness,
   makeSignedTransaction,
   makeTransactionBodyAutoBalance,
+  toLedgerEpochInfo,
   verificationKeyHash,
   withWitness,
-  pattern BabbageEraInCardanoMode,
   pattern BuildTxWith,
   pattern ShelleyAddressInEra,
   pattern TxAuxScriptsNone,
@@ -179,9 +179,8 @@ callBodyAutoBalance
     return $
       balancedTxBody
         <$> makeTransactionBodyAutoBalance
-          BabbageEraInCardanoMode
           systemStart
-          eraHistory
+          (toLedgerEpochInfo eraHistory)
           protocolParameters
           stakePools
           (UTxO.toApi utxo)
