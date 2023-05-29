@@ -360,7 +360,7 @@ mbQueueAuctionPhases tick delegateEvents toClientsChannel = do
         Just s -> do
           -- Preventing infinite loop on stage corner
           let secsToWait = if s == 0 then 1 else s
-          threadDelay (fromInteger * 1_000_000)
+          threadDelay $ fromInteger $ secsToWait * 1_000_000
           queueCurrentStageAndWaitForNextLoop terms
 
 main :: HasCallStack => IO ()
