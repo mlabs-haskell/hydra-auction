@@ -47,6 +47,7 @@ testSuite =
         "L1 - CLI"
         [ testCase "bidder-buys" bidderBuysTest
         , testCase "deposit-test" depositTest
+        , testCase "deposit-cleanup-claim" depositCleanupClaimTest
         ]
   where
     createTestConfig = writeAuctionTermsConfig auctionName config
@@ -107,6 +108,7 @@ bidderBuysTest = mkAssertion $ do
   waitUntil $ cleanup terms
   handleCliActionWithMockDelegates $ Cleanup auctionName
 
+-- Test reclaim with BidderClaimsDeposit and using deposit for BidderBuys
 depositTest :: Assertion
 depositTest = mkAssertion $ do
   let seller = Alice
@@ -150,3 +152,40 @@ depositTest = mkAssertion $ do
 
   waitUntil $ cleanup terms
   handleCliActionWithMockDelegates $ Cleanup auctionName
+
+-- Test case of reclaiming
+depositCleanupClaimTest :: Assertion
+depositCleanupClaimTest = mkAssertion $ do
+  let seller = Alice
+      buyer1 = Bob
+
+  handleCliActionWithMockDelegates $ Prepare seller
+
+  assertNFTNumEquals seller 1
+
+  handleCliActionWithMockDelegates $ AuctionAnounce auctionName
+
+  terms <- auctionTermsFor auctionName
+
+  withActor buyer1 $
+    handleCliActionWithMockDelegates $
+      MakeDeposit auctionName (fromJust $ intToNatural 10_000_000)
+  assertUTxOsInScriptEquals Deposit terms 1
+
+  waitUntil $ biddingStart terms
+
+  handleCliActionWithMockDelegates $ StartBidding auctionName
+
+  withActor buyer1 $
+    handleCliActionWithMockDelegates $
+      NewBid auctionName (startingBid terms) L1
+
+  waitUntil $ biddingEnd terms
+
+  waitUntil $ cleanup terms
+
+  withActor buyer1 $
+    handleCliActionWithMockDelegates $
+      CleanupDeposit auctionName
+
+  assertUTxOsInScriptEquals Deposit terms 0

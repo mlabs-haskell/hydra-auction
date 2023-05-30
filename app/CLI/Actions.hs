@@ -11,15 +11,21 @@ import Hydra.Prelude (MonadIO, ask, liftIO)
 import Prelude
 
 -- Haskell imports
+
 import Control.Monad (forM_, void)
 import Data.IORef (IORef, readIORef)
+import Data.Text qualified as T
 
 -- Plutus imports
 import PlutusLedgerApi.V1.Address (pubKeyHashAddress)
 
 -- Hydra imports
 
-import Hydra.Cardano.Api (Lovelace, pattern ShelleyAddressInEra)
+import Hydra.Cardano.Api (
+  Lovelace,
+  serialiseAddress,
+  pattern ShelleyAddressInEra,
+ )
 import Hydra.Chain.Direct.Tx (headIdToCurrencySymbol)
 
 -- Cardano node imports
@@ -36,6 +42,7 @@ import HydraAuction.Tx.Common (
   scriptUtxos,
  )
 import HydraAuction.Tx.Deposit (
+  cleanupDeposit,
   filterDepositGreaterThan,
   losingBidderClaimDeposit,
   mkDeposit,
@@ -134,6 +141,12 @@ handleCliAction sendRequestToDelegate currentDelegateStateRef userAction = do
       terms <- auctionTermsFor auctionName
       utxos <- scriptUtxos script terms
       liftIO $ prettyPrintUtxo utxos
+    ShowAddress -> do
+      (address, _, _) <- addressAndKeys
+      liftIO $
+        putStrLn $
+          "Address for current actor is: "
+            <> T.unpack (serialiseAddress address)
     ShowUtxos -> prettyPrintCurrentActorUtxos
     ShowAllUtxos -> do
       announceActionExecution userAction
@@ -255,6 +268,11 @@ handleCliAction sendRequestToDelegate currentDelegateStateRef userAction = do
       doOnMatchingStage terms BiddingEndedStage $ do
         announceActionExecution userAction
         losingBidderClaimDeposit terms
+    CleanupDeposit auctionName -> do
+      terms <- auctionTermsFor auctionName
+      doOnMatchingStage terms CleanupStage $ do
+        announceActionExecution userAction
+        cleanupDeposit terms
     SellerReclaims auctionName -> do
       terms <- auctionTermsFor auctionName
       doOnMatchingStage terms VoucherExpiredStage $ do

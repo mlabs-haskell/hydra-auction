@@ -125,6 +125,7 @@ cliActionParser =
       , command "show-all-utxos" (info (pure ShowAllUtxos) (progDesc "Shows utxos for all actors"))
       , command "show-current-winner-bidder" (info (ShowCurrentWinningBidder <$> auctionName) (progDesc "Show current winning bidder for auction"))
       , command "show-actors-with-min-deposit" (info (ShowActorsMinDeposit <$> auctionName <*> depositAmount) (progDesc "Show actors that deposited at least DEPOSIT_AMOUNT"))
+      , command "show-address" (info (pure ShowAddress) (progDesc "Show address of current actor"))
       , command "seed" (info (pure Seed) (progDesc $ "Provides " <> show seedAmount <> " Lovelace for the given actor"))
       , command "prepare-for-demo" (info (Prepare <$> actor) (progDesc $ "Provides " <> show seedAmount <> " Lovelace for every actor and 1 Test NFT for given actor"))
       , command "mint-test-nft" (info (pure MintTestNFT) (progDesc "Mints an NFT that can be used as auction lot"))
@@ -137,8 +138,10 @@ cliActionParser =
           ( info (NewBid <$> auctionName <*> bidAmount <*> pure L2) (progDesc "Actor places new bid on L2 after Standing Bid was moved on L2")
           )
       , command "bidder-buys" (info (BidderBuys <$> auctionName) (progDesc "Pay and recieve a lot after auction end"))
+      , command "losing-bidder-reclaims-deposit" (info (BidderClaimsDeposit <$> auctionName) (progDesc "Recieve deposit back after losing on auction"))
       , command "seller-reclaims" (info (SellerReclaims <$> auctionName) (progDesc "Seller reclaims lot after voucher end time"))
-      , command "cleanup" (info (Cleanup <$> auctionName) (progDesc "Remove standing bid UTxO after cleanup time"))
+      , command "seller-claims-deposit" (info (SellerClaimsDepositFor <$> auctionName <*> actor) (progDesc "Seller claims deposit from winning bidder, who did not pay in time"))
+      , command "cleanup" (info (Cleanup <$> auctionName) (progDesc "Remove standing bid UTxO after cleanup time. Is performed by seller."))
       ]
 
 auctionName :: Parser AuctionName

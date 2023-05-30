@@ -159,10 +159,10 @@ matchingHydraEvent value =
     Just "GetUTxOResponse" -> getUtxoValueHandler
     Just "HeadIsInitializing" ->
       HeadIsInitializing <$> retrieveField "headId"
-    Just "TxSeen" -> TxSeen <$> retrieveField "tx"
-    Just "TxValid" -> TxValid <$> retrieveField "tx"
+    Just "TxSeen" -> TxSeen <$> retrieveField "transaction"
+    Just "TxValid" -> TxValid <$> retrieveField "transaction"
     Just "TxInvalid" ->
-      TxInvalid <$> retrieveField "tx" <*> retrieveField "utxo"
+      TxInvalid <$> retrieveField "transaction" <*> retrieveField "utxo"
     Just "InvalidInput" ->
       InvalidInput <$> retrieveField "reason" <*> retrieveField "input"
     Just "PostTxOnChainFailed" ->
