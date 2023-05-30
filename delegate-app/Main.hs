@@ -67,11 +67,6 @@ import HydraAuction.Delegate.Server (
   ThreadSort (..),
  )
 import HydraAuction.OnChain.Common (secondsLeftInInterval, stageToInterval)
-import HydraAuction.Server.ClientId (
-  ClientId,
-  ClientResponseScope (Broadcast),
-  clientIsInScope,
- )
 import HydraAuction.Tx.Common (currentAuctionStage)
 import HydraAuction.Types (AuctionTerms)
 import HydraAuctionUtils.Composite.Runner (
@@ -85,6 +80,11 @@ import HydraAuctionUtils.Hydra.Runner (HydraRunner, executeHydraRunnerFakingPara
 import HydraAuctionUtils.L1.Runner (executeL1RunnerWithNodeAs)
 import HydraAuctionUtils.Network (runHydraClient)
 import HydraAuctionUtils.Parsers (execParserForCliArgs)
+import HydraAuctionUtils.Server.ClientId (
+  ClientId,
+  ClientResponseScope (Broadcast),
+  clientIsInScope,
+ )
 import HydraAuctionUtils.Time (currentPlutusPOSIXTime)
 import HydraAuctionUtils.Tracing (
   MonadTracer (trace),
