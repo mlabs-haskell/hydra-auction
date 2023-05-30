@@ -13,7 +13,9 @@ import Data.ByteString.Base16 qualified as Base16
 import Data.Text.Encoding (decodeUtf8, encodeUtf8)
 
 -- Plutus imports
+import PlutusLedgerApi.V1.Credential (Credential, StakingCredential)
 import PlutusLedgerApi.V1.Crypto (PubKeyHash (..))
+import PlutusLedgerApi.V1.Scripts (ScriptHash (..))
 import PlutusLedgerApi.V1.Time (POSIXTime (..))
 import PlutusLedgerApi.V1.Value (AssetClass (..), CurrencySymbol (..), TokenName (..))
 import PlutusLedgerApi.V2.Contexts (TxOutRef)
@@ -40,6 +42,16 @@ instance FromJSON BuiltinByteString where
 
 instance ToJSON BuiltinByteString where
   toJSON (BuiltinByteString bs) = toJSON $ decodeUtf8 $ Base16.encode bs
+
+-- Addresses
+
+deriving newtype instance (ToJSON ScriptHash)
+deriving newtype instance (FromJSON ScriptHash)
+
+deriving anyclass instance (ToJSON Credential)
+deriving anyclass instance (FromJSON Credential)
+deriving anyclass instance (ToJSON StakingCredential)
+deriving anyclass instance (FromJSON StakingCredential)
 
 -- Asset class
 
