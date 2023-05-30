@@ -132,7 +132,8 @@ delegateFrontendRequestStep (clientId, request) =
                 utxoState
           validatingAuctionTerms headId auctionTerms $ do
             let newBidTerms = standingBid $ standingBidState datum
-            if validNewBidTerms auctionTerms standingBidTerms newBidTerms
+                newVoucherCS = standingBidVoucherCS datum
+            if validNewBidTerms auctionTerms newVoucherCS standingBidTerms newBidTerms
               then do
                 lift $ runHydraInComposite $ do
                   tx <-

@@ -48,11 +48,10 @@ import HydraAuction.Tx.Escrow (
   sellerReclaims,
   startBidding,
  )
-import HydraAuction.Tx.StandingBid (cleanupTx, createStandingBidDatum, currentWinningBidder, newBid)
+import HydraAuction.Tx.StandingBid (cleanupTx, createStandingBidDatum, currentWinningBidder, newBid, sellerSignatureForActor)
 import HydraAuction.Tx.TermsConfig (constructTermsDynamic)
 import HydraAuction.Tx.TestNFT (findTestNFT, mintOneTestNFT)
 import HydraAuction.Types (
-  ApprovedBidders (..),
   AuctionStage (..),
   AuctionTerms,
   BidDepositDatum (..),
@@ -61,7 +60,6 @@ import HydraAuctionUtils.Fixture (
   actorFromPkh,
   allActors,
   getActorPubKeyHash,
-  getActorsPubKeyHash,
  )
 import HydraAuctionUtils.L1.Runner (
   ExecutionContext (..),
@@ -186,12 +184,11 @@ handleCliAction sendRequestToDelegate currentDelegateStateRef userAction = do
               announceAuction terms
             _ -> liftIO . putStrLn $ "Hydra is not initialized yet"
         Nothing -> liftIO . putStrLn $ "User doesn't have the \"Mona Lisa\" token.\nThis demo is configured to use this token as the auction lot."
-    StartBidding auctionName actors -> do
+    StartBidding auctionName -> do
       terms <- auctionTermsFor auctionName
       doOnMatchingStage terms BiddingStartedStage $ do
-        actorsPkh <- liftIO $ getActorsPubKeyHash actors
         announceActionExecution userAction
-        startBidding terms (ApprovedBidders actorsPkh)
+        startBidding terms
     MoveToL2 auctionName -> do
       terms <- auctionTermsFor auctionName
       doOnMatchingStage terms BiddingStartedStage $ do
@@ -214,13 +211,15 @@ handleCliAction sendRequestToDelegate currentDelegateStateRef userAction = do
         then liftIO $ putStrLn "Seller cannot place a bid"
         else do
           announceActionExecution userAction
+          -- FIXME: temporaral stub until Platform server
+          sellerSignature <- liftIO $ sellerSignatureForActor terms actor
           doOnMatchingStage terms BiddingStartedStage $
             case layer of
-              L1 -> newBid terms bidAmount
+              L1 -> newBid terms bidAmount sellerSignature
               L2 -> do
-                (_, bidderPublicKey, _) <- addressAndKeys
+                (_, _, bidderSigningKey) <- addressAndKeys
                 let bidDatum =
-                      createStandingBidDatum terms bidAmount bidderPublicKey
+                      createStandingBidDatum terms bidAmount sellerSignature bidderSigningKey
                 liftIO $
                   sendRequestToDelegate $
                     DelegateInterface.NewBid

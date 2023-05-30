@@ -22,12 +22,12 @@ import HydraAuction.Tx.Escrow (
   startBidding,
  )
 import HydraAuction.Tx.FeeEscrow (distributeFee)
-import HydraAuction.Tx.StandingBid (cleanupTx, newBid)
+import HydraAuction.Tx.StandingBid (cleanupTx, newBid, sellerSignatureForActor)
 import HydraAuction.Tx.TermsConfig (
   nonExistentHeadIdStub,
  )
-import HydraAuction.Types (ApprovedBidders (..), AuctionTerms (..))
-import HydraAuctionUtils.Fixture (Actor (..), ActorKind (..), actorsByKind, getActorsPubKeyHash)
+import HydraAuction.Types (AuctionTerms (..))
+import HydraAuctionUtils.Fixture (Actor (..), ActorKind (..), actorsByKind)
 import HydraAuctionUtils.L1.Runner (
   initWallet,
   withActor,
@@ -44,10 +44,8 @@ testSuite =
     "Ledger - Auction"
     [ testCase "bidder-buys" bidderBuysTest
     , testCase "seller-reclaims" sellerReclaimsTest
-    , testCase "seller-bids" sellerBidsTest
+    , testCase "unauthorised-bidder" unauthorisedBidderTest
     , testCase "distribute-fees" distributeFeeTest
-    -- FIXME: disabled until M6
-    -- , testCase "unauthorised-bidder" unauthorisedBidderTest
     ]
 
 bidderBuysTest :: Assertion
@@ -63,13 +61,14 @@ bidderBuysTest = mkAssertion $ do
   announceAuction terms
 
   waitUntil $ biddingStart terms
-  actorsPkh <- liftIO $ getActorsPubKeyHash [buyer1, buyer2]
-  startBidding terms (ApprovedBidders actorsPkh)
+  startBidding terms
 
   assertNFTNumEquals seller 0
 
-  withActor buyer1 $ newBid terms $ startingBid terms
-  withActor buyer2 $ newBid terms $ startingBid terms + minimumBidIncrement terms
+  buyer1SellerSignature <- liftIO $ sellerSignatureForActor terms buyer1
+  buyer2SellerSignature <- liftIO $ sellerSignatureForActor terms buyer2
+  withActor buyer1 $ newBid terms (startingBid terms) buyer1SellerSignature
+  withActor buyer2 $ newBid terms (startingBid terms + minimumBidIncrement terms) buyer2SellerSignature
 
   waitUntil $ biddingEnd terms
   withActor buyer2 $ bidderBuys terms
@@ -94,7 +93,7 @@ sellerReclaimsTest = mkAssertion $ do
   announceAuction terms
 
   waitUntil $ biddingStart terms
-  startBidding terms (ApprovedBidders [])
+  startBidding terms
   assertNFTNumEquals seller 0
 
   waitUntil $ voucherExpiry terms
@@ -105,24 +104,6 @@ sellerReclaimsTest = mkAssertion $ do
 
   waitUntil $ cleanup terms
   cleanupTx terms
-
-sellerBidsTest :: Assertion
-sellerBidsTest = mkAssertion $ do
-  let seller = Alice
-
-  void $ initWallet 100_000_000 seller
-
-  terms <- createTermsWithTestNFT config nonExistentHeadIdStub
-
-  announceAuction terms
-
-  waitUntil $ biddingStart terms
-  sellerPkh <- liftIO $ getActorsPubKeyHash [seller]
-  result <- try $ startBidding terms (ApprovedBidders sellerPkh)
-
-  case result of
-    Left (_ :: SomeException) -> return ()
-    Right _ -> fail "Start bidding should fail"
 
 distributeFeeTest :: Assertion
 distributeFeeTest = mkAssertion $ do
@@ -137,12 +118,12 @@ distributeFeeTest = mkAssertion $ do
   announceAuction terms
 
   waitUntil $ biddingStart terms
-  actorsPkh <- liftIO $ getActorsPubKeyHash [buyer1, buyer2]
-  startBidding terms (ApprovedBidders actorsPkh)
+  startBidding terms
 
   assertNFTNumEquals seller 0
 
-  withActor buyer2 $ newBid terms $ startingBid terms + minimumBidIncrement terms
+  buyer2SellerSignature <- liftIO $ sellerSignatureForActor terms buyer2
+  withActor buyer2 $ newBid terms (startingBid terms + minimumBidIncrement terms) buyer2SellerSignature
 
   waitUntil $ biddingEnd terms
   withActor buyer2 $ bidderBuys terms
@@ -160,7 +141,6 @@ distributeFeeTest = mkAssertion $ do
   waitUntil $ cleanup terms
   cleanupTx terms
 
-{-
 unauthorisedBidderTest :: Assertion
 unauthorisedBidderTest = mkAssertion $ do
   let seller = Alice
@@ -169,27 +149,21 @@ unauthorisedBidderTest = mkAssertion $ do
 
   mapM_ (initWallet 100_000_000) [seller, buyer1, buyer2]
 
-  nftTx <- mintOneTestNFT
-  let utxoRef = mkTxIn nftTx 0
-
-  terms <- liftIO $ do
-    dynamicState <- constructTermsDynamic seller utxoRef nonExistentHeadIdStub
-    configToAuctionTerms config dynamicState
+  terms <- createTermsWithTestNFT config nonExistentHeadIdStub
 
   assertNFTNumEquals seller 1
 
   announceAuction terms
 
   waitUntil $ biddingStart terms
-  actorsPkh <- liftIO $ getActorsPubKeyHash [buyer1]
-  startBidding terms (ApprovedBidders actorsPkh)
+  startBidding terms
 
   assertNFTNumEquals seller 0
 
-  withActor buyer1 $ newBid terms $ startingBid terms
-  result <- try $ withActor buyer2 $ newBid terms $ startingBid terms + minimumBidIncrement terms
+  buyer2SellerSignature <- liftIO $ sellerSignatureForActor terms buyer2
+
+  result <- try $ withActor buyer1 $ newBid terms (startingBid terms) buyer2SellerSignature
 
   case result of
     Left (_ :: SomeException) -> return ()
-    Right _ -> fail "New bid should fail, actor is not authorised"
--}
+    Right _ -> fail "Seller should not be able to claim deposit from losing bidder"

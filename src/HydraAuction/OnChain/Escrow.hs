@@ -57,7 +57,7 @@ mkEscrowValidator (StandingBidAddress standingBidAddressLocal, FeeEscrowAddress 
       ( \escrowInputOutput -> case redeemer of
           StartBidding ->
             checkAuctionState (== Announced) escrowInputOutput
-              && traceIfFalse "Seller not signed" (txSignedBy info (seller terms))
+              && traceIfFalse "Seller not signed" (txSignedBy info (sellerPKH terms))
               && checkInterval terms BiddingStartedStage info
               && checkStartBiddingOutputs
           SellerReclaims ->
@@ -136,9 +136,9 @@ mkEscrowValidator (StandingBidAddress standingBidAddressLocal, FeeEscrowAddress 
               Just (StandingBidDatum {standingBidState}) -> case standingBid standingBidState of
                 Nothing -> traceError "No bid in standing bid datum"
                 (Just bidTerms) ->
-                  traceIfFalse "Not signed by bidder" (txSignedBy info (bidBidder bidTerms))
+                  traceIfFalse "Not signed by bidder" (txSignedBy info (bidderPKH bidTerms))
                     && checkSingleNonAdaOutput
-                      (pubKeyHashAddress $ bidBidder bidTerms)
+                      (pubKeyHashAddress $ bidderPKH bidTerms)
                       "Bidder"
                       ( \bidderOutput ->
                           traceIfFalse
@@ -146,7 +146,7 @@ mkEscrowValidator (StandingBidAddress standingBidAddressLocal, FeeEscrowAddress 
                             (assetClassValueOf (txOutValue bidderOutput) (auctionLot terms) == 1)
                       )
                     && checkSingleOutputWithAmount
-                      (pubKeyHashAddress $ seller terms)
+                      (pubKeyHashAddress $ sellerPKH terms)
                       "Seller"
                       (naturalToInt (bidAmount bidTerms) - totalFeeToPay)
                     && checkSingleOutputWithAmount
@@ -171,7 +171,7 @@ mkEscrowValidator (StandingBidAddress standingBidAddressLocal, FeeEscrowAddress 
     info :: TxInfo
     info = scriptContextTxInfo context
     outputs = txInfoOutputs info
-    sellerAddress = pubKeyHashAddress $ seller terms
+    sellerAddress = pubKeyHashAddress $ sellerPKH terms
     totalFeeToPay = calculateTotalFee terms
     escrowInputsOuts :: [TxOut]
     escrowInputsOuts = byAddress ownAddress $ txInInfoResolved <$> txInfoInputs info

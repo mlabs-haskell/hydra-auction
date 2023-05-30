@@ -63,6 +63,7 @@ source-repository-package
 
 constraints:
   -- For ouroboros-consensus-0.3.0.0
+  ouroboros-consensus >= 0.3.0.0
   , unix-bytestring < 0.4
 
 -- Constraints / allow-newer from cardano-node

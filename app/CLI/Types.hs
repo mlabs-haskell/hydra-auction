@@ -52,7 +52,7 @@ data CliAction
   | MintTestNFT
   | AuctionAnounce !AuctionName
   | MakeDeposit !AuctionName !Natural
-  | StartBidding !AuctionName ![Actor]
+  | StartBidding !AuctionName
   | MoveToL2 !AuctionName
   | NewBid !AuctionName !Natural !Layer
   | BidderBuys !AuctionName

@@ -46,7 +46,7 @@ announceActionExecution action = do
         <> " announces auction called "
         <> show auctionName
         <> "."
-    StartBidding auctionName _ ->
+    StartBidding auctionName ->
       show currentActor
         <> " starts the bidding phase of auction "
         <> show auctionName
