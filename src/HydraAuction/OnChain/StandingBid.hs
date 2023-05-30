@@ -69,9 +69,10 @@ mkStandingBidValidator terms datum redeemer context =
         NewBid ->
           checkCorrectNewBidOutput standingBidInOut
             && nothingForged info
-            && traceIfFalse
-              "Wrong interval for NewBid"
-              (contains (to (biddingEnd terms)) (txInfoValidRange info))
+        -- FIXME: disabled due to Hydra changes
+        -- && traceIfFalse
+        --   "Wrong interval for NewBid"
+        --   (contains (to (biddingEnd terms)) (txInfoValidRange info))
         Cleanup ->
           -- XXX: interval is checked on burning
           checkExactlyOneVoucherBurned
