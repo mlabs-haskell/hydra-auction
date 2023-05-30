@@ -268,6 +268,8 @@ library hydra-auction-utils
     HydraAuctionUtils.Parsers.TxIn
     HydraAuctionUtils.Plutus
     HydraAuctionUtils.PrettyPrinting
+    HydraAuctionUtils.Server.ClientId
+    HydraAuctionUtils.Server.Websockets
     HydraAuctionUtils.Time
     HydraAuctionUtils.Tracing
     HydraAuctionUtils.Tx.AutoCreateTx
