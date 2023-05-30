@@ -304,7 +304,7 @@ delegateEventStep event = case event of
       txFailedCase txTag
         -- This is okay cuz these are concurrent requests,
         -- only one of which will be fulfilled
-        | txTag `elem` ["InitTx", "FanoutTx"] = return []
+        | txTag `elem` ["InitTx", "FanoutTx", "CollectComTx"] = return []
         -- Preventing infinite loop of Abortions
         | txTag `elem` ["AbortTx", "CloseTx"] = do
             -- TODO: use logs

@@ -74,7 +74,7 @@ instance Pretty DelegateServerLog where
   pretty = \case
     Started port -> "Started Server at Port" <+> viaShow port
     GotFrontendConnected clientId ->
-      "Frontend with clientId " <> viaShow clientId <> "connected to Server"
+      "Frontend with clientId " <> viaShow clientId <> " connected to Server"
     ProducedDelegateResponse out -> "Delegate output" <> extraInfo (viaShow out)
     GotFrontendRequest inp -> "Frontend input" <> extraInfo (viaShow inp)
     ThreadEvent ev info -> "Thread" <+> pretty info <> ":" <> extraInfo (pretty ev)
