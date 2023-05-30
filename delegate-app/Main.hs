@@ -358,7 +358,8 @@ mbQueueAuctionPhases tick delegateEvents toClientsChannel = do
       case mSecsLeft of
         Nothing -> pure ()
         Just s -> do
-          -- Preventing infinite loop on stage corner
+          -- In case of on stage intervals boundaries,
+          -- `secsToWait` is 0, which leads to stuttering
           let secsToWait = if s == 0 then 1 else s
           threadDelay $ fromInteger $ secsToWait * 1_000_000
           queueCurrentStageAndWaitForNextLoop terms
