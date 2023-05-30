@@ -28,10 +28,8 @@ import HydraAuction.Tx.TermsConfig (
  )
 import HydraAuction.Tx.TestNFT (mintOneTestNFT)
 import HydraAuction.Types (
-  ApprovedBidders (..),
   AuctionTerms (..),
  )
-import HydraAuctionUtils.Fixture (getActorsPubKeyHash)
 import HydraAuctionUtils.L1.Runner (L1Runner)
 import HydraAuctionUtils.L1.Runner.Time (waitUntil)
 import HydraAuctionUtils.Types.Natural (
@@ -80,6 +78,4 @@ announceAndStartBidding terms = do
 
   waitUntil $ biddingStart terms
 
-  -- FIXME: checks are disabled until M6
-  actorsPkh <- liftIO $ getActorsPubKeyHash []
-  startBidding terms (ApprovedBidders actorsPkh)
+  startBidding terms

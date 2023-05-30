@@ -58,13 +58,14 @@ common common-lang
   build-depends:
     , aeson
     , async
-    , base                     ^>=4.14
+    , base
     , base16-bytestring
     , bytestring
     , cardano-api
     , cardano-ledger-core
     , containers
     , contra-tracer
+    , ed25519
     , exceptions
     , extra
     , filepath

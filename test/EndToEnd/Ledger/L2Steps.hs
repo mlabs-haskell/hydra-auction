@@ -35,7 +35,7 @@ import HydraAuction.Delegate.Interface (
  )
 import HydraAuction.OnChain (AuctionScript (..))
 import HydraAuction.Tx.Common (scriptSingleUtxo)
-import HydraAuction.Tx.StandingBid (createStandingBidDatum, queryStandingBidDatum)
+import HydraAuction.Tx.StandingBid (createStandingBidDatum, queryStandingBidDatum, sellerSignatureForActor)
 import HydraAuction.Types (
   AuctionStage (..),
   AuctionTerms,
@@ -198,8 +198,9 @@ placeNewBidOnL2AndCheck _headId terms bidder amount = do
         <> show delegate
         <> " for "
         <> show amount
-  (bidderPublicKey, _) <- liftIO $ keysFor bidder
-  let bidDatum = createStandingBidDatum terms amount bidderPublicKey
+  (_, bidderSigningKey) <- liftIO $ keysFor bidder
+  sellerSignature <- liftIO $ sellerSignatureForActor terms bidder
+  let bidDatum = createStandingBidDatum terms amount sellerSignature bidderSigningKey
   submitNewBidToDelegate fakeClientId terms bidDatum
   checkStandingBidWasUpdated bidDatum
   where

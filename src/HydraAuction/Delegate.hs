@@ -132,7 +132,8 @@ delegateFrontendRequestStep (clientId, request) =
                 utxoState
           validatingAuctionTerms headId auctionTerms $ do
             let newBidTerms = standingBid $ standingBidState datum
-            if validNewBidTerms auctionTerms standingBidTerms newBidTerms
+                newVoucherCS = standingBidVoucherCS datum
+            if validNewBidTerms auctionTerms newVoucherCS standingBidTerms newBidTerms
               then do
                 lift $ runHydraInComposite $ do
                   tx <-
@@ -288,7 +289,7 @@ delegateEventStep event = case event of
   HydraEvent HeadIsAborted {} ->
     updateStateAndResponse Aborted
   HydraEvent hydraEvent -> case hydraEvent of
-    InvlidInput {} -> abort RequiredHydraRequestFailed
+    InvalidInput {} -> abort RequiredHydraRequestFailed
     CommandFailed name -> txFailedCase $ name <> "Tx"
     PostTxOnChainFailed {txTag, errorTag} ->
       case (txTag, errorTag) of

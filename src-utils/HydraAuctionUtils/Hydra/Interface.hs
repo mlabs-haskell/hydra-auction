@@ -48,7 +48,7 @@ data HydraEvent
   | TxSeen Tx
   | TxValid Tx
   | TxInvalid UTxO.UTxO Tx
-  | InvlidInput {reason :: String, invalidInput :: String}
+  | InvalidInput {reason :: String, invalidInput :: String}
   | PostTxOnChainFailed {txTag :: String, errorTag :: String}
   | CommandFailed {clientInputTag :: String}
   | SnapshotConfirmed
@@ -69,7 +69,7 @@ data HydraEventKind
   | TxSeenKind
   | TxValidKind
   | TxInvalidKind
-  | InvlidInputKind
+  | InvalidInputKind
   | PostTxOnChainFailedKind
   | CommandFailedKind
   | SnapshotConfirmedKind
@@ -88,7 +88,7 @@ getHydraEventKind event = case event of
   TxSeen _ -> TxSeenKind
   TxValid _ -> TxValidKind
   TxInvalid {} -> TxInvalidKind
-  InvlidInput {} -> InvlidInputKind
+  InvalidInput {} -> InvalidInputKind
   PostTxOnChainFailed {} -> PostTxOnChainFailedKind
   CommandFailed {} -> CommandFailedKind
   SnapshotConfirmed {} -> SnapshotConfirmedKind
