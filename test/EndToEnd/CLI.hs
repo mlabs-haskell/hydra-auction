@@ -128,7 +128,6 @@ depositTest = mkAssertion $ do
 
   waitUntil $ biddingStart terms
 
-  handleCliActionWithMockDelegates $ ShowActorsMinDeposit auctionName (fromJust $ intToNatural 5_000_000)
   handleCliActionWithMockDelegates $ StartBidding auctionName
 
   assertNFTNumEquals seller 0

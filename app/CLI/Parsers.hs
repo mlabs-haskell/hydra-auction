@@ -124,7 +124,7 @@ cliActionParser =
           )
       , command "show-all-utxos" (info (pure ShowAllUtxos) (progDesc "Shows utxos for all actors"))
       , command "show-current-winner-bidder" (info (ShowCurrentWinningBidder <$> auctionName) (progDesc "Show current winning bidder for auction"))
-      , command "show-actors-with-min-deposit" (info (ShowActorsMinDeposit <$> auctionName <*> depositAmount)) (progDesc "Show actors that deposited at least DEPOSIT_AMOUNT")
+      , command "show-actors-with-min-deposit" (info (ShowActorsMinDeposit <$> auctionName <*> depositAmount) (progDesc "Show actors that deposited at least DEPOSIT_AMOUNT"))
       , command "seed" (info (pure Seed) (progDesc $ "Provides " <> show seedAmount <> " Lovelace for the given actor"))
       , command "prepare-for-demo" (info (Prepare <$> actor) (progDesc $ "Provides " <> show seedAmount <> " Lovelace for every actor and 1 Test NFT for given actor"))
       , command "mint-test-nft" (info (pure MintTestNFT) (progDesc "Mints an NFT that can be used as auction lot"))
