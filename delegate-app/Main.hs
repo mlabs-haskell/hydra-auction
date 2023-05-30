@@ -47,10 +47,7 @@ import Data.Text qualified as Text
 import DelegateServer.Parsers (delegateConfigParser)
 import GHC.Stack (HasCallStack)
 import HydraAuction.Delegate (
-  ClientId,
-  ClientResponseScope (Broadcast),
   DelegateEvent (..),
-  clientIsInScope,
   delegateEventStep,
   delegateFrontendRequestStep,
  )
@@ -70,6 +67,11 @@ import HydraAuction.Delegate.Server (
   ThreadSort (..),
  )
 import HydraAuction.OnChain.Common (secondsLeftInInterval, stageToInterval)
+import HydraAuction.Server.ClientId (
+  ClientId,
+  ClientResponseScope (Broadcast),
+  clientIsInScope,
+ )
 import HydraAuction.Tx.Common (currentAuctionStage)
 import HydraAuction.Types (AuctionTerms)
 import HydraAuctionUtils.Composite.Runner (
