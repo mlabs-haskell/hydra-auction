@@ -1,7 +1,6 @@
 {-# LANGUAGE StrictData #-}
 
 module HydraAuctionUtils.Hydra.Interface (
-  commandConstructorName,
   getHydraEventKind,
   HydraEventKind (..),
   HydraEvent (..),
@@ -19,28 +18,12 @@ import Cardano.Api.UTxO qualified as UTxO
 
 -- Hydra imports
 
+import Hydra.API.ClientInput (ClientInput (..))
 import Hydra.Cardano.Api (Tx)
 import Hydra.Chain (HeadId)
 import Hydra.Party (Party)
 
-data HydraCommand
-  = Init
-  | GetUTxO
-  | NewTx Tx
-  | Commit UTxO.UTxO
-  | Close
-  | Fanout
-  | Abort
-  deriving stock (Show)
-
-commandConstructorName :: HydraCommand -> Text
-commandConstructorName Init = "Init"
-commandConstructorName GetUTxO = "GetUTxO"
-commandConstructorName (NewTx _) = "NewTx"
-commandConstructorName (Commit _) = "Commit"
-commandConstructorName Close = "Close"
-commandConstructorName Fanout = "Fanout"
-commandConstructorName Abort = "Abort"
+type HydraCommand = ClientInput Tx
 
 -- FIXME: Add UTxO to HeadIsFinalized
 data HydraEvent

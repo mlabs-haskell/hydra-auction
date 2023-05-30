@@ -19,6 +19,7 @@ import Control.Monad.Trans (MonadIO (..), MonadTrans (lift))
 import Cardano.Api.UTxO qualified as UTxO
 
 -- Hydra imports
+import Hydra.API.ClientInput (ClientInput (..))
 import Hydra.Cardano.Api (
   toPlutusKeyHash,
   verificationKeyHash,
