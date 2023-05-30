@@ -23,11 +23,13 @@ import Cardano.Api (AddressInEra (..))
 import Cardano.Api.UTxO qualified as UTxO
 
 -- Hydra imports
+
+import Hydra.API.ClientInput (ClientInput (..))
 import Hydra.Cardano.Api (Address (ByronAddress, ShelleyAddress), Tx, pattern TxOut)
 
 -- HydraAuction imports
 import HydraAuctionUtils.Hydra.Interface (
-  HydraCommand (GetUTxO, NewTx),
+  HydraCommand,
   HydraEvent (..),
   HydraEventKind (GetUTxOResponseKind),
  )

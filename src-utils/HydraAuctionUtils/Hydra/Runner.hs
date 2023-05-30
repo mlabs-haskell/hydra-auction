@@ -23,6 +23,7 @@ import Data.Aeson (
   Key,
   Value,
   parseJSON,
+  toJSON,
   (.=),
  )
 import Data.Aeson.Lens (key)
@@ -55,7 +56,6 @@ import HydraAuctionUtils.BundledData (readHydraNodeProtocolParams)
 import HydraAuctionUtils.Hydra.Interface (
   HydraCommand (..),
   HydraEvent (..),
-  commandConstructorName,
   getHydraEventKind,
  )
 import HydraAuctionUtils.Hydra.Monad (
@@ -103,13 +103,7 @@ instance MonadHydra HydraRunner where
   sendCommand command = do
     MkHydraExecutionContext {node} <- ask
     traceMessage $ SendCommand command
-    liftIO $ send node $ input commandText commandArguments
-    where
-      commandText = commandConstructorName command
-      commandArguments = case command of
-        Commit utxo -> ["utxo" .= utxo]
-        NewTx tx -> ["transaction" .= tx]
-        _ -> []
+    liftIO $ send node $ toJSON command
 
   waitForHydraEvent' ::
     Natural -> AwaitedHydraEvent -> HydraRunner (Maybe HydraEvent)
