@@ -61,7 +61,7 @@ data Actor
   | Patricia
   | Rupert
   | Faucet
-  deriving stock (Eq, Show, Enum, Bounded, Generic)
+  deriving stock (Eq, Show, Ord, Enum, Bounded, Generic)
 
 instance Aeson.FromJSON Actor
 instance Aeson.ToJSON Actor

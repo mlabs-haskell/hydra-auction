@@ -12,7 +12,7 @@ import Prelude qualified
 
 -- Haskell imports
 
-import Data.Aeson (FromJSON, ToJSON)
+import Data.Aeson (FromJSON (..), ToJSON (..))
 import GHC.Generics (Generic)
 
 -- Plutus imports
@@ -26,7 +26,7 @@ import HydraAuctionUtils.Extras.PlutusOrphans ()
 
 newtype VoucherCS = VoucherCS {unVoucherCS :: CurrencySymbol}
   deriving stock (Generic)
-  deriving newtype (Prelude.Eq, Prelude.Show, Eq)
+  deriving newtype (Prelude.Eq, Prelude.Ord, Prelude.Show, Eq)
   deriving anyclass (ToJSON, FromJSON)
 
 PlutusTx.makeIsDataIndexed ''VoucherCS [('VoucherCS, 0)]
@@ -37,6 +37,8 @@ newtype EscrowAddress = EscrowAddress {unEscrowAddress :: Address}
 PlutusTx.makeLift ''EscrowAddress
 
 newtype StandingBidAddress = StandingBidAddress {unStandingBidAddress :: Address}
+  deriving newtype (Prelude.Eq, Prelude.Ord, Prelude.Show, Generic)
+  deriving anyclass (ToJSON, FromJSON)
 
 PlutusTx.makeLift ''StandingBidAddress
 
