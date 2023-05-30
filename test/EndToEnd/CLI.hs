@@ -174,7 +174,7 @@ depositCleanupClaimTest = mkAssertion $ do
 
   waitUntil $ biddingStart terms
 
-  handleCliActionWithMockDelegates $ StartBidding auctionName [buyer1]
+  handleCliActionWithMockDelegates $ StartBidding auctionName
 
   withActor buyer1 $
     handleCliActionWithMockDelegates $
