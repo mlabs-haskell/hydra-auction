@@ -124,6 +124,7 @@ cliActionParser =
           )
       , command "show-all-utxos" (info (pure ShowAllUtxos) (progDesc "Shows utxos for all actors"))
       , command "show-current-winner-bidder" (info (ShowCurrentWinningBidder <$> auctionName) (progDesc "Show current winning bidder for auction"))
+      , command "show-actors-with-min-deposit" (info (ShowActorsMinDeposit <$> auctionName <*> depositAmount) (progDesc "Show actors that deposited at least DEPOSIT_AMOUNT"))
       , command "show-address" (info (pure ShowAddress) (progDesc "Show address of current actor"))
       , command "seed" (info (pure Seed) (progDesc $ "Provides " <> show seedAmount <> " Lovelace for the given actor"))
       , command "prepare-for-demo" (info (Prepare <$> actor) (progDesc $ "Provides " <> show seedAmount <> " Lovelace for every actor and 1 Test NFT for given actor"))
@@ -186,6 +187,15 @@ bidAmount =
     ( short 'b'
         <> metavar "BID_AMOUNT"
         <> help "Bid amount"
+    )
+
+depositAmount :: Parser Natural
+depositAmount =
+  option
+    parseAda
+    ( short 'b'
+        <> metavar "DEPOSIT_AMOUNT"
+        <> help "Deposit amount"
     )
 
 watchAuction :: Parser AuctionName
