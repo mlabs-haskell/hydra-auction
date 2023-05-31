@@ -27,11 +27,10 @@ module HydraAuction.Platform.Interface (
   BidderApproval (..),
   EntityKind (..),
   ServerOutput (..),
-  SomeServerOutput (..),
+  Some (..),
   ClientCommand (..),
   CommandResult (..),
   ClientInput (..),
-  SomeClientInput (..),
   EntityQueryResponse (..),
   EntityQuery (..),
 ) where
@@ -40,10 +39,12 @@ module HydraAuction.Platform.Interface (
 import Prelude
 
 -- Haskell imports
+
 import Data.Aeson (FromJSON (..), ToJSON (..))
 import Data.Aeson qualified as Aeson
-import Data.Aeson.KeyMap qualified as Aeson
 import Data.Aeson.Types qualified as Aeson
+import Data.Kind (Type)
+import Data.Proxy (Proxy (..))
 import Data.Text qualified as T
 import GHC.Generics (Generic)
 
@@ -305,79 +306,82 @@ deriving anyclass instance Entity entity => ToJSON (EntityQueryResponse entity)
 -- SomeX instances
 
 {-
-EntityKind does not make sense for Client case,
+EntityKind does not make sense for Command case,
 but this type still requires it anyway.
 This is designed that way because, GADT/existentials break deriving,
 and hiding EntitkyKind existentialy inside EntityQuery will
 require to much more manual instances written.
 -}
 
-data SomeClientInput where
-  MkSomeClientInput ::
-    forall entity.
+data Some (container :: Type -> Type)
+  = forall entity.
     Entity entity =>
-    EntityKind entity ->
-    ClientInput entity ->
-    SomeClientInput
+    MkSome (EntityKind entity) (container entity)
 
-fromKindedObjectJSON ::
-  forall some f.
-  (forall e. Entity e => Aeson.Object -> Aeson.Parser (f e)) ->
-  (forall e. Entity e => EntityKind e -> f e -> some) ->
-  Aeson.Value ->
-  Aeson.Parser some
-fromKindedObjectJSON dependentParser someConstr value = case value of
-  (Aeson.Object object) ->
-    case Aeson.lookup "kind" object of
-      Just (Aeson.String s) ->
-        case s of
-          -- This cannot be refactored into local function,
-          -- due to GADT type checking
-          "AnnouncedAuction" ->
-            someConstr AnnouncedAuction <$> dependentParser object
-          "HydraHead" ->
-            someConstr HydraHead <$> dependentParser object
-          "HeadDelegate" ->
-            someConstr HeadDelegate <$> dependentParser object
-          "BidderApproval" ->
-            someConstr BidderApproval <$> dependentParser object
-          _ -> fail "Wrong EntityKind tag"
-      _ -> fail "Wrong type of kind field"
-  _ -> fail "Wrong type of parsed object"
+instance
+  (forall entity. Show entity => Show (container entity)) =>
+  Show (Some container)
+  where
+  show (MkSome _ container) =
+    "MkSome (" <> show container <> " )"
 
-instance FromJSON SomeClientInput where
-  parseJSON = fromKindedObjectJSON (Aeson..: "input") MkSomeClientInput
+parseSomeEntityKindJSON :: Aeson.Value -> Aeson.Parser (Some EntityKind)
+parseSomeEntityKindJSON value = case value of
+  Aeson.String s ->
+    case s of
+      "AnnouncedAuction" -> return $ someConstructor AnnouncedAuction
+      "HydraHead" -> return $ someConstructor HydraHead
+      "HeadDelegate" -> return $ someConstructor HeadDelegate
+      "BidderApproval" -> return $ someConstructor BidderApproval
+      _ -> fail "Wrong EntityKind tag"
+  _ -> fail "Wrong type of kind field"
+  where
+    -- Some EntityKind contains kind twice :D
+    someConstructor kind = MkSome kind kind
 
-instance Show SomeClientInput where
-  show (MkSomeClientInput kind input) =
-    "MkSomeClientInput " <> show kind <> " " <> show input
+-- | Entity container, for which we can serialize `Some container` to JSON
+class
+  ( forall e. Entity e => FromJSON (container e)
+  , forall e. Entity e => ToJSON (container e)
+  ) =>
+  ContainerForEntity (container :: Type -> Type)
+  where
+  -- | `Some container` JSON consists of "kind" field for EntityKind tag
+  -- | and `jsonSubFieldName` field for `container` content
+  -- | Proxy is required for avoiding AmbigiousType
+  jsonSubFieldName :: Proxy container -> Aeson.Key
 
-instance ToJSON SomeClientInput where
-  toJSON (MkSomeClientInput kind input) =
+instance
+  forall container.
+  ContainerForEntity container =>
+  (FromJSON (Some container))
+  where
+  parseJSON value = case value of
+    Aeson.Object object -> do
+      someKind <-
+        Aeson.explicitParseField
+          parseSomeEntityKindJSON
+          object
+          "kind"
+      case someKind of
+        MkSome kind _ -> do
+          container <- object Aeson..: jsonSubFieldName (Proxy @container)
+          return $ MkSome @container kind container
+    _ -> fail "Wrong type of parsed object"
+
+instance
+  forall container.
+  ContainerForEntity container =>
+  (ToJSON (Some container))
+  where
+  toJSON (MkSome kind container) =
     Aeson.object
       [ "kind" Aeson..= kind
-      , "input" Aeson..= input
+      , jsonSubFieldName (Proxy @container) Aeson..= container
       ]
 
-data SomeServerOutput where
-  MkSomeServerOutput ::
-    forall entity.
-    Entity entity =>
-    EntityKind entity ->
-    ServerOutput entity ->
-    SomeServerOutput
+instance ContainerForEntity ClientInput where
+  jsonSubFieldName Proxy = "input"
 
-instance Show SomeServerOutput where
-  show (MkSomeServerOutput kind output) =
-    "MkSomeServerOutput " <> show kind <> " " <> show output
-
-instance FromJSON SomeServerOutput where
-  parseJSON =
-    fromKindedObjectJSON (Aeson..: "output") MkSomeServerOutput
-
-instance ToJSON SomeServerOutput where
-  toJSON (MkSomeServerOutput kind output) =
-    Aeson.object
-      [ "kind" Aeson..= kind
-      , "output" Aeson..= output
-      ]
+instance ContainerForEntity ServerOutput where
+  jsonSubFieldName Proxy = "output"
