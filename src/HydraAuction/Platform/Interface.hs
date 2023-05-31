@@ -254,7 +254,10 @@ data CommandResult = EntityCreated | EntityAlreadyExists
   deriving stock (Generic, Show, Eq, Ord)
   deriving anyclass (ToJSON, FromJSON)
 
-data EntityQuery entity = MkQuery [EntityFilter entity] Int
+data EntityQuery entity = MkQuery
+  { filters :: [EntityFilter entity]
+  , limit :: Maybe Int
+  }
 newtype EntityQueryResponse entity = MkResponse [entity]
 
 deriving stock instance Entity entity => Eq (EntityQuery entity)

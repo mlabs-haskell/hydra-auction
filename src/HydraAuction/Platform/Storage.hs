@@ -10,6 +10,7 @@ import Prelude
 
 -- Haskell imports
 
+import Control.Monad (when)
 import Control.Monad.State (MonadState (..), modify')
 import Data.Map (Map)
 import Data.Map qualified as Map
@@ -108,15 +109,26 @@ queryByFilter ::
   EntityKind entity ->
   EntityQuery entity ->
   m (EntityQueryResponse entity)
-queryByFilter kind (MkQuery filters limit) = do
+queryByFilter kind (MkQuery filters mLimit) = do
   storage <- get
   return $
     MkResponse $
-      take limit $
+      takeToMLimit $
         filter filterPred $
           Map.elems (entityStorageMap kind storage)
   where
     filterPred entity = all (isMatchingEntityFilter entity) filters
+    takeToMLimit = maybe id take mLimit
+
+insert ::
+  (MonadState EntityStorage m, Entity entity) =>
+  EntityKind entity ->
+  entity ->
+  m ()
+insert kind entity = do
+  modify' $
+    overStorageMap kind $
+      Map.insert (getPrimaryKey entity) entity
 
 insertIfNotExisting ::
   (MonadState EntityStorage m, Entity entity) =>
@@ -128,9 +140,7 @@ insertIfNotExisting kind entity = do
   case queryByPk kind (getPrimaryKey entity) storage of
     Just _ -> return False
     Nothing -> do
-      modify' $
-        overStorageMap kind $
-          Map.insert (getPrimaryKey entity) entity
+      insert kind entity
       return True
 
 processCommand ::
