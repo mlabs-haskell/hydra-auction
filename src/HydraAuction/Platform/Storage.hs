@@ -2,6 +2,7 @@ module HydraAuction.Platform.Storage (
   initialStorage,
   queryByPk,
   queryByFilter,
+  processCommand,
   processClientInput,
 ) where
 
@@ -47,6 +48,7 @@ data EntityStorage = MkEntityStorage
   , storageHeadDelegate :: StorageMap HeadDelegate
   , storageHydraHead :: StorageMap HydraHead
   }
+  deriving stock (Eq, Show)
 
 initialStorage :: EntityStorage
 initialStorage =
