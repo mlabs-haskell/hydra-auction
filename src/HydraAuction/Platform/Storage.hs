@@ -28,15 +28,19 @@ import HydraAuction.Platform.Interface (
   ClientInput (..),
   CommandResult (..),
   Entity (..),
+  EntityFilter (..),
   EntityKind (..),
   EntityQuery (..),
   EntityQueryResponse (..),
+  FilterEq (..),
   HeadDelegate (..),
   HydraHead (..),
+  HydraHeadInfo (..),
   ServerOutput (..),
   SomeClientInput (..),
   SomeServerOutput (..),
  )
+import HydraAuctionUtils.Types.Natural (naturalToInt)
 
 --- Storage
 
@@ -149,7 +153,7 @@ processCommand ::
   MonadState EntityStorage m => ClientCommand -> m CommandResult
 processCommand command = case command of
   ReportAnnouncedAuction terms ->
-    reportInserted $ insertIfNotExisting AnnouncedAuction newEntity
+    reportInserted =<< insertIfNotExisting AnnouncedAuction newEntity
     where
       newEntity =
         MkAnnouncedAuction
@@ -158,24 +162,41 @@ processCommand command = case command of
           , auctionStandingBidAddress = standingBidAddress terms
           }
   ReportBidderApproval approval ->
-    reportInserted $ insertIfNotExisting BidderApproval approval
+    reportInserted =<< insertIfNotExisting BidderApproval approval
   ReportHeadDelegate staticInfo delegateActor -> do
     -- Head could be same in the reports by different delegates
     -- First write wins
     _ <- insertIfNotExisting HydraHead hydraHead
-    reportInserted $ insertIfNotExisting HeadDelegate headDelegate
+    inserted <- insertIfNotExisting HeadDelegate headDelegate
+    when inserted updateIfAllDelegatesKnown
+    reportInserted inserted
     where
       hydraHead =
         MkHydraHead
           { staticInfo
           , allDelegatesKnown = False
           , headDelegateState =
+              -- FIXME
               AwaitingCommits {stangingBidWasCommited = False}
           }
       headDelegate = MkHeadDelegate (getPrimaryKey hydraHead) delegateActor
+      updateIfAllDelegatesKnown = do
+        MkResponse delegatesReported <-
+          queryByFilter
+            HeadDelegate
+            ( MkQuery [DelegateByHeadId $ Eq $ getPrimaryKey hydraHead] Nothing
+            )
+        when
+          (length delegatesReported == expectedDelegatesNum)
+          insert
+          HydraHead
+          $ hydraHead {allDelegatesKnown = True}
+      expectedDelegatesNum =
+        fromIntegral $
+          naturalToInt $
+            delegatesNumber staticInfo
   where
-    reportInserted mInserted = do
-      inserted <- mInserted
+    reportInserted inserted = do
       if inserted
         then return EntityCreated
         else return EntityAlreadyExists
