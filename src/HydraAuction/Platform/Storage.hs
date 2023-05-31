@@ -37,8 +37,7 @@ import HydraAuction.Platform.Interface (
   HydraHead (..),
   HydraHeadInfo (..),
   ServerOutput (..),
-  SomeClientInput (..),
-  SomeServerOutput (..),
+  Some (..),
  )
 import HydraAuctionUtils.Types.Natural (naturalToInt)
 
@@ -200,13 +199,17 @@ processCommand command = case command of
         else return EntityAlreadyExists
 
 processClientInput' ::
-  forall entity m. (Entity entity, MonadState EntityStorage m) => EntityKind entity -> ClientInput entity -> m (ServerOutput entity)
+  forall entity m.
+  (Entity entity, MonadState EntityStorage m) =>
+  EntityKind entity ->
+  ClientInput entity ->
+  m (ServerOutput entity)
 processClientInput' kind input = case input of
   Query query -> QueryPerformed <$> queryByFilter kind query
   Command command -> CommandResult <$> processCommand command
 
 processClientInput ::
-  MonadState EntityStorage m => SomeClientInput -> m SomeServerOutput
-processClientInput (MkSomeClientInput kind input) = do
+  MonadState EntityStorage m => Some ClientInput -> m (Some ServerOutput)
+processClientInput (MkSome kind input) = do
   x <- processClientInput' kind input
-  return $ MkSomeServerOutput kind x
+  return $ MkSome kind x
