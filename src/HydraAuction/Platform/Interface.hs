@@ -1,3 +1,18 @@
+{-
+
+Entities are relation-like data, to be stored and queried in DB-like storage.
+
+Entity class describes their queriable behaviour.
+
+EntityKind is singletone-like functionalization for Entities,
+used to uniform queries and storage access.
+
+SomeX datatypes use existencial types to wrap EntityKind usage
+and make possible to use single datatype to access different Entities,
+as is required for server API.
+
+GADT usage makes deriving not working which affect some design decisions.
+-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 
 module HydraAuction.Platform.Interface (
@@ -288,6 +303,14 @@ deriving anyclass instance Entity entity => FromJSON (EntityQueryResponse entity
 deriving anyclass instance Entity entity => ToJSON (EntityQueryResponse entity)
 
 -- SomeX instances
+
+{-
+EntityKind does not make sense for Client case,
+but this type still requires it anyway.
+This is designed that way because, GADT/existentials break deriving,
+and hiding EntitkyKind existentialy inside EntityQuery will
+require to much more manual instances written.
+-}
 
 data SomeClientInput where
   MkSomeClientInput ::
