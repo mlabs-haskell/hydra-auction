@@ -188,9 +188,7 @@ processCommand command = case command of
             )
         when
           (length delegatesReported == expectedDelegatesNum)
-          insert
-          HydraHead
-          $ hydraHead {allDelegatesKnown = True}
+          (insert HydraHead $ hydraHead {allDelegatesKnown = True})
       expectedDelegatesNum =
         fromIntegral $
           naturalToInt $
