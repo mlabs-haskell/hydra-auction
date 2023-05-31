@@ -2,9 +2,12 @@
 
 module HydraAuction.Platform.Interface (
   Entity (..),
+  EntityFilter (..),
   AnnouncedAuction (..),
   HydraHead (..),
   HydraHeadInfo (..),
+  FilterEq (..),
+  FilterOrd (..),
   HeadDelegate (..),
   BidderApproval (..),
   EntityKind (..),
