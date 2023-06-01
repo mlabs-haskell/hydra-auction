@@ -1,17 +1,19 @@
 {-
+Entities are relation-like datatypes,
+to be stored and queried in DB-like storage.
 
-Entities are relation-like data, to be stored and queried in DB-like storage.
-
-Entity class describes their queriable behaviour.
-
-EntityKind is singletone-like functionalization for Entities,
+`Entity` type class describes their queriable behaviour.
+`EntityKind` is singletone-like enumeration for all `Entity` datatypes,
 used to uniform queries and storage access.
 
-SomeX datatypes use existencial types to wrap EntityKind usage
-and make possible to use single datatype to access different Entities,
-as is required for server API.
+`Some` datatype is existential type to wrap types parametric on Entitiy:
+like `EntityQuery` and `EntityQueryResponse`.
+It includes `EntityKind` tag, essentialy emulating dependent pair.
 
-GADT usage makes deriving not working which affect some design decisions.
+Existential/GADTs cannot use GHC deriving,
+which affect design decision of using `Some` on top-level types.
+This is not best type encoding, because `EntityKind` only makes sence
+for nested types like `EntityQuery`, and not `ClientInput` as whole.
 -}
 {-# OPTIONS_GHC -Wno-orphans #-}
 
@@ -284,6 +286,8 @@ newtype EntityQueryResponse entity = MkResponse [entity]
   deriving stock (Eq, Generic, Show)
   deriving anyclass (FromJSON, ToJSON)
 
+-- Those types are dependent not on `entity` param itself,
+-- but on type-family applied to param. That breaks automatic deriving.
 deriving stock instance Entity entity => Eq (EntityQuery entity)
 deriving stock instance Entity entity => Generic (EntityQuery entity)
 deriving stock instance Entity entity => Show (EntityQuery entity)
@@ -296,15 +300,7 @@ deriving stock instance Entity entity => Show (ServerOutput entity)
 deriving anyclass instance Entity entity => FromJSON (ServerOutput entity)
 deriving anyclass instance Entity entity => ToJSON (ServerOutput entity)
 
--- SomeX instances
-
-{-
-EntityKind does not make sense for Command case,
-but this type still requires it anyway.
-This is designed that way because, GADT/existentials break deriving,
-and hiding EntitkyKind existentialy inside EntityQuery will
-require to much more manual instances written.
--}
+-- `Some` instances
 
 data Some (container :: Type -> Type)
   = forall entity.
@@ -315,7 +311,11 @@ deriving stock instance
   (forall entity. Entity entity => Show (container entity)) =>
   Show (Some container)
 
--- | `FromJSON (Some EntityKind)` instance would be Incoherent
+{- | `FromJSON (Some EntityKind)` instance would be incoherent/overlapping
+ | One cannot parse `EntityKind x`, only serialize.
+ | That is because it is GADT (indexed type), and it type depends on value.
+ | Wrapping it in existential we hide that type depenency inside.
+-}
 parseSomeEntityKindJSON :: Aeson.Value -> Aeson.Parser (Some EntityKind)
 parseSomeEntityKindJSON value = case value of
   Aeson.String s ->
@@ -355,6 +355,8 @@ instance
           object
           "kind"
       case someKind of
+        -- This `Some EntityKind` pattern matching is indispensable,
+        -- because it is essegentally dependent pattern matching
         MkSome kind _ -> do
           container <- object Aeson..: jsonSubFieldName (Proxy @container)
           return $ MkSome @container kind container
