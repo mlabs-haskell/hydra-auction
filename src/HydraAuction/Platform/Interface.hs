@@ -257,6 +257,8 @@ instance ToJSON (EntityKind x) where
 data ClientInput entity
   = Query (EntityQuery entity)
   | Command ClientCommand
+  deriving stock (Eq, Generic, Show)
+  deriving anyclass (FromJSON, ToJSON)
 
 data ClientCommand
   = ReportAnnouncedAuction AuctionTerms
@@ -277,7 +279,10 @@ data EntityQuery entity = MkQuery
   { filters :: [EntityFilter entity]
   , limit :: Maybe Int
   }
+
 newtype EntityQueryResponse entity = MkResponse [entity]
+  deriving stock (Eq, Generic, Show)
+  deriving anyclass (FromJSON, ToJSON)
 
 deriving stock instance Entity entity => Eq (EntityQuery entity)
 deriving stock instance Entity entity => Generic (EntityQuery entity)
@@ -285,23 +290,11 @@ deriving stock instance Entity entity => Show (EntityQuery entity)
 deriving anyclass instance Entity entity => FromJSON (EntityQuery entity)
 deriving anyclass instance Entity entity => ToJSON (EntityQuery entity)
 
-deriving stock instance Entity entity => Eq (ClientInput entity)
-deriving stock instance Entity entity => Generic (ClientInput entity)
-deriving stock instance Entity entity => Show (ClientInput entity)
-deriving anyclass instance Entity entity => FromJSON (ClientInput entity)
-deriving anyclass instance Entity entity => ToJSON (ClientInput entity)
-
 deriving stock instance Entity entity => Eq (ServerOutput entity)
 deriving stock instance Entity entity => Generic (ServerOutput entity)
 deriving stock instance Entity entity => Show (ServerOutput entity)
 deriving anyclass instance Entity entity => FromJSON (ServerOutput entity)
 deriving anyclass instance Entity entity => ToJSON (ServerOutput entity)
-
-deriving stock instance Entity entity => Eq (EntityQueryResponse entity)
-deriving stock instance Entity entity => Generic (EntityQueryResponse entity)
-deriving stock instance Entity entity => Show (EntityQueryResponse entity)
-deriving anyclass instance Entity entity => FromJSON (EntityQueryResponse entity)
-deriving anyclass instance Entity entity => ToJSON (EntityQueryResponse entity)
 
 -- SomeX instances
 
@@ -318,13 +311,11 @@ data Some (container :: Type -> Type)
     Entity entity =>
     MkSome (EntityKind entity) (container entity)
 
-instance
+deriving stock instance
   (forall entity. Show entity => Show (container entity)) =>
   Show (Some container)
-  where
-  show (MkSome _ container) =
-    "MkSome (" <> show container <> " )"
 
+-- | `FromJSON (Some EntityKind)` instance would be Incoherent
 parseSomeEntityKindJSON :: Aeson.Value -> Aeson.Parser (Some EntityKind)
 parseSomeEntityKindJSON value = case value of
   Aeson.String s ->
