@@ -43,6 +43,7 @@ import Hydra.Cardano.Api (
 import HydraAuction.Addresses (VoucherCS (..))
 import HydraAuction.OnChain (AuctionScript (..), policy)
 import HydraAuction.OnChain.Common (stageToInterval)
+import HydraAuctionUtils.Interval (extendIntervalRight)
 import HydraAuctionUtils.Monads.Actors (
   actorTipUtxo,
   addressAndKeys,
@@ -165,7 +166,7 @@ losingBidderClaimDeposit terms = do
         , outs = []
         , toMint = TxMintValueNone
         , changeAddress = bidderAddress
-        , validityBound = stageToInterval terms BiddingEndedStage
+        , validityBound = extendIntervalRight $ stageToInterval terms BiddingEndedStage
         }
   where
     depositScript = scriptPlutusScript Deposit terms
@@ -196,7 +197,7 @@ sellerClaimDepositFor terms bidderPkh = do
         , outs = []
         , toMint = TxMintValueNone
         , changeAddress = sellerAddress
-        , validityBound = stageToInterval terms VoucherExpiredStage
+        , validityBound = extendIntervalRight $ stageToInterval terms VoucherExpiredStage
         }
   where
     depositScript = scriptPlutusScript Deposit terms

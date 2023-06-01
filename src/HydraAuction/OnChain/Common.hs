@@ -16,12 +16,13 @@ import PlutusTx.Prelude
 import Prelude (div)
 
 -- Plutus imports
-import PlutusLedgerApi.V1.Interval (Extended (..), Interval (..), LowerBound (..), UpperBound (..), contains, from, lowerBound, strictUpperBound)
+import PlutusLedgerApi.V1.Interval (Extended (..), Interval (..), UpperBound (..), contains, from)
 import PlutusLedgerApi.V1.Time (POSIXTime (..))
 import PlutusLedgerApi.V2.Contexts (TxInfo (..))
 
 -- Hydra auction imports
 import HydraAuction.Types (AuctionStage (..), AuctionTerms (..))
+import HydraAuctionUtils.Interval (rightExclusiveInterval, strictTo)
 import HydraAuctionUtils.Types.Natural (naturalToInt)
 
 {-# INLINEABLE minAuctionFee #-}
@@ -36,14 +37,6 @@ stageToInterval terms stage = case stage of
   BiddingEndedStage -> rightExclusiveInterval (biddingEnd terms) (voucherExpiry terms)
   VoucherExpiredStage -> rightExclusiveInterval (voucherExpiry terms) (cleanup terms)
   CleanupStage -> from (cleanup terms)
-
-{-# INLINEABLE strictTo #-}
-strictTo :: a -> Interval a
-strictTo s = Interval (LowerBound NegInf True) (strictUpperBound s)
-
-{-# INLINEABLE rightExclusiveInterval #-}
-rightExclusiveInterval :: a -> a -> Interval a
-rightExclusiveInterval s s' = Interval (lowerBound s) (strictUpperBound s')
 
 {-# INLINEABLE checkInterval #-}
 checkInterval :: AuctionTerms -> AuctionStage -> TxInfo -> Bool

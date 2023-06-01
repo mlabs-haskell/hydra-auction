@@ -68,6 +68,7 @@ import HydraAuction.Types (
   calculateTotalFee,
  )
 import HydraAuctionUtils.Extras.Plutus (scriptCurrencySymbol)
+import HydraAuctionUtils.Interval (extendIntervalRight)
 import HydraAuctionUtils.L1.Runner (L1Runner)
 import HydraAuctionUtils.Monads (
   MonadQueryUtxo (queryUtxo),
@@ -366,5 +367,5 @@ sellerReclaims terms = do
             ]
         , toMint = TxMintValueNone
         , changeAddress = sellerAddress
-        , validityBound = stageToInterval terms VoucherExpiredStage
+        , validityBound = extendIntervalRight $ stageToInterval terms VoucherExpiredStage
         }
