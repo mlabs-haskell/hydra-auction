@@ -312,7 +312,7 @@ data Some (container :: Type -> Type)
     MkSome (EntityKind entity) (container entity)
 
 deriving stock instance
-  (forall entity. Show entity => Show (container entity)) =>
+  (forall entity. Entity entity => Show (container entity)) =>
   Show (Some container)
 
 -- | `FromJSON (Some EntityKind)` instance would be Incoherent
