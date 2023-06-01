@@ -22,7 +22,7 @@ import Data.Foldable (traverse_)
 
 -- HydraAuction imports
 
-import HydraAuction.Platform.Interface (SomeClientInput, SomeServerOutput)
+import HydraAuction.Platform.Interface (ClientInput, ServerOutput, Some)
 import HydraAuction.Platform.Storage (initialStorage, processClientInput)
 import HydraAuctionUtils.Server.ClientId (
   ClientId,
@@ -34,9 +34,9 @@ runPlatformEventReaction ::
   forall void.
   -- | the time in milliseconds that the runner sleeps between acts
   Int ->
-  TQueue (ClientId, SomeClientInput) ->
+  TQueue (ClientId, Some ClientInput) ->
   -- | the broadcast queue of outgoing messages (write only)
-  TChan (ClientResponseScope, SomeServerOutput) ->
+  TChan (ClientResponseScope, Some ServerOutput) ->
   IO void
 runPlatformEventReaction
   tick
