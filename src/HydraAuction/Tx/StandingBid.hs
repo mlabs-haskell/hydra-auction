@@ -51,7 +51,7 @@ import Hydra.Cardano.Api (
   txOuts,
   verificationKeyHash,
   pattern ReferenceScriptNone,
-  pattern ShelleyAddressInEra,
+  pattern TxBody,
   pattern TxExtraKeyWitnesses,
   pattern TxMintValueNone,
   pattern TxOut,
