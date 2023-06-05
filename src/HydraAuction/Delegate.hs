@@ -19,12 +19,17 @@ import Control.Monad.Trans (MonadIO (..), MonadTrans (lift))
 import Cardano.Api.UTxO qualified as UTxO
 
 -- Hydra imports
+
+import Hydra.API.ClientInput (ClientInput (..))
+import Hydra.API.ServerOutput (ServerOutput (..))
 import Hydra.Cardano.Api (
   toPlutusKeyHash,
   verificationKeyHash,
   pattern ShelleyAddressInEra,
   pattern TxOut,
  )
+import Hydra.Chain (PostChainTx (..), PostTxError (..))
+import Hydra.Snapshot (Snapshot (..))
 
 -- HydraAuction imports
 
@@ -65,7 +70,7 @@ import HydraAuctionUtils.Composite.Runner (
   runL1RunnerInComposite,
  )
 import HydraAuctionUtils.Fixture (partyFor)
-import HydraAuctionUtils.Hydra.Interface (HydraCommand (..), HydraEvent (..))
+import HydraAuctionUtils.Hydra.Interface (HydraEvent)
 import HydraAuctionUtils.Hydra.Monad (MonadHydra (..))
 import HydraAuctionUtils.Monads (
   MonadSubmitTx (..),
@@ -212,9 +217,9 @@ delegateEventStep event = case event of
                 abort $ ImpossibleHappened IncorrectCommit
           _ -> abort $ ImpossibleHappened IncorrectCommit
       _ -> abort $ ImpossibleHappened IncorrectHydraEvent
-  HydraEvent (SnapshotConfirmed _txs utxo) ->
-    updateStateWithStandingBidOrAbort utxo
-  HydraEvent (TxInvalid currentUtxo tx) -> do
+  HydraEvent (SnapshotConfirmed {snapshot}) -> case snapshot of
+    Snapshot {utxo} -> updateStateWithStandingBidOrAbort utxo
+  HydraEvent (TxInvalid {utxo, transaction}) -> do
     state <- get
     actor <- askActor
     (_, delegatePublicKey, _) <- lift $ runL1RunnerInComposite addressAndKeys
@@ -237,7 +242,7 @@ delegateEventStep event = case event of
             toPlutusKeyHash $
               verificationKeyHash delegatePublicKey
          in
-          case decodeNewBidTxOnL2 tx currentUtxo of
+          case decodeNewBidTxOnL2 transaction utxo of
             Just
               ( MkNewBidTxInfo
                   { submitterPKH
@@ -261,17 +266,17 @@ delegateEventStep event = case event of
               collateralUtxo
               newBidDatum
           submitTx newTx
-  HydraEvent ReadyToFanout -> do
+  HydraEvent ReadyToFanout {} -> do
     sendCommand Fanout
     return []
-  HydraEvent (HeadIsInitializing headId) -> do
+  HydraEvent (HeadIsInitializing {headId}) -> do
     let newState = AwaitingCommits {stangingBidWasCommited = False}
     put $ Initialized headId newState
     -- Yes, this is code duplication
     updateStateAndResponse newState
-  HydraEvent (HeadIsOpen utxo) ->
+  HydraEvent (HeadIsOpen {utxo}) ->
     updateStateWithStandingBidOrAbort utxo
-  HydraEvent HeadIsClosed -> do
+  HydraEvent HeadIsClosed {} -> do
     updateStateAndResponse Closed
   HydraEvent HeadIsFinalized {} ->
     updateStateAndResponse Finalized
@@ -279,27 +284,31 @@ delegateEventStep event = case event of
     updateStateAndResponse Aborted
   HydraEvent hydraEvent -> case hydraEvent of
     InvalidInput {} -> abort RequiredHydraRequestFailed
-    CommandFailed name -> txFailedCase $ name <> "Tx"
-    PostTxOnChainFailed {txTag, errorTag} ->
-      case (txTag, errorTag) of
-        ("InitTx", _)
-          | errorTag `elem` ["NoSeedInput", "NotEnoughFuel"] ->
+    -- Before `CommandFailed` was returned in some cases,
+    -- similar to `PostTxOnChainFailed`. Lets check if thats still the case :D
+    CommandFailed {} -> abort RequiredHydraRequestFailed
+    PostTxOnChainFailed {postChainTx, postTxError} ->
+      case (postChainTx, postTxError) of
+        (InitTx _, _)
+          | postTxError `elem` [NoSeedInput, NotEnoughFuel] ->
               abort $ PrerequisiteMissing HydraInit
-        (_, _) -> txFailedCase txTag
+        (_, _) -> txFailedCase postChainTx
     _ -> return [] -- Some unknown cases
     where
-      -- Seems like both kinds this events could be produced by Hydra
-      -- in similar situations
-      txFailedCase txTag
+      txFailedCase txTag = case txTag of
         -- This is okay cuz these are concurrent requests,
         -- only one of which will be fulfilled
-        | txTag `elem` ["InitTx", "FanoutTx", "CollectComTx"] = return []
+        InitTx {} -> return []
+        FanoutTx {} -> return []
+        CollectComTx {} -> return []
         -- Preventing infinite loop of Abortions
-        | txTag `elem` ["AbortTx", "CloseTx"] = do
-            -- TODO: use logs
-            liftIO $ putStrLn "Abort/Close failed"
-            return []
-        | otherwise = abort RequiredHydraRequestFailed
+        AbortTx {} -> ignoreStop
+        CloseTx {} -> ignoreStop
+        _ -> abort RequiredHydraRequestFailed
+      ignoreStop = do
+        -- FIXME: use logs
+        liftIO $ putStrLn "Abort/Close failed"
+        return []
   where
     decodeStandingBidTerms txOut = case decodeInlineDatum txOut of
       Right standingBidDatum ->

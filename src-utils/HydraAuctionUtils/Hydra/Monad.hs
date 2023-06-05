@@ -23,12 +23,16 @@ import Cardano.Api (AddressInEra (..))
 import Cardano.Api.UTxO qualified as UTxO
 
 -- Hydra imports
+
+import Hydra.API.ClientInput (ClientInput (..))
+import Hydra.API.ServerOutput (ServerOutput (..))
 import Hydra.Cardano.Api (Address (ByronAddress, ShelleyAddress), Tx, pattern TxOut)
+import Hydra.Snapshot (Snapshot (..))
 
 -- HydraAuction imports
 import HydraAuctionUtils.Hydra.Interface (
-  HydraCommand (GetUTxO, NewTx),
-  HydraEvent (..),
+  HydraCommand,
+  HydraEvent,
   HydraEventKind (GetUTxOResponseKind),
  )
 import HydraAuctionUtils.Monads (
@@ -74,18 +78,18 @@ instance {-# OVERLAPPABLE #-} (Monad m, MonadHydra m) => MonadSubmitTx m where
   awaitTx :: Tx -> m ()
   awaitTx tx = do
     void $ waitForHydraEvent . CustomMatcher . EventMatcher $ \case
-      SnapshotConfirmed {txs} -> tx `elem` txs
+      SnapshotConfirmed {snapshot} -> tx `elem` confirmed snapshot
       _ -> False
 
 instance {-# OVERLAPPABLE #-} (Monad m, MonadHydra m) => MonadQueryUtxo m where
   queryUtxo query = do
     response <-
       sendCommandAndWaitFor (SpecificKind GetUTxOResponseKind) GetUTxO
-    let utxo = case response of
-          Just (GetUTxOResponse utxo') -> utxo'
+    let utxo' = case response of
+          Just (GetUTxOResponse {utxo}) -> utxo
           Just _ -> error "Impossible happened: incorrect response type awaited"
           Nothing -> error "Hydra server not answering"
-    return $ UTxO.fromPairs $ filter predicate $ UTxO.pairs utxo
+    return $ UTxO.fromPairs $ filter predicate $ UTxO.pairs utxo'
     where
       predicate (txIn, TxOut (AddressInEra _ txOutAddress) _ _ _) = case query of
         ByAddress address ->

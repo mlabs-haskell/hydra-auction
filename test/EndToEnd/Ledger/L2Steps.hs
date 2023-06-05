@@ -20,6 +20,8 @@ import GHC.Stack (HasCallStack)
 import Test.Tasty.HUnit (assertBool, assertEqual)
 
 -- Hydra imports
+
+import Hydra.API.ServerOutput (ServerOutput (..))
 import Hydra.Chain (HeadId)
 
 -- HydraAuction imports
@@ -50,7 +52,7 @@ import HydraAuction.Types (
  )
 import HydraAuctionUtils.Composite.Runner (CompositeRunner, runHydraInComposite, runL1RunnerInComposite)
 import HydraAuctionUtils.Fixture (Actor, keysFor)
-import HydraAuctionUtils.Hydra.Interface (HydraEvent (..), HydraEventKind (..))
+import HydraAuctionUtils.Hydra.Interface (HydraEventKind (..))
 import HydraAuctionUtils.Hydra.Monad (AwaitedHydraEvent (..), waitForHydraEvent)
 import HydraAuctionUtils.Monads.Actors (MonadHasActor (..))
 import HydraAuctionUtils.Server.ClientId (ClientId, ClientResponseScope (..))
@@ -95,7 +97,7 @@ emulateDelegatesStart = do
     return ()
 
   headId : _ <- runCompositeForAllDelegates $ do
-    Just event@(HeadIsInitializing headId) <- waitForHydraEvent Any
+    Just event@(HeadIsInitializing {headId}) <- waitForHydraEvent Any
     responses <- delegateEventStep $ HydraEvent event
     let expectedState =
           Initialized headId $
