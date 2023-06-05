@@ -134,7 +134,7 @@ bidderBuysTest = mkAssertion $ do
 
     -- Close Head
 
-    emulateClosing headId
+    emulateClosing headId terms
 
     -- Place bid after return to L1
     bidder2SellerSignature <- liftIO $ sellerSignatureForActor terms bidder2
@@ -148,6 +148,11 @@ bidderBuysTest = mkAssertion $ do
       waitUntil $ biddingEnd terms
       bidderBuys terms
       assertNFTNumEquals bidder2 1
+
+    -- Delegates got fees
+
+    -- FIXUP: check amount change, this is impossible without fee tracking
+    emulateCleanup headId terms
 
 -- Regression test: commit should not fail when delegate has multiple UTxOs
 multipleUtxosToCommitTest :: Assertion

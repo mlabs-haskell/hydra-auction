@@ -2,6 +2,7 @@ module EndToEnd.Ledger.L2Steps (
   delegateStepOnExpectedHydraEvent,
   emulateDelegatesStart,
   emulateClosing,
+  emulateCleanup,
   emulateCommiting,
   placeNewBidOnL2AndCheck,
 ) where
@@ -158,12 +159,13 @@ emulateCommiting headId terms = do
 
   return ()
 
-emulateClosing :: HasCallStack => HeadId -> DelegatesClusterEmulator ()
-emulateClosing headId = do
+emulateClosing ::
+  HasCallStack => HeadId -> AuctionTerms -> DelegatesClusterEmulator ()
+emulateClosing headId terms = do
   [] <-
     runCompositeForDelegate Main $
       delegateEventStep $
-        AuctionStageStarted BiddingEndedStage
+        AuctionStageStarted terms BiddingEndedStage
   _ <-
     runCompositeForAllDelegates $
       delegateStepOnExpectedHydraEvent
@@ -179,6 +181,15 @@ emulateClosing headId = do
       delegateStepOnExpectedHydraEvent
         (SpecificKind HeadIsFinalizedKind)
         [CurrentDelegateState Updated (Initialized headId Finalized)]
+  return ()
+
+emulateCleanup ::
+  HasCallStack => HeadId -> AuctionTerms -> DelegatesClusterEmulator ()
+emulateCleanup headId terms = do
+  [] <-
+    runCompositeForDelegate Main $
+      delegateEventStep $
+        AuctionStageStarted terms CleanupStage
   return ()
 
 placeNewBidOnL2AndCheck ::

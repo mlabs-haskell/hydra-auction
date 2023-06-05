@@ -25,9 +25,16 @@ import Test.Tasty.HUnit (Assertion, (@=?), (@?=))
 import PlutusLedgerApi.V1.Value (assetClassValueOf)
 
 -- Hydra imports
-import Hydra.Cardano.Api (toPlutusValue, txOutValue)
+import Hydra.Cardano.Api (
+  Lovelace,
+  selectLovelace,
+  toPlutusValue,
+  txOutValue,
+  txOutValueToLovelace,
+ )
 
 -- Hydra auction imports
+
 import HydraAuction.OnChain (AuctionScript)
 import HydraAuction.OnChain.TestNFT (testNftAssetClass)
 import HydraAuction.Tx.Common (scriptUtxos)
