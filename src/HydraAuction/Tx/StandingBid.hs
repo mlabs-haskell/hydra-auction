@@ -52,8 +52,6 @@ import Hydra.Cardano.Api (
   verificationKeyHash,
   pattern ReferenceScriptNone,
   pattern ShelleyAddressInEra,
-  pattern TxBody,
-  pattern TxBodyContent,
   pattern TxExtraKeyWitnesses,
   pattern TxMintValueNone,
   pattern TxOut,
@@ -227,11 +225,11 @@ createNewBidTx terms actor standingBidSingleUtxo submitterMoneyUtxo bidDatum = d
       , validityBound = (Just $ biddingStart terms, Just $ biddingEnd terms)
       }
   where
-    TxOut (ShelleyAddressInEra standingBidAddress) valueStandingBid _ _ =
+    TxOut standingBidAddress valueStandingBid _ _ =
       snd standingBidSingleUtxo
     txOutStandingBid =
       TxOut
-        (ShelleyAddressInEra standingBidAddress)
+        standingBidAddress
         valueStandingBid
         (mkInlineDatum bidDatum)
         ReferenceScriptNone
@@ -248,8 +246,9 @@ data NewBidTxInfo = MkNewBidTxInfo
 
 decodeNewBidTxOnL2 :: Tx -> UTxO.UTxO -> Maybe NewBidTxInfo
 decodeNewBidTxOnL2 tx currentUtxo = do
-  [newBidDatum] <- return $ mapMaybe parseStandingBidTxOut txOuts
-  TxExtraKeyWitnesses [submitterPKH'] <- return txExtraKeyWits
+  [newBidDatum] <-
+    return $ mapMaybe parseStandingBidTxOut $ txOuts bodyContent
+  TxExtraKeyWitnesses [submitterPKH'] <- return $ txExtraKeyWits bodyContent
   return $
     MkNewBidTxInfo
       { submitterPKH = toPlutusKeyHash submitterPKH'
@@ -257,9 +256,9 @@ decodeNewBidTxOnL2 tx currentUtxo = do
       , newBidDatum
       }
   where
-    TxBody TxBodyContent {txIns, txOuts, txExtraKeyWits} = getTxBody tx
+    TxBody bodyContent = getTxBody tx
     resolveInput input = UTxO.resolve input currentUtxo
-    resolvedInputs = mapMaybe (resolveInput . fst) txIns
+    resolvedInputs = mapMaybe (resolveInput . fst) $ txIns bodyContent
     parseStandingBidTxOut (TxOut _ _ (TxOutDatumInline datum) _) =
       fromScriptData datum :: Maybe StandingBidDatum
     parseStandingBidTxOut _ = Nothing
