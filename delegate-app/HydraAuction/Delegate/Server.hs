@@ -37,10 +37,11 @@ import CardanoNode (RunningNode (..))
 import Hydra.Network (Host)
 
 -- Hydra auction imports
-import HydraAuction.Delegate (ClientId, ClientResponseScope)
+
 import HydraAuction.Delegate.Interface (DelegateResponse, FrontendRequest)
 import HydraAuction.Types (AuctionTerms)
 import HydraAuctionUtils.Fixture (Actor)
+import HydraAuctionUtils.Server.ClientId (ClientId, ClientResponseScope)
 import HydraAuctionUtils.Tracing (TracerT)
 
 deriving stock instance Eq RunningNode

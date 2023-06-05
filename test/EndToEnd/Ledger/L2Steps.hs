@@ -25,7 +25,11 @@ import Hydra.Chain (HeadId)
 
 -- HydraAuction imports
 
-import HydraAuction.Delegate (ClientId, ClientResponseScope (..), DelegateEvent (..), delegateEventStep, delegateFrontendRequestStep)
+import HydraAuction.Delegate (
+  DelegateEvent (..),
+  delegateEventStep,
+  delegateFrontendRequestStep,
+ )
 import HydraAuction.Delegate.Interface (
   DelegateResponse (..),
   DelegateState (..),
@@ -50,6 +54,7 @@ import HydraAuctionUtils.Fixture (Actor, keysFor)
 import HydraAuctionUtils.Hydra.Interface (HydraEvent (..), HydraEventKind (..))
 import HydraAuctionUtils.Hydra.Monad (AwaitedHydraEvent (..), waitForHydraEvent)
 import HydraAuctionUtils.Monads.Actors (MonadHasActor (..))
+import HydraAuctionUtils.Server.ClientId (ClientId, ClientResponseScope (..))
 import HydraAuctionUtils.Types.Natural (Natural)
 
 -- HydraAuction test imports

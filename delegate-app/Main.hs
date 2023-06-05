@@ -47,10 +47,7 @@ import Data.Text qualified as Text
 import DelegateServer.Parsers (delegateConfigParser)
 import GHC.Stack (HasCallStack)
 import HydraAuction.Delegate (
-  ClientId,
-  ClientResponseScope (Broadcast),
   DelegateEvent (..),
-  clientIsInScope,
   delegateEventStep,
   delegateFrontendRequestStep,
  )
@@ -83,6 +80,11 @@ import HydraAuctionUtils.Hydra.Runner (HydraRunner, executeHydraRunnerFakingPara
 import HydraAuctionUtils.L1.Runner (executeL1RunnerWithNodeAs)
 import HydraAuctionUtils.Network (runHydraClient)
 import HydraAuctionUtils.Parsers (execParserForCliArgs)
+import HydraAuctionUtils.Server.ClientId (
+  ClientId,
+  ClientResponseScope (Broadcast),
+  clientIsInScope,
+ )
 import HydraAuctionUtils.Time (currentPlutusPOSIXTime)
 import HydraAuctionUtils.Tracing (
   MonadTracer (trace),

@@ -4,6 +4,8 @@ module HydraAuction.Delegate.Interface (
   DelegateResponse (..),
   DelegateState (..),
   InitializedState (..),
+  InitializedStateKind (..),
+  initializedStateKind,
   RequestIgnoredReason (..),
   ResponseReason (..),
   FrontendRequest (..),
@@ -92,6 +94,25 @@ data InitializedState
   | Aborted
   deriving stock (Eq, Show, Generic)
   deriving anyclass (FromJSON, ToJSON)
+
+data InitializedStateKind
+  = AwaitingCommitsKind
+  | OpenKind
+  | ClosedKind
+  | FinalizedKind
+  | AbortRequestedKind
+  | AbortedKind
+  deriving stock (Eq, Ord, Show, Generic)
+  deriving anyclass (FromJSON, ToJSON)
+
+initializedStateKind :: InitializedState -> InitializedStateKind
+initializedStateKind kind = case kind of
+  AwaitingCommits {} -> AwaitingCommitsKind
+  Open {} -> OpenKind
+  Closed {} -> ClosedKind
+  Finalized {} -> FinalizedKind
+  AbortRequested {} -> AbortRequestedKind
+  Aborted {} -> AbortedKind
 
 data IncorrectRequestDataReason
   = AuctionTermsAreInvalidOrNotMatchingHead

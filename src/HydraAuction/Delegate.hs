@@ -5,9 +5,6 @@ module HydraAuction.Delegate (
   delegateFrontendRequestStep,
   delegateEventStep,
   DelegateEvent (..),
-  ClientResponseScope (..),
-  ClientId,
-  clientIsInScope,
   abort,
 ) where
 
@@ -80,6 +77,10 @@ import HydraAuctionUtils.Monads.Actors (
   MonadHasActor (askActor),
   addressAndKeys,
  )
+import HydraAuctionUtils.Server.ClientId (
+  ClientId,
+  ClientResponseScope (..),
+ )
 import HydraAuctionUtils.Tx.Utxo (
   filterAdaOnlyUtxo,
   filterNotAdaOnlyUtxo,
@@ -90,18 +91,6 @@ data DelegateEvent
   | AuctionStageStarted AuctionTerms AuctionStage
   | HydraEvent HydraEvent
   deriving stock (Eq, Show)
-
-type ClientId = Int
-
-data ClientResponseScope
-  = Broadcast
-  | PerClient ClientId
-  deriving stock (Eq, Show)
-
-clientIsInScope :: ClientId -> ClientResponseScope -> Bool
-clientIsInScope clientId scope = case scope of
-  Broadcast -> True
-  PerClient expectedClientId -> clientId == expectedClientId
 
 delegateFrontendRequestStep ::
   (ClientId, FrontendRequest) ->

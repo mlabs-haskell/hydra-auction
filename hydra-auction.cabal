@@ -118,6 +118,8 @@ common common-lang
     NumericUnderscores
     OverloadedStrings
     PatternSynonyms
+    QuantifiedConstraints
+    RankNTypes
     ScopedTypeVariables
     StandaloneDeriving
     TemplateHaskell
@@ -203,6 +205,15 @@ executable hydra-auction-delegate
     , hydra-auction-utils
     , optparse-applicative
 
+executable hydra-auction-platform
+  import:         common-lang
+  main-is:        Main.hs
+  hs-source-dirs: platform-app
+  ghc-options:    -threaded -rtsopts
+  build-depends:
+    , hydra-auction
+    , hydra-auction-utils
+
 library
   import:          common-lang
   exposed-modules:
@@ -213,6 +224,8 @@ library
     HydraAuction.OnChain
     HydraAuction.OnChain.Common
     HydraAuction.OnChain.TestNFT
+    HydraAuction.Platform.Interface
+    HydraAuction.Platform.Storage
     HydraAuction.Tx.Common
     HydraAuction.Tx.Deposit
     HydraAuction.Tx.Escrow
@@ -268,6 +281,8 @@ library hydra-auction-utils
     HydraAuctionUtils.Parsers.TxIn
     HydraAuctionUtils.Plutus
     HydraAuctionUtils.PrettyPrinting
+    HydraAuctionUtils.Server.ClientId
+    HydraAuctionUtils.Server.Websockets
     HydraAuctionUtils.Time
     HydraAuctionUtils.Tracing
     HydraAuctionUtils.Tx.AutoCreateTx
