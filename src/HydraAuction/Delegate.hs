@@ -49,6 +49,9 @@ import HydraAuction.Delegate.Interface (
 import HydraAuction.OnChain.Common (validAuctionTerms)
 import HydraAuction.OnChain.StandingBid (validNewBidTerms)
 import HydraAuction.Tx.Common (createTwoMinAdaUtxo)
+import HydraAuction.Tx.FeeEscrow (
+  distributeFee,
+ )
 import HydraAuction.Tx.StandingBid (
   NewBidTxInfo (..),
   createNewBidTx,
@@ -84,7 +87,7 @@ import HydraAuctionUtils.Tx.Utxo (
 
 data DelegateEvent
   = Start
-  | AuctionStageStarted AuctionStage
+  | AuctionStageStarted AuctionTerms AuctionStage
   | HydraEvent HydraEvent
   deriving stock (Eq, Show)
 
@@ -187,14 +190,18 @@ delegateEventStep event = case event of
   Start -> do
     sendCommand Init
     return []
-  AuctionStageStarted BiddingEndedStage -> do
+  AuctionStageStarted _ BiddingEndedStage -> do
     state <- get
     case state of
       NotInitialized -> abort NobodyCommitedInTime
       Initialized {} -> do
         sendCommand Close
         return []
-  AuctionStageStarted _ -> return []
+  AuctionStageStarted terms CleanupStage -> do
+    -- FIXME: handle case of not used Escrow Hydra
+    _ <- lift $ runL1RunnerInComposite $ distributeFee terms
+    return []
+  AuctionStageStarted {} -> return []
   HydraEvent Committed {utxo, party} -> do
     state <- get
     delegateParty <- getDelegateParty

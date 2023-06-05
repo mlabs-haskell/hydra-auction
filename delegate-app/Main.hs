@@ -343,7 +343,7 @@ mbQueueAuctionPhases tick delegateEvents toClientsChannel = do
       currentStage <- currentAuctionStage terms
       atomically $
         writeTQueue delegateEvents $
-          AuctionStageStarted currentStage
+          AuctionStageStarted terms currentStage
       currentPosixTime <- currentPlutusPOSIXTime
       let mSecsLeft =
             secondsLeftInInterval

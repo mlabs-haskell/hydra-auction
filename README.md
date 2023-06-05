@@ -81,6 +81,7 @@ Also run `make demo-monitor`.
 This is ncurses CLI, which shows current state of auction and Head.
 
 `make` shortcuts use params for local nodes started with `docker-compose`.
+REPLs will be started inside docker image, to prevent issues on Mac (#180).
 
 ### Bidder wins case
 
@@ -94,10 +95,19 @@ This is ncurses CLI, which shows current state of auction and Head.
 
    Now the auction time stages begin.
    You may see their status on `monitor` terminal.
-3. Wait for `BiddingStartedStage`.
+3. Bidders can place deposit for auction.
+   Deposits can be spend for buying out lot
+   and may be slashed if winning bidder will not pay for a lot.
+   To create a deposit run `make-deposit -n demo -b 3` on Bob's REPL.
+   (min amount is 3 ADA)
+4. Seller can get a list of deposits and use them to decide which
+   actors to approve as betters.
+   Actual approval is not implemented in CLI now.
+   Run `show-actors-with-min-deposit -n demo -b 3` on Alice's REPL.
+   to get all actors deposited >= than 3 ADA.
+5. Wait for `BiddingStartedStage`.
    After that, run `start-bidding -n demo` on Alice's REPL.
-
-4. After bidding has started auction state still resides on L1.
+6. After bidding has started auction state still resides on L1.
    You can place bids on L1 before moving state on L2 if you want to.
 
    Normally, Head will close and return state on L2 on `BiddingEndedStage`.
@@ -113,7 +123,7 @@ This is ncurses CLI, which shows current state of auction and Head.
 
    For example place the first bid from Bob's REPL:
    `new-bid -n demo -b 100`, where the number in `100` is in ADA.
-5. To move auction state on L2, run `move-to-l2 -n demo`.
+7. To move auction state on L2, run `move-to-l2 -n demo`.
 
    It will take some time for Head to do this,
    while placing bid on open Head is nearly instantaneous.
@@ -121,21 +131,30 @@ This is ncurses CLI, which shows current state of auction and Head.
 
    To place a bid on L2 run `new-bid-l2 -n demo -b 100`.
    Args/requirements are exactly the same as for L1 case.
-6. (a) After the `BiddingEndedStage` has started,
+8. (a) After the `BiddingEndedStage` has started,
    Head will be closed automatically.
 
-   Bob can run `bidder-buys -n foo` in his REPL.
+   Bob can run `bidder-buys -n demo` in his REPL.
    Thus he will receive his lot and pay bid to seller.
-7. After the `VoucherExpiryStage` has started, Alice can get back their `UTxO`s by running `cleanup -n foo`.
+
+   If bidder created a deposit (part of) it will be used to pay for the lot.
+9. Any lost bidder can reclaim their deposit
+   using `losing-bidder-reclaims-deposit -n demo`.
+10. After the `CleanupStage` has started,
+    Alice can get back their `UTxO`s by running `cleanup -n foo`.
+
+   Main Delegate server will automatically distribute fees between delegates.
 
 ### Seller reclaims case
 
-Same for all steps except 7.
+Same for all steps except 8.
 
-6. (b) In case of the winner not taking their lot
+8. (b) In case of the winner not taking their lot
    until the `VoucherExpiryStage`,
    it can be reclaimed back by its seller.
    For that run `seller-reclaims -n demo` in Alice's REPL.
+11. If that deposit was not claimed by seller until `CleanupStage`,
+    it can be returned to bidder. `
 
 ### Reuse same auction config again
 

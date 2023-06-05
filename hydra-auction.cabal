@@ -272,6 +272,7 @@ library hydra-auction-utils
     HydraAuctionUtils.Tracing
     HydraAuctionUtils.Tx.AutoCreateTx
     HydraAuctionUtils.Tx.Build
+    HydraAuctionUtils.Tx.Common
     HydraAuctionUtils.Tx.Utxo
     HydraAuctionUtils.Types.Natural
     Paths_hydra_auction

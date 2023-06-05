@@ -1,6 +1,8 @@
 module HydraAuctionUtils.Parsers (
   parseActor,
   parseAda,
+  parseAdaAsNatural,
+  parseMarked,
   parseNetworkMagic,
   parseHost,
   cardanoRunningNodeParser,
@@ -26,13 +28,15 @@ import Text.Read (readMaybe)
 
 import Cardano.Api (NetworkId, NetworkMagic (..), fromNetworkMagic)
 import CardanoNode (RunningNode (..))
+import Hydra.Cardano.Api (Lovelace (..))
+import Hydra.Cluster.Faucet (Marked (..))
 
 -- Hydra imports
 import Hydra.Network (Host (..))
 
 -- HydraAuction imports
 import HydraAuctionUtils.Fixture (Actor (..), actorName)
-import HydraAuctionUtils.Types.Natural (Natural, intToNatural)
+import HydraAuctionUtils.Types.Natural (Natural, intToNatural, naturalToInt)
 
 execParserForCliArgs :: forall x. Parser x -> IO x
 execParserForCliArgs parser = do
@@ -56,12 +60,21 @@ parseActor =
         | actor <- [minBound .. maxBound]
         ]
 
--- FIXME: use Lovelace type
-parseAda :: ReadM Natural
-parseAda = eitherReader $ \s -> note "failed to parse Ada" $ do
+-- FIXME: remove
+parseAdaAsNatural :: ReadM Natural
+parseAdaAsNatural = eitherReader $ \s -> note "failed to parse Ada" $ do
   ada <- readMaybe s
   let lovelace = ada * 1_000_000
   intToNatural lovelace
+
+parseAda :: ReadM Lovelace
+parseAda = Lovelace . naturalToInt <$> parseAdaAsNatural
+
+parseMarked :: ReadM Marked
+parseMarked = eitherReader $ \case
+  "fuel" -> Right Fuel
+  "normal" -> Right Normal
+  _ -> Left "Marked parsing error"
 
 parseNetworkMagic :: ReadM NetworkMagic
 parseNetworkMagic = eitherReader $ \s -> note "failed to parse network magic" $ do

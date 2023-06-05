@@ -39,6 +39,8 @@ lint: requires_nix_shell
 	@sh lint.sh
 
 build-docker:
+	nix build .#packages.x86_64-linux.cliImage
+	docker load < result
 	nix build .#packages.x86_64-linux.delegateImage
 	docker load < result
 
@@ -60,10 +62,13 @@ requires_nix_shell:
 	}
 
 demo-monitor:
-	cabal run hydra-auction -- -w demo -d 127.0.0.1:8001
+	./scripts/run-frontend-cli.sh -w demo  -d delegate-server-1:8001
 
 demo-seller:
-	cabal run hydra-auction -- -a alice  --cardano-node-socket ./devnet/node.socket --network-magic 42 -d 127.0.0.1:8001
+	./scripts/run-frontend-cli.sh -a alice --cardano-node-socket /node.socket --network-magic 42 -d delegate-server-1:8001
 
 demo-bidder:
-	cabal run hydra-auction -- -a bob  --cardano-node-socket ./devnet/node.socket --network-magic 42 -i 127.0.0.1:8002
+	./scripts/run-frontend-cli.sh -a bob --cardano-node-socket /node.socket --network-magic 42 -d delegate-server-2:8001
+
+demo-bidder2:
+	./scripts/run-frontend-cli.sh -a carol --cardano-node-socket /node.socket --network-magic 42 -d delegate-server-3:8001
