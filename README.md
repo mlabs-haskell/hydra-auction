@@ -81,6 +81,7 @@ Also run `make demo-monitor`.
 This is ncurses CLI, which shows current state of auction and Head.
 
 `make` shortcuts use params for local nodes started with `docker-compose`.
+REPLs will be started inside docker image, to prevent issues on Mac (#180).
 
 ### Bidder wins case
 

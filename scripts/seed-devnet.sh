@@ -43,7 +43,7 @@ function hnode() {
   else
       docker run --rm -it \
         -v ${SCRIPT_DIR}/devnet:/devnet \
-        ghcr.io/input-output-hk/hydra-node:0.9.0 -- ${@}
+        hydra-node:latest -- ${@}
   fi
 }
 
@@ -92,7 +92,7 @@ function seedFaucet() {
 function publishReferenceScripts() {
   echo >&2 "Publishing reference scripts ('νInitial' & 'νCommit')..."
   hnode publish-scripts \
-    --network-id ${NETWORK_ID} \
+    --testnet-magic ${NETWORK_ID} \
     --node-socket ${DEVNET_DIR}/node.socket \
     --cardano-signing-key devnet/credentials/faucet.sk
 }

@@ -22,7 +22,7 @@ services:
       ]
 
   hydra-node-1:
-    image: ghcr.io/input-output-hk/hydra-node:0.9.0
+    image: hydra-node:latest
     profiles:
       - hydra-node
     volumes:
@@ -45,9 +45,8 @@ services:
       , "--cardano-signing-key", "/devnet/credentials/oscar.sk"
       , "--cardano-verification-key", "/devnet/credentials/patricia.vk"
       , "--cardano-verification-key", "/devnet/credentials/rupert.vk"
-      , "--ledger-genesis", "/devnet/genesis-shelley.json"
       , "--ledger-protocol-parameters", "/devnet/protocol-parameters.json"
-      , "--network-id", "42"
+      , "--testnet-magic", "42"
       , "--node-socket", "/devnet/node.socket"
       ]
     networks:
@@ -56,7 +55,7 @@ services:
     restart: always
 
   hydra-node-2:
-    image: ghcr.io/input-output-hk/hydra-node:0.9.0
+    image: hydra-node:latest
     profiles:
       - hydra-node
 
@@ -80,9 +79,8 @@ services:
       , "--cardano-signing-key", "/devnet/credentials/patricia.sk"
       , "--cardano-verification-key", "/devnet/credentials/oscar.vk"
       , "--cardano-verification-key", "/devnet/credentials/rupert.vk"
-      , "--ledger-genesis", "/devnet/genesis-shelley.json"
       , "--ledger-protocol-parameters", "/devnet/protocol-parameters.json"
-      , "--network-id", "42"
+      , "--testnet-magic", "42"
       , "--node-socket", "/devnet/node.socket"
       ]
     networks:
@@ -91,7 +89,7 @@ services:
     restart: always
 
   hydra-node-3:
-    image: ghcr.io/input-output-hk/hydra-node:0.9.0
+    image: hydra-node:latest
     profiles:
       - hydra-node
     volumes:
@@ -114,9 +112,8 @@ services:
       , "--cardano-signing-key", "/devnet/credentials/rupert.sk"
       , "--cardano-verification-key", "/devnet/credentials/oscar.vk"
       , "--cardano-verification-key", "/devnet/credentials/patricia.vk"
-      , "--ledger-genesis", "/devnet/genesis-shelley.json"
       , "--ledger-protocol-parameters", "/devnet/protocol-parameters.json"
-      , "--network-id", "42"
+      , "--testnet-magic", "42"
       , "--node-socket", "/devnet/node.socket"
       ]
     networks:
