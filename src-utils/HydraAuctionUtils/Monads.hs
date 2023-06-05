@@ -34,7 +34,6 @@ import Hydra.Cardano.Api (
   ProtocolParameters,
   ShelleyAddr,
   SigningKey,
-  SlotNo,
   SystemStart,
   Tx,
   TxIn,
