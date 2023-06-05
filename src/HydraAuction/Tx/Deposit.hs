@@ -43,11 +43,11 @@ import Hydra.Cardano.Api (
 import HydraAuction.Addresses (VoucherCS (..))
 import HydraAuction.OnChain (AuctionScript (..), policy)
 import HydraAuction.OnChain.Common (stageToInterval)
-import HydraAuctionUtils.Interval (extendIntervalRight)
 import HydraAuctionUtils.Monads.Actors (
   actorTipUtxo,
   addressAndKeys,
  )
+import HydraAuctionUtils.Plutus (extendIntervalRight)
 
 import HydraAuction.Tx.Common (
   scriptAddress,

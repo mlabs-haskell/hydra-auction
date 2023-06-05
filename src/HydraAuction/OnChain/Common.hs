@@ -22,7 +22,7 @@ import PlutusLedgerApi.V2.Contexts (TxInfo (..))
 
 -- Hydra auction imports
 import HydraAuction.Types (AuctionStage (..), AuctionTerms (..))
-import HydraAuctionUtils.Interval (rightExclusiveInterval, strictTo)
+import HydraAuctionUtils.Plutus (rightExclusiveInterval, strictTo)
 import HydraAuctionUtils.Types.Natural (naturalToInt)
 
 {-# INLINEABLE minAuctionFee #-}
