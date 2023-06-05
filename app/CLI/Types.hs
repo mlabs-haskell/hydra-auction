@@ -1,3 +1,4 @@
+{-# OPTIONS -Wno-orphans #-}
 module CLI.Types (
   CLIError (..),
   CLILog (..),
@@ -10,6 +11,11 @@ import Prelude
 
 -- Haskell imports
 import Prettyprinter (Doc, Pretty (pretty), indent, line)
+
+-- Hydra imports
+
+import Hydra.Cardano.Api (Lovelace)
+import Hydra.Cluster.Faucet (Marked (..))
 
 -- Hydra auction imports
 
@@ -40,6 +46,9 @@ extraInfo = (line <>) . indent 2
 
 data Layer = L1 | L2 deriving stock (Show)
 
+-- FIXME: upstream
+deriving stock instance Show Marked
+
 data CliAction
   = ShowCurrentStage !AuctionName
   | ShowAddress
@@ -50,6 +59,7 @@ data CliAction
   | ShowActorsMinDeposit !AuctionName !Natural
   | Seed
   | Prepare !Actor
+  | TransferAda !Actor !Marked !Lovelace
   | MintTestNFT
   | AuctionAnounce !AuctionName
   | MakeDeposit !AuctionName !Natural

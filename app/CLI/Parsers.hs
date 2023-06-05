@@ -24,7 +24,6 @@ import Options.Applicative (
   hsubparser,
   info,
   long,
-  many,
   metavar,
   prefs,
   progDesc,
@@ -46,6 +45,8 @@ import Options.Applicative.Builder (
 import CardanoNode (RunningNode (..))
 
 -- Hydra imports
+import Hydra.Cardano.Api (Lovelace)
+import Hydra.Cluster.Faucet (Marked (..))
 import Hydra.Network (Host)
 
 -- Hydra auction imports
@@ -55,7 +56,9 @@ import HydraAuctionUtils.Parsers (
   cardanoRunningNodeParser,
   parseActor,
   parseAda,
+  parseAdaAsNatural,
   parseHost,
+  parseMarked,
  )
 import HydraAuctionUtils.Types.Natural (Natural)
 
@@ -128,8 +131,10 @@ cliActionParser =
       , command "show-address" (info (pure ShowAddress) (progDesc "Show address of current actor"))
       , command "seed" (info (pure Seed) (progDesc $ "Provides " <> show seedAmount <> " Lovelace for the given actor"))
       , command "prepare-for-demo" (info (Prepare <$> actor) (progDesc $ "Provides " <> show seedAmount <> " Lovelace for every actor and 1 Test NFT for given actor"))
+      , command "transfer-ada" (info (TransferAda <$> actor <*> marked <*> amount) (progDesc "Tranfer ADA to other actor"))
       , command "mint-test-nft" (info (pure MintTestNFT) (progDesc "Mints an NFT that can be used as auction lot"))
       , command "announce-auction" (info (AuctionAnounce <$> auctionName) (progDesc "Create an auction"))
+      , command "make-deposit" (info (MakeDeposit <$> auctionName <*> bidAmount) (progDesc "Put a deposit"))
       , command "start-bidding" (info (StartBidding <$> auctionName) (progDesc "Open an auction for bidding"))
       , command "move-to-l2" (info (MoveToL2 <$> auctionName) (progDesc "Move Standing bid to L2"))
       , command "new-bid" (info (NewBid <$> auctionName <*> bidAmount <*> pure L1) (progDesc "Actor places new bid after bidding is started"))
@@ -183,7 +188,7 @@ script =
 bidAmount :: Parser Natural
 bidAmount =
   option
-    parseAda
+    parseAdaAsNatural
     ( short 'b'
         <> metavar "BID_AMOUNT"
         <> help "Bid amount"
@@ -192,10 +197,28 @@ bidAmount =
 depositAmount :: Parser Natural
 depositAmount =
   option
-    parseAda
+    parseAdaAsNatural
     ( short 'b'
         <> metavar "DEPOSIT_AMOUNT"
         <> help "Deposit amount"
+    )
+
+amount :: Parser Lovelace
+amount =
+  option
+    parseAda
+    ( short 'b'
+        <> metavar "AMOUNT"
+        <> help "Amount"
+    )
+
+marked :: Parser Marked
+marked =
+  option
+    parseMarked
+    ( short 'm'
+        <> metavar "MARKED"
+        <> help "Is transfered amount marked as Hydra Fuel"
     )
 
 watchAuction :: Parser AuctionName

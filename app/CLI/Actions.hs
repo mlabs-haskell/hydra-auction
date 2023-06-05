@@ -80,6 +80,7 @@ import HydraAuctionUtils.Monads.Actors (
   addressAndKeys,
  )
 import HydraAuctionUtils.PrettyPrinting (prettyPrintUtxo)
+import HydraAuctionUtils.Tx.Common (transferAda)
 
 -- Hydra auction CLI imports
 import CLI.Config (
@@ -174,6 +175,8 @@ handleCliAction sendRequestToDelegate currentDelegateStateRef userAction = do
     MintTestNFT -> do
       announceActionExecution userAction
       void mintOneTestNFT
+    TransferAda actorTo marked amount ->
+      void $ transferAda actorTo marked amount
     AuctionAnounce auctionName -> do
       mTxIn <- findTestNFT <$> actorTipUtxo
       case mTxIn of
