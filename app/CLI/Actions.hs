@@ -268,9 +268,9 @@ handleCliAction sendRequestToDelegate currentDelegateStateRef userAction = do
             liftIO $ putStrLn "Cannot perform: No bid is placed!"
     BidderClaimsDeposit auctionName -> do
       terms <- auctionTermsFor auctionName
-      doOnMatchingStage terms BiddingEndedStage $ do
-        announceActionExecution userAction
-        losingBidderClaimDeposit terms
+      -- doOnMatchingStage terms BiddingEndedStage $ do
+      announceActionExecution userAction
+      losingBidderClaimDeposit terms
     CleanupDeposit auctionName -> do
       terms <- auctionTermsFor auctionName
       doOnMatchingStage terms CleanupStage $ do

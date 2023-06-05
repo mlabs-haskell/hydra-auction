@@ -147,6 +147,7 @@ cliActionParser =
       , command "seller-reclaims" (info (SellerReclaims <$> auctionName) (progDesc "Seller reclaims lot after voucher end time"))
       , command "seller-claims-deposit" (info (SellerClaimsDepositFor <$> auctionName <*> actor) (progDesc "Seller claims deposit from winning bidder, who did not pay in time"))
       , command "cleanup" (info (Cleanup <$> auctionName) (progDesc "Remove standing bid UTxO after cleanup time. Is performed by seller."))
+      , command "cleanup-all-deposits" (info (CleanupDeposit <$> auctionName) (progDesc "Return deposit to bidders after cleanup time. Is performed by anyone."))
       ]
 
 auctionName :: Parser AuctionName
