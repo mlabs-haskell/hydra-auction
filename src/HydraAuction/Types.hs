@@ -5,7 +5,6 @@
 -- FIXME: Use template Haskell to derive Eq instances
 module HydraAuction.Types (
   isStarted,
-  ApprovedBiddersHash (..),
   BidTerms (..),
   BidDepositDatum (..),
   BidDepositRedeemer (..),
@@ -13,7 +12,6 @@ module HydraAuction.Types (
   StandingBidDatum (..),
   AuctionTerms (..),
   AuctionState (..),
-  ApprovedBidders (..),
   AuctionEscrowDatum (..),
   EscrowRedeemer (..),
   StandingBidRedeemer (..),
@@ -41,7 +39,6 @@ import PlutusLedgerApi.V1.Time (POSIXTime)
 import PlutusLedgerApi.V1.Value (AssetClass, CurrencySymbol)
 import PlutusLedgerApi.V2.Contexts (TxOutRef)
 import PlutusTx qualified
-import PlutusTx.IsData.Class (FromData, ToData, UnsafeFromData)
 
 -- Hydra auction imports
 import HydraAuction.Addresses (VoucherCS)
@@ -74,8 +71,10 @@ auctionStages = [Prelude.minBound .. Prelude.maxBound]
 data AuctionTerms = AuctionTerms
   { auctionLot :: !AssetClass
   -- ^ What is being sold at the auction?
-  , seller :: !PubKeyHash
+  , sellerPKH :: !PubKeyHash
   -- ^ Who is selling it?
+  , sellerVK :: !BuiltinByteString
+  -- ^ Verification key of the seller
   , hydraHeadId :: !CurrencySymbol
   -- ^ Which Hydra Head is authorized to host the bidding for this auction?
   , delegates :: ![PubKeyHash]
@@ -107,7 +106,8 @@ instance Eq AuctionTerms where
   {-# INLINEABLE (==) #-}
   x == y =
     (auctionLot x == auctionLot y)
-      && (seller x == seller y)
+      && (sellerPKH x == sellerPKH y)
+      && (sellerVK x == sellerVK y)
       && (delegates x == delegates y)
       && (biddingStart x == biddingStart y)
       && (biddingEnd x == biddingEnd y)
@@ -122,46 +122,37 @@ calculateTotalFee :: AuctionTerms -> Integer
 calculateTotalFee terms =
   naturalToInt (auctionFeePerDelegate terms) * length (delegates terms)
 
-newtype ApprovedBidders = ApprovedBidders
-  { bidders :: [PubKeyHash]
-  -- ^ Which bidders are approved to submit bids?
-  }
-  deriving stock (Generic, Prelude.Show, Prelude.Eq)
-  deriving anyclass (ToJSON, FromJSON)
-
-instance Eq ApprovedBidders where
-  {-# INLINEABLE (==) #-}
-  x == y = bidders x == bidders y
-
-deriving newtype instance (UnsafeFromData ApprovedBidders)
-deriving newtype instance (ToData ApprovedBidders)
-deriving newtype instance (FromData ApprovedBidders)
-
-PlutusTx.makeLift ''ApprovedBidders
-
-data StandingBidState = StandingBidState
-  { approvedBidders :: ApprovedBidders
-  , standingBid :: Maybe BidTerms
-  }
+newtype StandingBidState = StandingBidState {standingBid :: Maybe BidTerms}
   deriving stock (Generic, Prelude.Show, Prelude.Eq)
   deriving anyclass (ToJSON, FromJSON)
 
 instance Eq StandingBidState where
   {-# INLINEABLE (==) #-}
-  x == y = approvedBidders x == approvedBidders y && standingBid x == standingBid y
+  x == y = standingBid x == standingBid y
 
 data BidTerms = BidTerms
-  { bidBidder :: !PubKeyHash
-  -- ^ Who submitted the bid?
+  { bidderPKH :: !PubKeyHash
+  -- ^ PubKeyHash of whoever submitted the bid?
+  , bidderVK :: BuiltinByteString
+  -- ^ Verification Key of whoever submitted the bid
   , bidAmount :: !Natural
   -- ^ Which amount did the bidder set to buy the auction lot?
+  , bidderSignature :: BuiltinByteString
+  -- ^ Represents the signed payload by the bidder
+  , sellerSignature :: BuiltinByteString
+  -- ^ Represents the signed payload by the seller
   }
   deriving stock (Generic, Prelude.Show, Prelude.Eq)
   deriving anyclass (FromJSON, ToJSON)
 
 instance Eq BidTerms where
   {-# INLINEABLE (==) #-}
-  x == y = (bidBidder x == bidBidder y) && (bidAmount x == bidAmount y)
+  x == y =
+    (bidderPKH x == bidderPKH y)
+      && (bidderVK x == bidderVK y)
+      && (bidAmount x == bidAmount y)
+      && (bidderSignature x == bidderSignature y)
+      && (sellerSignature x == sellerSignature y)
 
 PlutusTx.makeIsDataIndexed ''StandingBidState [('StandingBidState, 0)]
 PlutusTx.makeLift ''StandingBidState
@@ -170,35 +161,19 @@ PlutusTx.makeLift ''BidTerms
 
 data AuctionState
   = Announced
-  | BiddingStarted !ApprovedBiddersHash
+  | BiddingStarted
   deriving stock (Generic, Prelude.Show, Prelude.Eq)
 
 {-# INLINEABLE isStarted #-}
 isStarted :: AuctionState -> Bool
-isStarted (BiddingStarted _) = True
+isStarted BiddingStarted = True
 isStarted _ = False
 
 instance Eq AuctionState where
   {-# INLINEABLE (==) #-}
   Announced == Announced = True
-  (BiddingStarted x) == (BiddingStarted y) = x == y
+  BiddingStarted == BiddingStarted = True
   _ == _ = False
-
--- | FIXME: Bytetring will be changed to actual hash
-newtype ApprovedBiddersHash = ApprovedBiddersHash BuiltinByteString
-  deriving stock (Generic, Prelude.Show, Prelude.Eq)
-{- ^ This hash is calculated from the `ApprovedBidders` value that the seller
- fixes for the auction.
--}
-
-deriving newtype instance (UnsafeFromData ApprovedBiddersHash)
-deriving newtype instance (ToData ApprovedBiddersHash)
-deriving newtype instance (FromData ApprovedBiddersHash)
-PlutusTx.makeLift ''ApprovedBiddersHash
-
-instance Eq ApprovedBiddersHash where
-  {-# INLINEABLE (==) #-}
-  (ApprovedBiddersHash x) == (ApprovedBiddersHash y) = x == y
 
 PlutusTx.makeIsDataIndexed ''AuctionState [('Announced, 0), ('BiddingStarted, 1)]
 PlutusTx.makeLift ''AuctionState

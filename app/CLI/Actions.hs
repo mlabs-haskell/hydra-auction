@@ -11,15 +11,21 @@ import Hydra.Prelude (MonadIO, ask, liftIO)
 import Prelude
 
 -- Haskell imports
+
 import Control.Monad (forM_, void)
 import Data.IORef (IORef, readIORef)
+import Data.Text qualified as T
 
 -- Plutus imports
 import PlutusLedgerApi.V1.Address (pubKeyHashAddress)
 
 -- Hydra imports
 
-import Hydra.Cardano.Api (Lovelace, pattern ShelleyAddressInEra)
+import Hydra.Cardano.Api (
+  Lovelace,
+  serialiseAddress,
+  pattern ShelleyAddressInEra,
+ )
 import Hydra.Chain.Direct.Tx (headIdToCurrencySymbol)
 
 -- Cardano node imports
@@ -36,6 +42,7 @@ import HydraAuction.Tx.Common (
   scriptUtxos,
  )
 import HydraAuction.Tx.Deposit (
+  cleanupDeposit,
   filterDepositGreaterThan,
   losingBidderClaimDeposit,
   mkDeposit,
@@ -48,11 +55,10 @@ import HydraAuction.Tx.Escrow (
   sellerReclaims,
   startBidding,
  )
-import HydraAuction.Tx.StandingBid (cleanupTx, createStandingBidDatum, currentWinningBidder, newBid)
+import HydraAuction.Tx.StandingBid (cleanupTx, createStandingBidDatum, currentWinningBidder, newBid, sellerSignatureForActor)
 import HydraAuction.Tx.TermsConfig (constructTermsDynamic)
 import HydraAuction.Tx.TestNFT (findTestNFT, mintOneTestNFT)
 import HydraAuction.Types (
-  ApprovedBidders (..),
   AuctionStage (..),
   AuctionTerms,
   BidDepositDatum (..),
@@ -61,7 +67,6 @@ import HydraAuctionUtils.Fixture (
   actorFromPkh,
   allActors,
   getActorPubKeyHash,
-  getActorsPubKeyHash,
  )
 import HydraAuctionUtils.L1.Runner (
   ExecutionContext (..),
@@ -136,6 +141,12 @@ handleCliAction sendRequestToDelegate currentDelegateStateRef userAction = do
       terms <- auctionTermsFor auctionName
       utxos <- scriptUtxos script terms
       liftIO $ prettyPrintUtxo utxos
+    ShowAddress -> do
+      (address, _, _) <- addressAndKeys
+      liftIO $
+        putStrLn $
+          "Address for current actor is: "
+            <> T.unpack (serialiseAddress address)
     ShowUtxos -> prettyPrintCurrentActorUtxos
     ShowAllUtxos -> do
       announceActionExecution userAction
@@ -186,12 +197,11 @@ handleCliAction sendRequestToDelegate currentDelegateStateRef userAction = do
               announceAuction terms
             _ -> liftIO . putStrLn $ "Hydra is not initialized yet"
         Nothing -> liftIO . putStrLn $ "User doesn't have the \"Mona Lisa\" token.\nThis demo is configured to use this token as the auction lot."
-    StartBidding auctionName actors -> do
+    StartBidding auctionName -> do
       terms <- auctionTermsFor auctionName
       doOnMatchingStage terms BiddingStartedStage $ do
-        actorsPkh <- liftIO $ getActorsPubKeyHash actors
         announceActionExecution userAction
-        startBidding terms (ApprovedBidders actorsPkh)
+        startBidding terms
     MoveToL2 auctionName -> do
       terms <- auctionTermsFor auctionName
       doOnMatchingStage terms BiddingStartedStage $ do
@@ -214,13 +224,15 @@ handleCliAction sendRequestToDelegate currentDelegateStateRef userAction = do
         then liftIO $ putStrLn "Seller cannot place a bid"
         else do
           announceActionExecution userAction
+          -- FIXME: temporaral stub until Platform server
+          sellerSignature <- liftIO $ sellerSignatureForActor terms actor
           doOnMatchingStage terms BiddingStartedStage $
             case layer of
-              L1 -> newBid terms bidAmount
+              L1 -> newBid terms bidAmount sellerSignature
               L2 -> do
-                (_, bidderPublicKey, _) <- addressAndKeys
+                (_, _, bidderSigningKey) <- addressAndKeys
                 let bidDatum =
-                      createStandingBidDatum terms bidAmount bidderPublicKey
+                      createStandingBidDatum terms bidAmount sellerSignature bidderSigningKey
                 liftIO $
                   sendRequestToDelegate $
                     DelegateInterface.NewBid
@@ -256,6 +268,11 @@ handleCliAction sendRequestToDelegate currentDelegateStateRef userAction = do
       doOnMatchingStage terms BiddingEndedStage $ do
         announceActionExecution userAction
         losingBidderClaimDeposit terms
+    CleanupDeposit auctionName -> do
+      terms <- auctionTermsFor auctionName
+      doOnMatchingStage terms CleanupStage $ do
+        announceActionExecution userAction
+        cleanupDeposit terms
     SellerReclaims auctionName -> do
       terms <- auctionTermsFor auctionName
       doOnMatchingStage terms VoucherExpiredStage $ do

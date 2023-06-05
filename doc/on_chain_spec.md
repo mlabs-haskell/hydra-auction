@@ -33,8 +33,10 @@ which are fixed when it is announced.
 data AuctionTerms = AuctionTerms
   { auctionLot :: AssetClass
   -- ^ What is being sold at the auction?
-  , seller :: PubKeyHash
-  -- ^ Who is selling it?
+  , sellerPKH :: PubKeyHash
+  -- ^ Renamed from seller to sellerPKH
+  , sellerVK :: BuiltinByteString
+  -- ^ New field. Seller verification key
   , hydraHeadId :: CurrencySymbol
   -- ^ Which Hydra Head is authorized to host the bidding for this auction?
   , delegates :: [PubKeyHash]
@@ -61,8 +63,7 @@ data AuctionTerms = AuctionTerms
   -- transaction that provided the auction lot to the auction.
   , minDepositAmount :: Natural
   -- ^ Minimal amount of ADA that a bidder must deposit in a
-  -- bid deposit utxo for the auction, to be included in the
-  -- list of approved bidders. This is only checked off-chain.
+  -- bid deposit utxo for the auction. This is only checked off-chain.
   }
 ```
 
@@ -79,39 +80,47 @@ is statically parametrized by the auction terms.
 Similarly, all the validator scripts in the auction are made unique
 via static parametrization on the auction terms.
 
-Between the auction announcement and the bidding start time,
-the seller fixes the list of bidders
-who are approved to submit bids in the auction.
-The seller also computes a hash of the list of approved bidders.
+The seller will act as some sort of "oracle",
+by providing a signature that guarantees the link
+between the bidder verification key, and its pubkey hash.
+This piece of data, that is signed by the seller,
+is not stored on-chain though, but needs
+to be communicated between seller and bidder through
+off-chain means.
 
-```haskell
-data ApprovedBidders = ApprovedBidders
-  { bidders :: [PubKeyHash]
-  -- ^ Which bidders are approved to submit bids?
-  }
+The idea is to verify on-chain
+that the bidder has signed their new bid,
+and is meant to prevent cases where
+a delegate could submit a false bid for an unaware bidder.
 
-data ApprovedBiddersHash = ApprovedBiddersHash SomeHash
--- ^ This hash is calculated from the `ApprovedBidders` value that the seller
--- fixes for the auction.
-```
+To verify something on-chain,
+we need access to the verification key that produced the signature.
+We already have the bidder `PubKeyHash` available in the `BidTerm`,
+but that can not be used to verify a signature produced by the bidders signing key.
+Unfortunately, it is not possible to even derive the `PubKeyHash` from the verification key on-chain,
+so we will have to carry around both in the datum.
+
 
 At bidding start time, the seller initializes the standing bid state with
-the list of approved bidders and an empty standing bid.
-The list of approved bidders must stay immutable afterward,
-but the standing bid can be modified
+an empty standing bid.
+The standing bid can be modified
 as new bids are submitted to the auction until the bidding end time.
 
 ```haskell
 data StandingBidState = StandingBidState
-  { approvedBidders :: ApprovedBidders
-  , standingBid :: Maybe BidTerms
-  }
+  { standingBid :: Maybe BidTerms }
 
 data BidTerms = BidTerms
-  { bidder :: PubKeyHash
-  -- ^ Who submitted the bid?
+  { bidderPKH :: PubKeyHash
+  -- ^ PubKeyHash of whoever submitted the bid
+  , bidderVK :: BuiltinByteString
+  -- ^ New field. Verification Key of whoever submitted the bid
   , bidPrice :: Natural
   -- ^ Which price did the bidder set to buy the auction lot?
+  , bidderSignature :: BuiltinByteString
+  -- ^ New field. Represents the signed payload by the bidder
+  , sellerSignature :: BuiltinByteString
+  -- ^ Represents the signed payload by the seller
   }
 ```
 
@@ -125,12 +134,9 @@ On L1, the state of the auction is tracked in two phases:
 ```haskell
 data AuctionState =
     Announced
-  | BiddingStarted ApprovedBiddersHash
+  | BiddingStarted
 ```
 
-When the seller fixes the list of approved bidders,
-the corresponding hash is fixed in the L1 auction state,
-to allow the detection of any tampering with the list on L2.
 
 ## Script datums
 
@@ -276,12 +282,10 @@ containing the auction lot and voucher tokens defined in the auction terms.
 The auction state is `Announced` in its datum.
 - There is one output sent to the auction escrow validator,
 containing the auction lot.
-The datum of the auction escrow must be modified using
-`startBiddingAuctionEscrowDatum` with the hash of the list of approved bidders.
 - There is one output sent to the standing bid validator,
 containing the voucher.
 The standing bid datum is initialized using `initStandingBidDatum` with
-the auction’s voucher currency symbol and the list of approved bidders.
+the auction’s voucher currency symbol.
 - The transaction validity interval starts after the bidding start time
 and ends before the bidding end time.
 - The transaction is signed by the seller.
@@ -303,27 +307,23 @@ under the `start bidding` redeemer:
 
 ```haskell
 startBiddingAuctionEscrowDatum
-  :: ApprovedBiddersHash
+  :: AuctionEscrowDatum
   -> AuctionEscrowDatum
-  -> AuctionEscrowDatum
-startBiddingAuctionEscrowDatum approvedBiddersHash auctionEscrowDatum =
-  auctionEscrowDatum{auctionState = BiddingStarted approvedBiddersHash}
+startBiddingAuctionEscrowDatum auctionEscrowDatum =
+  auctionEscrowDatum{auctionState = BiddingStarted}
 ```
 
 The initial datum for the standing bid utxo must be set as follows:
 
 ```haskell
-initStandingBidDatum :: CurrencySymbol -> ApprovedBidders -> StandingBidDatum
-initStandingBidDatum voucherCS approvedBidders = StandingBidDatum
+initStandingBidDatum :: CurrencySymbol -> StandingBidDatum
+initStandingBidDatum voucherCS = StandingBidDatum
   { standingBid = StandingBidState
-      { approvedBidders = approvedBidders
-      , standingBid = Nothing
-      }
+      { standingBid = Nothing}
   , voucherCS = voucherCS
   }
 ```
 
-Seller cannot be one of approved bidders.
 
 Under the **seller reclaims** redeemer, we enforce that:
 
@@ -390,14 +390,9 @@ validBuyer
   -> PubKeyHash
   -> Bool
 validBuyer AuctionTerms{..} aState StandingBidState{..} buyer
-  | BiddingStarted approvedBiddersHash <- aState
-  , Just BidTerms{..} <- standingBid =
-  buyer == bidder &&
+  | Just BidTerms{..} <- standingBid =
+  buyer == bidder
   -- ^ The buyer is the bidder who submitted the standing bid
-  bidder `elem` approvedBidders &&
-  -- ^ The bidder that submitted the standing bid is one of the approved bidders
-  approvedBiddersHash == hash(approvedBidders) &&
-  -- ^ The list of approved bidders has not been changed since bidding started
 validStandingBidState _ _ _ _ = False
 ```
 
@@ -462,16 +457,19 @@ A new bid is allowed to change the standing bid state as follows:
 ```haskell
 validNewBid
   :: AuctionTerms
+  -> CurrencySymbol
   -> StandingBidState
   -> StandingBidState
   -> Bool
-validNewBid AuctionTerms{..} oldStandingBidState newStandingBidState =
+validNewBid AuctionTerms{..} voucherCS oldStandingBidState newStandingBidState =
   isJust $ do
-    let StandingBidState oldApprovedBidders oldBid = oldStandingBidState
-    let StandingBidState newApprovedBidders newBid = newStandingBidState
-    BidTerms bidder newPrice <- newBid
-    -- The new bid was submitted by one of the approved bidders.
-    guard $ bidder `elem` oldApprovedBidders
+    let StandingBidState oldBid = oldStandingBidState
+    let StandingBidState newBid = newStandingBidState
+    BidTerms bidderPKH bidderVK newPrice bidderSignature sellerSignature <- newBid
+    -- The seller has allowed the bidder to participate in the auction
+    guard $ verifyEd25519Signature (sellerVK terms) (sellerSignatureMessage voucherCS bidderPKH bidderVK) sellerSignature
+    -- The bidder has correctly signed the datum
+    guard $ verifyEd25519Signature bidderVK (bidderSignatureMessage voucherCS newPrice bidderPKH) bidderSignature
     -- The new bid respects the starting price and minimum bid increment
     -- conditions in the auction terms.
     guard $ case oldBid of
@@ -479,8 +477,6 @@ validNewBid AuctionTerms{..} oldStandingBidState newStandingBidState =
         startingPrice <= newPrice
       Just (BidTerms _ oldPrice) ->
         oldPrice + minimumBidIncrement <= newPrice
-    -- The new standing bid state maintains the same list of approved bidders.
-    guard $ oldApprovedBidders == newApprovedBidders
 ```
 
 Under the **cleanup** redeemer, we enforce that:
@@ -518,9 +514,26 @@ mentioning the auction’s voucher currency symbol
 and the bidder’s pub-key hash in the datum.
 
 The seller has full discretion on whether
-to include any bidder in the list of approved bidders for the auction,
+to include any bidder in the auction,
 but the seller should consider including bidders
 that have provided bid deposits with enough ADA to satisfy the seller.
+To allow a bidder to participate in an auction
+we will require the seller to generate a signature
+for each bidder they want to allow in.
+
+This signature can be generated by signing
+a pair consisting of the `voucherCS` and `bidderPKH`
+
+```haskell
+import Crypto.Sign.Ed25519
+
+generateSellerSignature :: SigningKey PaymentKey -> CurrencySymbol -> PubKeyHash -> BuiltinByteString
+generateSellerSignature skey = toBuiltin . (dsign skey) . sellerSignatureMessage
+
+sellerSignatureMessage :: CurrencySymbol -> PubKeyHash -> BuiltinByteString
+sellerSignatureMessage voucherCS bidderPKH = toByteString voucherCS <> toBysteString bidderPKH
+```
+
 For the sake of fairness, the seller should
 inform prospective bidders in the auction announcement
 how much ADA they should deposit to qualify for the auction.

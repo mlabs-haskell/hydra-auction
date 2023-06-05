@@ -8,6 +8,7 @@ module HydraAuction.Tx.StandingBid (
   createStandingBidDatum,
   decodeNewBidTxOnL2,
   moveToHydra,
+  sellerSignatureForActor,
   NewBidTxInfo (..),
 ) where
 
@@ -19,12 +20,13 @@ import Prelude
 
 import Control.Monad.IO.Class (MonadIO (..))
 import Control.Monad.Reader (MonadReader (ask))
+import Crypto.Sign.Ed25519 (SecretKey (..), Signature (..), dsign)
 import Data.Maybe (listToMaybe, mapMaybe)
 
 -- Plutus imports
 
 import PlutusLedgerApi.V1.Crypto (PubKeyHash)
-import PlutusTx.IsData.Class (FromData, fromData)
+import PlutusLedgerApi.V2 (BuiltinByteString, FromData, fromBuiltin, fromData, toBuiltin)
 
 -- Hydra imports
 import Cardano.Api.UTxO qualified as UTxO
@@ -37,11 +39,10 @@ import Hydra.Cardano.Api (
   TxIn,
   TxOut,
   fromPlutusScript,
-  fromPlutusValue,
   fromScriptData,
   getScriptData,
   getTxBody,
-  lovelaceToValue,
+  serialiseToRawBytes,
   toPlutusData,
   toPlutusKeyHash,
   txExtraKeyWits,
@@ -49,9 +50,7 @@ import Hydra.Cardano.Api (
   txOutDatum,
   txOuts,
   verificationKeyHash,
-  pattern KeyWitness,
   pattern ReferenceScriptNone,
-  pattern ScriptWitness,
   pattern ShelleyAddressInEra,
   pattern TxBody,
   pattern TxBodyContent,
@@ -70,8 +69,13 @@ import HydraAuction.OnChain (
   AuctionScript (StandingBid),
   policy,
   standingBidValidator,
+  voucherCurrencySymbol,
  )
 import HydraAuction.OnChain.Common (stageToInterval)
+import HydraAuction.OnChain.StandingBid (
+  bidderSignatureMessage,
+  sellerSignatureMessage,
+ )
 import HydraAuctionUtils.Monads.Actors (
   actorTipUtxo,
   addressAndKeys,
@@ -86,7 +90,6 @@ import HydraAuction.Tx.Common (
   toForgeStateToken,
  )
 import HydraAuction.Types (
-  ApprovedBidders (..),
   AuctionStage (..),
   AuctionTerms (..),
   BidTerms (..),
@@ -96,7 +99,7 @@ import HydraAuction.Types (
   VoucherForgingRedeemer (BurnVoucher),
  )
 import HydraAuctionUtils.Extras.Plutus (scriptCurrencySymbol)
-import HydraAuctionUtils.Fixture (Actor)
+import HydraAuctionUtils.Fixture (Actor, actorFromPkh, getActorPubKeyHash, keysFor)
 import HydraAuctionUtils.L1.Runner (ExecutionContext (..), L1Runner)
 import HydraAuctionUtils.Monads (
   MonadCardanoClient,
@@ -151,15 +154,15 @@ currentWinningBidder terms = do
   return $ case mDatum of
     Just (StandingBidDatum {standingBidState}) ->
       case standingBid standingBidState of
-        (Just (BidTerms {bidBidder})) -> Just bidBidder
+        (Just (BidTerms {bidderPKH})) -> Just bidderPKH
         Nothing -> Nothing
     Nothing -> Nothing
 
-newBid :: AuctionTerms -> Natural -> L1Runner ()
-newBid terms bidAmount = do
+newBid :: AuctionTerms -> Natural -> BuiltinByteString -> L1Runner ()
+newBid terms bidAmount sellerSignature = do
   actor <- askActor
-  (_, submitterVk, _) <- addressAndKeys
-  let datum = createStandingBidDatum terms bidAmount submitterVk
+  (_, _, submitterSk) <- addressAndKeysForActor actor
+  let datum = createStandingBidDatum terms bidAmount sellerSignature submitterSk
 
   mStandingBidUtxo <- scriptSingleUtxo StandingBid terms
   standingBidSingleUtxo <- case mStandingBidUtxo of
@@ -179,6 +182,19 @@ newBid terms bidAmount = do
       submitterMoneyUtxo
       datum
   submitAndAwaitTx tx
+
+sellerSignatureForActor :: AuctionTerms -> Actor -> IO BuiltinByteString
+sellerSignatureForActor terms actor = do
+  sellerActor <- actorFromPkh (sellerPKH terms)
+  (sellerVk, sellerSk) <- keysFor sellerActor
+  (actorVK, _) <- keysFor actor
+  actorPKH <- getActorPubKeyHash actor
+  -- dsign expects keys to be 64bytes long and to be the
+  -- concatenation of an skey and vkey
+  let sellerSecretKey = SecretKey $ serialiseToRawBytes sellerSk <> serialiseToRawBytes sellerVk
+      sellerMessge = fromBuiltin $ sellerSignatureMessage (voucherCurrencySymbol terms) (toBuiltin $ serialiseToRawBytes actorVK) actorPKH
+      Signature sellerSignature = dsign sellerSecretKey sellerMessge
+  pure $ toBuiltin sellerSignature
 
 createNewBidTx ::
   ( MonadIO m
@@ -256,23 +272,31 @@ decodeNewBidTxOnL2 tx currentUtxo = do
 createStandingBidDatum ::
   AuctionTerms ->
   Natural ->
-  VerificationKey PaymentKey ->
+  BuiltinByteString ->
+  SigningKey PaymentKey ->
   StandingBidDatum
-createStandingBidDatum terms bidAmount bidderVk =
-  -- FIXME: approved bidders disabled until M6
+createStandingBidDatum terms bidAmount sellerSignature bidderSk =
   StandingBidDatum
     ( StandingBidState
         { standingBid =
             Just $
               BidTerms
-                (toPlutusKeyHash $ verificationKeyHash bidderVk)
-                bidAmount
-        , approvedBidders = emptyBidders
+                { bidderPKH
+                , bidderVK = toBuiltin $ serialiseToRawBytes derivedVK
+                , bidAmount
+                , bidderSignature = toBuiltin bidderSignature
+                , sellerSignature
+                }
         }
     )
     voucherCS
   where
-    emptyBidders = ApprovedBidders []
+    auctionId = voucherCurrencySymbol terms
+    derivedVK = getVerificationKey bidderSk
+    bidderPKH = toPlutusKeyHash $ verificationKeyHash derivedVK
+    bidderSecretKey = SecretKey $ serialiseToRawBytes bidderSk <> serialiseToRawBytes derivedVK
+    bidderMessage = fromBuiltin $ bidderSignatureMessage auctionId bidAmount bidderPKH
+    Signature bidderSignature = dsign bidderSecretKey bidderMessage
     mp = policy terms
     voucherCS = VoucherCS $ scriptCurrencySymbol mp
 

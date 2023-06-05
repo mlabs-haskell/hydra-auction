@@ -132,7 +132,8 @@ delegateFrontendRequestStep (clientId, request) =
                 utxoState
           validatingAuctionTerms headId auctionTerms $ do
             let newBidTerms = standingBid $ standingBidState datum
-            if validNewBidTerms auctionTerms standingBidTerms newBidTerms
+                newVoucherCS = standingBidVoucherCS datum
+            if validNewBidTerms auctionTerms newVoucherCS standingBidTerms newBidTerms
               then do
                 lift $ runHydraInComposite $ do
                   tx <-
@@ -288,7 +289,7 @@ delegateEventStep event = case event of
   HydraEvent HeadIsAborted {} ->
     updateStateAndResponse Aborted
   HydraEvent hydraEvent -> case hydraEvent of
-    InvlidInput {} -> abort RequiredHydraRequestFailed
+    InvalidInput {} -> abort RequiredHydraRequestFailed
     CommandFailed name -> txFailedCase $ name <> "Tx"
     PostTxOnChainFailed {txTag, errorTag} ->
       case (txTag, errorTag) of
@@ -303,7 +304,7 @@ delegateEventStep event = case event of
       txFailedCase txTag
         -- This is okay cuz these are concurrent requests,
         -- only one of which will be fulfilled
-        | txTag `elem` ["InitTx", "FanoutTx"] = return []
+        | txTag `elem` ["InitTx", "FanoutTx", "CollectComTx"] = return []
         -- Preventing infinite loop of Abortions
         | txTag `elem` ["AbortTx", "CloseTx"] = do
             -- TODO: use logs

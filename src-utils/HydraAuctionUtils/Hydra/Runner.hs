@@ -40,7 +40,7 @@ import Cardano.Api (NetworkId (Testnet))
 import Hydra.Cardano.Api (
   NetworkMagic (NetworkMagic),
   pattern TxValidityNoLowerBound,
-  pattern TxValidityUpperBound,
+  pattern TxValidityNoUpperBound,
  )
 import HydraNode (
   HydraClient,
@@ -149,9 +149,9 @@ instance MonadBlockchainParams HydraRunner where
     MkHydraExecutionContext {fakeBlockchainParams} <- ask
     return fakeBlockchainParams
 
-  -- Hydra slot is always 0, so we just return the only working validity bound
+  -- FIXME: Hydra started to support time but we still do not
   convertValidityBound _ =
-    return (TxValidityNoLowerBound, TxValidityUpperBound 1)
+    return (TxValidityNoLowerBound, TxValidityNoUpperBound)
 
 matchingHydraEvent :: Value -> Maybe HydraEvent
 matchingHydraEvent value =
@@ -159,12 +159,12 @@ matchingHydraEvent value =
     Just "GetUTxOResponse" -> getUtxoValueHandler
     Just "HeadIsInitializing" ->
       HeadIsInitializing <$> retrieveField "headId"
-    Just "TxSeen" -> TxSeen <$> retrieveField "tx"
-    Just "TxValid" -> TxValid <$> retrieveField "tx"
+    Just "TxSeen" -> TxSeen <$> retrieveField "transaction"
+    Just "TxValid" -> TxValid <$> retrieveField "transaction"
     Just "TxInvalid" ->
-      TxInvalid <$> retrieveField "tx" <*> retrieveField "utxo"
-    Just "InvlidInput" ->
-      InvlidInput <$> retrieveField "reason" <*> retrieveField "input"
+      TxInvalid <$> retrieveField "transaction" <*> retrieveField "utxo"
+    Just "InvalidInput" ->
+      InvalidInput <$> retrieveField "reason" <*> retrieveField "input"
     Just "PostTxOnChainFailed" ->
       PostTxOnChainFailed
         <$> retrieveField' (key "postChainTx" . key "tag")

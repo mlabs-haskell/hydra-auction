@@ -42,6 +42,7 @@ data Layer = L1 | L2 deriving stock (Show)
 
 data CliAction
   = ShowCurrentStage !AuctionName
+  | ShowAddress
   | ShowScriptUtxos !AuctionName !AuctionScript
   | ShowUtxos
   | ShowAllUtxos
@@ -52,7 +53,7 @@ data CliAction
   | MintTestNFT
   | AuctionAnounce !AuctionName
   | MakeDeposit !AuctionName !Natural
-  | StartBidding !AuctionName ![Actor]
+  | StartBidding !AuctionName
   | MoveToL2 !AuctionName
   | NewBid !AuctionName !Natural !Layer
   | BidderBuys !AuctionName
@@ -60,4 +61,5 @@ data CliAction
   | SellerReclaims !AuctionName
   | SellerClaimsDepositFor !AuctionName !Actor
   | Cleanup !AuctionName
+  | CleanupDeposit !AuctionName
   deriving stock (Show)

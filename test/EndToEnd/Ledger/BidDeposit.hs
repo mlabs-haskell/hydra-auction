@@ -14,18 +14,23 @@ import Test.Tasty.HUnit (Assertion, testCase)
 
 -- Hydra auction imports
 import HydraAuction.OnChain (AuctionScript (..))
-import HydraAuction.Tx.Deposit (cleanupDeposit, losingBidderClaimDeposit, mkDeposit, sellerClaimDepositFor)
+import HydraAuction.Tx.Deposit (
+  cleanupDeposit,
+  losingBidderClaimDeposit,
+  mkDeposit,
+  sellerClaimDepositFor,
+ )
 import HydraAuction.Tx.Escrow (
   announceAuction,
   bidderBuys,
   startBidding,
  )
-import HydraAuction.Tx.StandingBid (cleanupTx, newBid)
+import HydraAuction.Tx.StandingBid (cleanupTx, newBid, sellerSignatureForActor)
 import HydraAuction.Tx.TermsConfig (
   nonExistentHeadIdStub,
  )
-import HydraAuction.Types (ApprovedBidders (..), AuctionTerms (..))
-import HydraAuctionUtils.Fixture (Actor (..), getActorsPubKeyHash)
+import HydraAuction.Types (AuctionTerms (..))
+import HydraAuctionUtils.Fixture (Actor (..), getActorPubKeyHash)
 import HydraAuctionUtils.L1.Runner (
   initWallet,
   withActor,
@@ -71,13 +76,14 @@ losingBidderClaimDepositTest = mkAssertion $ do
   assertUTxOsInScriptEquals Deposit terms 2
 
   waitUntil $ biddingStart terms
-  actorsPkh <- liftIO $ getActorsPubKeyHash [buyer1, buyer2]
-  startBidding terms (ApprovedBidders actorsPkh)
+  startBidding terms
 
   assertNFTNumEquals seller 0
 
-  withActor buyer1 $ newBid terms $ startingBid terms
-  withActor buyer2 $ newBid terms $ startingBid terms + minimumBidIncrement terms
+  buyer1SellerSignature <- liftIO $ sellerSignatureForActor terms buyer1
+  buyer2SellerSignature <- liftIO $ sellerSignatureForActor terms buyer2
+  withActor buyer1 $ newBid terms (startingBid terms) buyer1SellerSignature
+  withActor buyer2 $ newBid terms (startingBid terms + minimumBidIncrement terms) buyer2SellerSignature
 
   waitUntil $ biddingEnd terms
 
@@ -103,13 +109,14 @@ losingBidderDoubleClaimTest = mkAssertion $ do
   assertUTxOsInScriptEquals Deposit terms 2
 
   waitUntil $ biddingStart terms
-  actorsPkh <- liftIO $ getActorsPubKeyHash [buyer1, buyer2]
-  startBidding terms (ApprovedBidders actorsPkh)
+  startBidding terms
 
   assertNFTNumEquals seller 0
 
-  withActor buyer1 $ newBid terms $ startingBid terms
-  withActor buyer2 $ newBid terms $ startingBid terms + minimumBidIncrement terms
+  buyer1SellerSignature <- liftIO $ sellerSignatureForActor terms buyer1
+  buyer2SellerSignature <- liftIO $ sellerSignatureForActor terms buyer2
+  withActor buyer1 $ newBid terms (startingBid terms) buyer1SellerSignature
+  withActor buyer2 $ newBid terms (startingBid terms + minimumBidIncrement terms) buyer2SellerSignature
 
   waitUntil $ biddingEnd terms
 
@@ -139,16 +146,20 @@ sellerClaimsDepositTest = mkAssertion $ do
   assertUTxOsInScriptEquals Deposit terms 1
 
   waitUntil $ biddingStart terms
-  actorsPkh <- liftIO $ getActorsPubKeyHash [buyer]
-  startBidding terms (ApprovedBidders actorsPkh)
+
+  startBidding terms
 
   assertNFTNumEquals seller 0
 
-  withActor buyer $ newBid terms $ startingBid terms
+  buyerSellerSignature <- liftIO $ sellerSignatureForActor terms buyer
+
+  withActor buyer $ newBid terms (startingBid terms) buyerSellerSignature
 
   waitUntil $ voucherExpiry terms
 
-  sellerClaimDepositFor terms (head actorsPkh)
+  buyerPKH <- liftIO $ getActorPubKeyHash buyer
+
+  sellerClaimDepositFor terms buyerPKH
 
   assertUTxOsInScriptEquals Deposit terms 0
 
@@ -170,17 +181,20 @@ sellerClaimsLosingDepositTest = mkAssertion $ do
   assertUTxOsInScriptEquals Deposit terms 2
 
   waitUntil $ biddingStart terms
-  actorsPkh <- liftIO $ getActorsPubKeyHash [buyer1, buyer2]
-  startBidding terms (ApprovedBidders actorsPkh)
+
+  startBidding terms
 
   assertNFTNumEquals seller 0
 
-  withActor buyer1 $ newBid terms $ startingBid terms
-  withActor buyer2 $ newBid terms $ startingBid terms + minimumBidIncrement terms
+  buyer1SellerSignature <- liftIO $ sellerSignatureForActor terms buyer1
+  buyer2SellerSignature <- liftIO $ sellerSignatureForActor terms buyer2
+  withActor buyer1 $ newBid terms (startingBid terms) buyer1SellerSignature
+  withActor buyer2 $ newBid terms (startingBid terms + minimumBidIncrement terms) buyer2SellerSignature
 
   waitUntil $ voucherExpiry terms
 
-  result <- try $ sellerClaimDepositFor terms (head actorsPkh)
+  buyer1PKH <- liftIO $ getActorPubKeyHash buyer1
+  result <- try $ sellerClaimDepositFor terms buyer1PKH
 
   case result of
     Left (_ :: SomeException) -> assertUTxOsInScriptEquals Deposit terms 2
@@ -204,13 +218,14 @@ bidderBuysWithDepositTest = mkAssertion $ do
   assertUTxOsInScriptEquals Deposit terms 2
 
   waitUntil $ biddingStart terms
-  actorsPkh <- liftIO $ getActorsPubKeyHash [buyer1, buyer2]
-  startBidding terms (ApprovedBidders actorsPkh)
+  startBidding terms
 
   assertNFTNumEquals seller 0
 
-  withActor buyer1 $ newBid terms $ startingBid terms
-  withActor buyer2 $ newBid terms $ startingBid terms + minimumBidIncrement terms
+  buyer1SellerSignature <- liftIO $ sellerSignatureForActor terms buyer1
+  buyer2SellerSignature <- liftIO $ sellerSignatureForActor terms buyer2
+  withActor buyer1 $ newBid terms (startingBid terms) buyer1SellerSignature
+  withActor buyer2 $ newBid terms (startingBid terms + minimumBidIncrement terms) buyer2SellerSignature
 
   waitUntil $ biddingEnd terms
   withActor buyer2 $ bidderBuys terms
@@ -241,13 +256,14 @@ cleanupDepositTest = mkAssertion $ do
   assertUTxOsInScriptEquals Deposit terms 2
 
   waitUntil $ biddingStart terms
-  actorsPkh <- liftIO $ getActorsPubKeyHash [buyer1, buyer2]
-  startBidding terms (ApprovedBidders actorsPkh)
+  startBidding terms
 
   assertNFTNumEquals seller 0
 
-  withActor buyer1 $ newBid terms $ startingBid terms
-  withActor buyer2 $ newBid terms $ startingBid terms + minimumBidIncrement terms
+  buyer1SellerSignature <- liftIO $ sellerSignatureForActor terms buyer1
+  buyer2SellerSignature <- liftIO $ sellerSignatureForActor terms buyer2
+  withActor buyer1 $ newBid terms (startingBid terms) buyer1SellerSignature
+  withActor buyer2 $ newBid terms (startingBid terms + minimumBidIncrement terms) buyer2SellerSignature
 
   waitUntil $ cleanup terms
   cleanupTx terms

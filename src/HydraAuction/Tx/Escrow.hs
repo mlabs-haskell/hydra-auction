@@ -11,7 +11,7 @@ import PlutusTx.Prelude (emptyByteString)
 import Prelude
 
 -- Haskell imports
-import Control.Monad (void, when)
+import Control.Monad (void)
 
 -- Plutus imports
 import PlutusLedgerApi.V1.Address (pubKeyHashAddress)
@@ -52,8 +52,6 @@ import HydraAuction.Tx.Common (
 import HydraAuction.Tx.Deposit (parseBidDepositDatum)
 import HydraAuction.Tx.StandingBid (queryStandingBidDatum)
 import HydraAuction.Types (
-  ApprovedBidders (..),
-  ApprovedBiddersHash (..),
   AuctionEscrowDatum (..),
   AuctionStage (..),
   AuctionState (..),
@@ -141,12 +139,9 @@ announceAuction terms = do
         , validityBound = stageToInterval terms AnnouncedStage
         }
 
-startBidding :: AuctionTerms -> ApprovedBidders -> L1Runner ()
-startBidding terms approvedBidders = do
+startBidding :: AuctionTerms -> L1Runner ()
+startBidding terms = do
   logMsg "Doing start bidding"
-
-  when (seller terms `elem` bidders approvedBidders) $ do
-    fail "Seller can not be in approved bidders"
 
   let escrowScript = scriptPlutusScript Escrow terms
 
@@ -157,7 +152,7 @@ startBidding terms approvedBidders = do
       voucherCS = VoucherCS $ scriptCurrencySymbol mp
       biddingStartedDatum =
         AuctionEscrowDatum
-          (BiddingStarted (ApprovedBiddersHash emptyByteString))
+          BiddingStarted
           voucherCS
       txOutEscrow =
         TxOut
@@ -174,7 +169,7 @@ startBidding terms approvedBidders = do
           valueOutStanding
           (mkInlineDatum standingBidDatum)
           ReferenceScriptNone
-      standingBidDatum = StandingBidDatum (StandingBidState approvedBidders Nothing) voucherCS
+      standingBidDatum = StandingBidDatum (StandingBidState Nothing) voucherCS
       valueOutStanding =
         fromPlutusValue (assetClassValue (voucherAssetClass terms) 1)
           <> lovelaceToValue minLovelace
@@ -222,7 +217,7 @@ bidderBuys terms = do
   sellerAddress <-
     fromPlutusAddressInMonad $
       pubKeyHashAddress $
-        seller terms
+        sellerPKH terms
 
   -- FIXME: better error reporting
   Just (StandingBidDatum {standingBidState}) <- queryStandingBidDatum terms

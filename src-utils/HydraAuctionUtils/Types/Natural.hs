@@ -2,6 +2,7 @@ module HydraAuctionUtils.Types.Natural (
   Natural,
   intToNatural,
   naturalToInt,
+  toBuiltinBytestring,
 ) where
 
 -- Prelude imports
@@ -18,6 +19,7 @@ import GHC.Generics (Generic)
 -- Plutus imports
 
 import PlutusTx qualified
+import PlutusTx.Builtins (serialiseData)
 import PlutusTx.IsData.Class (
   FromData (fromBuiltinData),
   ToData (toBuiltinData),
@@ -57,6 +59,10 @@ intToNatural x
 {-# INLINEABLE naturalToInt #-}
 naturalToInt :: Natural -> Integer
 naturalToInt (Natural i) = i
+
+{-# INLINEABLE toBuiltinBytestring #-}
+toBuiltinBytestring :: Natural -> BuiltinByteString
+toBuiltinBytestring = serialiseData . toBuiltinData . naturalToInt
 
 PlutusTx.makeLift ''Natural
 
