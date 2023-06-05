@@ -8,6 +8,7 @@ module HydraAuction.OnChain.Common (
   checkInterval,
   secondsLeftInInterval,
   stageToInterval,
+  strictTo,
 ) where
 
 -- Prelude imports
@@ -15,12 +16,13 @@ import PlutusTx.Prelude
 import Prelude (div)
 
 -- Plutus imports
-import PlutusLedgerApi.V1.Interval (Extended (..), Interval (..), UpperBound (..), contains, from, interval, to)
+import PlutusLedgerApi.V1.Interval (Extended (..), Interval (..), UpperBound (..), contains, from)
 import PlutusLedgerApi.V1.Time (POSIXTime (..))
 import PlutusLedgerApi.V2.Contexts (TxInfo (..))
 
 -- Hydra auction imports
 import HydraAuction.Types (AuctionStage (..), AuctionTerms (..))
+import HydraAuctionUtils.Plutus (rightExclusiveInterval, strictTo)
 import HydraAuctionUtils.Types.Natural (naturalToInt)
 
 {-# INLINEABLE minAuctionFee #-}
@@ -30,10 +32,10 @@ minAuctionFee = 2_000_000
 {-# INLINEABLE stageToInterval #-}
 stageToInterval :: AuctionTerms -> AuctionStage -> Interval POSIXTime
 stageToInterval terms stage = case stage of
-  AnnouncedStage -> to (biddingStart terms)
-  BiddingStartedStage -> interval (biddingStart terms) (biddingEnd terms)
-  BiddingEndedStage -> interval (biddingEnd terms) (voucherExpiry terms)
-  VoucherExpiredStage -> interval (voucherExpiry terms) (cleanup terms)
+  AnnouncedStage -> strictTo (biddingStart terms)
+  BiddingStartedStage -> rightExclusiveInterval (biddingStart terms) (biddingEnd terms)
+  BiddingEndedStage -> rightExclusiveInterval (biddingEnd terms) (voucherExpiry terms)
+  VoucherExpiredStage -> rightExclusiveInterval (voucherExpiry terms) (cleanup terms)
   CleanupStage -> from (cleanup terms)
 
 {-# INLINEABLE checkInterval #-}

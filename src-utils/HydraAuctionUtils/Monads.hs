@@ -34,7 +34,6 @@ import Hydra.Cardano.Api (
   ProtocolParameters,
   ShelleyAddr,
   SigningKey,
-  SlotNo,
   SystemStart,
   Tx,
   TxIn,
@@ -47,6 +46,7 @@ import Hydra.Cardano.Api (
  )
 
 -- Plutus imports
+import PlutusLedgerApi.V1 (Interval, POSIXTime)
 import PlutusLedgerApi.V1.Address qualified as PlutusAddress
 
 -- HydraAuction imports
@@ -54,7 +54,6 @@ import CardanoClient (buildAddress)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import HydraAuctionUtils.Extras.CardanoApi (networkIdToNetwork)
 import HydraAuctionUtils.Fixture (Actor, keysFor)
-import PlutusLedgerApi.V1.Time (POSIXTime)
 
 -- MonadQueryUtxo
 
@@ -126,9 +125,7 @@ data BlockchainParams = MkBlockchainParams
 
 class Monad m => MonadBlockchainParams m where
   queryBlockchainParams :: m BlockchainParams
-  convertValidityBound ::
-    (Maybe POSIXTime, Maybe POSIXTime) ->
-    m (TxValidityLowerBound, TxValidityUpperBound)
+  convertValidityBound :: Interval POSIXTime -> m (TxValidityLowerBound, TxValidityUpperBound)
 
 -- Complex constraint synonims
 

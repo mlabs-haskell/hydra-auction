@@ -59,7 +59,7 @@ import CardanoNode (
  )
 
 -- Plutus imports
-import PlutusLedgerApi.V1.Time (POSIXTime (getPOSIXTime))
+import PlutusLedgerApi.V2 (Extended (..), Interval (..), LowerBound (..), POSIXTime (..), UpperBound (..))
 
 -- Hydra imports
 
@@ -69,6 +69,8 @@ import Hydra.Cardano.Api (
   NetworkMagic (NetworkMagic),
   SlotNo,
   Tx,
+  TxValidityLowerBound,
+  TxValidityUpperBound,
   UTxO,
   pattern TxValidityLowerBound,
   pattern TxValidityNoLowerBound,
@@ -155,14 +157,20 @@ instance MonadBlockchainParams L1Runner where
         <*> queryEraHistory networkId nodeSocket QueryTip
         <*> queryStakePools networkId nodeSocket QueryTip
 
-  convertValidityBound (lowerBound', upperBound') = do
-    lowerBound <- case lowerBound' of
-      Nothing -> pure TxValidityNoLowerBound
-      Just x -> TxValidityLowerBound <$> toSlotNo x
-    upperBound <- case upperBound' of
-      Nothing -> pure TxValidityNoUpperBound
-      Just x -> TxValidityUpperBound <$> toSlotNo x
-    return (lowerBound, upperBound)
+  convertValidityBound (Interval l u) = (,) <$> lowerBoundToValidityBound l <*> upperBoundToValidityBound u
+    where
+      closureToInteger :: Bool -> Integer
+      closureToInteger = toInteger . fromEnum . not
+
+      lowerBoundToValidityBound :: LowerBound POSIXTime -> L1Runner TxValidityLowerBound
+      lowerBoundToValidityBound (LowerBound NegInf _) = pure TxValidityNoLowerBound
+      lowerBoundToValidityBound (LowerBound (Finite n) c) = TxValidityLowerBound <$> toSlotNo (POSIXTime $ getPOSIXTime n + closureToInteger c)
+      lowerBoundToValidityBound (LowerBound PosInf _) = error "Unable to create posinf lower bound"
+
+      upperBoundToValidityBound :: UpperBound POSIXTime -> L1Runner TxValidityUpperBound
+      upperBoundToValidityBound (UpperBound NegInf _) = error "Unable to create neginf upper bound"
+      upperBoundToValidityBound (UpperBound (Finite n) c) = TxValidityUpperBound <$> toSlotNo (POSIXTime $ getPOSIXTime n - closureToInteger c)
+      upperBoundToValidityBound (UpperBound PosInf _) = pure TxValidityNoUpperBound
 
 toSlotNo :: POSIXTime -> L1Runner SlotNo
 toSlotNo ptime = do

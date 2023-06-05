@@ -10,7 +10,7 @@ import Control.Monad (void)
 
 -- Plutus imports
 import PlutusLedgerApi.V1.Address (pubKeyHashAddress)
-import PlutusLedgerApi.V2 (PubKeyHash)
+import PlutusLedgerApi.V2 (PubKeyHash, always)
 
 -- Cardano node imports
 import Cardano.Api.UTxO qualified as UTxO
@@ -89,7 +89,7 @@ distributeFee terms = do
         , outs = delegateOuts
         , toMint = TxMintValueNone
         , changeAddress = actorAddress
-        , validityBound = (Nothing, Nothing)
+        , validityBound = always
         }
   where
     feeScript = scriptPlutusScript FeeEscrow terms

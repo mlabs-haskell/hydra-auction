@@ -8,6 +8,7 @@ import Data.Map qualified as Map
 
 -- Plutus imports
 import PlutusLedgerApi.V1.Value (assetClassValue, valueOf)
+import PlutusLedgerApi.V2 (always)
 import PlutusLedgerApi.V2.Tx (txOutValue)
 
 -- Hydra imports
@@ -92,5 +93,5 @@ mintOneTestNFT = do
       , outs = [txOut]
       , toMint = toMint
       , changeAddress = actorAddress
-      , validityBound = (Nothing, Nothing)
+      , validityBound = always
       }

@@ -18,7 +18,7 @@ import Data.Foldable (Foldable (toList))
 import Cardano.Api.UTxO qualified as UTxO
 
 -- Plutus imports
-import PlutusLedgerApi.V1.Time (POSIXTime)
+import PlutusLedgerApi.V1 (Interval, POSIXTime)
 
 -- Hydra imports
 import Hydra.Cardano.Api (
@@ -91,7 +91,7 @@ data AutoCreateParams = AutoCreateParams
   , outs :: [TxOut CtxTx]
   , toMint :: TxMintValue BuildTx
   , changeAddress :: Address ShelleyAddr
-  , validityBound :: (Maybe POSIXTime, Maybe POSIXTime)
+  , validityBound :: Interval POSIXTime
   }
 
 autoCreateTx ::

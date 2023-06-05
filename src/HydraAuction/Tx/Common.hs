@@ -18,6 +18,7 @@ import Control.Monad.Trans (MonadIO)
 
 -- Plutus imports
 import PlutusLedgerApi.V1.Interval (member)
+import PlutusLedgerApi.V2 (always)
 
 -- Cardano imports
 import Cardano.Api.UTxO qualified as UTxO
@@ -91,7 +92,6 @@ currentAuctionStage terms = do
   let matchingStages = filter (member currentTime . stageToInterval terms) auctionStages
   return $ case matchingStages of
     [stage] -> stage
-    [_, stage] -> stage
     [] -> error "Impossible happend: no matching stages"
     _ -> error "Impossible happend: more than one matching stages"
 
@@ -127,7 +127,7 @@ createTwoMinAdaUtxo = do
         , outs = [minAdaOut actorAddress, minAdaOut actorAddress]
         , toMint = TxMintValueNone
         , changeAddress = actorAddress
-        , validityBound = (Nothing, Nothing)
+        , validityBound = always
         }
 
   (utxo1 : utxo2 : _) <-

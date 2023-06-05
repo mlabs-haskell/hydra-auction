@@ -150,7 +150,7 @@ instance MonadBlockchainParams HydraRunner where
     return fakeBlockchainParams
 
   -- FIXME: Hydra started to support time but we still do not
-  convertValidityBound (_, _) =
+  convertValidityBound _ =
     return (TxValidityNoLowerBound, TxValidityNoUpperBound)
 
 matchingHydraEvent :: Value -> Maybe HydraEvent

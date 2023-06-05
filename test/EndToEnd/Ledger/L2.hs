@@ -110,7 +110,8 @@ bidderBuysTest = mkAssertion $ do
     -- Place bid on L1
     bidder1SellerSignature <- liftIO $ sellerSignatureForActor terms bidder1
     liftIO $
-      executeL1RunnerWithNodeAs node bidder1 $
+      executeL1RunnerWithNodeAs node bidder1 $ do
+        waitUntil $ biddingStart terms
         newBid terms (correctBidNo terms 0) bidder1SellerSignature
 
     -- Move and commit
