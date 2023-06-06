@@ -133,6 +133,15 @@ data BidderApproval = MkBidderApproval
   deriving stock (Generic, Show, Eq, Ord)
   deriving anyclass (ToJSON, FromJSON)
 
+-- FIXME: do not support multiple deposits, should decide if we need to
+data BidderDeposit = MkBidderDeposit
+  { depositAuctionId :: VoucherCS
+  , depositBidder :: Actor
+  , depositAmount :: Lovelace
+  }
+  deriving stock (Generic, Show, Eq, Ord)
+  deriving anyclass (ToJSON, FromJSON)
+
 -- Generic filter classes/datatype
 
 data FilterEq x = Eq x | IsIn [x]
@@ -236,6 +245,24 @@ instance Entity BidderApproval where
       ByApprovedBidder x ->
         isMatchingFilter (bidder entity) x
 
+instance Entity BidderDeposit where
+  type PrimaryKey BidderDeposit = BidderDeposit
+  data EntityFilter BidderDeposit
+    = ByDepositAuctionId (FilterEq VoucherCS)
+    | ByDepositedAmount (FilterOrd Lovelace)
+    | ByDepositedBidder (FilterEq Actor)
+    deriving stock (Eq, Ord, Generic, Show)
+    deriving anyclass (ToJSON, FromJSON)
+
+  getPrimaryKey = id
+  isMatchingEntityFilter entity filter' =
+    case filter' of
+      ByDepositAuctionId x -> isMatchingFilter (depositAuctionId entity) x
+      ByDepositedAmount x ->
+        isMatchingFilter (depositAmount entity) x
+      ByDepositedBidder x ->
+        isMatchingFilter (depositBidder entity) x
+
 -- EntityKind
 
 data EntityKind entity where
@@ -243,6 +270,7 @@ data EntityKind entity where
   HydraHead :: EntityKind HydraHead
   HeadDelegate :: EntityKind HeadDelegate
   BidderApproval :: EntityKind BidderApproval
+  BidderDeposit :: EntityKind BidderDeposit
 
 instance Show (EntityKind x) where
   show x = case x of
@@ -250,6 +278,7 @@ instance Show (EntityKind x) where
     HydraHead -> "HydraHead"
     HeadDelegate -> "HeadDelegate"
     BidderApproval -> "BidderApproval"
+    BidderDeposit -> "BidderDeposit"
 
 instance ToJSON (EntityKind x) where
   toJSON = Aeson.String . T.pack . show
@@ -265,6 +294,7 @@ data ClientInput entity
 data ClientCommand
   = ReportAnnouncedAuction AuctionTerms
   | ReportBidderApproval BidderApproval
+  | ReportBidderDeposit BidderDeposit
   | ReportHeadDelegate HydraHeadInfo Actor
   deriving stock (Generic, Show, Eq, Ord)
   deriving anyclass (ToJSON, FromJSON)
@@ -324,6 +354,7 @@ parseSomeEntityKindJSON value = case value of
       "HydraHead" -> return $ someConstructor HydraHead
       "HeadDelegate" -> return $ someConstructor HeadDelegate
       "BidderApproval" -> return $ someConstructor BidderApproval
+      "BidderDeposit" -> return $ someConstructor BidderDeposit
       _ -> fail "Wrong EntityKind tag"
   _ -> fail "Wrong type of kind field"
   where
