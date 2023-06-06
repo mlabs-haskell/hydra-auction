@@ -6,6 +6,9 @@ import Prelude
 -- Haskell imports
 import Data.Maybe ()
 
+-- Plutus imports
+import PlutusLedgerApi.V2 (always)
+
 -- Hydra imports
 import Hydra.Cardano.Api (
   Lovelace,
@@ -48,7 +51,7 @@ transferAda actorTo marked amount = do
       , outs = [txOut toAddress]
       , toMint = TxMintValueNone
       , changeAddress = fromAddress
-      , validityBound = (Nothing, Nothing)
+      , validityBound = always
       }
   where
     txOut toAddress =
