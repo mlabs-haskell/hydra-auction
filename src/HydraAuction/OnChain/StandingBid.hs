@@ -13,7 +13,6 @@ import PlutusTx.Prelude
 -- Plutus imports
 
 import PlutusLedgerApi.V1.Address (pubKeyHashAddress)
-import PlutusLedgerApi.V1.Interval (contains)
 import PlutusLedgerApi.V1.Value (CurrencySymbol (..), assetClass, assetClassValueOf)
 import PlutusLedgerApi.V2 (PubKeyHash (..), txInInfoResolved)
 import PlutusLedgerApi.V2.Contexts (
@@ -31,9 +30,10 @@ import Hydra.Contract.Head (hasPT)
 
 -- Hydra auction imports
 import HydraAuction.Addresses (VoucherCS (..))
-import HydraAuction.OnChain.Common (strictTo)
+import HydraAuction.OnChain.Common (checkInterval)
 import HydraAuction.OnChain.StateToken (StateTokenKind (..), stateTokenKindToTokenName)
 import HydraAuction.Types (
+  AuctionStage (..),
   AuctionTerms (..),
   BidTerms (..),
   StandingBidDatum (..),
@@ -70,10 +70,9 @@ mkStandingBidValidator terms datum redeemer context =
         NewBid ->
           checkCorrectNewBidOutput standingBidInOut
             && nothingForged info
-        -- FIXME: disabled due to Hydra changes
-        -- && traceIfFalse
-        --   "Wrong interval for NewBid"
-        --   (contains (stricTo (biddingEnd terms)) (txInfoValidRange info))
+            && traceIfFalse
+              "Wrong interval for NewBid"
+              (checkInterval terms BiddingStartedStage info)
         Cleanup ->
           -- XXX: interval is checked on burning
           checkExactlyOneVoucherBurned
