@@ -20,6 +20,7 @@ import Hydra.Cardano.Api (
  )
 import Hydra.Chain.Direct.Util (markerDatumHash)
 import Hydra.Cluster.Faucet (Marked (..))
+import PlutusLedgerApi.V2 (always)
 
 -- Hydra auction imports
 import HydraAuctionUtils.Fixture (Actor)
@@ -48,7 +49,7 @@ transferAda actorTo marked amount = do
       , outs = [txOut toAddress]
       , toMint = TxMintValueNone
       , changeAddress = fromAddress
-      , validityBound = (Nothing, Nothing)
+      , validityBound = always
       }
   where
     txOut toAddress =

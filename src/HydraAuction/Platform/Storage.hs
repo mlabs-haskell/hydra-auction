@@ -4,6 +4,7 @@ module HydraAuction.Platform.Storage (
   queryByFilter,
   processCommand,
   processClientInput,
+  EntityStorage (..),
 ) where
 
 -- Prelude imports

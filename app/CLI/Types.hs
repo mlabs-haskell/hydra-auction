@@ -70,6 +70,7 @@ data CliAction
   | BidderClaimsDeposit !AuctionName
   | SellerReclaims !AuctionName
   | SellerClaimsDepositFor !AuctionName !Actor
+  | SubmitSignatureToPlatform !AuctionName !Actor
   | Cleanup !AuctionName
   | CleanupDeposit !AuctionName
   deriving stock (Show)

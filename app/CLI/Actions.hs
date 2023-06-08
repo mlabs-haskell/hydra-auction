@@ -32,10 +32,11 @@ import Hydra.Chain.Direct.Tx (headIdToCurrencySymbol)
 import Cardano.Api.UTxO qualified as UTxO
 
 -- Hydra auction imports
-
+import HydraAuction.Addresses (VoucherCS (..))
 import HydraAuction.Delegate.Interface (DelegateState (..))
 import HydraAuction.Delegate.Interface qualified as DelegateInterface
-import HydraAuction.OnChain (AuctionScript (..))
+import HydraAuction.OnChain (AuctionScript (..), voucherCurrencySymbol)
+import HydraAuction.Platform.Interface (BidderApproval (..), ClientCommand (..), ClientInput (..), Entity, EntityFilter (..), EntityKind (..), EntityQuery (..), EntityQueryResponse (..), FilterEq (..), ServerOutput (..), Some (..))
 import HydraAuction.Tx.Common (
   currentAuctionStage,
   scriptSingleUtxo,
@@ -117,10 +118,11 @@ doOnMatchingStage terms requiredStage action = do
 
 handleCliAction ::
   (DelegateInterface.FrontendRequest -> IO ()) ->
+  (Some ClientInput -> IO (Some ServerOutput)) ->
   IORef DelegateState ->
   CliAction ->
   L1Runner ()
-handleCliAction sendRequestToDelegate currentDelegateStateRef userAction = do
+handleCliAction sendRequestToDelegate sendRequestToPlatform currentDelegateStateRef userAction = do
   -- Await for initialized DelegateState
   MkExecutionContext {actor} <- ask
   case userAction of
@@ -228,7 +230,18 @@ handleCliAction sendRequestToDelegate currentDelegateStateRef userAction = do
         else do
           announceActionExecution userAction
           -- FIXME: temporaral stub until Platform server
-          sellerSignature <- liftIO $ sellerSignatureForActor terms actor
+          r <-
+            liftIO $
+              sendRequestToPlatform $
+                MkSome BidderApproval $
+                  Query $
+                    MkQuery
+                      { filters = [ByApprovedBidder $ Eq actor]
+                      , limit = Nothing
+                      }
+          liftIO $ print r
+          let MkSome BidderApproval (QueryPerformed (MkResponse [bidderApproval])) = r
+          let sellerSignature = approvalBytes bidderApproval
           doOnMatchingStage terms BiddingStartedStage $
             case layer of
               L1 -> newBid terms bidAmount sellerSignature
@@ -242,6 +255,16 @@ handleCliAction sendRequestToDelegate currentDelegateStateRef userAction = do
                       { auctionTerms = terms
                       , datum = bidDatum
                       }
+    SubmitSignatureToPlatform auctionName actor -> do
+      terms <- auctionTermsFor auctionName
+      approvalBytes <- liftIO $ sellerSignatureForActor terms actor
+      let approval =
+            MkBidderApproval
+              { approvedAuctionId = VoucherCS $ voucherCurrencySymbol terms
+              , bidder = actor
+              , approvalBytes
+              }
+      void $ liftIO $ sendRequestToPlatform $ MkSome BidderApproval $ Command $ ReportBidderApproval approval
     MakeDeposit auctionName depositAmount -> do
       terms <- auctionTermsFor auctionName
       doOnMatchingStage terms AnnouncedStage $

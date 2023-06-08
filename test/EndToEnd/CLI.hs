@@ -8,7 +8,6 @@ import Hydra.Prelude
 import Data.Maybe (fromJust)
 
 -- Haskell test imports
-
 import System.Directory (removeFile)
 import Test.Tasty (TestTree, testGroup, withResource)
 import Test.Tasty.HUnit (Assertion, testCase)
@@ -21,6 +20,7 @@ import HydraAuction.Delegate.Interface (
   OpenHeadUtxo (..),
  )
 import HydraAuction.OnChain (AuctionScript (..))
+import HydraAuction.Platform.Storage (EntityStorage (..), initialStorage, processClientInput)
 import HydraAuction.Tx.TermsConfig (nonExistentHeadIdStub)
 import HydraAuction.Types (AuctionTerms (..))
 import HydraAuctionUtils.Fixture (Actor (..))
@@ -70,10 +70,19 @@ mockDelegateState =
 auctionName :: AuctionName
 auctionName = "test"
 
-handleCliActionWithMockDelegates :: CliAction -> L1Runner ()
-handleCliActionWithMockDelegates action = do
+handleCliActionWithMocks :: IORef EntityStorage -> CliAction -> L1Runner ()
+handleCliActionWithMocks platformSRef action = do
   delegateS <- newIORef mockDelegateState
-  handleCliAction (\_ -> pure ()) delegateS action
+  platformS <- readIORef platformSRef
+  handleCliAction
+    (\_ -> pure ())
+    ( \platformReq -> do
+        let (response, newState) = runState (processClientInput platformReq) platformS
+        writeIORef platformSRef newState
+        pure response
+    )
+    delegateS
+    action
 
 bidderBuysTest :: Assertion
 bidderBuysTest = mkAssertion $ do
@@ -81,32 +90,37 @@ bidderBuysTest = mkAssertion $ do
       buyer1 = Bob
       buyer2 = Carol
 
-  handleCliActionWithMockDelegates $ Prepare seller
+  platformS <- newIORef initialStorage
+
+  handleCliActionWithMocks platformS $ Prepare seller
 
   assertNFTNumEquals seller 1
 
-  handleCliActionWithMockDelegates $ AuctionAnounce auctionName
+  handleCliActionWithMocks platformS $ AuctionAnounce auctionName
 
   terms <- auctionTermsFor auctionName
 
+  handleCliActionWithMocks platformS $ SubmitSignatureToPlatform auctionName buyer1
+  handleCliActionWithMocks platformS $ SubmitSignatureToPlatform auctionName buyer2
+
   waitUntil $ biddingStart terms
 
-  handleCliActionWithMockDelegates $ StartBidding auctionName
+  handleCliActionWithMocks platformS $ StartBidding auctionName
 
   assertNFTNumEquals seller 0
 
-  withActor buyer2 $ handleCliActionWithMockDelegates $ NewBid auctionName (startingBid terms) L1
+  withActor buyer2 $ handleCliActionWithMocks platformS $ NewBid auctionName (startingBid terms) L1
 
   waitUntil $ biddingEnd terms
 
-  withActor buyer2 $ handleCliActionWithMockDelegates $ BidderBuys auctionName
+  withActor buyer2 $ handleCliActionWithMocks platformS $ BidderBuys auctionName
 
   assertNFTNumEquals seller 0
   assertNFTNumEquals buyer1 0
   assertNFTNumEquals buyer2 1
 
   waitUntil $ cleanup terms
-  handleCliActionWithMockDelegates $ Cleanup auctionName
+  handleCliActionWithMocks platformS $ Cleanup auctionName
 
 -- Test reclaim with BidderClaimsDeposit and using deposit for BidderBuys
 depositTest :: Assertion
@@ -115,30 +129,35 @@ depositTest = mkAssertion $ do
       buyer1 = Bob
       buyer2 = Carol
 
-  handleCliActionWithMockDelegates $ Prepare seller
+  platformS <- newIORef initialStorage
+
+  handleCliActionWithMocks platformS $ Prepare seller
 
   assertNFTNumEquals seller 1
 
-  handleCliActionWithMockDelegates $ AuctionAnounce auctionName
+  handleCliActionWithMocks platformS $ AuctionAnounce auctionName
 
   terms <- auctionTermsFor auctionName
 
-  withActor buyer1 $ handleCliActionWithMockDelegates $ MakeDeposit auctionName (fromJust $ intToNatural 10_000_000)
-  withActor buyer2 $ handleCliActionWithMockDelegates $ MakeDeposit auctionName (fromJust $ intToNatural 10_000_000)
+  withActor buyer1 $ handleCliActionWithMocks platformS $ MakeDeposit auctionName (fromJust $ intToNatural 10_000_000)
+  withActor buyer2 $ handleCliActionWithMocks platformS $ MakeDeposit auctionName (fromJust $ intToNatural 10_000_000)
 
   assertUTxOsInScriptEquals Deposit terms 2
 
+  handleCliActionWithMocks platformS $ SubmitSignatureToPlatform auctionName buyer1
+  handleCliActionWithMocks platformS $ SubmitSignatureToPlatform auctionName buyer2
+
   waitUntil $ biddingStart terms
 
-  handleCliActionWithMockDelegates $ StartBidding auctionName
+  handleCliActionWithMocks platformS $ StartBidding auctionName
 
   assertNFTNumEquals seller 0
 
-  withActor buyer2 $ handleCliActionWithMockDelegates $ NewBid auctionName (startingBid terms) L1
+  withActor buyer2 $ handleCliActionWithMocks platformS $ NewBid auctionName (startingBid terms) L1
 
   waitUntil $ biddingEnd terms
 
-  withActor buyer2 $ handleCliActionWithMockDelegates $ BidderBuys auctionName
+  withActor buyer2 $ handleCliActionWithMocks platformS $ BidderBuys auctionName
 
   assertNFTNumEquals seller 0
   assertNFTNumEquals buyer1 0
@@ -146,12 +165,12 @@ depositTest = mkAssertion $ do
 
   assertUTxOsInScriptEquals Deposit terms 1
 
-  withActor buyer1 $ handleCliActionWithMockDelegates $ BidderClaimsDeposit auctionName
+  withActor buyer1 $ handleCliActionWithMocks platformS $ BidderClaimsDeposit auctionName
 
   assertUTxOsInScriptEquals Deposit terms 0
 
   waitUntil $ cleanup terms
-  handleCliActionWithMockDelegates $ Cleanup auctionName
+  handleCliActionWithMocks platformS $ Cleanup auctionName
 
 -- Test case of reclaiming
 depositCleanupClaimTest :: Assertion
@@ -159,25 +178,29 @@ depositCleanupClaimTest = mkAssertion $ do
   let seller = Alice
       buyer1 = Bob
 
-  handleCliActionWithMockDelegates $ Prepare seller
+  platformS <- newIORef initialStorage
+
+  handleCliActionWithMocks platformS $ Prepare seller
 
   assertNFTNumEquals seller 1
 
-  handleCliActionWithMockDelegates $ AuctionAnounce auctionName
+  handleCliActionWithMocks platformS $ AuctionAnounce auctionName
 
   terms <- auctionTermsFor auctionName
 
   withActor buyer1 $
-    handleCliActionWithMockDelegates $
+    handleCliActionWithMocks platformS $
       MakeDeposit auctionName (fromJust $ intToNatural 10_000_000)
   assertUTxOsInScriptEquals Deposit terms 1
 
   waitUntil $ biddingStart terms
 
-  handleCliActionWithMockDelegates $ StartBidding auctionName
+  handleCliActionWithMocks platformS $ SubmitSignatureToPlatform auctionName buyer1
+
+  handleCliActionWithMocks platformS $ StartBidding auctionName
 
   withActor buyer1 $
-    handleCliActionWithMockDelegates $
+    handleCliActionWithMocks platformS $
       NewBid auctionName (startingBid terms) L1
 
   waitUntil $ biddingEnd terms
@@ -185,7 +208,7 @@ depositCleanupClaimTest = mkAssertion $ do
   waitUntil $ cleanup terms
 
   withActor buyer1 $
-    handleCliActionWithMockDelegates $
+    handleCliActionWithMocks platformS $
       CleanupDeposit auctionName
 
   assertUTxOsInScriptEquals Deposit terms 0

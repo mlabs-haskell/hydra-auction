@@ -91,7 +91,7 @@ getCliInput = customExecParser preferences options
     preferences = prefs (showHelpOnEmpty <> showHelpOnError)
 
 cliInputParser :: Parser CliInput
-cliInputParser = CliInput <$> cliOptionsParser <*> delegate
+cliInputParser = CliInput <$> cliOptionsParser <*> delegate <*> platform
 
 cliOptionsParser :: Parser CliOptions
 cliOptionsParser =
@@ -175,6 +175,15 @@ delegate =
     ( short 'd'
         <> metavar "DELEGATE"
         <> help "Host and port of delegate server"
+    )
+
+platform :: Parser Host
+platform =
+  option
+    (parseHost Nothing)
+    ( short 'p'
+        <> metavar "PLATFORM"
+        <> help "Host and port of platform server"
     )
 
 script :: Parser AuctionScript
