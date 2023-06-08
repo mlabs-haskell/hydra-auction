@@ -25,11 +25,7 @@ import Test.HUnit.Lang (HUnitFailure)
 
 -- Hydra imports
 import Cardano.Api (NetworkId (Testnet))
-import Hydra.Cardano.Api (
-  NetworkMagic (NetworkMagic),
-  pattern TxValidityNoLowerBound,
-  pattern TxValidityNoUpperBound,
- )
+import Hydra.Cardano.Api (NetworkMagic (NetworkMagic))
 import Hydra.Chain.Direct.State ()
 import HydraNode (
   HydraClient,
@@ -50,7 +46,11 @@ import HydraAuctionUtils.Hydra.Monad (
   EventMatcher (..),
   MonadHydra (..),
  )
-import HydraAuctionUtils.L1.Runner (L1Runner)
+import HydraAuctionUtils.L1.Runner (
+  ExecutionContext,
+  L1Runner,
+  executeL1Runner,
+ )
 import HydraAuctionUtils.Monads (
   BlockchainParams (..),
   MonadBlockchainParams (..),
@@ -68,7 +68,7 @@ data HydraRunnerLog
 data HydraExecutionContext = MkHydraExecutionContext
   { node :: HydraClient
   , tracer :: Tracer IO HydraRunnerLog
-  , fakeBlockchainParams :: BlockchainParams
+  , l1Context :: ExecutionContext
   }
 
 newtype HydraRunner a = MkHydraRunner
@@ -130,12 +130,14 @@ instance MonadTrace HydraRunner where
 
 instance MonadBlockchainParams HydraRunner where
   queryBlockchainParams = do
-    MkHydraExecutionContext {fakeBlockchainParams} <- ask
-    return fakeBlockchainParams
+    MkHydraExecutionContext {l1Context} <- ask
+    params <- liftIO $ executeL1Runner l1Context queryBlockchainParams
+    protocolParameters <- liftIO readHydraNodeProtocolParams
+    return $ params {protocolParameters}
 
-  -- FIXME: Hydra started to support time but we still do not
-  convertValidityBound _ =
-    return (TxValidityNoLowerBound, TxValidityNoUpperBound)
+  convertValidityBound x = do
+    MkHydraExecutionContext {l1Context} <- ask
+    liftIO $ executeL1Runner l1Context $ convertValidityBound x
 
 executeHydraRunner ::
   HydraExecutionContext ->
@@ -146,18 +148,13 @@ executeHydraRunner context runner =
 
 executeHydraRunnerFakingParams :: HydraClient -> HydraRunner a -> L1Runner a
 executeHydraRunnerFakingParams node monad = do
-  params <- queryBlockchainParams
-  protocolParameters <- liftIO readHydraNodeProtocolParams
-  let patchedParams =
-        params
-          { protocolParameters = protocolParameters
-          }
-  liftIO $ executeHydraRunner (context patchedParams) monad
+  l1Context <- ask
+  liftIO $ executeHydraRunner (context l1Context) monad
   where
     tracer = contramap (const "TODO") stdoutTracer
-    context params =
+    context l1Context =
       MkHydraExecutionContext
         { node = node
         , tracer = tracer
-        , fakeBlockchainParams = params
+        , l1Context = l1Context
         }
