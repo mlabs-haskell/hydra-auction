@@ -36,7 +36,7 @@ import HydraAuction.Addresses (VoucherCS (..))
 import HydraAuction.Delegate.Interface (DelegateState (..))
 import HydraAuction.Delegate.Interface qualified as DelegateInterface
 import HydraAuction.OnChain (AuctionScript (..), voucherCurrencySymbol)
-import HydraAuction.Platform.Interface (BidderApproval (..), ClientCommand (..), ClientInput (..), Entity, EntityFilter (..), EntityKind (..), EntityQuery (..), EntityQueryResponse (..), FilterEq (..), ServerOutput (..), Some (..))
+import HydraAuction.Platform.Interface (BidderApproval (..), ClientCommand (..), ClientInput (..), EntityFilter (..), EntityKind (..), EntityQuery (..), EntityQueryResponse (..), FilterEq (..), ServerOutput (..), Some (..))
 import HydraAuction.Tx.Common (
   currentAuctionStage,
   scriptSingleUtxo,
@@ -229,8 +229,7 @@ handleCliAction sendRequestToDelegate sendRequestToPlatform currentDelegateState
         then liftIO $ putStrLn "Seller cannot place a bid"
         else do
           announceActionExecution userAction
-          -- FIXME: temporaral stub until Platform server
-          r <-
+          approval <-
             liftIO $
               sendRequestToPlatform $
                 MkSome BidderApproval $
@@ -239,29 +238,30 @@ handleCliAction sendRequestToDelegate sendRequestToPlatform currentDelegateState
                       { filters = [ByApprovedBidder $ Eq actor]
                       , limit = Nothing
                       }
-          liftIO $ print r
-          let MkSome BidderApproval (QueryPerformed (MkResponse [bidderApproval])) = r
-          let sellerSignature = approvalBytes bidderApproval
-          doOnMatchingStage terms BiddingStartedStage $
-            case layer of
-              L1 -> newBid terms bidAmount sellerSignature
-              L2 -> do
-                (_, _, bidderSigningKey) <- addressAndKeys
-                let bidDatum =
-                      createStandingBidDatum terms bidAmount sellerSignature bidderSigningKey
-                liftIO $
-                  sendRequestToDelegate $
-                    DelegateInterface.NewBid
-                      { auctionTerms = terms
-                      , datum = bidDatum
-                      }
-    SubmitSignatureToPlatform auctionName actor -> do
+          case approval of
+            MkSome BidderApproval (QueryPerformed (MkResponse [bidderApproval])) -> do
+              let sellerSignature = approvalBytes bidderApproval
+              doOnMatchingStage terms BiddingStartedStage $
+                case layer of
+                  L1 -> newBid terms bidAmount sellerSignature
+                  L2 -> do
+                    (_, _, bidderSigningKey) <- addressAndKeys
+                    let bidDatum =
+                          createStandingBidDatum terms bidAmount sellerSignature bidderSigningKey
+                    liftIO $
+                      sendRequestToDelegate $
+                        DelegateInterface.NewBid
+                          { auctionTerms = terms
+                          , datum = bidDatum
+                          }
+            _ -> liftIO $ putStrLn "Unable to find bidder approval on platform server"
+    SubmitSignatureToPlatform auctionName bidderActor -> do
       terms <- auctionTermsFor auctionName
-      approvalBytes <- liftIO $ sellerSignatureForActor terms actor
+      approvalBytes <- liftIO $ sellerSignatureForActor terms bidderActor
       let approval =
             MkBidderApproval
               { approvedAuctionId = VoucherCS $ voucherCurrencySymbol terms
-              , bidder = actor
+              , bidder = bidderActor
               , approvalBytes
               }
       void $ liftIO $ sendRequestToPlatform $ MkSome BidderApproval $ Command $ ReportBidderApproval approval
