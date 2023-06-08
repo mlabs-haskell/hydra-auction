@@ -54,11 +54,9 @@ import HydraAuctionUtils.L1.Runner (
 -- Hydra auction CLI imports
 import CLI.Actions (CliAction, handleCliAction)
 import CLI.Parsers (
-  CliInput,
+  CliInput (..),
   CliOptions (InteractivePrompt, Watch),
   PromptOptions (..),
-  cliOptions,
-  delegateSettings,
   getCliInput,
   parseCliAction,
  )
@@ -72,18 +70,19 @@ main = do
   ci <- getCliInput
   handleCliInput ci
 
+runClientFromHost :: Host -> (Connection -> IO ()) -> IO ()
+runClientFromHost settings = runClient (Text.unpack $ hostname settings) (fromIntegral $ port settings) "/"
+
 handleCliInput :: CliInput -> IO ()
 handleCliInput input = do
   -- Connect to delegate server
-  let settings = delegateSettings input
-
-  runClient (Text.unpack $ hostname settings) (fromIntegral $ port settings) "/" $ \client -> do
+  runClientFromHost (delegateSettings input) $ \client -> do
     currentDelegateStateRef <- newIORef initialState
     let tracer = contramap (show . pretty) stdoutTracer
     sendTextData client . encode $ QueryCurrentDelegateState
     -- DelegateState receiving thread
     withAsync (updateStateThread client currentDelegateStateRef tracer) $ \_ -> do
-      handleCliInput' client currentDelegateStateRef (cliOptions input)
+      handleCliInput' client currentDelegateStateRef input
   where
     updateStateThread client currentDelegateStateRef tracer = forever $ do
       mMessage <- eitherDecode <$> receiveData client
@@ -110,24 +109,26 @@ handleCliInput input = do
               putStrLn "Or that is a bug in Frontend CLI."
         Left err -> traceWith tracer (InvalidDelegateResponse err)
 
-handleCliInput' :: Connection -> IORef DelegateState -> CliOptions -> IO ()
-handleCliInput' client currentDelegateStateRef input = case input of
+handleCliInput' :: Connection -> IORef DelegateState -> CliInput -> IO ()
+handleCliInput' delegateConnection currentDelegateStateRef input = case cliOptions input of
   (Watch auctionName) -> watchAuction auctionName currentDelegateStateRef
   (InteractivePrompt MkPromptOptions {..}) -> do
-    let hydraVerbosity = if cliVerbosity then Verbose "hydra-auction" else Quiet
-    tracer <- stdoutOrNullTracer hydraVerbosity
+    -- Connect to platform server
+    runClientFromHost (platformSettings input) $ \platformConnection -> do
+      let hydraVerbosity = if cliVerbosity then Verbose "hydra-auction" else Quiet
+      tracer <- stdoutOrNullTracer hydraVerbosity
 
-    let runnerContext =
-          MkExecutionContext
-            { tracer = tracer
-            , node = cliCardanoNode
-            , actor = cliActor
-            }
+      let runnerContext =
+            MkExecutionContext
+              { tracer = tracer
+              , node = cliCardanoNode
+              , actor = cliActor
+              }
 
-    executeL1Runner runnerContext (loopCLI client currentDelegateStateRef)
+      executeL1Runner runnerContext (loopCLI delegateConnection platformConnection currentDelegateStateRef)
 
-loopCLI :: Connection -> IORef DelegateState -> L1Runner ()
-loopCLI client currentDelegateStateRef = do
+loopCLI :: Connection -> Connection -> IORef DelegateState -> L1Runner ()
+loopCLI delegateConnection platformConnection currentDelegateStateRef = do
   ctx <- ask
   let promptString = show (actor ctx) <> "> "
 
@@ -143,7 +144,14 @@ loopCLI client currentDelegateStateRef = do
             loop
   runInputT defaultSettings loop
   where
-    sendRequestToDelegate = sendTextData client . encode
+    sendRequestToDelegate = sendTextData delegateConnection . encode
+    sendRequestToPlatform input = do
+      sendTextData platformConnection $ encode input
+      mMessage <- eitherDecode <$> receiveData platformConnection
+      case mMessage of
+        Right m -> pure m
+        Left e -> error $ "Error decoding platform output: \n\n" <> show e
+
     handleInput :: String -> L1Runner ()
     handleInput input = case parseCliAction $ words input of
       Left e -> liftIO $ putStrLn e
@@ -152,7 +160,7 @@ loopCLI client currentDelegateStateRef = do
     handleCliAction' cmd = do
       result <-
         try $
-          handleCliAction sendRequestToDelegate currentDelegateStateRef cmd
+          handleCliAction sendRequestToDelegate sendRequestToPlatform currentDelegateStateRef cmd
       case result of
         Right _ -> pure ()
         Left (actionError :: SomeException) ->

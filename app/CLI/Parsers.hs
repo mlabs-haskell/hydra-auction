@@ -69,6 +69,7 @@ import CLI.Config (AuctionName (..))
 data CliInput = CliInput
   { cliOptions :: CliOptions
   , delegateSettings :: Host
+  , platformSettings :: Host
   }
 
 data CliOptions
