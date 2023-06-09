@@ -45,6 +45,7 @@ import HydraAuctionUtils.Hydra.Monad (
   AwaitedHydraEvent (..),
   EventMatcher (..),
   MonadHydra (..),
+  ViaMonadHydra (..),
  )
 import HydraAuctionUtils.L1.Runner (
   ExecutionContext,
@@ -55,6 +56,8 @@ import HydraAuctionUtils.Monads (
   BlockchainParams (..),
   MonadBlockchainParams (..),
   MonadNetworkId (askNetworkId),
+  MonadQueryUtxo (..),
+  MonadSubmitTx (..),
   MonadTrace (..),
  )
 
@@ -84,6 +87,7 @@ newtype HydraRunner a = MkHydraRunner
     , MonadCatch
     , MonadMask
     )
+  deriving (MonadSubmitTx, MonadQueryUtxo) via (ViaMonadHydra HydraRunner)
 
 instance MonadHydra HydraRunner where
   sendCommand :: HydraCommand -> HydraRunner ()
@@ -151,7 +155,7 @@ executeHydraRunnerFakingParams node monad = do
   l1Context <- ask
   liftIO $ executeHydraRunner (context l1Context) monad
   where
-    tracer = contramap (const "TODO") stdoutTracer
+    tracer = contramap show stdoutTracer
     context l1Context =
       MkHydraExecutionContext
         { node = node

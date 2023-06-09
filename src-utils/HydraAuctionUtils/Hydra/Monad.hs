@@ -1,6 +1,5 @@
-{-# OPTIONS_GHC -Wno-orphans #-}
-
 module HydraAuctionUtils.Hydra.Monad (
+  ViaMonadHydra (..),
   MonadHydra (..),
   EventMatcher (..),
   AwaitedHydraEvent (..),
@@ -69,19 +68,22 @@ sendCommandAndWaitFor awaitedSpec command = do
   sendCommand command
   waitForHydraEvent awaitedSpec
 
+newtype ViaMonadHydra m a = MkViaMonadHydra (m a)
+  deriving newtype (Functor, Applicative, Monad, MonadHydra)
+
 -- FIXME: this does not work without `Monad m`, do not know why
-instance {-# OVERLAPPABLE #-} (Monad m, MonadHydra m) => MonadSubmitTx m where
-  submitTx :: Tx -> m ()
+instance (Monad m, MonadHydra m) => MonadSubmitTx (ViaMonadHydra m) where
+  submitTx :: Tx -> ViaMonadHydra m ()
   submitTx tx = do
     sendCommand $ NewTx tx
 
-  awaitTx :: Tx -> m ()
+  awaitTx :: Tx -> ViaMonadHydra m ()
   awaitTx tx = do
     void $ waitForHydraEvent . CustomMatcher . EventMatcher $ \case
       SnapshotConfirmed {snapshot} -> tx `elem` confirmed snapshot
       _ -> False
 
-instance {-# OVERLAPPABLE #-} (Monad m, MonadHydra m) => MonadQueryUtxo m where
+instance (Monad m, MonadHydra m) => MonadQueryUtxo (ViaMonadHydra m) where
   queryUtxo query = do
     response <-
       sendCommandAndWaitFor (SpecificKind GetUTxOResponseKind) GetUTxO
