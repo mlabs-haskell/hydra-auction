@@ -61,11 +61,9 @@ import Hydra.Chain (HeadId)
 
 -- Hydra auction imports
 
-import HydraAuction.Addresses (VoucherCS (..))
 import HydraAuction.HydraHacks (prepareScriptRegistry, submitAndAwaitCommitTx)
 import HydraAuction.OnChain (
   AuctionScript (StandingBid),
-  policy,
   standingBidValidator,
   voucherCurrencySymbol,
  )
@@ -96,7 +94,6 @@ import HydraAuction.Types (
   StandingBidState (..),
   VoucherForgingRedeemer (BurnVoucher),
  )
-import HydraAuctionUtils.Extras.Plutus (scriptCurrencySymbol)
 import HydraAuctionUtils.Fixture (Actor, actorFromPkh, getActorPubKeyHash, keysFor)
 import HydraAuctionUtils.L1.Runner (ExecutionContext (..), L1Runner)
 import HydraAuctionUtils.Monads (
@@ -290,14 +287,13 @@ createStandingBidDatum terms bidAmount sellerSignature bidderSk =
     )
     voucherCS
   where
-    auctionId = voucherCurrencySymbol terms
+    voucherCS = voucherCurrencySymbol terms
+    auctionId = voucherCS
     derivedVK = getVerificationKey bidderSk
     bidderPKH = toPlutusKeyHash $ verificationKeyHash derivedVK
     bidderSecretKey = SecretKey $ serialiseToRawBytes bidderSk <> serialiseToRawBytes derivedVK
     bidderMessage = fromBuiltin $ bidderSignatureMessage auctionId bidAmount bidderPKH
     Signature bidderSignature = dsign bidderSecretKey bidderMessage
-    mp = policy terms
-    voucherCS = VoucherCS $ scriptCurrencySymbol mp
 
 moveToHydra ::
   HeadId ->
