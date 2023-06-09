@@ -41,7 +41,11 @@ import Cardano.Api.UTxO qualified as UTxO
 
 -- Hydra auction imports
 import HydraAuction.Addresses (VoucherCS (..))
-import HydraAuction.OnChain (AuctionScript (..), policy, voucherAssetClass)
+import HydraAuction.OnChain (
+  AuctionScript (..),
+  voucherAssetClass,
+  voucherCurrencySymbol,
+ )
 import HydraAuction.OnChain.Common (stageToInterval)
 import HydraAuction.Tx.Common (
   scriptAddress,
@@ -65,7 +69,6 @@ import HydraAuction.Types (
   VoucherForgingRedeemer (MintVoucher),
   calculateTotalFee,
  )
-import HydraAuctionUtils.Extras.Plutus (scriptCurrencySymbol)
 import HydraAuctionUtils.L1.Runner (L1Runner)
 import HydraAuctionUtils.Monads (
   MonadQueryUtxo (queryUtxo),
@@ -99,9 +102,8 @@ announceAuction terms = do
 
   escrowAddress <- scriptAddress Escrow terms
 
-  let mp = policy terms
-      voucerCS = VoucherCS $ scriptCurrencySymbol mp
-      escrowAnnouncedUtxo = AuctionEscrowDatum Announced voucerCS
+  let voucherCS = voucherCurrencySymbol terms
+      escrowAnnouncedUtxo = AuctionEscrowDatum Announced voucherCS
       announcedEscrowTxOut =
         TxOut
           (ShelleyAddressInEra escrowAddress)
@@ -148,8 +150,7 @@ startBidding terms = do
   standingAddress <- scriptAddress StandingBid terms
   escrowAddress <- scriptAddress Escrow terms
 
-  let mp = policy terms
-      voucherCS = VoucherCS $ scriptCurrencySymbol mp
+  let voucherCS = voucherCurrencySymbol terms
       biddingStartedDatum =
         AuctionEscrowDatum
           BiddingStarted
@@ -183,7 +184,7 @@ startBidding terms = do
         [ fst $
             unAssetClass $
               auctionLot terms
-        , scriptCurrencySymbol mp
+        , unVoucherCS voucherCS
         , CurrencySymbol emptyByteString
         ]
 
@@ -276,8 +277,7 @@ bidderBuys terms = do
 
   allDeposits <- scriptUtxos Deposit terms
 
-  let mp = policy terms
-      voucherCS = VoucherCS $ scriptCurrencySymbol mp
+  let voucherCS = voucherCurrencySymbol terms
       expectedDatum = BidDepositDatum (toPlutusKeyHash $ verificationKeyHash bidderVk) voucherCS
       depositScript = scriptPlutusScript Deposit terms
       depositWitness = mkInlinedDatumScriptWitness depositScript WinningBidder

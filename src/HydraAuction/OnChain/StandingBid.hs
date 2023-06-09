@@ -124,7 +124,7 @@ mkStandingBidValidator terms datum redeemer context =
 
 {-# INLINEABLE validNewBidTerms #-}
 validNewBidTerms :: AuctionTerms -> VoucherCS -> Maybe BidTerms -> Maybe BidTerms -> Bool
-validNewBidTerms terms (VoucherCS voucherCS) oldBid (Just newBidTerms) =
+validNewBidTerms terms voucherCS oldBid (Just newBidTerms) =
   -- The seller has allowed the bidder to participate in the auction
   traceIfFalse "User is not an authorised bider" (verifyEd25519Signature (sellerVK terms) sellerMessage sellerSignature)
     -- The bidder has correctly signed the datum
@@ -147,9 +147,11 @@ checkBidTerms terms Nothing newBidTerms =
     startingBid terms <= bidAmount newBidTerms
 
 {-# INLINEABLE bidderSignatureMessage #-}
-bidderSignatureMessage :: CurrencySymbol -> Natural -> PubKeyHash -> BuiltinByteString
-bidderSignatureMessage (CurrencySymbol headId) bidAmount (PubKeyHash bidderPKH) = headId <> toBuiltinBytestring bidAmount <> bidderPKH
+bidderSignatureMessage :: VoucherCS -> Natural -> PubKeyHash -> BuiltinByteString
+bidderSignatureMessage (VoucherCS (CurrencySymbol headId)) bidAmount (PubKeyHash bidderPKH) =
+  headId <> toBuiltinBytestring bidAmount <> bidderPKH
 
 {-# INLINEABLE sellerSignatureMessage #-}
-sellerSignatureMessage :: CurrencySymbol -> BuiltinByteString -> PubKeyHash -> BuiltinByteString
-sellerSignatureMessage (CurrencySymbol headId) bidderVK (PubKeyHash bidderPKH) = headId <> bidderPKH <> bidderVK
+sellerSignatureMessage :: VoucherCS -> BuiltinByteString -> PubKeyHash -> BuiltinByteString
+sellerSignatureMessage (VoucherCS (CurrencySymbol headId)) bidderVK (PubKeyHash bidderPKH) =
+  headId <> bidderPKH <> bidderVK

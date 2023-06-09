@@ -18,7 +18,6 @@ import Data.Map qualified as Map
 
 -- HydraAuction imports
 
-import HydraAuction.Addresses (VoucherCS (..))
 import HydraAuction.Delegate.Interface (InitializedState (..))
 import HydraAuction.OnChain (standingBidAddress, voucherCurrencySymbol)
 import HydraAuction.Platform.Interface (
@@ -157,7 +156,7 @@ processCommand command = case command of
       newEntity =
         MkAnnouncedAuction
           { terms
-          , auctionId = VoucherCS $ voucherCurrencySymbol terms
+          , auctionId = voucherCurrencySymbol terms
           , auctionStandingBidAddress = standingBidAddress terms
           }
   ReportBidderApproval approval ->

@@ -21,7 +21,7 @@ import Prelude qualified
 
 -- Plutus imports
 import PlutusLedgerApi.Common (SerialisedScript, serialiseCompiledCode)
-import PlutusLedgerApi.V1.Value (AssetClass (..), CurrencySymbol)
+import PlutusLedgerApi.V1.Value (AssetClass (..))
 import PlutusTx qualified
 
 -- Hydra auction imports
@@ -30,6 +30,7 @@ import HydraAuction.Addresses (
   EscrowAddress (..),
   FeeEscrowAddress (..),
   StandingBidAddress (..),
+  VoucherCS (..),
  )
 import HydraAuction.OnChain.Deposit (mkDepositValidator)
 import HydraAuction.OnChain.Escrow (mkEscrowValidator)
@@ -72,11 +73,15 @@ policy terms =
     $$(PlutusTx.compile [||wrapMintingPolicy . mkPolicy||])
       `PlutusTx.applyCode` PlutusTx.liftCode (escrowAddress terms, terms)
 
-voucherCurrencySymbol :: AuctionTerms -> CurrencySymbol
-voucherCurrencySymbol = scriptCurrencySymbol . policy
+voucherCurrencySymbol :: AuctionTerms -> VoucherCS
+voucherCurrencySymbol = VoucherCS . scriptCurrencySymbol . policy
 
 voucherAssetClass :: AuctionTerms -> AssetClass
-voucherAssetClass terms = AssetClass (voucherCurrencySymbol terms, stateTokenKindToTokenName Voucher)
+voucherAssetClass terms =
+  AssetClass
+    ( unVoucherCS $ voucherCurrencySymbol terms
+    , stateTokenKindToTokenName Voucher
+    )
 
 -- Escrow contract
 

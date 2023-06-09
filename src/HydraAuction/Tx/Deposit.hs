@@ -40,8 +40,7 @@ import Hydra.Cardano.Api (
  )
 
 -- Hydra auction imports
-import HydraAuction.Addresses (VoucherCS (..))
-import HydraAuction.OnChain (AuctionScript (..), policy)
+import HydraAuction.OnChain (AuctionScript (..), voucherCurrencySymbol)
 import HydraAuction.OnChain.Common (stageToInterval)
 import HydraAuctionUtils.Monads.Actors (
   actorTipUtxo,
@@ -60,7 +59,6 @@ import HydraAuction.Types (
   BidDepositDatum (..),
   BidDepositRedeemer (..),
  )
-import HydraAuctionUtils.Extras.Plutus (scriptCurrencySymbol)
 import HydraAuctionUtils.L1.Runner (L1Runner)
 import HydraAuctionUtils.Monads (
   logMsg,
@@ -104,8 +102,7 @@ findDepositMatchingPubKeyHash terms pkh allDeposits =
     Nothing -> fail "Unable to find matching deposit"
     Just deposit -> pure $ UTxO.singleton deposit
   where
-    mp = policy terms
-    voucherCS = VoucherCS $ scriptCurrencySymbol mp
+    voucherCS = voucherCurrencySymbol terms
     expectedDatum = BidDepositDatum pkh voucherCS
 
 mkDeposit :: AuctionTerms -> Natural -> L1Runner ()
@@ -118,8 +115,7 @@ mkDeposit terms depositAmount = do
 
   bidderMoneyUtxo <- filterAdaOnlyUtxo <$> actorTipUtxo
 
-  let mp = policy terms
-      voucherCS = VoucherCS $ scriptCurrencySymbol mp
+  let voucherCS = voucherCurrencySymbol terms
       bidDepositDatum = BidDepositDatum (toPlutusKeyHash $ verificationKeyHash bidderVk) voucherCS
       bidDepositTxOut =
         TxOut
