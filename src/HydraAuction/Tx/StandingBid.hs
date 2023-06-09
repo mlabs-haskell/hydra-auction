@@ -288,11 +288,10 @@ createStandingBidDatum terms bidAmount sellerSignature bidderSk =
     voucherCS
   where
     voucherCS = voucherCurrencySymbol terms
-    auctionId = voucherCS
     derivedVK = getVerificationKey bidderSk
     bidderPKH = toPlutusKeyHash $ verificationKeyHash derivedVK
     bidderSecretKey = SecretKey $ serialiseToRawBytes bidderSk <> serialiseToRawBytes derivedVK
-    bidderMessage = fromBuiltin $ bidderSignatureMessage auctionId bidAmount bidderPKH
+    bidderMessage = fromBuiltin $ bidderSignatureMessage voucherCS bidAmount bidderPKH
     Signature bidderSignature = dsign bidderSecretKey bidderMessage
 
 moveToHydra ::
