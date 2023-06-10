@@ -105,7 +105,6 @@ common common-lang
 
 common common-offchain
   import:        common-lang
-  ghc-options:   -threaded -rtsopts
   build-depends:
     , async
     , bytestring
@@ -130,8 +129,12 @@ common common-offchain
     , unix
     , websockets
 
+common common-executable
+  import:      common-offchain
+  ghc-options: -threaded -rtsopts
+
 executable hydra-auction
-  import:         common-offchain
+  import:         common-executable
   main-is:        Main.hs
   other-modules:
     CLI.Actions
@@ -176,16 +179,12 @@ executable hydra-auction
     , hydra-plutus
     , hydra-test-utils
     , optparse-applicative
-    , ouroboros-network
-    , plutus-tx
-    , QuickCheck
-    , serialise
     , strict-containers               >=0.1.0.0
 
   hs-source-dirs: app
 
 executable hydra-auction-delegate
-  import:         common-offchain
+  import:         common-executable
   main-is:        Main.hs
   other-modules:
     DelegateServer.Parsers
@@ -199,7 +198,7 @@ executable hydra-auction-delegate
     , optparse-applicative
 
 executable hydra-auction-platform
-  import:         common-offchain
+  import:         common-executable
   main-is:        Main.hs
   hs-source-dirs: platform-app
   build-depends:
@@ -323,7 +322,7 @@ library hydra-auction-utils
     , protolude
 
 test-suite hydra-auction-test
-  import:         common-offchain
+  import:         common-executable
   type:           exitcode-stdio-1.0
   main-is:        Spec.hs
   other-modules:
