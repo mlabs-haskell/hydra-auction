@@ -280,6 +280,7 @@ library hydra-auction-utils
     HydraAuctionUtils.Parsers
     HydraAuctionUtils.Parsers.TxIn
     HydraAuctionUtils.Plutus
+    HydraAuctionUtils.Prelude
     HydraAuctionUtils.PrettyPrinting
     HydraAuctionUtils.Server.ClientId
     HydraAuctionUtils.Server.Websockets
