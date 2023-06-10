@@ -45,16 +45,6 @@ common common-lang
   if !flag(dev)
     ghc-options: -Werror
 
-  if flag(dev)
-    ghc-options: -fplugin-opt PlutusTx.Plugin:defer-errors
-
-  -- Options for Plutus Tx compilations
-  -- (some are enabled additionaly in individual modules)
-
-  ghc-options:
-    -fobject-code -fno-ignore-interface-pragmas
-    -fno-omit-interface-pragmas
-
   build-depends:
     , aeson
     , async
@@ -77,8 +67,6 @@ common common-lang
     , lens
     , lens-aeson
     , mtl
-    , plutus-ledger-api
-    , plutus-tx-plugin
     , prettyprinter
     , record-dot-preprocessor
     , record-hasfield
@@ -214,16 +202,51 @@ executable hydra-auction-platform
     , hydra-auction
     , hydra-auction-utils
 
+library hydra-auction-onchain
+  import:          common-lang
+
+  if flag(dev)
+    ghc-options: -fplugin-opt PlutusTx.Plugin:defer-errors
+
+  -- Options for Plutus Tx compilations
+  -- (some are enabled additionaly in individual modules)
+
+  ghc-options:
+    -fobject-code -fno-ignore-interface-pragmas
+    -fno-omit-interface-pragmas
+
+  exposed-modules:
+    HydraAuction.Addresses
+    HydraAuction.OnChain
+    HydraAuction.OnChain.Common
+    HydraAuction.OnChain.Deposit
+    HydraAuction.OnChain.Escrow
+    HydraAuction.OnChain.FeeEscrow
+    HydraAuction.OnChain.StandingBid
+    HydraAuction.OnChain.StateToken
+    HydraAuction.OnChain.TestNFT
+    HydraAuction.Types
+
+  build-depends:
+    , hydra-auction-utils
+    , hydra-cardano-api
+    , hydra-cluster
+    , hydra-node
+    , hydra-plutus
+    , hydra-prelude
+    , hydra-test-utils
+    , plutus-ledger-api
+    , plutus-tx
+    , plutus-tx-plugin
+
+  hs-source-dirs:  src-onchain
+
 library
   import:          common-lang
   exposed-modules:
-    HydraAuction.Addresses
     HydraAuction.Delegate
     HydraAuction.Delegate.Interface
     HydraAuction.HydraHacks
-    HydraAuction.OnChain
-    HydraAuction.OnChain.Common
-    HydraAuction.OnChain.TestNFT
     HydraAuction.Platform.Interface
     HydraAuction.Platform.Storage
     HydraAuction.Tx.Common
@@ -233,19 +256,12 @@ library
     HydraAuction.Tx.StandingBid
     HydraAuction.Tx.TermsConfig
     HydraAuction.Tx.TestNFT
-    HydraAuction.Types
     Paths_hydra_auction
-
-  other-modules:
-    HydraAuction.OnChain.Deposit
-    HydraAuction.OnChain.Escrow
-    HydraAuction.OnChain.FeeEscrow
-    HydraAuction.OnChain.StandingBid
-    HydraAuction.OnChain.StateToken
 
   build-depends:
     , cardano-api
     , directory
+    , hydra-auction-onchain
     , hydra-auction-utils
     , hydra-cardano-api
     , hydra-cluster
@@ -300,6 +316,7 @@ library hydra-auction-utils
     , hydra-test-utils
     , optparse-applicative
     , parsec
+    , plutus-ledger-api
     , plutus-tx
     , protolude
 
