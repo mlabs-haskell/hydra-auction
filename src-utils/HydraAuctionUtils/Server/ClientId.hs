@@ -1,7 +1,7 @@
 module HydraAuctionUtils.Server.ClientId (ClientId, ClientResponseScope (..), clientIsInScope) where
 
 -- Prelude imports
-import Prelude
+import HydraAuctionUtils.Prelude
 
 type ClientId = Int
 

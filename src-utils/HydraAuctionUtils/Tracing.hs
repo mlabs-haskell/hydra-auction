@@ -15,17 +15,9 @@ module HydraAuctionUtils.Tracing (
 ) where
 
 -- Prelude imports
-import Hydra.Prelude (ReaderT (runReaderT))
-import Prelude
+import HydraAuctionUtils.Prelude
 
 -- Haskell imports
-import Control.Monad.Reader (
-  MonadIO,
-  MonadReader (ask),
-  MonadTrans (lift),
- )
-import Control.Monad.State (MonadState)
-import Control.Monad.Writer (MonadWriter)
 import Control.Tracer (Tracer, natTracer, traceWith)
 
 {- | a monad that one can trace in
@@ -50,7 +42,6 @@ newtype TracerT t m a = TracerT {runTracerT :: ReaderT (Tracer m t) m a}
 
 -- these could be derived in a normal deriving clause but I feel better specifying
 -- the context myself
-deriving newtype instance MonadWriter w m => MonadWriter w (TracerT t m)
 deriving newtype instance MonadState s m => MonadState s (TracerT t m)
 
 -- | run a tracer by first applying a natural transformation to the tracer

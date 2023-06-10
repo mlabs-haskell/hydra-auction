@@ -2,8 +2,7 @@ module HydraAuctionUtils.Server.Websockets (runWebsocketsServer) where
 
 -- Prelude imports
 
-import Hydra.Prelude (traverse_)
-import Prelude
+import HydraAuctionUtils.Prelude
 
 -- Haskell imports
 
@@ -17,8 +16,6 @@ import Control.Concurrent.STM (
   readTChan,
   writeTQueue,
  )
-import Control.Monad (forever, when)
-import Control.Monad.Trans (MonadIO (..))
 import Data.Aeson (FromJSON, ToJSON, eitherDecode, encode)
 import Network.WebSockets (
   Connection,

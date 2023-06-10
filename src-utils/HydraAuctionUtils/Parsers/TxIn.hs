@@ -3,7 +3,7 @@ module HydraAuctionUtils.Parsers.TxIn (
 ) where
 
 -- Prelude imports
-import Prelude
+import HydraAuctionUtils.Prelude
 
 -- Haskell imports
 import Data.Bifunctor (first)

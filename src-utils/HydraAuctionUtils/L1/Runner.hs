@@ -18,23 +18,11 @@ module HydraAuctionUtils.L1.Runner (
 
 -- Prelude imports
 
-import Hydra.Prelude (
-  MonadIO,
-  MonadReader,
-  ReaderT,
-  ask,
-  contramap,
-  liftIO,
-  local,
-  runReaderT,
- )
+import HydraAuctionUtils.Prelude
 import Test.Hydra.Prelude (withTempDir)
-import Prelude
 
 -- Haskell imports
 
-import Control.Monad (void)
-import Control.Monad.Catch (MonadCatch, MonadMask, MonadThrow)
 import Control.Tracer (nullTracer, stdoutTracer, traceWith)
 import Data.Time (secondsToNominalDiffTime)
 import Data.Time.Clock.POSIX (posixSecondsToUTCTime)

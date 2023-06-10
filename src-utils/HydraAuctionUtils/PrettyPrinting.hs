@@ -3,7 +3,7 @@ module HydraAuctionUtils.PrettyPrinting (prettyPrintUtxo) where
 
 -- Prelude imports
 import Hydra.Prelude (fromString)
-import Prelude
+import HydraAuctionUtils.Prelude
 
 -- Haskell imports
 import Data.Map.Strict qualified as Map

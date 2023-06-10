@@ -9,7 +9,7 @@ module HydraAuctionUtils.Tx.AutoCreateTx (
 ) where
 
 -- Prelude imports
-import Prelude
+import HydraAuctionUtils.Prelude
 
 -- Haskell imports
 import Data.Foldable (Foldable (toList))

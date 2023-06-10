@@ -7,7 +7,7 @@ module HydraAuctionUtils.Tx.Build (
 ) where
 
 -- Prelude imports
-import Prelude
+import HydraAuctionUtils.Prelude
 
 -- Haskell imports
 import Data.Map qualified as Map

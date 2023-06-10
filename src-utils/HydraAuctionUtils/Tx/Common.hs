@@ -1,7 +1,7 @@
 module HydraAuctionUtils.Tx.Common (transferAda) where
 
 -- Prelude imports
-import Prelude
+import HydraAuctionUtils.Prelude
 
 -- Haskell imports
 import Data.Maybe ()
