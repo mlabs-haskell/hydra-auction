@@ -187,6 +187,14 @@ executable hydra-auction-platform
     , hydra-auction
     , hydra-auction-utils
 
+library deriving-constructors
+  import:          common-lang
+  hs-source-dirs:  deriving-constructors
+  exposed-modules:
+    Deriving
+  build-depends:
+    template-haskell
+
 library hydra-auction-onchain
   import:          common-lang
 
