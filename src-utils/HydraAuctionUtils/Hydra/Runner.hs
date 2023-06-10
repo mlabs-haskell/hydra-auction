@@ -6,15 +6,11 @@ module HydraAuctionUtils.Hydra.Runner (
 ) where
 
 -- Prelude imports
-import Prelude
+import HydraAuctionUtils.Prelude
 
 -- Haskell imports
 
-import Control.Monad (guard)
-import Control.Monad.Catch (MonadCatch, MonadMask, MonadThrow, try)
-import Control.Monad.Reader (MonadReader, ReaderT (runReaderT), ask)
-import Control.Monad.Trans (MonadIO (liftIO))
-import Control.Tracer (Tracer, contramap, stdoutTracer, traceWith)
+import Control.Tracer (Tracer, stdoutTracer, traceWith)
 import Data.Aeson (
   Result (..),
   fromJSON,

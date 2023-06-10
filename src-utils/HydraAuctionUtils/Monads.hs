@@ -16,7 +16,7 @@ module HydraAuctionUtils.Monads (
 ) where
 
 -- Prelude imports
-import Prelude
+import HydraAuctionUtils.Prelude
 
 -- Haskell imports
 import Data.Set (Set)
@@ -51,7 +51,6 @@ import PlutusLedgerApi.V1.Address qualified as PlutusAddress
 
 -- HydraAuction imports
 import CardanoClient (buildAddress)
-import Control.Monad.IO.Class (MonadIO (liftIO))
 import HydraAuctionUtils.Extras.CardanoApi (networkIdToNetwork)
 import HydraAuctionUtils.Fixture (Actor, keysFor)
 

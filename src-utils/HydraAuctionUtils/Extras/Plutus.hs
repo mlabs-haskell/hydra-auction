@@ -3,8 +3,8 @@ module HydraAuctionUtils.Extras.Plutus (module X, validatorAddress, scriptCurren
 
 -- Prelude imports
 
+import HydraAuctionUtils.Prelude
 import PlutusTx.Prelude (toBuiltin)
-import Prelude
 
 -- Plutus imports
 import PlutusLedgerApi.Common (SerialisedScript)

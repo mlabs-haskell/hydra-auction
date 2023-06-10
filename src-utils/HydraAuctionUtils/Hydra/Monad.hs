@@ -8,13 +8,10 @@ module HydraAuctionUtils.Hydra.Monad (
 ) where
 
 -- Prelude imports
-import Prelude
+import HydraAuctionUtils.Prelude
 
 -- Haskell imports
 
-import Control.Monad (void)
-import Control.Monad.State (StateT)
-import Control.Monad.Trans (MonadTrans (lift))
 import GHC.Natural (Natural)
 
 -- Cardano imports

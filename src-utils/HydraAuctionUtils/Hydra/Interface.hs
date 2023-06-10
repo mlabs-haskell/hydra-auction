@@ -8,7 +8,7 @@ module HydraAuctionUtils.Hydra.Interface (
 ) where
 
 -- Prelude imports
-import Prelude
+import HydraAuctionUtils.Prelude
 
 -- Hydra imports
 

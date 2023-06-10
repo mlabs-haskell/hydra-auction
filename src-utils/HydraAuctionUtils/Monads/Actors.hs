@@ -5,10 +5,7 @@ module HydraAuctionUtils.Monads.Actors (
 ) where
 
 -- Prelude imports
-import Prelude
-
--- Haskell imports
-import Control.Monad.Trans (MonadIO, MonadTrans (lift))
+import HydraAuctionUtils.Prelude
 
 -- Cardano imports
 import Cardano.Api.UTxO qualified as UTxO

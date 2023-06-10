@@ -5,7 +5,7 @@ module HydraAuctionUtils.Time (
 ) where
 
 -- Prelude imports
-import Prelude
+import HydraAuctionUtils.Prelude
 
 -- Haskell imports
 import Control.Monad.TimeMachine (MonadTime (getCurrentTime))

@@ -6,8 +6,7 @@ module HydraAuctionUtils.L1.Runner.Time (
 
 -- Prelude imports
 
-import Hydra.Prelude (ask, liftIO, when)
-import Prelude
+import HydraAuctionUtils.Prelude
 
 -- Haskell imports
 import Control.Concurrent (threadDelay)

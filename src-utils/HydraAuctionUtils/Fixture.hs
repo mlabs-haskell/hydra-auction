@@ -14,16 +14,14 @@ module HydraAuctionUtils.Fixture (
 ) where
 
 -- Prelude imports
-import Prelude
+import HydraAuctionUtils.Prelude
 
 -- Haskell imports
 import Control.Monad.Extra (findM, unless)
 import Data.Aeson qualified as Aeson
 import Data.Bifunctor (first)
 import Data.Char (toLower)
-import Data.Map (Map)
 import Data.Map qualified as Map
-import GHC.Generics (Generic)
 import System.FilePath ((<.>), (</>))
 
 -- Hydra imports

@@ -10,7 +10,7 @@ module HydraAuctionUtils.Parsers (
 ) where
 
 -- Prelude imports
-import Prelude
+import HydraAuctionUtils.Prelude
 
 -- Haskell imports
 

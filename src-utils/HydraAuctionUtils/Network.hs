@@ -1,11 +1,11 @@
 module HydraAuctionUtils.Network (runHydraClient) where
 
 -- Prelude imports
-import Prelude
+import HydraAuctionUtils.Prelude
 
 -- Haskell imports
 
-import Control.Tracer (contramap, nullTracer)
+import Control.Tracer (nullTracer)
 import Data.Text qualified as Text
 import Network.WebSockets (runClient)
 

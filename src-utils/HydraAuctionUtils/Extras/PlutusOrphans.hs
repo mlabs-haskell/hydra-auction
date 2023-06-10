@@ -4,10 +4,9 @@
 module HydraAuctionUtils.Extras.PlutusOrphans () where
 
 -- Prelude imports
-import Prelude
+import HydraAuctionUtils.Prelude
 
 -- Haskell imports
-import Control.Monad (when)
 import Data.Aeson (FromJSON (..), ToJSON (..))
 import Data.ByteString.Base16 qualified as Base16
 import Data.Text.Encoding (decodeUtf8, encodeUtf8)

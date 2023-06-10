@@ -7,7 +7,6 @@ module HydraAuctionUtils.L1.Runner.Tracer (
 ) where
 
 -- Prelude imports
-
 import Hydra.Prelude (
   IOMode (ReadWriteMode),
   TVar,
@@ -15,14 +14,13 @@ import Hydra.Prelude (
   onException,
   withFile,
  )
-import Prelude
+import HydraAuctionUtils.Prelude
 
 -- Haskell imports
 
 import Control.Concurrent.STM.TVar (modifyTVar, newTVarIO, readTVarIO)
 import Control.Tracer (Tracer (..))
 import Data.Aeson (FromJSON, ToJSON)
-import GHC.Generics (Generic)
 import System.FilePath ((</>))
 
 -- Hydra imports

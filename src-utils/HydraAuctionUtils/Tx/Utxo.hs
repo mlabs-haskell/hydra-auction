@@ -9,8 +9,8 @@ module HydraAuctionUtils.Tx.Utxo (
 
 -- Prelude imports
 
+import HydraAuctionUtils.Prelude
 import PlutusTx.Prelude (emptyByteString)
-import Prelude
 
 -- Haskell imports
 import Data.List (sort)

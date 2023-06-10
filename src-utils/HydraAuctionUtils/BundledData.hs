@@ -5,7 +5,7 @@ module HydraAuctionUtils.BundledData (
 ) where
 
 -- Prelude imports
-import Prelude
+import HydraAuctionUtils.Prelude
 
 -- Haskell imports
 import Data.Aeson qualified as Aeson
