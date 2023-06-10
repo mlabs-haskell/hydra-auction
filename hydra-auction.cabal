@@ -47,36 +47,15 @@ common common-lang
 
   build-depends:
     , aeson
-    , async
     , base
     , base16-bytestring
-    , bytestring
-    , cardano-api
-    , cardano-ledger-core
-    , containers
-    , contra-tracer
-    , ed25519
-    , exceptions
-    , extra
-    , filepath
-    , hydra-cardano-api
-    , hydra-cluster
-    , hydra-node
-    , hydra-plutus
-    , hydra-prelude
     , lens
     , lens-aeson
     , mtl
-    , prettyprinter
+    , plutus-ledger-api
     , record-dot-preprocessor
     , record-hasfield
-    , stm
-    , text
-    , time
-    , time-machine
     , transformers
-    , unix
-    , websockets
 
   default-extensions:
     NoImplicitPrelude
@@ -124,8 +103,35 @@ common common-lang
 
   default-language:   Haskell2010
 
+common common-offchain
+  import:        common-lang
+  ghc-options:   -threaded -rtsopts
+  build-depends:
+    , async
+    , bytestring
+    , cardano-api
+    , cardano-ledger-core
+    , containers
+    , contra-tracer
+    , ed25519
+    , exceptions
+    , extra
+    , filepath
+    , hydra-cardano-api
+    , hydra-cluster
+    , hydra-node
+    , hydra-plutus
+    , hydra-prelude
+    , prettyprinter
+    , stm
+    , text
+    , time
+    , time-machine
+    , unix
+    , websockets
+
 executable hydra-auction
-  import:         common-lang
+  import:         common-offchain
   main-is:        Main.hs
   other-modules:
     CLI.Actions
@@ -164,6 +170,7 @@ executable hydra-auction
     , directory
     , haskeline
     , hydra-auction
+    , hydra-auction-onchain
     , hydra-auction-utils
     , hydra-cardano-api
     , hydra-plutus
@@ -174,30 +181,27 @@ executable hydra-auction
     , QuickCheck
     , serialise
     , strict-containers               >=0.1.0.0
-    , text
 
   hs-source-dirs: app
-  ghc-options:    -threaded -rtsopts
 
 executable hydra-auction-delegate
-  import:         common-lang
+  import:         common-offchain
   main-is:        Main.hs
   other-modules:
     DelegateServer.Parsers
     HydraAuction.Delegate.Server
 
   hs-source-dirs: delegate-app
-  ghc-options:    -threaded -rtsopts
   build-depends:
     , hydra-auction
+    , hydra-auction-onchain
     , hydra-auction-utils
     , optparse-applicative
 
 executable hydra-auction-platform
-  import:         common-lang
+  import:         common-offchain
   main-is:        Main.hs
   hs-source-dirs: platform-app
-  ghc-options:    -threaded -rtsopts
   build-depends:
     , hydra-auction
     , hydra-auction-utils
@@ -235,14 +239,13 @@ library hydra-auction-onchain
     , hydra-plutus
     , hydra-prelude
     , hydra-test-utils
-    , plutus-ledger-api
     , plutus-tx
     , plutus-tx-plugin
 
   hs-source-dirs:  src-onchain
 
 library
-  import:          common-lang
+  import:          common-offchain
   exposed-modules:
     HydraAuction.Delegate
     HydraAuction.Delegate.Interface
@@ -276,7 +279,7 @@ library
   hs-source-dirs:  src
 
 library hydra-auction-utils
-  import:          common-lang
+  import:          common-offchain
   hs-source-dirs:  src-utils
   exposed-modules:
     HydraAuctionUtils.BundledData
@@ -316,12 +319,11 @@ library hydra-auction-utils
     , hydra-test-utils
     , optparse-applicative
     , parsec
-    , plutus-ledger-api
     , plutus-tx
     , protolude
 
 test-suite hydra-auction-test
-  import:         common-lang
+  import:         common-offchain
   type:           exitcode-stdio-1.0
   main-is:        Spec.hs
   other-modules:
@@ -346,6 +348,7 @@ test-suite hydra-auction-test
     , containers
     , directory
     , hydra-auction
+    , hydra-auction-onchain
     , hydra-auction-utils
     , hydra-cardano-api
     , hydra-cluster
@@ -354,7 +357,6 @@ test-suite hydra-auction-test
     , hydra-test-utils
     , plutus-cbor
     , plutus-tx
-    , plutus-tx-plugin
     , process
     , QuickCheck
     , tasty
@@ -362,5 +364,5 @@ test-suite hydra-auction-test
     , tasty-hunit
     , text
 
+  -- FIXME: separate Frontend CLI lib
   hs-source-dirs: test app
-  ghc-options:    -threaded -rtsopts
