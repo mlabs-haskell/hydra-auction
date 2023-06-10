@@ -145,31 +145,14 @@ executable hydra-auction
     CLI.Watch
 
   build-depends:
-    , aeson
     , ansi-terminal
     , array
     , base
-    , bech32
-    , bech32-th
     , bytestring
     , cardano-api
-    , cardano-binary
     , cardano-crypto-class
-    , cardano-ledger-alonzo
-    , cardano-ledger-alonzo-test
-    , cardano-ledger-babbage
-    , cardano-ledger-babbage-test
-    , cardano-ledger-byron
-    , cardano-ledger-core
-    , cardano-ledger-shelley
-    , cardano-ledger-shelley-ma
-    , cardano-ledger-shelley-ma-test
-    , cardano-ledger-shelley-test
     , cardano-prelude
-    , cardano-slotting
-    , cborg
     , containers
-    , data-default
     , directory
     , haskeline
     , hydra-auction
@@ -179,7 +162,6 @@ executable hydra-auction
     , hydra-plutus
     , hydra-test-utils
     , optparse-applicative
-    , strict-containers               >=0.1.0.0
 
   hs-source-dirs: app
 
@@ -341,7 +323,6 @@ test-suite hydra-auction-test
     Unit.Common
 
   build-depends:
-    , aeson
     , bytestring
     , cardano-api
     , containers
@@ -361,7 +342,6 @@ test-suite hydra-auction-test
     , tasty
     , tasty-hspec
     , tasty-hunit
-    , text
 
   -- FIXME: separate Frontend CLI lib
   hs-source-dirs: test app
