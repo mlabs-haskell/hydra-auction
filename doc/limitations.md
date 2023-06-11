@@ -3,12 +3,9 @@
 ## Limitations from current Hydra implementation state
 
 * We use our custom Head commiting transaction constuction,
-  instead of calling Hydra Node command because of two reasons:
+  instead of calling Hydra Node command because of:
   * Script commits are not supported by Hydra API.
     Commiting script UTxO is main part of our project.
-  * Multiple UTxO commits not supported
-    by both Hydra API and on-chain scripts.
-    We need them to put commit collateral UTxO for delegate commiting standing bid.
 * Querying different L2 protocol parameters is not supported.
   Now we just ignoring that and relying on delegate server
   knowing L2 protocol-parameters used by L2,
@@ -26,6 +23,10 @@
   on some form of communication or centralization.
   This issue covers the matter:
   https://github.com/input-output-hk/hydra/issues/240
+* Peer network timeouts are not always handled
+  and overall strategy on them is not clear.
+  https://github.com/input-output-hk/hydra/issues/188#issuecomment-1583110768
+* Hydra error responses strategy is not clear
 
 ## Limitations inherent in Hydra
 
@@ -62,6 +63,7 @@
 
 * Protocol may stuck if there are too many delegates
   to fit them into fee distribution transation.
+* We use very basic tx finality and timeouts strategy.
 * Scripts are not optimized for Tx cost
   and reference scripts are not used.
 * No model-based or property-based testing of protocol is performed.
@@ -73,3 +75,49 @@
   This is only to simplify demonstration,
   no real limitation for that in scripts exists.
 * Hardcoded auction lot asset class is used.
+
+# Tech debt
+
+## Owned
+
+
+* Testing
+  * Our E2E tests do not cover most of non-succeseful usecases.
+    This includes onchain logic coverage.
+  * We almost do not use PDD and unit-tests.
+    Most of code is covered by E2E tests,
+    most of `*-utils` are not covered separately.
+* Type safety and exceptions
+  * We sometimes use plain `Integers`
+  for ADA amount (should be `Lovelace`) and time-units.
+  * Networking exceptions are not handled.
+* Architecture and libraries
+  * We do not have generic tx constraints implementation.
+    This would fix a lot of logic/code duplicity
+    between `Tx.*` and `OnChain.*`.
+    Having generic Tx parsing would simplify a lot of things as well.
+  * Scripts/Tokens de-functionalization may work
+    without manual `XAdress` newtypes, and overall be simpler.
+  * Platform server utils may be defined more simple and generic.
+    For example `Filter`s datatypes may be unifed with GADT.
+* Naming and domain
+  * Overall `UTxO` naming (single TxOut vs multiple) is very inconsistent.
+  * `Tx.*` functionas are not very consistent in naming.
+* Linting and infra
+  * Issue: Add linting for 80 symbols in line infra #149
+  * Not all MLabs styling guidelines are folowed (see issues)
+
+## Depending on parent libs
+
+* `Extras.Plutus` is still required.
+  See: https://github.com/input-output-hk/plutus-apps/issues/1082#issuecomment-1586306926
+  * And `aeson` orphans as well:
+    https://github.com/input-output-hk/plutus/issues/5368
+* `AuctionTerms` encoding
+  * `PubKey` cannot be hashed on-chain:
+    https://github.com/input-output-hk/plutus/issues/5369
+  * `Head` is for off-chain use only:
+    https://github.com/input-output-hk/hydra/issues/919
+* `Ord Head` missing: https://github.com/input-output-hk/hydra/pull/918
+* Hydra errors handling hacks in Delegate:
+  https://github.com/input-output-hk/hydra/issues/839
