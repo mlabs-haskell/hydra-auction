@@ -340,6 +340,7 @@ test-suite hydra-auction-test
     , plutus-tx
     , process
     , QuickCheck
+    , silently
     , tasty
     , tasty-hspec
     , tasty-hunit
