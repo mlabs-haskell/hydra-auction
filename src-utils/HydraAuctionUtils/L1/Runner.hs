@@ -104,18 +104,19 @@ data ExecutionContext = MkExecutionContext
 -}
 newtype L1Runner a = MkRunner
   {run :: ReaderT ExecutionContext IO a}
-  deriving
+  deriving newtype
     ( Functor
     , Applicative
     , Monad
     , MonadIO
     , MonadFail
     , MonadReader ExecutionContext
+    , MonadBase IO
+    , MonadBaseControl IO
     , MonadThrow
     , MonadCatch
     , MonadMask
     )
-    via ReaderT ExecutionContext IO
 
 instance MonadQueryUtxo L1Runner where
   queryUtxo query = do

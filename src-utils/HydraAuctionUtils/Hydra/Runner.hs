@@ -79,6 +79,8 @@ newtype HydraRunner a = MkHydraRunner
     , MonadIO
     , MonadFail
     , MonadReader HydraExecutionContext
+    , MonadBase IO
+    , MonadBaseControl IO
     , MonadThrow
     , MonadCatch
     , MonadMask

@@ -299,10 +299,12 @@ library hydra-auction-utils
     , HUnit
     , hydra-plutus
     , hydra-test-utils
+    , monad-control
     , optparse-applicative
     , parsec
     , plutus-tx
     , protolude
+    , transformers-base
 
 test-suite hydra-auction-test
   import:         common-executable

@@ -35,6 +35,8 @@ newtype CompositeRunner a = MkCompositeRunner
     , MonadIO
     , MonadFail
     , MonadReader CompositeExecutionContext
+    , MonadBase IO
+    , MonadBaseControl IO
     , MonadThrow
     , MonadCatch
     , MonadMask
