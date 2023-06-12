@@ -1,20 +1,15 @@
 module EndToEnd.Ledger.L2 (testSuite) where
 
 -- Prelude import
-import Prelude
+import HydraAuctionUtils.Prelude
 
 -- Haskell imports
 
-import Control.Monad (replicateM_, void)
-import Control.Monad.Trans (MonadIO (..))
 import Data.Map qualified as Map
 
 -- Haskell test imports
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (Assertion, testCase)
-
--- Hydra imports
-import Hydra.Prelude (ask)
 
 -- Hydra auction imports
 
@@ -148,7 +143,7 @@ bidderBuysTest = mkAssertion $ do
     liftIO $ executeL1RunnerWithNodeAs node bidder2 $ do
       waitUntil $ biddingEnd terms
       bidderBuys terms
-      assertNFTNumEquals bidder2 1
+      lift $ assertNFTNumEquals bidder2 1
 
     -- Delegates got fees
 

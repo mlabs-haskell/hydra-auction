@@ -12,8 +12,8 @@ module EndToEnd.HydraUtils (
 ) where
 
 -- Preludes import
-import Hydra.Prelude (MonadIO (liftIO), contramap, toList)
-import Prelude
+import Hydra.Prelude (toList)
+import HydraAuctionUtils.Prelude
 
 -- Haskell import
 

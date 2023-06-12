@@ -5,10 +5,12 @@ module HydraAuctionUtils.L1.Runner (
   L1Runner,
   executeL1Runner,
   executeL1RunnerWithNodeAs,
+  executeL1RunnerWithNode,
   executeTestL1Runner,
   dockerNode,
   StateDirectory (..),
   ExecutionContext (..),
+  -- FIXME: reexport
   withActor,
   fileTracer,
   toSlotNo,
@@ -88,7 +90,7 @@ import HydraAuctionUtils.Monads (
   UtxoQuery (..),
   toSlotNo,
  )
-import HydraAuctionUtils.Monads.Actors (MonadHasActor (..))
+import HydraAuctionUtils.Monads.Actors (WithActorT, withActor)
 import HydraAuctionUtils.Tx.Common (transferAda)
 
 {- | Execution context holding the current tracer,
@@ -97,7 +99,6 @@ import HydraAuctionUtils.Tx.Common (transferAda)
 data ExecutionContext = MkExecutionContext
   { tracer :: !(Tracer IO HydraAuctionLog)
   , node :: !RunningNode
-  , actor :: !Actor
   }
 
 {- | HydraAuction specific L1 computation executor.
@@ -196,20 +197,12 @@ instance MonadTrace L1Runner where
     MkExecutionContext {tracer} <- ask
     liftIO $ traceWith tracer message
 
-instance MonadHasActor L1Runner where
-  askActor = do
-    MkExecutionContext {actor} <- ask
-    return actor
-
 executeL1Runner ::
   ExecutionContext ->
   L1Runner a ->
   IO a
 executeL1Runner context runner =
   runReaderT (run runner) context
-
-withActor :: Actor -> L1Runner a -> L1Runner a
-withActor actor = local (\ctx -> ctx {actor = actor})
 
 -- | Executes a test runner using a temporary directory as the @StateDirectory@.
 executeTestL1Runner :: L1Runner () -> IO ()
@@ -219,7 +212,7 @@ executeTestL1Runner runner = do
       nullTracer
       tmpDir
       $ \node ->
-        executeL1RunnerWithNodeAs node Alice runner
+        executeL1RunnerWithNode node runner
 
 dockerNode :: RunningNode
 dockerNode =
@@ -228,12 +221,13 @@ dockerNode =
     , nodeSocket = "./devnet/node.socket"
     }
 
-executeL1RunnerWithNodeAs :: forall x. RunningNode -> Actor -> L1Runner x -> IO x
-executeL1RunnerWithNodeAs node actor runner = do
+executeL1RunnerWithNode node runner = do
   let tracer = contramap show stdoutTracer
-  executeL1Runner
-    (MkExecutionContext {tracer = tracer, node, actor})
-    runner
+  executeL1Runner (MkExecutionContext {tracer = tracer, node}) runner
+
+executeL1RunnerWithNodeAs :: forall x. RunningNode -> Actor -> WithActorT L1Runner x -> IO x
+executeL1RunnerWithNodeAs node actor runner =
+  executeL1RunnerWithNode node (withActor actor runner)
 
 -- * Utils
 

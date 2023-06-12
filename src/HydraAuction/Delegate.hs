@@ -69,7 +69,6 @@ import HydraAuction.Types (
  )
 import HydraAuctionUtils.Composite.Runner (
   CompositeRunner,
-  runHydraInComposite,
   runL1RunnerInComposite,
  )
 import HydraAuctionUtils.Fixture (partyFor)
@@ -132,7 +131,7 @@ delegateFrontendRequestStep (clientId, request) =
                 newVoucherCS = standingBidVoucherCS datum
             if validNewBidTerms auctionTerms newVoucherCS standingBidTerms newBidTerms
               then do
-                lift $ runHydraInComposite $ do
+                lift $ do
                   tx <-
                     createNewBidTx
                       auctionTerms
@@ -264,15 +263,14 @@ delegateEventStep event = case event of
             Nothing -> Nothing
       resentBid actor utxoState auctionTerms newBidDatum = do
         let (MkOpenHeadUtxo {standingBidUtxo, collateralUtxo}) = utxoState
-        runHydraInComposite $ do
-          newTx <-
-            createNewBidTx
-              auctionTerms
-              actor
-              standingBidUtxo
-              collateralUtxo
-              newBidDatum
-          submitTx newTx
+        newTx <-
+          createNewBidTx
+            auctionTerms
+            actor
+            standingBidUtxo
+            collateralUtxo
+            newBidDatum
+        submitTx newTx
   HydraEvent ReadyToFanout {} -> do
     sendCommand Fanout
     return []
@@ -375,7 +373,7 @@ abort ::
 abort reason = do
   state <- get
   let command = if wasOpened state then Close else Abort
-  lift $ runHydraInComposite $ sendCommand command
+  lift $ sendCommand command
   updateStateAndResponse $ AbortRequested reason
 
 updateStateAndResponse ::

@@ -44,6 +44,7 @@ import HydraAuctionUtils.Monads (
   logMsg,
  )
 import HydraAuctionUtils.Monads.Actors (
+  WithActorT,
   actorTipUtxo,
   addressAndKeys,
  )
@@ -58,7 +59,7 @@ import HydraAuctionUtils.Tx.Utxo (
   filterAdaOnlyUtxo,
  )
 
-distributeFee :: AuctionTerms -> L1Runner ()
+distributeFee :: AuctionTerms -> WithActorT L1Runner ()
 distributeFee terms = do
   logMsg "Distributing fees to delegates"
 

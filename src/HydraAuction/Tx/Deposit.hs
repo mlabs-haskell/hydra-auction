@@ -8,10 +8,7 @@ module HydraAuction.Tx.Deposit (
 ) where
 
 -- Prelude imports
-import Prelude
-
--- Haskell imports
-import Control.Monad (void)
+import HydraAuctionUtils.Prelude
 
 -- Plutus imports
 import PlutusLedgerApi.V1.Crypto (PubKeyHash)
@@ -43,6 +40,7 @@ import Hydra.Cardano.Api (
 import HydraAuction.OnChain (AuctionScript (..), voucherCurrencySymbol)
 import HydraAuction.OnChain.Common (stageToInterval)
 import HydraAuctionUtils.Monads.Actors (
+  WithActorT,
   actorTipUtxo,
   addressAndKeys,
  )
@@ -105,7 +103,7 @@ findDepositMatchingPubKeyHash terms pkh allDeposits =
     voucherCS = voucherCurrencySymbol terms
     expectedDatum = BidDepositDatum pkh voucherCS
 
-mkDeposit :: AuctionTerms -> Natural -> L1Runner ()
+mkDeposit :: AuctionTerms -> Natural -> WithActorT L1Runner ()
 mkDeposit terms depositAmount = do
   logMsg "Doing bidder deposit"
 
@@ -139,7 +137,7 @@ mkDeposit terms depositAmount = do
         , validityBound = stageToInterval terms AnnouncedStage
         }
 
-losingBidderClaimDeposit :: AuctionTerms -> L1Runner ()
+losingBidderClaimDeposit :: AuctionTerms -> WithActorT L1Runner ()
 losingBidderClaimDeposit terms = do
   logMsg "Claiming bidder deposit"
 
@@ -149,7 +147,7 @@ losingBidderClaimDeposit terms = do
   standingBidUtxo <- scriptUtxos StandingBid terms
   allDeposits <- scriptUtxos Deposit terms
 
-  deposit <- findDepositMatchingPubKeyHash terms (toPlutusKeyHash $ verificationKeyHash bidderVk) allDeposits
+  deposit <- lift $ findDepositMatchingPubKeyHash terms (toPlutusKeyHash $ verificationKeyHash bidderVk) allDeposits
 
   void $
     autoSubmitAndAwaitTx $
@@ -168,7 +166,7 @@ losingBidderClaimDeposit terms = do
     depositScript = scriptPlutusScript Deposit terms
     depositWitness = mkInlinedDatumScriptWitness depositScript LosingBidder
 
-sellerClaimDepositFor :: AuctionTerms -> PubKeyHash -> L1Runner ()
+sellerClaimDepositFor :: AuctionTerms -> PubKeyHash -> WithActorT L1Runner ()
 sellerClaimDepositFor terms bidderPkh = do
   logMsg "Seller claiming bidder deposit"
 
@@ -180,7 +178,7 @@ sellerClaimDepositFor terms bidderPkh = do
 
   allDeposits <- scriptUtxos Deposit terms
 
-  deposit <- findDepositMatchingPubKeyHash terms bidderPkh allDeposits
+  deposit <- lift $ findDepositMatchingPubKeyHash terms bidderPkh allDeposits
 
   void $
     autoSubmitAndAwaitTx $
@@ -199,7 +197,7 @@ sellerClaimDepositFor terms bidderPkh = do
     depositScript = scriptPlutusScript Deposit terms
     depositWitness = mkInlinedDatumScriptWitness depositScript SellerClaimsDeposit
 
-cleanupDeposit :: AuctionTerms -> L1Runner ()
+cleanupDeposit :: AuctionTerms -> WithActorT L1Runner ()
 cleanupDeposit terms = do
   logMsg "Cleanup bidder deposit"
 
@@ -209,7 +207,9 @@ cleanupDeposit terms = do
 
   allDeposits <- scriptUtxos Deposit terms
 
-  deposit <- findDepositMatchingPubKeyHash terms (toPlutusKeyHash $ verificationKeyHash bidderVk) allDeposits
+  deposit <-
+    lift $
+      findDepositMatchingPubKeyHash terms (toPlutusKeyHash $ verificationKeyHash bidderVk) allDeposits
   void $
     autoSubmitAndAwaitTx $
       AutoCreateParams

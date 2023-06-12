@@ -28,7 +28,8 @@ import HydraAuctionUtils.L1.Runner (
   L1Runner,
   withActor,
  )
-import HydraAuctionUtils.L1.Runner.Time (waitUntil)
+import HydraAuctionUtils.Monads (waitUntil)
+import HydraAuctionUtils.Monads.Actors (WithActorT)
 import HydraAuctionUtils.Types.Natural (intToNatural)
 
 -- CLI imports
@@ -70,7 +71,7 @@ mockDelegateState =
 auctionName :: AuctionName
 auctionName = "test"
 
-handleCliActionWithMockDelegates :: CliAction -> L1Runner ()
+handleCliActionWithMockDelegates :: CliAction -> WithActorT L1Runner ()
 handleCliActionWithMockDelegates action = do
   delegateS <- newIORef mockDelegateState
   handleCliAction (\_ -> pure ()) delegateS action

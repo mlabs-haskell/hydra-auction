@@ -13,13 +13,11 @@ module HydraAuction.Tx.StandingBid (
 ) where
 
 -- Prelude imports
-import Hydra.Prelude (MonadIO, rightToMaybe, void)
-import Prelude
+import Hydra.Prelude (rightToMaybe)
+import HydraAuctionUtils.Prelude
 
 -- Haskell imports
 
-import Control.Monad.IO.Class (MonadIO (..))
-import Control.Monad.Reader (MonadReader (ask))
 import Crypto.Sign.Ed25519 (SecretKey (..), Signature (..), dsign)
 import Data.Maybe (listToMaybe, mapMaybe)
 
@@ -73,6 +71,7 @@ import HydraAuction.OnChain.StandingBid (
   sellerSignatureMessage,
  )
 import HydraAuctionUtils.Monads.Actors (
+  WithActorT,
   actorTipUtxo,
   addressAndKeys,
   askActor,
@@ -153,7 +152,7 @@ currentWinningBidder terms = do
         Nothing -> Nothing
     Nothing -> Nothing
 
-newBid :: AuctionTerms -> Natural -> BuiltinByteString -> L1Runner ()
+newBid :: AuctionTerms -> Natural -> BuiltinByteString -> WithActorT L1Runner ()
 newBid terms bidAmount sellerSignature = do
   actor <- askActor
   (_, _, submitterSk) <- addressAndKeysForActor actor
@@ -298,11 +297,11 @@ moveToHydra ::
   HeadId ->
   AuctionTerms ->
   (TxIn, TxOut CtxUTxO) ->
-  L1Runner ()
+  WithActorT L1Runner ()
 moveToHydra headId terms (standingBidTxIn, standingBidTxOut) = do
   -- FIXME: get headId from AuctionTerms
   -- FIXME: should use already deployed registry
-  (_, scriptRegistry) <- do
+  (_, scriptRegistry) <- lift $ do
     MkExecutionContext {node} <- ask
     liftIO $ prepareScriptRegistry node
 
@@ -321,7 +320,7 @@ moveToHydra headId terms (standingBidTxIn, standingBidTxOut) = do
         standingBidValidator terms
     standingBidWitness = mkInlinedDatumScriptWitness script MoveToHydra
 
-cleanupTx :: AuctionTerms -> L1Runner ()
+cleanupTx :: AuctionTerms -> WithActorT L1Runner ()
 cleanupTx terms = do
   logMsg "Doing standing bid cleanup"
 

@@ -1,7 +1,7 @@
 module HydraAuction.Tx.TestNFT (mintOneTestNFT, findTestNFT) where
 
 -- Prelude imports
-import Prelude
+import HydraAuctionUtils.Prelude
 
 -- Haskell imports
 import Data.Map qualified as Map
@@ -35,6 +35,7 @@ import HydraAuction.OnChain.TestNFT (
  )
 import HydraAuctionUtils.L1.Runner (L1Runner)
 import HydraAuctionUtils.Monads.Actors (
+  WithActorT (..),
   actorTipUtxo,
   addressAndKeys,
  )
@@ -60,7 +61,7 @@ findTestNFT (UTxO.UTxO m) = Map.foldrWithKey isTestNFT Nothing m
         then pure k
         else acc
 
-mintOneTestNFT :: L1Runner Tx
+mintOneTestNFT :: WithActorT L1Runner Tx
 mintOneTestNFT = do
   (actorAddress, _, actorSk) <- addressAndKeys
 

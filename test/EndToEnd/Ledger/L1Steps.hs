@@ -5,12 +5,9 @@ module EndToEnd.Ledger.L1Steps (
 ) where
 
 -- Prelude
-import PlutusTx.Prelude ((*), (+))
-import Prelude hiding ((*), (+))
 
--- Haskell imports
-import Control.Monad.Trans (liftIO)
-import Data.Maybe (fromJust)
+import HydraAuctionUtils.Prelude hiding ((*), (+))
+import PlutusTx.Prelude ((*), (+))
 
 -- Hydra imports
 
@@ -41,7 +38,7 @@ import HydraAuctionUtils.Types.Natural (
 -- HydraAuction test imports
 
 import EndToEnd.Utils (assertNFTNumEquals)
-import HydraAuctionUtils.Monads.Actors (MonadHasActor (..))
+import HydraAuctionUtils.Monads.Actors (MonadHasActor (..), WithActorT (..))
 
 correctBidNo :: AuctionTerms -> Integer -> Natural
 correctBidNo terms n =
@@ -53,7 +50,8 @@ correctBidNo terms n =
             + n * naturalToInt (minimumBidIncrement terms)
     else error "BidNo should be non-negative"
 
-createTermsWithTestNFT :: AuctionTermsConfig -> HeadId -> L1Runner AuctionTerms
+createTermsWithTestNFT ::
+  AuctionTermsConfig -> HeadId -> WithActorT L1Runner AuctionTerms
 createTermsWithTestNFT config headId = do
   seller <- askActor
 
@@ -68,14 +66,14 @@ createTermsWithTestNFT config headId = do
         utxoRef
         (headIdToCurrencySymbol headId)
 
-  assertNFTNumEquals seller 1
+  lift $ assertNFTNumEquals seller 1
 
   liftIO $ configToAuctionTerms config dynamicState
 
-announceAndStartBidding :: AuctionTerms -> L1Runner ()
+announceAndStartBidding :: AuctionTerms -> WithActorT L1Runner ()
 announceAndStartBidding terms = do
   announceAuction terms
 
-  waitUntil $ biddingStart terms
+  lift $ waitUntil $ biddingStart terms
 
   startBidding terms
