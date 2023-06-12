@@ -3,6 +3,7 @@ module HydraAuctionUtils.Hydra.Runner (
   HydraExecutionContext (..),
   executeHydraRunnerFakingParams,
   executeHydraRunner,
+  runL1RunnerInComposite,
 ) where
 
 -- Prelude imports
@@ -57,7 +58,11 @@ import HydraAuctionUtils.Monads (
   MonadSubmitTx (..),
   MonadTrace (..),
  )
-import HydraAuctionUtils.Monads.Actors (MonadHasActor (..))
+import HydraAuctionUtils.Monads.Actors (
+  MonadHasActor (..),
+  WithActorT,
+  withActor,
+ )
 
 data HydraRunnerLog
   = HydraRunnerStringMessage String
@@ -158,15 +163,24 @@ executeHydraRunner ::
 executeHydraRunner context runner =
   runReaderT (unHydraRunner runner) context
 
-executeHydraRunnerFakingParams :: HydraClient -> HydraRunner a -> L1Runner a
+executeHydraRunnerFakingParams ::
+  HydraClient -> HydraRunner a -> WithActorT L1Runner a
 executeHydraRunnerFakingParams node monad = do
-  l1Context <- ask
-  liftIO $ executeHydraRunner (context l1Context) monad
+  l1Context <- lift ask
+  actor <- askActor
+  liftIO $ executeHydraRunner (context l1Context actor) monad
   where
     tracer = contramap show stdoutTracer
-    context l1Context =
+    context l1Context actor =
       MkHydraExecutionContext
         { node = node
         , tracer = tracer
         , l1Context = l1Context
+        , actor = actor
         }
+
+runL1RunnerInComposite :: forall a. WithActorT L1Runner a -> HydraRunner a
+runL1RunnerInComposite action = do
+  actor <- askActor
+  MkHydraExecutionContext {l1Context} <- ask
+  liftIO $ executeL1Runner l1Context $ withActor actor action

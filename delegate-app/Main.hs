@@ -70,10 +70,7 @@ import HydraAuction.OnChain.Common (secondsLeftInInterval, stageToInterval)
 import HydraAuction.Tx.Common (currentAuctionStage)
 import HydraAuction.Types (AuctionTerms)
 import HydraAuctionUtils.Composite.Runner (
-  CompositeExecutionContext (..),
   CompositeRunner,
-  executeCompositeRunner,
-  runHydraInComposite,
  )
 import HydraAuctionUtils.Hydra.Monad (AwaitedHydraEvent (..), waitForHydraEvent)
 import HydraAuctionUtils.Hydra.Runner (HydraRunner, executeHydraRunnerFakingParams)
@@ -259,7 +256,7 @@ runDelegateServer conf = do
             DelegateLogicStepsThread ->
               void $
                 liftIO $ do
-                  executeCompositeRunnerForConfig $
+                  executeHydraRunnerForConfig $
                     runDelegateLogicSteps
                       (tick conf)
                       eventQueue
@@ -269,7 +266,7 @@ runDelegateServer conf = do
               mbQueueAuctionPhases (tick conf) eventQueue toClientsChannel
             QueueHydraEventsThread ->
               liftIO $
-                executeCompositeRunnerForConfig . runHydraInComposite $
+                executeHydraRunnerForConfig $
                   queueHydraEvents eventQueue
 
   liftIO $
@@ -285,15 +282,10 @@ runDelegateServer conf = do
       v <- takeMVar clientCounter
       putMVar clientCounter (v + 1)
       return v
-    executeCompositeRunnerForConfig action =
+    executeHydraRunnerForConfig action =
       runHydraClient (hydraNodeHost conf) True $ \hydraClient -> do
         context <- executeL1RunnerWithNodeAs (cardanoNode conf) (l1Actor conf) $ do
-          l1Context <- ask
-          executeHydraRunnerFakingParams hydraClient $ do
-            hydraContext <- ask
-            return $
-              MkCompositeExecutionContext {hydraContext, l1Context}
-        executeCompositeRunner context action
+          executeHydraRunnerFakingParams hydraClient action
 
 queueHydraEvents ::
   forall void. TQueue DelegateEvent -> HydraRunner void

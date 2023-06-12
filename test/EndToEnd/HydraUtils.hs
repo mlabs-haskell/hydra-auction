@@ -55,11 +55,7 @@ import Hydra.Cardano.Api (TxId)
 import HydraAuction.Delegate.Interface (DelegateState, initialState)
 import HydraAuction.HydraHacks (prepareScriptRegistry)
 import HydraAuctionUtils.BundledData (lookupProtocolParamPath)
-import HydraAuctionUtils.Composite.Runner (
-  CompositeExecutionContext (..),
-  CompositeRunner,
-  executeCompositeRunner,
- )
+import HydraAuctionUtils.Composite.Runner (CompositeRunner)
 import HydraAuctionUtils.Fixture (
   Actor (..),
   ActorKind (..),
@@ -67,7 +63,10 @@ import HydraAuctionUtils.Fixture (
   hydraKeysFor,
   keysFor,
  )
-import HydraAuctionUtils.Hydra.Runner (executeHydraRunnerFakingParams)
+import HydraAuctionUtils.Hydra.Runner (
+  executeHydraRunner,
+  executeHydraRunnerFakingParams,
+ )
 import HydraAuctionUtils.L1.Runner (
   ExecutionContext (..),
   L1Runner,
@@ -158,7 +157,7 @@ runningThreeNodesDockerComposeHydra cont = do
                   ]
            in finally
                 -- FIXME
-                (executeL1RunnerWithNodeAs dockerNode Alice (cont threeClients))
+                (executeL1RunnerWithNode dockerNode (cont threeClients))
                 (system "./scripts/stop-demo.sh")
   where
     runHydraClientN n cont' = liftIO $
@@ -212,12 +211,6 @@ runEmulatorInTest action = do
       spinUpHeads 0 hydraScriptsTxId $
         flip runEmulator action
 
-{-
-- FIXME: docker-compose not working now
-runEmulatorUsingDockerCompose :: DelegatesClusterEmulator a -> IO a
-runEmulatorUsingDockerCompose action = runningThreeNodesDockerComposeHydra $ executeL1RunnerWithNodeAs dockerNode Alice . flip runEmulator action
--}
-
 runEmulator :: EmulatorDelegateClients -> DelegatesClusterEmulator a -> L1Runner a
 runEmulator clients action = do
   MkExecutionContext {node} <- ask
@@ -249,7 +242,7 @@ runCompositeForDelegate name action = do
   -- Run
   (result, newState) <-
     liftIO $
-      executeCompositeRunner
+      executeHydraRunner
         context
         (runStateT action state)
 
@@ -261,11 +254,8 @@ runCompositeForDelegate name action = do
   where
     createContext l1Node clients = do
       let (hydraClient, actor) = (Map.!) clients name
-      executeL1RunnerWithNodeAs l1Node actor $ do
-        l1Context <- ask
-        executeHydraRunnerFakingParams hydraClient $ do
-          hydraContext <- ask
-          return $ MkCompositeExecutionContext {hydraContext, l1Context}
+      executeL1RunnerWithNodeAs l1Node actor $
+        executeHydraRunnerFakingParams hydraClient ask
 
 runCompositeForAllDelegates ::
   forall x.
