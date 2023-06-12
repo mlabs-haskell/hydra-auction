@@ -31,7 +31,7 @@ import HydraAuction.Types (
   AuctionTerms (..),
  )
 import HydraAuctionUtils.L1.Runner (L1Runner)
-import HydraAuctionUtils.L1.Runner.Time (waitUntil)
+import HydraAuctionUtils.Monads (waitUntil)
 import HydraAuctionUtils.Types.Natural (
   Natural,
   intToNatural,

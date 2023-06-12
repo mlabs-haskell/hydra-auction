@@ -14,12 +14,17 @@ module HydraAuctionUtils.Monads (
   submitAndAwaitTx,
   fromPlutusAddressInMonad,
   addressAndKeysForActor,
+  toSlotNo,
+  waitUntil,
+  waitUntilSlot,
 ) where
 
 -- Prelude imports
 import HydraAuctionUtils.Prelude
 
 -- Haskell imports
+
+import Control.Concurrent (threadDelay)
 import Data.Set (Set)
 
 -- Cardano imports
@@ -35,6 +40,7 @@ import Hydra.Cardano.Api (
   ProtocolParameters,
   ShelleyAddr,
   SigningKey,
+  SlotNo,
   SystemStart,
   Tx,
   TxIn,
@@ -45,15 +51,18 @@ import Hydra.Cardano.Api (
   getTxId,
   txBody,
  )
+import Hydra.Chain.Direct.TimeHandle (mkTimeHandle, slotFromUTCTime)
 
 -- Plutus imports
-import PlutusLedgerApi.V1 (Interval, POSIXTime)
+import PlutusLedgerApi.V1 (Interval)
 import PlutusLedgerApi.V1.Address qualified as PlutusAddress
+import PlutusLedgerApi.V1.Time (POSIXTime (..))
 
 -- HydraAuction imports
 import CardanoClient (buildAddress)
 import HydraAuctionUtils.Extras.CardanoApi (networkIdToNetwork)
 import HydraAuctionUtils.Fixture (Actor, keysFor)
+import HydraAuctionUtils.Time (posixTimeToUTC)
 
 -- MonadQueryUtxo
 
@@ -141,11 +150,37 @@ data BlockchainParams = MkBlockchainParams
 
 class Monad m => MonadBlockchainParams m where
   queryBlockchainParams :: m BlockchainParams
+  queryCurrentSlot :: m SlotNo
   convertValidityBound :: Interval POSIXTime -> m (TxValidityLowerBound, TxValidityUpperBound)
 
 instance (MonadBlockchainParams m, MonadTrans t, Monad (t m)) => MonadBlockchainParams (t m) where
   queryBlockchainParams = lift queryBlockchainParams
+  queryCurrentSlot = lift queryCurrentSlot
   convertValidityBound = lift . convertValidityBound
+
+toSlotNo :: MonadBlockchainParams m => POSIXTime -> m SlotNo
+toSlotNo ptime = do
+  timeHandle <- queryTimeHandle
+  either (error . show) return $
+    slotFromUTCTime timeHandle $
+      posixTimeToUTC ptime
+  where
+    queryTimeHandle = do
+      MkBlockchainParams {systemStart, eraHistory} <- queryBlockchainParams
+      currentTipSlot <- queryCurrentSlot
+      pure $ mkTimeHandle currentTipSlot systemStart eraHistory
+
+waitUntil :: (MonadIO m, MonadBlockchainParams m) => POSIXTime -> m ()
+waitUntil time = do
+  slotToWait <- toSlotNo time
+  waitUntilSlot slotToWait
+
+waitUntilSlot :: (MonadIO m, MonadBlockchainParams m) => SlotNo -> m ()
+waitUntilSlot awaitedSlot = do
+  currentSlot' <- queryCurrentSlot
+  when (currentSlot' < awaitedSlot) $ do
+    liftIO $ threadDelay 1_000
+    waitUntilSlot awaitedSlot
 
 -- Complex constraint synonims
 

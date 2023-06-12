@@ -24,17 +24,16 @@ import Test.Hydra.Prelude (withTempDir)
 -- Haskell imports
 
 import Control.Tracer (nullTracer, stdoutTracer, traceWith)
-import Data.Time (secondsToNominalDiffTime)
-import Data.Time.Clock.POSIX (posixSecondsToUTCTime)
 
 -- Cardano imports
 import CardanoClient (
-  QueryPoint (QueryTip),
+  QueryPoint (..),
   awaitTransaction,
   queryEraHistory,
   queryProtocolParameters,
   queryStakePools,
   querySystemStart,
+  queryTip,
   queryUTxO,
   queryUTxOByTxIn,
   submitTransaction,
@@ -52,10 +51,11 @@ import PlutusLedgerApi.V2 (Extended (..), Interval (..), LowerBound (..), POSIXT
 -- Hydra imports
 
 import Hydra.Cardano.Api (
+  ChainPoint (..),
   Lovelace,
   NetworkId (Testnet),
   NetworkMagic (NetworkMagic),
-  SlotNo,
+  SlotNo (..),
   Tx,
   TxValidityLowerBound,
   TxValidityUpperBound,
@@ -87,6 +87,7 @@ import HydraAuctionUtils.Monads (
   MonadSubmitTx (..),
   MonadTrace (..),
   UtxoQuery (..),
+  toSlotNo,
  )
 import HydraAuctionUtils.Monads.Actors (MonadHasActor (..))
 
@@ -161,17 +162,14 @@ instance MonadBlockchainParams L1Runner where
       upperBoundToValidityBound (UpperBound (Finite n) c) = TxValidityUpperBound <$> toSlotNo (POSIXTime $ getPOSIXTime n - closureToInteger c)
       upperBoundToValidityBound (UpperBound PosInf _) = pure TxValidityNoUpperBound
 
-toSlotNo :: POSIXTime -> L1Runner SlotNo
-toSlotNo ptime = do
-  MkExecutionContext {node} <- ask
-  let RunningNode {networkId, nodeSocket} = node
-  timeHandle <-
-    liftIO $ queryTimeHandle networkId nodeSocket
-  let timeInSeconds = getPOSIXTime ptime `div` 1000
-      ndtime = secondsToNominalDiffTime $ fromInteger timeInSeconds
-      utcTime = posixSecondsToUTCTime ndtime
-  either (error . show) return $
-    slotFromUTCTime timeHandle utcTime
+  queryCurrentSlot :: L1Runner SlotNo
+  queryCurrentSlot = do
+    MkExecutionContext {node} <- ask
+    tip <- liftIO $ queryTip (networkId node) (nodeSocket node)
+    return $
+      case tip of
+        ChainPointAtGenesis -> SlotNo 0
+        ChainPoint slotNo _ -> slotNo
 
 callWithTx ::
   (MonadReader ExecutionContext m, MonadIO m) =>

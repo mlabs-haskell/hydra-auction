@@ -35,7 +35,7 @@ import HydraAuctionUtils.L1.Runner (
   initWallet,
   withActor,
  )
-import HydraAuctionUtils.L1.Runner.Time (waitUntil)
+import HydraAuctionUtils.Monads (waitUntil)
 import HydraAuctionUtils.Types.Natural (Natural, intToNatural)
 
 -- Hydra auction test imports

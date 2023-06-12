@@ -32,7 +32,7 @@ import HydraAuctionUtils.L1.Runner (
   initWallet,
   withActor,
  )
-import HydraAuctionUtils.L1.Runner.Time (waitUntil)
+import HydraAuctionUtils.Monads (waitUntil)
 
 -- Hydra auction test imports
 import EndToEnd.Ledger.L1Steps (createTermsWithTestNFT)

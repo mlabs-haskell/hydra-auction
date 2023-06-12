@@ -38,7 +38,7 @@ import HydraAuctionUtils.L1.Runner (
   executeL1RunnerWithNodeAs,
   initWallet,
  )
-import HydraAuctionUtils.L1.Runner.Time (waitUntil)
+import HydraAuctionUtils.Monads (waitUntil)
 
 -- Hydra auction test imports
 import EndToEnd.HydraUtils (

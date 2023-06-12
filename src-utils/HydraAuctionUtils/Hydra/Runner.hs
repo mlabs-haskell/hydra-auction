@@ -137,6 +137,10 @@ instance MonadBlockchainParams HydraRunner where
     protocolParameters <- liftIO readHydraNodeProtocolParams
     return $ params {protocolParameters}
 
+  queryCurrentSlot = do
+    MkHydraExecutionContext {l1Context} <- ask
+    liftIO $ executeL1Runner l1Context queryCurrentSlot
+
   convertValidityBound x = do
     MkHydraExecutionContext {l1Context} <- ask
     liftIO $ executeL1Runner l1Context $ convertValidityBound x
