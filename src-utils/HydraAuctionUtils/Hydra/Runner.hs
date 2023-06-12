@@ -32,6 +32,7 @@ import HydraNode (
 -- HydraAuction imports
 
 import HydraAuctionUtils.BundledData (readHydraNodeProtocolParams)
+import HydraAuctionUtils.Fixture (Actor)
 import HydraAuctionUtils.Hydra.Interface (
   HydraCommand,
   HydraEvent,
@@ -56,6 +57,7 @@ import HydraAuctionUtils.Monads (
   MonadSubmitTx (..),
   MonadTrace (..),
  )
+import HydraAuctionUtils.Monads.Actors (MonadHasActor (..))
 
 data HydraRunnerLog
   = HydraRunnerStringMessage String
@@ -68,6 +70,7 @@ data HydraExecutionContext = MkHydraExecutionContext
   { node :: HydraClient
   , tracer :: Tracer IO HydraRunnerLog
   , l1Context :: ExecutionContext
+  , actor :: Actor
   }
 
 newtype HydraRunner a = MkHydraRunner
@@ -144,6 +147,9 @@ instance MonadBlockchainParams HydraRunner where
   convertValidityBound x = do
     MkHydraExecutionContext {l1Context} <- ask
     liftIO $ executeL1Runner l1Context $ convertValidityBound x
+
+instance MonadHasActor HydraRunner where
+  askActor = actor <$> ask
 
 executeHydraRunner ::
   HydraExecutionContext ->
