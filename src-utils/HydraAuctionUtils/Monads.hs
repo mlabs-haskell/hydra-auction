@@ -1,3 +1,4 @@
+{-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE StrictData #-}
 
 module HydraAuctionUtils.Monads (
@@ -63,10 +64,16 @@ data UtxoQuery
 class Monad m => MonadQueryUtxo m where
   queryUtxo :: UtxoQuery -> m UTxO.UTxO
 
+instance {-# OVERLAPPABLE #-} (MonadQueryUtxo m, MonadTrans t, Monad (t m)) => MonadQueryUtxo (t m) where
+  queryUtxo = lift . queryUtxo
+
 -- MonadNetworkId
 
 class Monad m => MonadNetworkId m where
   askNetworkId :: m NetworkId
+
+instance {-# OVERLAPPABLE #-} (MonadNetworkId m, MonadTrans t, Monad (t m)) => MonadNetworkId (t m) where
+  askNetworkId = lift askNetworkId
 
 fromPlutusAddressInMonad ::
   MonadNetworkId m => PlutusAddress.Address -> m AddressInEra
@@ -93,12 +100,18 @@ addressAndKeysForActor actor = do
 -- MonadTrace
 
 class Monad m => MonadTrace m where
-  type TracerMessage m = mt | mt -> m
+  -- Should be injective, but that does not work with MonadTrace
+  type TracerMessage m
   stringToMessage :: String -> TracerMessage m
   traceMessage :: TracerMessage m -> m ()
 
-logMsg :: MonadTrace m => String -> m ()
-logMsg = traceMessage . stringToMessage
+instance {-# OVERLAPPABLE #-} (MonadTrace m, MonadTrans t, Monad (t m)) => MonadTrace (t m) where
+  type TracerMessage (t m) = TracerMessage m
+  stringToMessage = stringToMessage @m
+  traceMessage = lift . traceMessage
+
+logMsg :: forall m. MonadTrace m => String -> m ()
+logMsg = traceMessage . (stringToMessage @m)
 
 -- MonadSubmitTx
 
@@ -113,6 +126,10 @@ submitAndAwaitTx tx = do
   awaitTx tx
   logMsg $ "Created Tx id: " <> show (getTxId $ txBody tx)
 
+instance {-# OVERLAPPABLE #-} (MonadSubmitTx m, MonadTrans t, Monad (t m)) => MonadSubmitTx (t m) where
+  submitTx = lift . submitTx
+  awaitTx = lift . awaitTx
+
 -- MonadBlockchainParams
 
 data BlockchainParams = MkBlockchainParams
@@ -125,6 +142,10 @@ data BlockchainParams = MkBlockchainParams
 class Monad m => MonadBlockchainParams m where
   queryBlockchainParams :: m BlockchainParams
   convertValidityBound :: Interval POSIXTime -> m (TxValidityLowerBound, TxValidityUpperBound)
+
+instance (MonadBlockchainParams m, MonadTrans t, Monad (t m)) => MonadBlockchainParams (t m) where
+  queryBlockchainParams = lift queryBlockchainParams
+  convertValidityBound = lift . convertValidityBound
 
 -- Complex constraint synonims
 
