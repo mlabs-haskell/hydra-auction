@@ -81,17 +81,17 @@ bidderBuysTest = mkAssertion $ do
       buyer1 = Bob
       buyer2 = Carol
 
-  handleCliActionWithMockDelegates $ Prepare seller
+  withActor seller $ handleCliActionWithMockDelegates $ Prepare seller
 
   assertNFTNumEquals seller 1
 
-  handleCliActionWithMockDelegates $ AuctionAnounce auctionName
+  withActor seller $ handleCliActionWithMockDelegates $ AuctionAnounce auctionName
 
   terms <- auctionTermsFor auctionName
 
   waitUntil $ biddingStart terms
 
-  handleCliActionWithMockDelegates $ StartBidding auctionName
+  withActor seller $ handleCliActionWithMockDelegates $ StartBidding auctionName
 
   assertNFTNumEquals seller 0
 
@@ -106,7 +106,7 @@ bidderBuysTest = mkAssertion $ do
   assertNFTNumEquals buyer2 1
 
   waitUntil $ cleanup terms
-  handleCliActionWithMockDelegates $ Cleanup auctionName
+  withActor seller $ handleCliActionWithMockDelegates $ Cleanup auctionName
 
 -- Test reclaim with BidderClaimsDeposit and using deposit for BidderBuys
 depositTest :: Assertion
@@ -115,11 +115,11 @@ depositTest = mkAssertion $ do
       buyer1 = Bob
       buyer2 = Carol
 
-  handleCliActionWithMockDelegates $ Prepare seller
+  withActor seller $ handleCliActionWithMockDelegates $ Prepare seller
 
   assertNFTNumEquals seller 1
 
-  handleCliActionWithMockDelegates $ AuctionAnounce auctionName
+  withActor seller $ handleCliActionWithMockDelegates $ AuctionAnounce auctionName
 
   terms <- auctionTermsFor auctionName
 
@@ -130,7 +130,7 @@ depositTest = mkAssertion $ do
 
   waitUntil $ biddingStart terms
 
-  handleCliActionWithMockDelegates $ StartBidding auctionName
+  withActor seller $ handleCliActionWithMockDelegates $ StartBidding auctionName
 
   assertNFTNumEquals seller 0
 
@@ -151,7 +151,7 @@ depositTest = mkAssertion $ do
   assertUTxOsInScriptEquals Deposit terms 0
 
   waitUntil $ cleanup terms
-  handleCliActionWithMockDelegates $ Cleanup auctionName
+  withActor seller $ handleCliActionWithMockDelegates $ Cleanup auctionName
 
 -- Test case of reclaiming
 depositCleanupClaimTest :: Assertion
@@ -159,11 +159,11 @@ depositCleanupClaimTest = mkAssertion $ do
   let seller = Alice
       buyer1 = Bob
 
-  handleCliActionWithMockDelegates $ Prepare seller
+  withActor seller $ handleCliActionWithMockDelegates $ Prepare seller
 
   assertNFTNumEquals seller 1
 
-  handleCliActionWithMockDelegates $ AuctionAnounce auctionName
+  withActor seller $ handleCliActionWithMockDelegates $ AuctionAnounce auctionName
 
   terms <- auctionTermsFor auctionName
 
@@ -174,7 +174,7 @@ depositCleanupClaimTest = mkAssertion $ do
 
   waitUntil $ biddingStart terms
 
-  handleCliActionWithMockDelegates $ StartBidding auctionName
+  withActor seller $ handleCliActionWithMockDelegates $ StartBidding auctionName
 
   withActor buyer1 $
     handleCliActionWithMockDelegates $

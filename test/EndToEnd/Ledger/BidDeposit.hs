@@ -66,9 +66,11 @@ losingBidderClaimDepositTest = mkAssertion $ do
 
   mapM_ (initWallet 100_000_000) [seller, buyer1, buyer2]
 
-  terms <- createTermsWithTestNFT config nonExistentHeadIdStub
+  terms <-
+    withActor seller $
+      createTermsWithTestNFT config nonExistentHeadIdStub
 
-  announceAuction terms
+  withActor seller $ announceAuction terms
 
   withActor buyer1 $ mkDeposit terms depositAmount
   withActor buyer2 $ mkDeposit terms depositAmount
@@ -76,7 +78,7 @@ losingBidderClaimDepositTest = mkAssertion $ do
   assertUTxOsInScriptEquals Deposit terms 2
 
   waitUntil $ biddingStart terms
-  startBidding terms
+  withActor seller $ startBidding terms
 
   assertNFTNumEquals seller 0
 
@@ -99,9 +101,11 @@ losingBidderDoubleClaimTest = mkAssertion $ do
 
   mapM_ (initWallet 100_000_000) [seller, buyer1, buyer2]
 
-  terms <- createTermsWithTestNFT config nonExistentHeadIdStub
+  terms <-
+    withActor seller $
+      createTermsWithTestNFT config nonExistentHeadIdStub
 
-  announceAuction terms
+  withActor seller $ announceAuction terms
 
   withActor buyer1 $ mkDeposit terms depositAmount
   withActor buyer2 $ mkDeposit terms depositAmount
@@ -109,7 +113,7 @@ losingBidderDoubleClaimTest = mkAssertion $ do
   assertUTxOsInScriptEquals Deposit terms 2
 
   waitUntil $ biddingStart terms
-  startBidding terms
+  withActor seller $ startBidding terms
 
   assertNFTNumEquals seller 0
 
@@ -137,9 +141,11 @@ sellerClaimsDepositTest = mkAssertion $ do
 
   mapM_ (initWallet 100_000_000) [seller, buyer]
 
-  terms <- createTermsWithTestNFT config nonExistentHeadIdStub
+  terms <-
+    withActor seller $
+      createTermsWithTestNFT config nonExistentHeadIdStub
 
-  announceAuction terms
+  withActor seller $ announceAuction terms
 
   withActor buyer $ mkDeposit terms depositAmount
 
@@ -147,7 +153,7 @@ sellerClaimsDepositTest = mkAssertion $ do
 
   waitUntil $ biddingStart terms
 
-  startBidding terms
+  withActor seller $ startBidding terms
 
   assertNFTNumEquals seller 0
 
@@ -159,7 +165,7 @@ sellerClaimsDepositTest = mkAssertion $ do
 
   buyerPKH <- liftIO $ getActorPubKeyHash buyer
 
-  sellerClaimDepositFor terms buyerPKH
+  withActor seller $ sellerClaimDepositFor terms buyerPKH
 
   assertUTxOsInScriptEquals Deposit terms 0
 
@@ -171,9 +177,9 @@ sellerClaimsLosingDepositTest = mkAssertion $ do
 
   mapM_ (initWallet 100_000_000) [seller, buyer1, buyer2]
 
-  terms <- createTermsWithTestNFT config nonExistentHeadIdStub
+  terms <- withActor seller $ createTermsWithTestNFT config nonExistentHeadIdStub
 
-  announceAuction terms
+  withActor seller $ announceAuction terms
 
   withActor buyer1 $ mkDeposit terms depositAmount
   withActor buyer2 $ mkDeposit terms depositAmount
@@ -182,7 +188,7 @@ sellerClaimsLosingDepositTest = mkAssertion $ do
 
   waitUntil $ biddingStart terms
 
-  startBidding terms
+  withActor seller $ startBidding terms
 
   assertNFTNumEquals seller 0
 
@@ -194,7 +200,7 @@ sellerClaimsLosingDepositTest = mkAssertion $ do
   waitUntil $ voucherExpiry terms
 
   buyer1PKH <- liftIO $ getActorPubKeyHash buyer1
-  result <- try $ sellerClaimDepositFor terms buyer1PKH
+  result <- try $ withActor seller $ sellerClaimDepositFor terms buyer1PKH
 
   case result of
     Left (_ :: SomeException) -> assertUTxOsInScriptEquals Deposit terms 2
@@ -208,9 +214,11 @@ bidderBuysWithDepositTest = mkAssertion $ do
 
   mapM_ (initWallet 100_000_000) [seller, buyer1, buyer2]
 
-  terms <- createTermsWithTestNFT config nonExistentHeadIdStub
+  terms <-
+    withActor seller $
+      createTermsWithTestNFT config nonExistentHeadIdStub
 
-  announceAuction terms
+  withActor seller $ announceAuction terms
 
   withActor buyer1 $ mkDeposit terms depositAmount
   withActor buyer2 $ mkDeposit terms depositAmount
@@ -218,7 +226,7 @@ bidderBuysWithDepositTest = mkAssertion $ do
   assertUTxOsInScriptEquals Deposit terms 2
 
   waitUntil $ biddingStart terms
-  startBidding terms
+  withActor seller $ startBidding terms
 
   assertNFTNumEquals seller 0
 
@@ -236,7 +244,7 @@ bidderBuysWithDepositTest = mkAssertion $ do
   assertUTxOsInScriptEquals Deposit terms 1
 
   waitUntil $ cleanup terms
-  cleanupTx terms
+  withActor seller $ cleanupTx terms
 
 cleanupDepositTest :: Assertion
 cleanupDepositTest = mkAssertion $ do
@@ -246,9 +254,11 @@ cleanupDepositTest = mkAssertion $ do
 
   mapM_ (initWallet 100_000_000) [seller, buyer1, buyer2]
 
-  terms <- createTermsWithTestNFT config nonExistentHeadIdStub
+  terms <-
+    withActor seller $
+      createTermsWithTestNFT config nonExistentHeadIdStub
 
-  announceAuction terms
+  withActor seller $ announceAuction terms
 
   withActor buyer1 $ mkDeposit terms depositAmount
   withActor buyer2 $ mkDeposit terms depositAmount
@@ -256,7 +266,7 @@ cleanupDepositTest = mkAssertion $ do
   assertUTxOsInScriptEquals Deposit terms 2
 
   waitUntil $ biddingStart terms
-  startBidding terms
+  withActor seller $ startBidding terms
 
   assertNFTNumEquals seller 0
 
@@ -266,7 +276,7 @@ cleanupDepositTest = mkAssertion $ do
   withActor buyer2 $ newBid terms (startingBid terms + minimumBidIncrement terms) buyer2SellerSignature
 
   waitUntil $ cleanup terms
-  cleanupTx terms
+  withActor seller $ cleanupTx terms
 
   withActor buyer1 $ cleanupDeposit terms
   assertUTxOsInScriptEquals Deposit terms 1
