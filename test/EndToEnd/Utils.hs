@@ -1,23 +1,24 @@
 module EndToEnd.Utils (
   mkAssertion,
   config,
+  lookupBoolEnv,
+  EnvParam,
   assertNFTNumEquals,
   assertUTxOsInScriptEquals,
 ) where
 
 -- Prelude imports
-
-import PlutusTx.Prelude
+import HydraAuctionUtils.Prelude
 
 -- Cardano node imports
 import Cardano.Api.UTxO qualified as UTxO
 
 -- Haskell imports
-import Control.Monad.Trans (MonadIO (..))
+import Control.Exception (SomeException, throw)
+import System.Environment (lookupEnv)
+import System.IO.Silently (capture)
 
 -- Haskell test imports
-
-import Data.Maybe (fromJust)
 import Test.Hydra.Prelude (failAfter)
 import Test.Tasty.HUnit (Assertion, (@=?), (@?=))
 
@@ -26,11 +27,8 @@ import PlutusLedgerApi.V1.Value (assetClassValueOf)
 
 -- Hydra imports
 import Hydra.Cardano.Api (
-  Lovelace,
-  selectLovelace,
   toPlutusValue,
   txOutValue,
-  txOutValueToLovelace,
  )
 
 -- Hydra auction imports
@@ -57,8 +55,35 @@ config =
     , configMinimumBidIncrement = fromJust $ intToNatural 10_000_000
     }
 
+-- FIXME: move to separate module
+data EnvParam = Verbose
+
+lookupBoolEnv :: EnvParam -> IO Bool
+lookupBoolEnv Verbose = do
+  -- FIXME: better and unified parsing of envs,
+  -- report them to user before tests execution
+  mVerboseStr <- lookupEnv "TESTS_VERBOSE"
+  return $ mVerboseStr == Just "1"
+
+autoCaptureStdout :: forall b. HasCallStack => IO b -> IO b
+autoCaptureStdout action = do
+  verboseMode <- lookupBoolEnv Verbose
+  if verboseMode then action else capturingAction
+  where
+    capturingAction = do
+      (captured, mResult) <- capture $ try action
+      case mResult of
+        Right result -> return result
+        Left (exception :: SomeException) -> do
+          printCaptured captured
+          throw exception
+    printCaptured captured = putStrLn $ "Captured stdout: \n" <> captured
+
+-- FIXME: autoCaptureStdout eats Tasty output as well
+-- FIXME: shorter timeout
 mkAssertion :: L1Runner () -> Assertion
-mkAssertion = failAfter 120 . executeTestL1Runner
+mkAssertion =
+  autoCaptureStdout . failAfter 120 . executeTestL1Runner
 
 assertNFTNumEquals :: Actor -> Integer -> L1Runner ()
 assertNFTNumEquals actor expectedNum = do
@@ -72,4 +97,4 @@ assertNFTNumEquals actor expectedNum = do
 assertUTxOsInScriptEquals :: AuctionScript -> AuctionTerms -> Integer -> L1Runner ()
 assertUTxOsInScriptEquals script terms expectedNum = do
   utxo <- scriptUtxos script terms
-  liftIO $ length (UTxO.pairs utxo) @?= expectedNum
+  liftIO $ length (UTxO.pairs utxo) @?= fromInteger expectedNum
