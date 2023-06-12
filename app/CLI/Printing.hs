@@ -10,7 +10,6 @@ import Prelude
 import Control.Monad.Trans (MonadIO (..))
 
 -- Hydra auction imports
-import HydraAuctionUtils.L1.Runner (L1Runner)
 import HydraAuctionUtils.Monads (MonadCardanoClient)
 import HydraAuctionUtils.Monads.Actors (
   MonadHasActor (..),

@@ -22,7 +22,6 @@ import Control.Concurrent.STM (
   writeTQueue,
  )
 import Control.Monad (forever, void, when, (>=>))
-import Control.Monad.Reader (MonadReader (..))
 import Control.Monad.State (StateT, evalStateT)
 import Control.Monad.Trans (MonadIO (liftIO))
 import Control.Tracer (Tracer, contramap, stdoutTracer)
@@ -167,8 +166,6 @@ runDelegateLogicSteps ::
   -- | the broadcast queue of outgoing messages (write only)
   TChan (ClientResponseScope, DelegateResponse) ->
   CompositeRunner void
--- FIXME: we need to abort at some point but this doesn't seem
--- to be implemented yet so we just go on
 runDelegateLogicSteps
   tick
   eventQueue
@@ -284,7 +281,7 @@ runDelegateServer conf = do
       return v
     executeHydraRunnerForConfig action =
       runHydraClient (hydraNodeHost conf) True $ \hydraClient -> do
-        context <- executeL1RunnerWithNodeAs (cardanoNode conf) (l1Actor conf) $ do
+        executeL1RunnerWithNodeAs (cardanoNode conf) (l1Actor conf) $ do
           executeHydraRunnerFakingParams hydraClient action
 
 queueHydraEvents ::

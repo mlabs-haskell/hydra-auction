@@ -26,10 +26,7 @@ import Control.Concurrent.MVar (
   takeMVar,
  )
 import Control.Exception (finally)
-import Control.Monad.Reader (MonadReader (..), ReaderT (..))
-import Control.Monad.State (StateT (..))
 import Control.Tracer (nullTracer)
-import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Maybe (fromMaybe)
 import Network.WebSockets (runClient)
@@ -72,6 +69,7 @@ import HydraAuctionUtils.L1.Runner (
   L1Runner,
   dockerNode,
   executeL1Runner,
+  executeL1RunnerWithNode,
   executeL1RunnerWithNodeAs,
  )
 

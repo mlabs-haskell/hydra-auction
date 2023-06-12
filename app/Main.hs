@@ -27,7 +27,6 @@ import System.Console.Haskeline (
  )
 
 -- Hydra imports
-import Hydra.Logging (Verbosity (Quiet, Verbose))
 import Hydra.Network (Host (..))
 import Hydra.Prelude (SomeException)
 
@@ -42,11 +41,10 @@ import HydraAuction.Delegate.Interface (
   initialState,
  )
 import HydraAuctionUtils.L1.Runner (
-  ExecutionContext (..),
   L1Runner,
   executeL1RunnerWithNodeAs,
  )
-import HydraAuctionUtils.Monads.Actors (MonadHasActor (askActor), WithActorT)
+import HydraAuctionUtils.Monads.Actors (MonadHasActor (..), WithActorT)
 
 -- Hydra auction CLI imports
 import CLI.Actions (CliAction, handleCliAction)

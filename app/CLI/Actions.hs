@@ -11,7 +11,6 @@ import HydraAuctionUtils.Prelude
 
 -- Haskell imports
 
-import Control.Monad (forM_, void)
 import Data.IORef (IORef, readIORef)
 import Data.Text qualified as T
 
@@ -68,7 +67,6 @@ import HydraAuctionUtils.Fixture (
   getActorPubKeyHash,
  )
 import HydraAuctionUtils.L1.Runner (
-  ExecutionContext (..),
   L1Runner,
   initWallet,
  )

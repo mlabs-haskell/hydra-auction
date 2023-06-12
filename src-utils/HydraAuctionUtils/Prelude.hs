@@ -31,7 +31,11 @@ import Control.Monad.Catch as X (
   try,
  )
 import Control.Monad.Reader as X (MonadReader (..), ReaderT (..), local)
-import Control.Monad.State as X (MonadState (..), StateT (..), evalStateT)
+import Control.Monad.State as X (
+  MonadState (get, put),
+  StateT (..),
+  evalStateT,
+ )
 import Control.Monad.Trans as X (MonadIO (..), MonadTrans (..))
 import Control.Monad.Trans.Control as X (
   MonadBaseControl (..),

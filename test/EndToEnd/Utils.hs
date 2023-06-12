@@ -40,7 +40,6 @@ import HydraAuction.Tx.TermsConfig (AuctionTermsConfig (..))
 import HydraAuction.Types (AuctionTerms (..))
 import HydraAuctionUtils.Fixture (Actor)
 import HydraAuctionUtils.L1.Runner (L1Runner, executeTestL1Runner, withActor)
-import HydraAuctionUtils.Monads (MonadCardanoClient)
 import HydraAuctionUtils.Monads.Actors (actorTipUtxo)
 import HydraAuctionUtils.Types.Natural (intToNatural)
 
