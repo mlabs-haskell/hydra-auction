@@ -59,20 +59,18 @@ import Hydra.Cardano.Api (
   Tx,
   TxValidityLowerBound,
   TxValidityUpperBound,
-  UTxO,
   pattern TxValidityLowerBound,
   pattern TxValidityNoLowerBound,
   pattern TxValidityNoUpperBound,
   pattern TxValidityUpperBound,
  )
-import Hydra.Chain.Direct.TimeHandle (TimeHandle (..), queryTimeHandle)
-import Hydra.Cluster.Faucet (Marked (Normal), seedFromFaucet)
+import Hydra.Cluster.Faucet (Marked (Normal))
 import Hydra.Logging (Tracer)
 import HydraNode (EndToEndLog (FromCardanoNode, FromFaucet))
 
 -- Hydra auction imports
 
-import HydraAuctionUtils.Fixture (Actor (..), keysFor)
+import HydraAuctionUtils.Fixture (Actor (..))
 import HydraAuctionUtils.L1.Runner.Tracer (
   HydraAuctionLog (..),
   StateDirectory (..),
@@ -82,6 +80,7 @@ import HydraAuctionUtils.L1.Runner.Tracer (
 import HydraAuctionUtils.Monads (
   BlockchainParams (..),
   MonadBlockchainParams (..),
+  MonadCardanoClient,
   MonadNetworkId (..),
   MonadQueryUtxo (..),
   MonadSubmitTx (..),
@@ -90,6 +89,7 @@ import HydraAuctionUtils.Monads (
   toSlotNo,
  )
 import HydraAuctionUtils.Monads.Actors (MonadHasActor (..))
+import HydraAuctionUtils.Tx.Common (transferAda)
 
 {- | Execution context holding the current tracer,
  as well as the running node.
@@ -240,14 +240,13 @@ executeL1RunnerWithNodeAs node actor runner = do
 {- | Initiates the actor's wallet using the prescribed amount of faucet
  @Lovelace@.
 -}
-initWallet :: Lovelace -> Actor -> L1Runner UTxO
-initWallet amount actor = do
-  MkExecutionContext {node} <- ask
-  liftIO $ do
-    (vk, _) <- keysFor actor
-    seedFromFaucet
-      node
-      vk
-      amount
-      Normal
-      nullTracer
+
+-- FIXME: remove
+initWallet ::
+  forall m.
+  (MonadIO m, MonadFail m, MonadTrace m, MonadCardanoClient m) =>
+  Lovelace ->
+  Actor ->
+  m ()
+initWallet amount actor =
+  void $ withActor Faucet $ transferAda actor Normal amount

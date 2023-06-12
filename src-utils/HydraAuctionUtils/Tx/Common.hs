@@ -26,16 +26,29 @@ import Hydra.Cluster.Faucet (Marked (..))
 
 -- Hydra auction imports
 import HydraAuctionUtils.Fixture (Actor)
-import HydraAuctionUtils.L1.Runner (L1Runner)
-import HydraAuctionUtils.Monads (addressAndKeysForActor)
-import HydraAuctionUtils.Monads.Actors (actorTipUtxo, addressAndKeys)
+import HydraAuctionUtils.Monads (
+  MonadCardanoClient,
+  MonadTrace,
+  addressAndKeysForActor,
+ )
+import HydraAuctionUtils.Monads.Actors (
+  MonadHasActor (..),
+  actorTipUtxo,
+  addressAndKeys,
+ )
 import HydraAuctionUtils.Tx.AutoCreateTx (
   AutoCreateParams (..),
   autoSubmitAndAwaitTx,
  )
 import HydraAuctionUtils.Tx.Utxo ()
 
-transferAda :: Actor -> Marked -> Lovelace -> L1Runner Tx
+transferAda ::
+  forall m.
+  (MonadFail m, MonadTrace m, MonadHasActor m, MonadCardanoClient m, MonadIO m) =>
+  Actor ->
+  Marked ->
+  Lovelace ->
+  m Tx
 transferAda actorTo marked amount = do
   moneyUtxo <- actorTipUtxo
   (fromAddress, _, fromSk) <- addressAndKeys
