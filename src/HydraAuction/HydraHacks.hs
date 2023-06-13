@@ -8,7 +8,6 @@ import Prelude
 
 -- Haskell imports
 import Control.Monad.IO.Class (MonadIO (liftIO))
-import Control.Monad.Reader (MonadReader (ask))
 import Data.Function ((&))
 import Data.Set qualified as Set
 
@@ -80,15 +79,16 @@ import Hydra.Party (Party)
 -- HydraAuction imports
 
 import HydraAuctionUtils.Fixture (partyFor)
-import HydraAuctionUtils.L1.Runner (ExecutionContext (..), L1Runner)
+import HydraAuctionUtils.L1.Runner (L1Runner)
 import HydraAuctionUtils.Monads (
   BlockchainParams (..),
   MonadBlockchainParams (..),
+  MonadNetworkId (..),
   MonadQueryUtxo (queryUtxo),
   UtxoQuery (..),
   submitAndAwaitTx,
  )
-import HydraAuctionUtils.Monads.Actors (addressAndKeys)
+import HydraAuctionUtils.Monads.Actors (WithActorT, addressAndKeys, askActor)
 import HydraAuctionUtils.Tx.AutoCreateTx (callBodyAutoBalance, makeSignedTransactionWithKeys)
 
 prepareScriptRegistry :: RunningNode -> IO (TxId, ScriptRegistry)
@@ -173,7 +173,7 @@ commitTxBody
             (headIdToCurrencySymbol headId)
 
 -- | Find initial Utxo with Participation Token matchin our current actor
-findInitialUtxo :: HeadId -> L1Runner (TxIn, TxOut CtxUTxO)
+findInitialUtxo :: HeadId -> WithActorT L1Runner (TxIn, TxOut CtxUTxO)
 findInitialUtxo headId = do
   (_, commitingNodeVk, _) <- addressAndKeys
   let vkh = verificationKeyHash commitingNodeVk
@@ -189,13 +189,10 @@ findInitialUtxo headId = do
   [(initialTxIn, initialTxOut)] <- return initialUtxoForCommiter
   return (initialTxIn, initialTxOut)
   where
-    formInitialAddress = do
-      MkExecutionContext {node} <- ask
-      let RunningNode {networkId} = node
-      return $
-        buildScriptAddress
-          (PlutusScript $ fromPlutusScript Initial.validatorScript)
-          networkId
+    formInitialAddress =
+      buildScriptAddress
+        (PlutusScript $ fromPlutusScript Initial.validatorScript)
+        <$> askNetworkId
     valueHasMatchingPT :: Hash PaymentKey -> Value -> Bool
     valueHasMatchingPT vkh val =
       any isAssetWithMatchingPT $ valueToList val
@@ -221,7 +218,7 @@ submitAndAwaitCommitTx ::
   , TxOut CtxUTxO
   , BuildTxWith BuildTx (Witness WitCtxTxIn)
   ) ->
-  L1Runner ()
+  WithActorT L1Runner ()
 
 -- | L1Runner Actor should represent one which runs Hydra Node
 submitAndAwaitCommitTx
@@ -231,8 +228,8 @@ submitAndAwaitCommitTx
   adaOnlyUtxoToCommit
   (scriptTxIn, scriptTxOut, scriptTxWitness) =
     do
-      MkExecutionContext {actor, node} <- ask
-      let RunningNode {networkId} = node
+      actor <- askActor
+      networkId <- askNetworkId
 
       -- FIXME: DRY
       (commitingNodeAddress, commitingNodeVk, commitingNodeSk) <-

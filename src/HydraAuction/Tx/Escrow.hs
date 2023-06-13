@@ -77,6 +77,7 @@ import HydraAuctionUtils.Monads (
   logMsg,
  )
 import HydraAuctionUtils.Monads.Actors (
+  WithActorT,
   actorTipUtxo,
   addressAndKeys,
  )
@@ -96,7 +97,7 @@ import HydraAuctionUtils.Tx.Utxo (
  )
 import HydraAuctionUtils.Types.Natural (naturalToInt)
 
-announceAuction :: AuctionTerms -> L1Runner ()
+announceAuction :: AuctionTerms -> WithActorT L1Runner ()
 announceAuction terms = do
   logMsg "Doing announce auction"
 
@@ -141,7 +142,7 @@ announceAuction terms = do
         , validityBound = stageToInterval terms AnnouncedStage
         }
 
-startBidding :: AuctionTerms -> L1Runner ()
+startBidding :: AuctionTerms -> WithActorT L1Runner ()
 startBidding terms = do
   logMsg "Doing start bidding"
 
@@ -212,7 +213,7 @@ startBidding terms = do
         , validityBound = stageToInterval terms BiddingStartedStage
         }
 
-bidderBuys :: AuctionTerms -> L1Runner ()
+bidderBuys :: AuctionTerms -> WithActorT L1Runner ()
 bidderBuys terms = do
   feeEscrowAddress <- scriptAddress FeeEscrow terms
   sellerAddress <-
@@ -304,7 +305,7 @@ bidderBuys terms = do
         , validityBound = stageToInterval terms BiddingEndedStage
         }
 
-sellerReclaims :: AuctionTerms -> L1Runner ()
+sellerReclaims :: AuctionTerms -> WithActorT L1Runner ()
 sellerReclaims terms = do
   feeEscrowAddress <- scriptAddress FeeEscrow terms
 

@@ -22,7 +22,6 @@ import Control.Concurrent.STM (
   writeTQueue,
  )
 import Control.Monad (forever, void, when, (>=>))
-import Control.Monad.Reader (MonadReader (..))
 import Control.Monad.State (StateT, evalStateT)
 import Control.Monad.Trans (MonadIO (liftIO))
 import Control.Tracer (Tracer, contramap, stdoutTracer)
@@ -70,10 +69,7 @@ import HydraAuction.OnChain.Common (secondsLeftInInterval, stageToInterval)
 import HydraAuction.Tx.Common (currentAuctionStage)
 import HydraAuction.Types (AuctionTerms)
 import HydraAuctionUtils.Composite.Runner (
-  CompositeExecutionContext (..),
   CompositeRunner,
-  executeCompositeRunner,
-  runHydraInComposite,
  )
 import HydraAuctionUtils.Hydra.Monad (AwaitedHydraEvent (..), waitForHydraEvent)
 import HydraAuctionUtils.Hydra.Runner (HydraRunner, executeHydraRunnerFakingParams)
@@ -170,8 +166,6 @@ runDelegateLogicSteps ::
   -- | the broadcast queue of outgoing messages (write only)
   TChan (ClientResponseScope, DelegateResponse) ->
   CompositeRunner void
--- FIXME: we need to abort at some point but this doesn't seem
--- to be implemented yet so we just go on
 runDelegateLogicSteps
   tick
   eventQueue
@@ -259,7 +253,7 @@ runDelegateServer conf = do
             DelegateLogicStepsThread ->
               void $
                 liftIO $ do
-                  executeCompositeRunnerForConfig $
+                  executeHydraRunnerForConfig $
                     runDelegateLogicSteps
                       (tick conf)
                       eventQueue
@@ -269,7 +263,7 @@ runDelegateServer conf = do
               mbQueueAuctionPhases (tick conf) eventQueue toClientsChannel
             QueueHydraEventsThread ->
               liftIO $
-                executeCompositeRunnerForConfig . runHydraInComposite $
+                executeHydraRunnerForConfig $
                   queueHydraEvents eventQueue
 
   liftIO $
@@ -285,15 +279,10 @@ runDelegateServer conf = do
       v <- takeMVar clientCounter
       putMVar clientCounter (v + 1)
       return v
-    executeCompositeRunnerForConfig action =
+    executeHydraRunnerForConfig action =
       runHydraClient (hydraNodeHost conf) True $ \hydraClient -> do
-        context <- executeL1RunnerWithNodeAs (cardanoNode conf) (l1Actor conf) $ do
-          l1Context <- ask
-          executeHydraRunnerFakingParams hydraClient $ do
-            hydraContext <- ask
-            return $
-              MkCompositeExecutionContext {hydraContext, l1Context}
-        executeCompositeRunner context action
+        executeL1RunnerWithNodeAs (cardanoNode conf) (l1Actor conf) $ do
+          executeHydraRunnerFakingParams hydraClient action
 
 queueHydraEvents ::
   forall void. TQueue DelegateEvent -> HydraRunner void

@@ -71,7 +71,6 @@ import HydraAuctionUtils.Monads (
   MonadBlockchainParams (..),
   MonadSubmitTx,
   MonadTrace,
-  logMsg,
   submitAndAwaitTx,
  )
 import HydraAuctionUtils.Tx.Utxo (
@@ -194,8 +193,5 @@ autoSubmitAndAwaitTx ::
   m Tx
 autoSubmitAndAwaitTx params = do
   tx <- autoCreateTx params
-  logMsg "Signed"
-
   submitAndAwaitTx tx
-
   return tx

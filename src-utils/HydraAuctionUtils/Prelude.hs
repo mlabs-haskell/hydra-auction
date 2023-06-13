@@ -23,6 +23,7 @@ import Control.Monad as X (
   (<=<),
   (>=>),
  )
+import Control.Monad.Base as X (MonadBase (..))
 import Control.Monad.Catch as X (
   MonadCatch (..),
   MonadMask (..),
@@ -30,8 +31,16 @@ import Control.Monad.Catch as X (
   try,
  )
 import Control.Monad.Reader as X (MonadReader (..), ReaderT (..), local)
-import Control.Monad.State as X (MonadState (..), StateT (..), evalStateT)
+import Control.Monad.State as X (
+  MonadState (get, put),
+  StateT (..),
+  evalStateT,
+ )
 import Control.Monad.Trans as X (MonadIO (..), MonadTrans (..))
+import Control.Monad.Trans.Control as X (
+  MonadBaseControl (..),
+  MonadTransControl (..),
+ )
 import Data.Functor.Contravariant as X (Contravariant (..))
 import Data.Kind as X (Constraint, Type)
 import Data.Map as X (Map)

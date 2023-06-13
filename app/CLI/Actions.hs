@@ -7,12 +7,10 @@ module CLI.Actions (
 ) where
 
 -- Prelude imports
-import Hydra.Prelude (MonadIO, ask, liftIO)
-import Prelude
+import HydraAuctionUtils.Prelude
 
 -- Haskell imports
 
-import Control.Monad (forM_, void)
 import Data.IORef (IORef, readIORef)
 import Data.Text qualified as T
 
@@ -69,15 +67,19 @@ import HydraAuctionUtils.Fixture (
   getActorPubKeyHash,
  )
 import HydraAuctionUtils.L1.Runner (
-  ExecutionContext (..),
   L1Runner,
   initWallet,
-  withActor,
  )
-import HydraAuctionUtils.Monads (fromPlutusAddressInMonad)
+import HydraAuctionUtils.Monads (
+  MonadCardanoClient,
+  fromPlutusAddressInMonad,
+ )
 import HydraAuctionUtils.Monads.Actors (
+  MonadHasActor (..),
+  WithActorT,
   actorTipUtxo,
   addressAndKeys,
+  withActor,
  )
 import HydraAuctionUtils.PrettyPrinting (prettyPrintUtxo)
 import HydraAuctionUtils.Tx.Common (transferAda)
@@ -101,7 +103,12 @@ import CLI.Types (CliAction (..), Layer (..))
 seedAmount :: Lovelace
 seedAmount = 10_000_000_000
 
-doOnMatchingStage :: AuctionTerms -> AuctionStage -> L1Runner () -> L1Runner ()
+doOnMatchingStage ::
+  (MonadIO m, MonadHasActor m, MonadCardanoClient m) =>
+  AuctionTerms ->
+  AuctionStage ->
+  m () ->
+  m ()
 doOnMatchingStage terms requiredStage action = do
   stage <- liftIO $ currentAuctionStage terms
   if requiredStage == stage
@@ -119,10 +126,9 @@ handleCliAction ::
   (DelegateInterface.FrontendRequest -> IO ()) ->
   IORef DelegateState ->
   CliAction ->
-  L1Runner ()
+  WithActorT L1Runner ()
 handleCliAction sendRequestToDelegate currentDelegateStateRef userAction = do
-  -- Await for initialized DelegateState
-  MkExecutionContext {actor} <- ask
+  actor <- askActor
   case userAction of
     ShowCurrentStage auctionName -> do
       terms <- auctionTermsFor auctionName
@@ -135,7 +141,7 @@ handleCliAction sendRequestToDelegate currentDelegateStateRef userAction = do
     Prepare sellerActor -> do
       announceActionExecution userAction
       forM_ allActors $ initWallet seedAmount
-      void $ withActor sellerActor mintOneTestNFT
+      void $ lift $ withActor sellerActor mintOneTestNFT
       prettyPrintCurrentActorUtxos
     ShowScriptUtxos auctionName script -> do
       announceActionExecution userAction

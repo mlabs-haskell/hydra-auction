@@ -5,10 +5,12 @@ module HydraAuctionUtils.L1.Runner (
   L1Runner,
   executeL1Runner,
   executeL1RunnerWithNodeAs,
+  executeL1RunnerWithNode,
   executeTestL1Runner,
   dockerNode,
   StateDirectory (..),
   ExecutionContext (..),
+  -- FIXME: reexport
   withActor,
   fileTracer,
   toSlotNo,
@@ -23,18 +25,18 @@ import Test.Hydra.Prelude (withTempDir)
 
 -- Haskell imports
 
+import Control.Concurrent (threadDelay)
 import Control.Tracer (nullTracer, stdoutTracer, traceWith)
-import Data.Time (secondsToNominalDiffTime)
-import Data.Time.Clock.POSIX (posixSecondsToUTCTime)
 
 -- Cardano imports
 import CardanoClient (
-  QueryPoint (QueryTip),
+  QueryPoint (..),
   awaitTransaction,
   queryEraHistory,
   queryProtocolParameters,
   queryStakePools,
   querySystemStart,
+  queryTip,
   queryUTxO,
   queryUTxOByTxIn,
   submitTransaction,
@@ -52,27 +54,26 @@ import PlutusLedgerApi.V2 (Extended (..), Interval (..), LowerBound (..), POSIXT
 -- Hydra imports
 
 import Hydra.Cardano.Api (
+  ChainPoint (..),
   Lovelace,
   NetworkId (Testnet),
   NetworkMagic (NetworkMagic),
-  SlotNo,
+  SlotNo (..),
   Tx,
   TxValidityLowerBound,
   TxValidityUpperBound,
-  UTxO,
   pattern TxValidityLowerBound,
   pattern TxValidityNoLowerBound,
   pattern TxValidityNoUpperBound,
   pattern TxValidityUpperBound,
  )
-import Hydra.Chain.Direct.TimeHandle (TimeHandle (..), queryTimeHandle)
-import Hydra.Cluster.Faucet (Marked (Normal), seedFromFaucet)
+import Hydra.Cluster.Faucet (Marked (Normal))
 import Hydra.Logging (Tracer)
 import HydraNode (EndToEndLog (FromCardanoNode, FromFaucet))
 
 -- Hydra auction imports
 
-import HydraAuctionUtils.Fixture (Actor (..), keysFor)
+import HydraAuctionUtils.Fixture (Actor (..))
 import HydraAuctionUtils.L1.Runner.Tracer (
   HydraAuctionLog (..),
   StateDirectory (..),
@@ -82,13 +83,16 @@ import HydraAuctionUtils.L1.Runner.Tracer (
 import HydraAuctionUtils.Monads (
   BlockchainParams (..),
   MonadBlockchainParams (..),
+  MonadCardanoClient,
   MonadNetworkId (..),
   MonadQueryUtxo (..),
   MonadSubmitTx (..),
   MonadTrace (..),
   UtxoQuery (..),
+  toSlotNo,
  )
-import HydraAuctionUtils.Monads.Actors (MonadHasActor (..))
+import HydraAuctionUtils.Monads.Actors (WithActorT, withActor)
+import HydraAuctionUtils.Tx.Common (transferAda)
 
 {- | Execution context holding the current tracer,
  as well as the running node.
@@ -96,54 +100,49 @@ import HydraAuctionUtils.Monads.Actors (MonadHasActor (..))
 data ExecutionContext = MkExecutionContext
   { tracer :: !(Tracer IO HydraAuctionLog)
   , node :: !RunningNode
-  , actor :: !Actor
   }
 
-{- | HydraAuction specific L1 computation executor.
-     Knows about L1 connection and current actor.
--}
+-- | HydraAuction specific L1 computation executor.
 newtype L1Runner a = MkRunner
   {run :: ReaderT ExecutionContext IO a}
-  deriving
+  deriving newtype
     ( Functor
     , Applicative
     , Monad
     , MonadIO
     , MonadFail
     , MonadReader ExecutionContext
+    , MonadBase IO
+    , MonadBaseControl IO
     , MonadThrow
     , MonadCatch
     , MonadMask
     )
-    via ReaderT ExecutionContext IO
 
 instance MonadQueryUtxo L1Runner where
-  queryUtxo query = do
-    MkExecutionContext {node} <- ask
-    let RunningNode {networkId, nodeSocket} = node
-    liftIO $ case query of
+  queryUtxo query =
+    case query of
       ByTxIns txIns ->
-        queryUTxOByTxIn networkId nodeSocket QueryTip txIns
+        runQuery queryUTxOByTxIn txIns
       ByAddress address ->
-        queryUTxO networkId nodeSocket QueryTip [address]
+        runQuery queryUTxO [address]
+    where
+      runQuery f v = runWithNetworkParams (applyValue f v) QueryTip
+      applyValue f v x y z = f x y z v
 
 instance MonadNetworkId L1Runner where
-  askNetworkId = do
-    MkExecutionContext {node} <- ask
-    let RunningNode {networkId} = node
-    return networkId
+  askNetworkId = networkId . node <$> ask
 
 instance MonadBlockchainParams L1Runner where
   queryBlockchainParams :: L1Runner BlockchainParams
   queryBlockchainParams = do
-    MkExecutionContext {node} <- ask
-    let RunningNode {networkId, nodeSocket} = node
-    liftIO $
-      MkBlockchainParams
-        <$> queryProtocolParameters networkId nodeSocket QueryTip
-        <*> querySystemStart networkId nodeSocket QueryTip
-        <*> queryEraHistory networkId nodeSocket QueryTip
-        <*> queryStakePools networkId nodeSocket QueryTip
+    MkBlockchainParams
+      <$> runQuery queryProtocolParameters
+      <*> runQuery querySystemStart
+      <*> runQuery queryEraHistory
+      <*> runQuery queryStakePools
+    where
+      runQuery f = runWithNetworkParams f QueryTip
 
   convertValidityBound (Interval l u) = (,) <$> lowerBoundToValidityBound l <*> upperBoundToValidityBound u
     where
@@ -160,35 +159,32 @@ instance MonadBlockchainParams L1Runner where
       upperBoundToValidityBound (UpperBound (Finite n) c) = TxValidityUpperBound <$> toSlotNo (POSIXTime $ getPOSIXTime n - closureToInteger c)
       upperBoundToValidityBound (UpperBound PosInf _) = pure TxValidityNoUpperBound
 
-toSlotNo :: POSIXTime -> L1Runner SlotNo
-toSlotNo ptime = do
-  MkExecutionContext {node} <- ask
-  let RunningNode {networkId, nodeSocket} = node
-  timeHandle <-
-    liftIO $ queryTimeHandle networkId nodeSocket
-  let timeInSeconds = getPOSIXTime ptime `div` 1000
-      ndtime = secondsToNominalDiffTime $ fromInteger timeInSeconds
-      utcTime = posixSecondsToUTCTime ndtime
-  either (error . show) return $
-    slotFromUTCTime timeHandle utcTime
+  queryCurrentSlot :: L1Runner SlotNo
+  queryCurrentSlot = do
+    MkExecutionContext {node} <- ask
+    tip <- liftIO $ queryTip (networkId node) (nodeSocket node)
+    return $
+      case tip of
+        ChainPointAtGenesis -> SlotNo 0
+        ChainPoint slotNo _ -> slotNo
 
-callWithTx ::
+runWithNetworkParams ::
   (MonadReader ExecutionContext m, MonadIO m) =>
-  (NetworkId -> FilePath -> Tx -> IO b) ->
-  Tx ->
+  (NetworkId -> FilePath -> d -> IO b) ->
+  d ->
   m b
-callWithTx call tx = do
+runWithNetworkParams call arg = do
   MkExecutionContext {node} <- ask
   let RunningNode {networkId, nodeSocket} = node
   liftIO $
     call
       networkId
       nodeSocket
-      tx
+      arg
 
 instance MonadSubmitTx L1Runner where
-  submitTx = callWithTx submitTransaction
-  awaitTx = callWithTx (\nId nS tx -> void $ awaitTransaction nId nS tx)
+  submitTx = runWithNetworkParams submitTransaction
+  awaitTx = runWithNetworkParams (\nId nS tx -> void $ awaitTransaction nId nS tx)
 
 instance MonadTrace L1Runner where
   type TracerMessage L1Runner = HydraAuctionLog
@@ -197,20 +193,12 @@ instance MonadTrace L1Runner where
     MkExecutionContext {tracer} <- ask
     liftIO $ traceWith tracer message
 
-instance MonadHasActor L1Runner where
-  askActor = do
-    MkExecutionContext {actor} <- ask
-    return actor
-
 executeL1Runner ::
   ExecutionContext ->
   L1Runner a ->
   IO a
 executeL1Runner context runner =
   runReaderT (run runner) context
-
-withActor :: Actor -> L1Runner a -> L1Runner a
-withActor actor = local (\ctx -> ctx {actor = actor})
 
 -- | Executes a test runner using a temporary directory as the @StateDirectory@.
 executeTestL1Runner :: L1Runner () -> IO ()
@@ -220,7 +208,7 @@ executeTestL1Runner runner = do
       nullTracer
       tmpDir
       $ \node ->
-        executeL1RunnerWithNodeAs node Alice runner
+        executeL1RunnerWithNode node runner
 
 dockerNode :: RunningNode
 dockerNode =
@@ -229,26 +217,28 @@ dockerNode =
     , nodeSocket = "./devnet/node.socket"
     }
 
-executeL1RunnerWithNodeAs :: forall x. RunningNode -> Actor -> L1Runner x -> IO x
-executeL1RunnerWithNodeAs node actor runner = do
+executeL1RunnerWithNode :: forall x. RunningNode -> L1Runner x -> IO x
+executeL1RunnerWithNode node runner = do
   let tracer = contramap show stdoutTracer
-  executeL1Runner
-    (MkExecutionContext {tracer = tracer, node, actor})
-    runner
+  executeL1Runner (MkExecutionContext {tracer = tracer, node}) runner
+
+executeL1RunnerWithNodeAs :: forall x. RunningNode -> Actor -> WithActorT L1Runner x -> IO x
+executeL1RunnerWithNodeAs node actor runner =
+  executeL1RunnerWithNode node (withActor actor runner)
 
 -- * Utils
 
 {- | Initiates the actor's wallet using the prescribed amount of faucet
  @Lovelace@.
 -}
-initWallet :: Lovelace -> Actor -> L1Runner UTxO
+
+-- FIXME: remove
+initWallet ::
+  forall m.
+  (MonadIO m, MonadFail m, MonadTrace m, MonadCardanoClient m) =>
+  Lovelace ->
+  Actor ->
+  m ()
 initWallet amount actor = do
-  MkExecutionContext {node} <- ask
-  liftIO $ do
-    (vk, _) <- keysFor actor
-    seedFromFaucet
-      node
-      vk
-      amount
-      Normal
-      nullTracer
+  liftIO $ threadDelay 1_000_000
+  void $ withActor Faucet $ transferAda actor Normal amount

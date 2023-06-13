@@ -6,8 +6,8 @@ import HydraAuctionUtils.Prelude
 
 -- Haskell imports
 
-import Control.Concurrent (MVar, newMVar, putMVar, takeMVar, threadDelay)
-import Control.Concurrent.Async (mapConcurrently_, race_)
+import Control.Concurrent (MVar, newMVar, putMVar, takeMVar)
+import Control.Concurrent.Async (race_)
 import Control.Concurrent.STM (
   TChan,
   TQueue,

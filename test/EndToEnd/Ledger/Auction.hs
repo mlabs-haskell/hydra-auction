@@ -32,7 +32,7 @@ import HydraAuctionUtils.L1.Runner (
   initWallet,
   withActor,
  )
-import HydraAuctionUtils.L1.Runner.Time (waitUntil)
+import HydraAuctionUtils.Monads (waitUntil)
 
 -- Hydra auction test imports
 import EndToEnd.Ledger.L1Steps (createTermsWithTestNFT)
@@ -56,12 +56,14 @@ bidderBuysTest = mkAssertion $ do
 
   mapM_ (initWallet 100_000_000) [seller, buyer1, buyer2]
 
-  terms <- createTermsWithTestNFT config nonExistentHeadIdStub
+  terms <-
+    withActor seller $
+      createTermsWithTestNFT config nonExistentHeadIdStub
 
-  announceAuction terms
+  withActor seller $ announceAuction terms
 
   waitUntil $ biddingStart terms
-  startBidding terms
+  withActor seller $ startBidding terms
 
   assertNFTNumEquals seller 0
 
@@ -80,7 +82,7 @@ bidderBuysTest = mkAssertion $ do
   assertNFTNumEquals buyer2 1
 
   waitUntil $ cleanup terms
-  cleanupTx terms
+  withActor seller $ cleanupTx terms
 
 sellerReclaimsTest :: Assertion
 sellerReclaimsTest = mkAssertion $ do
@@ -88,22 +90,24 @@ sellerReclaimsTest = mkAssertion $ do
 
   void $ initWallet 100_000_000 seller
 
-  terms <- createTermsWithTestNFT config nonExistentHeadIdStub
+  terms <-
+    withActor seller $
+      createTermsWithTestNFT config nonExistentHeadIdStub
 
-  announceAuction terms
+  withActor seller $ announceAuction terms
 
   waitUntil $ biddingStart terms
-  startBidding terms
+  withActor seller $ startBidding terms
   assertNFTNumEquals seller 0
 
   waitUntil $ voucherExpiry terms
-  sellerReclaims terms
+  withActor seller $ sellerReclaims terms
 
   assertNFTNumEquals seller 1
   assertUTxOsInScriptEquals FeeEscrow terms 1
 
   waitUntil $ cleanup terms
-  cleanupTx terms
+  withActor seller $ cleanupTx terms
 
 distributeFeeTest :: Assertion
 distributeFeeTest = mkAssertion $ do
@@ -113,12 +117,14 @@ distributeFeeTest = mkAssertion $ do
 
   mapM_ (initWallet 100_000_000) $ [seller, buyer1, buyer2] <> (Map.!) actorsByKind HydraNodeActor
 
-  terms <- createTermsWithTestNFT config nonExistentHeadIdStub
+  terms <-
+    withActor seller $
+      createTermsWithTestNFT config nonExistentHeadIdStub
 
-  announceAuction terms
+  withActor seller $ announceAuction terms
 
   waitUntil $ biddingStart terms
-  startBidding terms
+  withActor seller $ startBidding terms
 
   assertNFTNumEquals seller 0
 
@@ -139,7 +145,7 @@ distributeFeeTest = mkAssertion $ do
   assertUTxOsInScriptEquals FeeEscrow terms 0
 
   waitUntil $ cleanup terms
-  cleanupTx terms
+  withActor seller $ cleanupTx terms
 
 unauthorisedBidderTest :: Assertion
 unauthorisedBidderTest = mkAssertion $ do
@@ -149,20 +155,25 @@ unauthorisedBidderTest = mkAssertion $ do
 
   mapM_ (initWallet 100_000_000) [seller, buyer1, buyer2]
 
-  terms <- createTermsWithTestNFT config nonExistentHeadIdStub
+  terms <-
+    withActor seller $
+      createTermsWithTestNFT config nonExistentHeadIdStub
 
   assertNFTNumEquals seller 1
 
-  announceAuction terms
+  withActor seller $ announceAuction terms
 
   waitUntil $ biddingStart terms
-  startBidding terms
+  withActor seller $ startBidding terms
 
   assertNFTNumEquals seller 0
 
   buyer2SellerSignature <- liftIO $ sellerSignatureForActor terms buyer2
 
-  result <- try $ withActor buyer1 $ newBid terms (startingBid terms) buyer2SellerSignature
+  result <-
+    try $
+      withActor buyer1 $
+        newBid terms (startingBid terms) buyer2SellerSignature
 
   case result of
     Left (_ :: SomeException) -> return ()

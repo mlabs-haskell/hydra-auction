@@ -51,7 +51,7 @@ import HydraAuction.Types (
   standingBid,
   standingBidState,
  )
-import HydraAuctionUtils.Composite.Runner (CompositeRunner, runHydraInComposite, runL1RunnerInComposite)
+import HydraAuctionUtils.Composite.Runner (CompositeRunner, runL1RunnerInComposite)
 import HydraAuctionUtils.Fixture (Actor, keysFor)
 import HydraAuctionUtils.Hydra.Interface (HydraEventKind (..))
 import HydraAuctionUtils.Hydra.Monad (AwaitedHydraEvent (..), waitForHydraEvent)
@@ -70,8 +70,7 @@ delegateStepOnExpectedHydraEvent' ::
 delegateStepOnExpectedHydraEvent' eventSpec checkResponses = do
   Just event <-
     lift $
-      runHydraInComposite $
-        waitForHydraEvent eventSpec
+      waitForHydraEvent eventSpec
   delegate <- askActor
   responses <- delegateEventStep $ HydraEvent event
   let message =

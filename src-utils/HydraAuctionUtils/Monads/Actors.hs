@@ -1,5 +1,7 @@
 module HydraAuctionUtils.Monads.Actors (
   MonadHasActor (..),
+  WithActorT (..),
+  withActor,
   addressAndKeys,
   actorTipUtxo,
 ) where
@@ -27,11 +29,32 @@ import HydraAuctionUtils.Monads (
   addressAndKeysForActor,
  )
 
+newtype WithActorT m a = MkWithActorT (ReaderT Actor m a)
+  deriving newtype
+    ( Functor
+    , Applicative
+    , Monad
+    , MonadIO
+    , MonadFail
+    , MonadReader Actor
+    , MonadTrans
+    , MonadTransControl
+    , MonadThrow
+    , MonadCatch
+    , MonadMask
+    )
+
 class Monad m => MonadHasActor m where
   askActor :: m Actor
 
-instance (MonadHasActor m, MonadTrans t, Monad (t m)) => MonadHasActor (t m) where
+instance {-# OVERLAPPABLE #-} (MonadHasActor m, MonadTrans t, Monad (t m)) => MonadHasActor (t m) where
   askActor = lift askActor
+
+instance Monad m => MonadHasActor (WithActorT m) where
+  askActor = ask @Actor
+
+withActor :: forall m x. Monad m => Actor -> WithActorT m x -> m x
+withActor actor (MkWithActorT action) = runReaderT action actor
 
 addressAndKeys ::
   (MonadHasActor m, MonadNetworkId m, MonadIO m) =>

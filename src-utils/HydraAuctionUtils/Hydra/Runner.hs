@@ -3,6 +3,7 @@ module HydraAuctionUtils.Hydra.Runner (
   HydraExecutionContext (..),
   executeHydraRunnerFakingParams,
   executeHydraRunner,
+  runL1RunnerInComposite,
 ) where
 
 -- Prelude imports
@@ -20,8 +21,6 @@ import GHC.Natural (Natural, naturalToInt)
 import Test.HUnit.Lang (HUnitFailure)
 
 -- Hydra imports
-import Cardano.Api (NetworkId (Testnet))
-import Hydra.Cardano.Api (NetworkMagic (NetworkMagic))
 import Hydra.Chain.Direct.State ()
 import HydraNode (
   HydraClient,
@@ -32,6 +31,7 @@ import HydraNode (
 -- HydraAuction imports
 
 import HydraAuctionUtils.BundledData (readHydraNodeProtocolParams)
+import HydraAuctionUtils.Fixture (Actor)
 import HydraAuctionUtils.Hydra.Interface (
   HydraCommand,
   HydraEvent,
@@ -56,6 +56,11 @@ import HydraAuctionUtils.Monads (
   MonadSubmitTx (..),
   MonadTrace (..),
  )
+import HydraAuctionUtils.Monads.Actors (
+  MonadHasActor (..),
+  WithActorT,
+  withActor,
+ )
 
 data HydraRunnerLog
   = HydraRunnerStringMessage String
@@ -68,6 +73,7 @@ data HydraExecutionContext = MkHydraExecutionContext
   { node :: HydraClient
   , tracer :: Tracer IO HydraRunnerLog
   , l1Context :: ExecutionContext
+  , actor :: Actor
   }
 
 newtype HydraRunner a = MkHydraRunner
@@ -79,6 +85,8 @@ newtype HydraRunner a = MkHydraRunner
     , MonadIO
     , MonadFail
     , MonadReader HydraExecutionContext
+    , MonadBase IO
+    , MonadBaseControl IO
     , MonadThrow
     , MonadCatch
     , MonadMask
@@ -119,7 +127,7 @@ instance MonadHydra HydraRunner where
         CustomMatcher (EventMatcher customMatcher) -> customMatcher event
 
 instance MonadNetworkId HydraRunner where
-  askNetworkId = return $ Testnet $ NetworkMagic 42
+  askNetworkId = runL1RunnerInComposite askNetworkId
 
 instance MonadTrace HydraRunner where
   type TracerMessage HydraRunner = HydraRunnerLog
@@ -130,14 +138,15 @@ instance MonadTrace HydraRunner where
 
 instance MonadBlockchainParams HydraRunner where
   queryBlockchainParams = do
-    MkHydraExecutionContext {l1Context} <- ask
-    params <- liftIO $ executeL1Runner l1Context queryBlockchainParams
+    params <- runL1RunnerInComposite queryBlockchainParams
     protocolParameters <- liftIO readHydraNodeProtocolParams
     return $ params {protocolParameters}
 
-  convertValidityBound x = do
-    MkHydraExecutionContext {l1Context} <- ask
-    liftIO $ executeL1Runner l1Context $ convertValidityBound x
+  queryCurrentSlot = runL1RunnerInComposite queryCurrentSlot
+  convertValidityBound = runL1RunnerInComposite . convertValidityBound
+
+instance MonadHasActor HydraRunner where
+  askActor = actor <$> ask
 
 executeHydraRunner ::
   HydraExecutionContext ->
@@ -146,15 +155,24 @@ executeHydraRunner ::
 executeHydraRunner context runner =
   runReaderT (unHydraRunner runner) context
 
-executeHydraRunnerFakingParams :: HydraClient -> HydraRunner a -> L1Runner a
+executeHydraRunnerFakingParams ::
+  HydraClient -> HydraRunner a -> WithActorT L1Runner a
 executeHydraRunnerFakingParams node monad = do
-  l1Context <- ask
-  liftIO $ executeHydraRunner (context l1Context) monad
+  l1Context <- lift ask
+  actor <- askActor
+  liftIO $ executeHydraRunner (context l1Context actor) monad
   where
     tracer = contramap show stdoutTracer
-    context l1Context =
+    context l1Context actor =
       MkHydraExecutionContext
         { node = node
         , tracer = tracer
         , l1Context = l1Context
+        , actor = actor
         }
+
+runL1RunnerInComposite :: forall a. WithActorT L1Runner a -> HydraRunner a
+runL1RunnerInComposite action = do
+  actor <- askActor
+  MkHydraExecutionContext {l1Context} <- ask
+  liftIO $ executeL1Runner l1Context $ withActor actor action

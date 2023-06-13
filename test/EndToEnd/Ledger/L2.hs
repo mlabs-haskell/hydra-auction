@@ -1,20 +1,15 @@
 module EndToEnd.Ledger.L2 (testSuite) where
 
 -- Prelude import
-import Prelude
+import HydraAuctionUtils.Prelude
 
 -- Haskell imports
 
-import Control.Monad (replicateM_, void)
-import Control.Monad.Trans (MonadIO (..))
 import Data.Map qualified as Map
 
 -- Haskell test imports
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (Assertion, testCase)
-
--- Hydra imports
-import Hydra.Prelude (ask)
 
 -- Hydra auction imports
 
@@ -35,18 +30,18 @@ import HydraAuction.Types (AuctionTerms (..))
 import HydraAuctionUtils.Fixture (Actor (..), ActorKind (..), actorsByKind)
 import HydraAuctionUtils.Hydra.Monad (AwaitedHydraEvent (..))
 import HydraAuctionUtils.L1.Runner (
-  executeL1RunnerWithNodeAs,
   initWallet,
+  withActor,
  )
-import HydraAuctionUtils.L1.Runner.Time (waitUntil)
+import HydraAuctionUtils.Monads (waitUntil)
 
 -- Hydra auction test imports
 import EndToEnd.HydraUtils (
-  EmulatorContext (..),
   EmulatorDelegate (..),
   runCompositeForAllDelegates,
   runCompositeForDelegate,
   runEmulatorInTest,
+  runL1InEmulator,
  )
 import EndToEnd.Ledger.L1Steps (
   announceAndStartBidding,
@@ -54,7 +49,7 @@ import EndToEnd.Ledger.L1Steps (
   createTermsWithTestNFT,
  )
 import EndToEnd.Ledger.L2Steps
-import EndToEnd.Utils (assertNFTNumEquals, mkAssertion)
+import EndToEnd.Utils (assertNFTNumEquals, mkAssertionOfIO)
 import EndToEnd.Utils qualified as Utils
 
 testSuite :: TestTree
@@ -79,17 +74,12 @@ config =
 -- Includes testing L1 biding before and after L2 moves
 -- Inculdes testing of placing bid by same delegate who moved standing bid
 bidderBuysTest :: Assertion
-bidderBuysTest = mkAssertion $ do
+bidderBuysTest = mkAssertionOfIO $ do
   runEmulatorInTest $ do
     -- Prepare Frontend CLI actors
-    MkEmulatorContext {l1Node} <- ask
-    let node = l1Node
-
     actors@[seller, bidder1, bidder2] <- return [Alice, Bob, Carol]
 
-    liftIO $
-      executeL1RunnerWithNodeAs node seller $
-        mapM_ (initWallet 200_000_000) actors
+    runL1InEmulator $ mapM_ (initWallet 200_000_000) actors
     liftIO $ putStrLn "Actors initialized"
 
     -- Init hydra
@@ -99,20 +89,19 @@ bidderBuysTest = mkAssertion $ do
     -- Create
 
     terms <-
-      liftIO $
-        executeL1RunnerWithNodeAs node seller $
+      runL1InEmulator $
+        withActor seller $
           createTermsWithTestNFT config headId
     _ <-
-      liftIO $
-        executeL1RunnerWithNodeAs node seller $
+      runL1InEmulator $
+        withActor seller $
           announceAndStartBidding terms
 
     -- Place bid on L1
     bidder1SellerSignature <- liftIO $ sellerSignatureForActor terms bidder1
-    liftIO $
-      executeL1RunnerWithNodeAs node bidder1 $ do
-        waitUntil $ biddingStart terms
-        newBid terms (correctBidNo terms 0) bidder1SellerSignature
+    runL1InEmulator $ withActor bidder1 $ do
+      waitUntil $ biddingStart terms
+      newBid terms (correctBidNo terms 0) bidder1SellerSignature
 
     -- Move and commit
 
@@ -139,16 +128,16 @@ bidderBuysTest = mkAssertion $ do
 
     -- Place bid after return to L1
     bidder2SellerSignature <- liftIO $ sellerSignatureForActor terms bidder2
-    liftIO $
-      executeL1RunnerWithNodeAs node bidder2 $
+    runL1InEmulator $
+      withActor bidder2 $
         newBid terms (correctBidNo terms 5) bidder2SellerSignature
 
     -- Got lot
 
-    liftIO $ executeL1RunnerWithNodeAs node bidder2 $ do
+    runL1InEmulator $ withActor bidder2 $ do
       waitUntil $ biddingEnd terms
       bidderBuys terms
-      assertNFTNumEquals bidder2 1
+      lift $ assertNFTNumEquals bidder2 1
 
     -- Delegates got fees
 
@@ -157,22 +146,19 @@ bidderBuysTest = mkAssertion $ do
 
 -- Regression test: commit should not fail when delegate has multiple UTxOs
 multipleUtxosToCommitTest :: Assertion
-multipleUtxosToCommitTest = mkAssertion $ do
+multipleUtxosToCommitTest = mkAssertionOfIO $ do
   runEmulatorInTest $ do
     -- Prepare Frontend CLI actors
-    MkEmulatorContext {l1Node} <- ask
-    let node = l1Node
-
     actors@[seller, _bidder1, _bidder2] <- return [Alice, Bob, Carol]
-    liftIO $
-      executeL1RunnerWithNodeAs node seller $
+    runL1InEmulator $
+      withActor seller $
         mapM_ (initWallet 200_000_000) actors
 
     -- Ensure that delgates have multiple utxo
 
     replicateM_ 3 $
-      liftIO $
-        executeL1RunnerWithNodeAs node seller $
+      runL1InEmulator $
+        withActor seller $
           mapM_ (initWallet 200_000_000) $
             (Map.!) actorsByKind HydraNodeActor
 
@@ -183,12 +169,12 @@ multipleUtxosToCommitTest = mkAssertion $ do
     -- Create
 
     terms <-
-      liftIO $
-        executeL1RunnerWithNodeAs node seller $
+      runL1InEmulator $
+        withActor seller $
           createTermsWithTestNFT config headId
     _ <-
-      liftIO $
-        executeL1RunnerWithNodeAs node seller $
+      runL1InEmulator $
+        withActor seller $
           announceAndStartBidding terms
 
     -- Move and commit
@@ -198,7 +184,7 @@ multipleUtxosToCommitTest = mkAssertion $ do
 -- Abortion testing
 
 earlyAbort :: Assertion
-earlyAbort = mkAssertion $ do
+earlyAbort = mkAssertionOfIO $ do
   runEmulatorInTest $ do
     headId <- emulateDelegatesStart
 
@@ -213,26 +199,22 @@ earlyAbort = mkAssertion $ do
           [CurrentDelegateState Updated $ Initialized headId Aborted]
 
 lateAbort :: Assertion
-lateAbort = mkAssertion $ do
+lateAbort = mkAssertionOfIO $ do
   runEmulatorInTest $ do
-    MkEmulatorContext {l1Node} <- ask
-
     headId <- emulateDelegatesStart
 
     actors@[seller, _bidder1, _bidder2] <- return [Alice, Bob, Carol]
-    liftIO $
-      executeL1RunnerWithNodeAs l1Node seller $
-        mapM_ (initWallet 200_000_000) actors
+    runL1InEmulator $ mapM_ (initWallet 200_000_000) actors
 
     -- Create
 
     terms <-
-      liftIO $
-        executeL1RunnerWithNodeAs l1Node seller $
+      runL1InEmulator $
+        withActor seller $
           createTermsWithTestNFT config headId
     _ <-
-      liftIO $
-        executeL1RunnerWithNodeAs l1Node seller $
+      runL1InEmulator $
+        withActor seller $
           announceAndStartBidding terms
 
     -- Move and commit

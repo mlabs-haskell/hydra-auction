@@ -10,7 +10,7 @@ import Prelude
 import Control.Monad.Trans (MonadIO (..))
 
 -- Hydra auction imports
-import HydraAuctionUtils.L1.Runner (L1Runner)
+import HydraAuctionUtils.Monads (MonadCardanoClient)
 import HydraAuctionUtils.Monads.Actors (
   MonadHasActor (..),
   actorTipUtxo,
@@ -21,7 +21,11 @@ import HydraAuctionUtils.Types.Natural (naturalToInt)
 -- Hydra auction CLI imports
 import CLI.Types (CliAction (..))
 
-announceActionExecution :: CliAction -> L1Runner ()
+announceActionExecution ::
+  forall m.
+  (MonadIO m, MonadHasActor m, MonadCardanoClient m) =>
+  CliAction ->
+  m ()
 announceActionExecution action = do
   currentActor <- askActor
   liftIO . putStrLn $ case action of
@@ -74,7 +78,8 @@ announceActionExecution action = do
         <> "."
     _ -> ""
 
-prettyPrintCurrentActorUtxos :: L1Runner ()
+prettyPrintCurrentActorUtxos ::
+  forall m. (MonadIO m, MonadCardanoClient m, MonadHasActor m) => m ()
 prettyPrintCurrentActorUtxos = do
   actor <- askActor
   liftIO . putStrLn $

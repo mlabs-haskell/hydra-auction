@@ -3,15 +3,12 @@
 module Main (main) where
 
 -- Prelude imports
-import Prelude
+import HydraAuctionUtils.Prelude
 
 -- Haskell imports
 
 import Control.Concurrent.Async (withAsync)
-import Control.Monad (forever)
-import Control.Monad.Catch (try)
-import Control.Monad.Trans.Class (lift)
-import Control.Tracer (contramap, stdoutTracer, traceWith)
+import Control.Tracer (stdoutTracer, traceWith)
 import Data.Aeson (eitherDecode, encode)
 import Data.IORef (IORef, newIORef, writeIORef)
 import Data.Text qualified as Text
@@ -30,9 +27,8 @@ import System.Console.Haskeline (
  )
 
 -- Hydra imports
-import Hydra.Logging (Verbosity (Quiet, Verbose))
 import Hydra.Network (Host (..))
-import Hydra.Prelude (SomeException, ask, liftIO)
+import Hydra.Prelude (SomeException)
 
 -- Hydra auction imports
 
@@ -45,11 +41,10 @@ import HydraAuction.Delegate.Interface (
   initialState,
  )
 import HydraAuctionUtils.L1.Runner (
-  ExecutionContext (..),
   L1Runner,
-  executeL1Runner,
-  stdoutOrNullTracer,
+  executeL1RunnerWithNodeAs,
  )
+import HydraAuctionUtils.Monads.Actors (MonadHasActor (..), WithActorT)
 
 -- Hydra auction CLI imports
 import CLI.Actions (CliAction, handleCliAction)
@@ -75,8 +70,10 @@ main = do
 handleCliInput :: CliInput -> IO ()
 handleCliInput input = do
   -- Connect to delegate server
-  let settings = delegateSettings input
+  -- Await for initialized DelegateState
+  -- FIXME: refactor this out
 
+  let settings = delegateSettings input
   runClient (Text.unpack $ hostname settings) (fromIntegral $ port settings) "/" $ \client -> do
     currentDelegateStateRef <- newIORef initialState
     let tracer = contramap (show . pretty) stdoutTracer
@@ -113,25 +110,18 @@ handleCliInput input = do
 handleCliInput' :: Connection -> IORef DelegateState -> CliOptions -> IO ()
 handleCliInput' client currentDelegateStateRef input = case input of
   (Watch auctionName) -> watchAuction auctionName currentDelegateStateRef
-  (InteractivePrompt MkPromptOptions {..}) -> do
-    let hydraVerbosity = if cliVerbosity then Verbose "hydra-auction" else Quiet
-    tracer <- stdoutOrNullTracer hydraVerbosity
+  (InteractivePrompt MkPromptOptions {..}) ->
+    executeL1RunnerWithNodeAs
+      cliCardanoNode
+      cliActor
+      (loopCLI client currentDelegateStateRef)
 
-    let runnerContext =
-          MkExecutionContext
-            { tracer = tracer
-            , node = cliCardanoNode
-            , actor = cliActor
-            }
-
-    executeL1Runner runnerContext (loopCLI client currentDelegateStateRef)
-
-loopCLI :: Connection -> IORef DelegateState -> L1Runner ()
+loopCLI :: Connection -> IORef DelegateState -> WithActorT L1Runner ()
 loopCLI client currentDelegateStateRef = do
-  ctx <- ask
-  let promptString = show (actor ctx) <> "> "
+  actor <- askActor
+  let promptString = show actor <> "> "
 
-      loop :: InputT L1Runner ()
+      loop :: InputT (WithActorT L1Runner) ()
       loop = do
         minput <- getInputLine promptString
         case minput of
@@ -144,11 +134,11 @@ loopCLI client currentDelegateStateRef = do
   runInputT defaultSettings loop
   where
     sendRequestToDelegate = sendTextData client . encode
-    handleInput :: String -> L1Runner ()
+    handleInput :: String -> WithActorT L1Runner ()
     handleInput input = case parseCliAction $ words input of
       Left e -> liftIO $ putStrLn e
       Right cmd -> handleCliAction' cmd
-    handleCliAction' :: CliAction -> L1Runner ()
+    handleCliAction' :: CliAction -> WithActorT L1Runner ()
     handleCliAction' cmd = do
       result <-
         try $
