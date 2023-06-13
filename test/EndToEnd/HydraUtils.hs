@@ -7,6 +7,7 @@ module EndToEnd.HydraUtils (
   EmulatorContext (..),
   DelegatesClusterEmulator,
   runCompositeForAllDelegates,
+  runL1InEmulator,
   runEmulator,
   runEmulatorInTest,
 ) where
@@ -223,6 +224,11 @@ runEmulator clients action = do
           , delegateStatesRef = intialStatesRef
           }
   liftIO $ flip runReaderT context $ unDelegatesClusterEmulator action
+
+runL1InEmulator :: forall x. L1Runner x -> DelegatesClusterEmulator x
+runL1InEmulator action = do
+  node <- l1Node <$> ask
+  liftIO $ executeL1RunnerWithNode node action
 
 runCompositeForDelegate ::
   forall x.
