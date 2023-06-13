@@ -11,13 +11,14 @@ import HydraAuctionUtils.Prelude
 -- Haskell imports
 
 import Control.Monad.TimeMachine (MonadTime (getCurrentTime))
-import Data.Time (secondsToNominalDiffTime)
+import Data.Time (UTCTime, secondsToNominalDiffTime)
 import Data.Time.Clock.POSIX (posixSecondsToUTCTime)
 import Data.Time.Clock.POSIX qualified as POSIXTime
 
 -- Plutus imports
 import PlutusLedgerApi.V1.Time (POSIXTime (..))
 
+posixTimeToUTC :: POSIXTime -> UTCTime
 posixTimeToUTC ptime = posixSecondsToUTCTime ndtime
   where
     timeInSeconds = getPOSIXTime ptime `div` 1000

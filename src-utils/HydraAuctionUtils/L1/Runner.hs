@@ -221,6 +221,7 @@ dockerNode =
     , nodeSocket = "./devnet/node.socket"
     }
 
+executeL1RunnerWithNode :: forall x. RunningNode -> L1Runner x -> IO x
 executeL1RunnerWithNode node runner = do
   let tracer = contramap show stdoutTracer
   executeL1Runner (MkExecutionContext {tracer = tracer, node}) runner
