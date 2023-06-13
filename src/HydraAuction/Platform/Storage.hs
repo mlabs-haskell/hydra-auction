@@ -161,6 +161,8 @@ processCommand command = case command of
           }
   ReportBidderApproval approval ->
     reportInserted =<< insertIfNotExisting BidderApproval approval
+  ReportBidderDeposit deposit ->
+    reportInserted =<< insertIfNotExisting BidderDeposit deposit
   ReportHeadDelegate staticInfo delegateActor -> do
     -- Head could be same in the reports by different delegates
     -- First write wins
