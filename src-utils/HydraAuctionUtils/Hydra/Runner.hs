@@ -21,8 +21,6 @@ import GHC.Natural (Natural, naturalToInt)
 import Test.HUnit.Lang (HUnitFailure)
 
 -- Hydra imports
-import Cardano.Api (NetworkId (Testnet))
-import Hydra.Cardano.Api (NetworkMagic (NetworkMagic))
 import Hydra.Chain.Direct.State ()
 import HydraNode (
   HydraClient,
@@ -129,7 +127,7 @@ instance MonadHydra HydraRunner where
         CustomMatcher (EventMatcher customMatcher) -> customMatcher event
 
 instance MonadNetworkId HydraRunner where
-  askNetworkId = return $ Testnet $ NetworkMagic 42
+  askNetworkId = runL1RunnerInComposite askNetworkId
 
 instance MonadTrace HydraRunner where
   type TracerMessage HydraRunner = HydraRunnerLog
@@ -140,18 +138,12 @@ instance MonadTrace HydraRunner where
 
 instance MonadBlockchainParams HydraRunner where
   queryBlockchainParams = do
-    MkHydraExecutionContext {l1Context} <- ask
-    params <- liftIO $ executeL1Runner l1Context queryBlockchainParams
+    params <- runL1RunnerInComposite queryBlockchainParams
     protocolParameters <- liftIO readHydraNodeProtocolParams
     return $ params {protocolParameters}
 
-  queryCurrentSlot = do
-    MkHydraExecutionContext {l1Context} <- ask
-    liftIO $ executeL1Runner l1Context queryCurrentSlot
-
-  convertValidityBound x = do
-    MkHydraExecutionContext {l1Context} <- ask
-    liftIO $ executeL1Runner l1Context $ convertValidityBound x
+  queryCurrentSlot = runL1RunnerInComposite queryCurrentSlot
+  convertValidityBound = runL1RunnerInComposite . convertValidityBound
 
 instance MonadHasActor HydraRunner where
   askActor = actor <$> ask
