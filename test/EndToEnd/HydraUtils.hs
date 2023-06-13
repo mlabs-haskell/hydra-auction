@@ -71,6 +71,7 @@ import HydraAuctionUtils.L1.Runner (
   executeL1Runner,
   executeL1RunnerWithNode,
   executeL1RunnerWithNodeAs,
+  executeTestL1Runner,
  )
 
 -- This function will set the HYDRA_CONFIG_DIR env var locally
@@ -154,7 +155,6 @@ runningThreeNodesDockerComposeHydra cont = do
                   , (Third, (n3, actor3))
                   ]
            in finally
-                -- FIXME
                 (executeL1RunnerWithNode dockerNode (cont threeClients))
                 (system "./scripts/stop-demo.sh")
   where
@@ -193,7 +193,7 @@ newtype DelegatesClusterEmulator a = DelegatesClusterEmulator
     , MonadReader EmulatorContext
     )
 
-runEmulatorInTest :: DelegatesClusterEmulator () -> L1Runner ()
+runEmulatorInTest :: DelegatesClusterEmulator () -> IO ()
 runEmulatorInTest action = do
   mEnvStr <- liftIO $ lookupEnv "USE_DOCKER_FOR_TESTS"
   let useDockerForTests =
@@ -203,7 +203,7 @@ runEmulatorInTest action = do
       liftIO $
         runningThreeNodesDockerComposeHydra $
           flip runEmulator action
-    else do
+    else executeTestL1Runner $ do
       MkExecutionContext {node} <- ask
       (hydraScriptsTxId, _) <- liftIO $ prepareScriptRegistry node
       spinUpHeads 0 hydraScriptsTxId $

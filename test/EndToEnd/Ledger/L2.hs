@@ -30,6 +30,7 @@ import HydraAuction.Types (AuctionTerms (..))
 import HydraAuctionUtils.Fixture (Actor (..), ActorKind (..), actorsByKind)
 import HydraAuctionUtils.Hydra.Monad (AwaitedHydraEvent (..))
 import HydraAuctionUtils.L1.Runner (
+  executeL1RunnerWithNode,
   executeL1RunnerWithNodeAs,
   initWallet,
  )
@@ -49,7 +50,7 @@ import EndToEnd.Ledger.L1Steps (
   createTermsWithTestNFT,
  )
 import EndToEnd.Ledger.L2Steps
-import EndToEnd.Utils (assertNFTNumEquals, mkAssertion)
+import EndToEnd.Utils (assertNFTNumEquals, mkAssertionOfIO)
 import EndToEnd.Utils qualified as Utils
 
 testSuite :: TestTree
@@ -74,7 +75,7 @@ config =
 -- Includes testing L1 biding before and after L2 moves
 -- Inculdes testing of placing bid by same delegate who moved standing bid
 bidderBuysTest :: Assertion
-bidderBuysTest = mkAssertion $ do
+bidderBuysTest = mkAssertionOfIO $ do
   runEmulatorInTest $ do
     -- Prepare Frontend CLI actors
     MkEmulatorContext {l1Node} <- ask
@@ -152,7 +153,7 @@ bidderBuysTest = mkAssertion $ do
 
 -- Regression test: commit should not fail when delegate has multiple UTxOs
 multipleUtxosToCommitTest :: Assertion
-multipleUtxosToCommitTest = mkAssertion $ do
+multipleUtxosToCommitTest = mkAssertionOfIO $ do
   runEmulatorInTest $ do
     -- Prepare Frontend CLI actors
     MkEmulatorContext {l1Node} <- ask
@@ -193,7 +194,7 @@ multipleUtxosToCommitTest = mkAssertion $ do
 -- Abortion testing
 
 earlyAbort :: Assertion
-earlyAbort = mkAssertion $ do
+earlyAbort = mkAssertionOfIO $ do
   runEmulatorInTest $ do
     headId <- emulateDelegatesStart
 
@@ -208,7 +209,7 @@ earlyAbort = mkAssertion $ do
           [CurrentDelegateState Updated $ Initialized headId Aborted]
 
 lateAbort :: Assertion
-lateAbort = mkAssertion $ do
+lateAbort = mkAssertionOfIO $ do
   runEmulatorInTest $ do
     MkEmulatorContext {l1Node} <- ask
 

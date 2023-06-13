@@ -1,5 +1,6 @@
 module EndToEnd.Utils (
   mkAssertion,
+  mkAssertionOfIO,
   config,
   lookupBoolEnv,
   EnvParam,
@@ -81,9 +82,11 @@ autoCaptureStdout action = do
 
 -- FIXME: autoCaptureStdout eats Tasty output as well
 -- FIXME: shorter timeout
+mkAssertionOfIO :: IO () -> Assertion
+mkAssertionOfIO = autoCaptureStdout . failAfter 120
+
 mkAssertion :: L1Runner () -> Assertion
-mkAssertion =
-  autoCaptureStdout . failAfter 120 . executeTestL1Runner
+mkAssertion = mkAssertionOfIO . executeTestL1Runner
 
 assertNFTNumEquals :: Actor -> Integer -> L1Runner ()
 assertNFTNumEquals actor expectedNum = do
