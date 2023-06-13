@@ -25,6 +25,7 @@ import Test.Hydra.Prelude (withTempDir)
 
 -- Haskell imports
 
+import Control.Concurrent (threadDelay)
 import Control.Tracer (nullTracer, stdoutTracer, traceWith)
 
 -- Cardano imports
@@ -238,5 +239,6 @@ initWallet ::
   Lovelace ->
   Actor ->
   m ()
-initWallet amount actor =
+initWallet amount actor = do
+  liftIO $ threadDelay 1_000_000
   void $ withActor Faucet $ transferAda actor Normal amount
