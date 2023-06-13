@@ -3,21 +3,23 @@ module CLI.Watch (
 ) where
 
 -- Prelude
-import Hydra.Prelude (MonadDelay (threadDelay))
-import Prelude
+import HydraAuctionUtils.Prelude
 
 -- Haskell imports
+
+import Control.Concurrent (threadDelay)
+import Data.IORef (IORef, readIORef)
 import Data.Time.Clock (getCurrentTime)
 import Data.Time.Format (defaultTimeLocale, formatTime)
 import System.Console.ANSI
 
 -- Hydra auction
+
 import CLI.Config (
   AuctionName (..),
   CliEnhancedAuctionTerms (..),
   readCliEnhancedAuctionTerms,
  )
-import Data.IORef (IORef, readIORef)
 import HydraAuction.Delegate.Interface (
   DelegateState (..),
   InitializedState (..),
@@ -25,6 +27,8 @@ import HydraAuction.Delegate.Interface (
  )
 import HydraAuction.OnChain.Common (secondsLeftInInterval, stageToInterval)
 import HydraAuction.Tx.Common (currentAuctionStage)
+import HydraAuctionUtils.L1.Runner (dockerNode, executeL1RunnerWithNode)
+import HydraAuctionUtils.Monads (queryCurrentSlot)
 import HydraAuctionUtils.Time (currentPlutusPOSIXTime)
 
 watchAuction :: AuctionName -> IORef DelegateState -> IO ()
@@ -34,19 +38,22 @@ watchAuction auctionName currentDelegateStateRef = do
 
   mEnhancedTerms <- readCliEnhancedAuctionTerms auctionName
 
-  delegateState <- readIORef currentDelegateStateRef
-  showDelegateState delegateState
+  currentTime <- getCurrentTime
+  putStrLn $ showTime currentTime
+  void $ trySome $ do
+    currentSlot <- executeL1RunnerWithNode dockerNode queryCurrentSlot
+    putStrLn $ "Current L1 slot: " <> show currentSlot
+
+  void $ showDelegateState <$> readIORef currentDelegateStateRef
 
   case mEnhancedTerms of
     Nothing ->
       putStrLn $ "Auction " <> show auctionName <> " does not exist."
     Just CliEnhancedAuctionTerms {sellerActor, terms} -> do
-      currentTime <- getCurrentTime
       currentPosixTime <- currentPlutusPOSIXTime
       currentStage <- currentAuctionStage terms
-      let showTime = formatTime defaultTimeLocale "%Y-%m-%d %H:%M:%S"
-          mSecsLeft = secondsLeftInInterval currentPosixTime (stageToInterval terms currentStage)
-      putStrLn $ showTime currentTime
+      let
+        mSecsLeft = secondsLeftInInterval currentPosixTime (stageToInterval terms currentStage)
       putStrLn $ "Auction: " <> show auctionName
       putStrLn $ "Seller: " <> show sellerActor
       putStrLn $
@@ -56,9 +63,10 @@ watchAuction auctionName currentDelegateStateRef = do
             Nothing -> mempty
             Just s -> "\n" <> show s <> " seconds left until next stage"
 
-  threadDelay 0.2
+  threadDelay 100_000
   watchAuction auctionName currentDelegateStateRef
   where
+    showTime = formatTime defaultTimeLocale "%Y-%m-%d %H:%M:%S"
     showDelegateState delegateState = case delegateState of
       Initialized _ initializedState ->
         let
