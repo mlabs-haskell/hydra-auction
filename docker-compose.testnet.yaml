@@ -1,0 +1,8 @@
+services:
+    cardano-node:
+        image: ${CARDANO_IMAGE}
+        volumes:
+          - ./testnet/db:/data/db
+          - ./testnet:/ipc
+        environment:
+          - NETWORK=preprod

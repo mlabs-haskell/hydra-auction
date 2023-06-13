@@ -46,7 +46,7 @@ Before starting the demo we will need to build the delegate server docker images
 This is done inside nix shell and can be done by `make build-docker`.
 This command will build the image and load it as `hydra-auction-delegate:latest`.
 
-We recommend call the `./spin-up-new-devnet.sh 1` script
+We recommend call the `make start-cluster` command
 to start all cluster components,
 as it will take care of setting up the correct files for the cardano-node
 and seeding the actors running the hydra-nodes with enough funds to manage the head lifecycle.

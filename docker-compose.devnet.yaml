@@ -1,0 +1,20 @@
+services:
+  cardano-node:
+      image: ${CARDANO_IMAGE}
+      volumes:
+        - ./devnet:/devnet
+      environment:
+        - CARDANO_BLOCK_PRODUCER=true
+        - CARDANO_SOCKET_PATH=/devnet/node.socket # used by cardano-node
+        - CARDANO_NODE_SOCKET_PATH=/devnet/node.socket # used by cardano-cli
+      command:
+        [ "run"
+        , "--config", "/devnet/cardano-node.json"
+        , "--topology", "/devnet/topology.json"
+        , "--database-path", "/devnet/db"
+        , "--shelley-kes-key", "/devnet/kes.skey"
+        , "--shelley-vrf-key", "/devnet/vrf.skey"
+        , "--shelley-operational-certificate", "/devnet/opcert.cert"
+        , "--byron-delegation-certificate", "/devnet/byron-delegation.cert"
+        , "--byron-signing-key", "/devnet/byron-delegate.key"
+        ]

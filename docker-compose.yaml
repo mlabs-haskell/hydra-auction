@@ -1,33 +1,14 @@
 version: "3.9"
 
 services:
-  cardano-node:
-    image: inputoutput/cardano-node:1.35.4
-    volumes:
-      - ./devnet:/devnet
-    environment:
-      - CARDANO_BLOCK_PRODUCER=true
-      - CARDANO_SOCKET_PATH=/devnet/node.socket # used by cardano-node
-      - CARDANO_NODE_SOCKET_PATH=/devnet/node.socket # used by cardano-cli
-    command:
-      [ "run"
-      , "--config", "/devnet/cardano-node.json"
-      , "--topology", "/devnet/topology.json"
-      , "--database-path", "/devnet/db"
-      , "--shelley-kes-key", "/devnet/kes.skey"
-      , "--shelley-vrf-key", "/devnet/vrf.skey"
-      , "--shelley-operational-certificate", "/devnet/opcert.cert"
-      , "--byron-delegation-certificate", "/devnet/byron-delegation.cert"
-      , "--byron-signing-key", "/devnet/byron-delegate.key"
-      ]
-
   hydra-node-1:
     image: hydra-node:latest
     profiles:
       - hydra-node
     volumes:
       - ./data/hydra-keys:/keys:ro
-      - ./devnet:/devnet
+      - ./data/credentials:/devnet/credentials
+      - ./${CLUSTER_WORKDIR}:/devnet
     ports:
       - "4001:4001"
     command:
@@ -38,7 +19,7 @@ services:
       , "--peer", "172.16.238.20:5001"
       , "--peer", "172.16.238.30:5001"
       , "--hydra-scripts-tx-id", "${HYDRA_SCRIPTS_TX_ID}"
-      , "--contestation-period", "1"
+      , "--contestation-period", "${CONTESTATION_PERIOD}"
       , "--hydra-signing-key", "/keys/oscar.sk"
       , "--hydra-verification-key", "/keys/patricia.vk"
       , "--hydra-verification-key", "/keys/rupert.vk"
@@ -46,7 +27,7 @@ services:
       , "--cardano-verification-key", "/devnet/credentials/patricia.vk"
       , "--cardano-verification-key", "/devnet/credentials/rupert.vk"
       , "--ledger-protocol-parameters", "/devnet/protocol-parameters.json"
-      , "--testnet-magic", "42"
+      , "--testnet-magic", "${TESTNET_MAGIC}"
       , "--node-socket", "/devnet/node.socket"
       ]
     networks:
@@ -61,7 +42,8 @@ services:
 
     volumes:
       - ./data/hydra-keys:/keys:ro
-      - ./devnet:/devnet
+      - ./data/credentials:/devnet/credentials
+      - ./${CLUSTER_WORKDIR}:/devnet
     ports:
       - "4002:4001"
     command:
@@ -72,7 +54,7 @@ services:
       , "--peer", "172.16.238.10:5001"
       , "--peer", "172.16.238.30:5001"
       , "--hydra-scripts-tx-id", "${HYDRA_SCRIPTS_TX_ID}"
-      , "--contestation-period", "1"
+      , "--contestation-period", "${CONTESTATION_PERIOD}"
       , "--hydra-signing-key", "/keys/patricia.sk"
       , "--hydra-verification-key", "/keys/oscar.vk"
       , "--hydra-verification-key", "/keys/rupert.vk"
@@ -80,7 +62,7 @@ services:
       , "--cardano-verification-key", "/devnet/credentials/oscar.vk"
       , "--cardano-verification-key", "/devnet/credentials/rupert.vk"
       , "--ledger-protocol-parameters", "/devnet/protocol-parameters.json"
-      , "--testnet-magic", "42"
+      , "--testnet-magic", "${TESTNET_MAGIC}"
       , "--node-socket", "/devnet/node.socket"
       ]
     networks:
@@ -94,7 +76,8 @@ services:
       - hydra-node
     volumes:
       - ./data/hydra-keys:/keys:ro
-      - ./devnet:/devnet
+      - ./data/credentials:/devnet/credentials
+      - ./${CLUSTER_WORKDIR}:/devnet
     ports:
       - "4003:4001"
     command:
@@ -105,7 +88,7 @@ services:
       , "--peer", "172.16.238.10:5001"
       , "--peer", "172.16.238.20:5001"
       , "--hydra-scripts-tx-id", "${HYDRA_SCRIPTS_TX_ID}"
-      , "--contestation-period", "1"
+      , "--contestation-period", "${CONTESTATION_PERIOD}"
       , "--hydra-signing-key", "/keys/rupert.sk"
       , "--hydra-verification-key", "/keys/oscar.vk"
       , "--hydra-verification-key", "/keys/patricia.vk"
@@ -113,7 +96,7 @@ services:
       , "--cardano-verification-key", "/devnet/credentials/oscar.vk"
       , "--cardano-verification-key", "/devnet/credentials/patricia.vk"
       , "--ledger-protocol-parameters", "/devnet/protocol-parameters.json"
-      , "--testnet-magic", "42"
+      , "--testnet-magic", "${TESTNET_MAGIC}"
       , "--node-socket", "/devnet/node.socket"
       ]
     networks:
@@ -130,7 +113,8 @@ services:
         condition: service_started
     volumes:
       - ./data/hydra-keys:/keys:ro
-      - ./devnet:/devnet
+      - ./data/credentials:/devnet/credentials
+      - ./${CLUSTER_WORKDIR}:/devnet
     ports:
       - "8001:8001"
     networks:
@@ -140,7 +124,7 @@ services:
       , "--actor", "oscar"
       , "--hydra-node", "172.16.238.10:4001"
       , "--websockets-host", "0.0.0.0:8001"
-      , "--network-magic", "42"
+      , "--network-magic", "${TESTNET_MAGIC}"
       , "--cardano-node-socket", "/devnet/node.socket"
       ]
 
@@ -153,7 +137,8 @@ services:
         condition: service_started
     volumes:
       - ./data/hydra-keys:/keys:ro
-      - ./devnet:/devnet
+      - ./data/credentials:/devnet/credentials
+      - ./${CLUSTER_WORKDIR}:/devnet
     ports:
       - "8002:8001"
     networks:
@@ -163,7 +148,7 @@ services:
       , "--actor", "patricia"
       , "--hydra-node", "172.16.238.20:4001"
       , "--websockets-host", "0.0.0.0:8001"
-      , "--network-magic", "42"
+      , "--network-magic", "${TESTNET_MAGIC}"
       , "--cardano-node-socket", "/devnet/node.socket"
       ]
 
@@ -176,7 +161,8 @@ services:
         condition: service_started
     volumes:
       - ./data/hydra-keys:/keys:ro
-      - ./devnet:/devnet
+      - ./data/credentials:/devnet/credentials
+      - ./${CLUSTER_WORKDIR}:/devnet
     ports:
       - "8003:8001"
     networks:
@@ -186,7 +172,7 @@ services:
       , "--actor", "rupert"
       , "--hydra-node", "172.16.238.30:4001"
       , "--websockets-host", "0.0.0.0:8001"
-      , "--network-magic", "42"
+      , "--network-magic", "${TESTNET_MAGIC}"
       , "--cardano-node-socket", "/devnet/node.socket"
       ]
 

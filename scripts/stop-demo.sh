@@ -1,7 +1,10 @@
-#!/bin/sh -e
+#!/usr/bin/env bash
+set -eo pipefail
 
-docker-compose --profile delegate-server down
-docker-compose --profile hydra-node down
-docker-compose down --remove-orphans
+source ./scripts/setup-envs.sh
+
+$COMPOSE_CMD --profile delegate-server down
+$COMPOSE_CMD --profile hydra-node down
+$COMPOSE_CMD down --remove-orphans
 # Network could stay by CLIs and mess up with restarting
 docker network rm --force hydra-auction_hydra_net

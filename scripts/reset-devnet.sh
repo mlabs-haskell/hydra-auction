@@ -5,7 +5,7 @@
 set -e
 
 ROOTDIR="."
-TARGETDIR="$ROOTDIR/devnet"
+TARGETDIR=$CLUSTER_WORKDIR
 
 [ -d "$TARGETDIR" ] && { echo "Cleaning up directory $TARGETDIR" ; sudo rm -r $TARGETDIR ; }
 

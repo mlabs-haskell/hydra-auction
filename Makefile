@@ -1,3 +1,5 @@
+SHELL := /bin/bash
+
 .PHONY:
 	check
 	hoogle
@@ -43,9 +45,10 @@ build-docker:
 	docker load < result
 	nix build .#packages.x86_64-linux.delegateImage
 	docker load < result
+	rm result
 
-start-docker:
-	./scripts/spin-up-new-devnet.sh
+start-cluster:
+	./scripts/spin-up-new-devnet.sh 1
 
 BUILD_PATH = "dist-newstyle"
 NODE_STATE_PATH = "node-state"
@@ -61,14 +64,17 @@ requires_nix_shell:
 	false; \
 	}
 
+faucet-address:
+	bash -c 'source scripts/setup-envs.sh; frontend-cli-faucet-command "show-address"'
+
 demo-monitor:
-	./scripts/run-frontend-cli.sh -w demo  -d delegate-server-1:8001
+	bash -c 'source scripts/setup-envs.sh; frontend-cli "1" "-w demo"'
 
 demo-seller:
-	./scripts/run-frontend-cli.sh -a alice --cardano-node-socket /node.socket --network-magic 42 -d delegate-server-1:8001
+	bash -c 'source scripts/setup-envs.sh; frontend-cli-repl "1" "-a alice"'
 
 demo-bidder:
-	./scripts/run-frontend-cli.sh -a bob --cardano-node-socket /node.socket --network-magic 42 -d delegate-server-2:8001
+	bash -c 'source scripts/setup-envs.sh; frontend-cli-repl "2" "-a bob"'
 
 demo-bidder2:
-	./scripts/run-frontend-cli.sh -a carol --cardano-node-socket /node.socket --network-magic 42 -d delegate-server-3:8001
+	bash -c 'source scripts/setup-envs.sh; frontend-cli-repl "2" "-a bob"'
