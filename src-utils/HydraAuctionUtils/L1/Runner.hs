@@ -101,9 +101,7 @@ data ExecutionContext = MkExecutionContext
   , node :: !RunningNode
   }
 
-{- | HydraAuction specific L1 computation executor.
-     Knows about L1 connection and current actor.
--}
+-- | HydraAuction specific L1 computation executor.
 newtype L1Runner a = MkRunner
   {run :: ReaderT ExecutionContext IO a}
   deriving newtype
@@ -121,32 +119,29 @@ newtype L1Runner a = MkRunner
     )
 
 instance MonadQueryUtxo L1Runner where
-  queryUtxo query = do
-    MkExecutionContext {node} <- ask
-    let RunningNode {networkId, nodeSocket} = node
-    liftIO $ case query of
+  queryUtxo query =
+    case query of
       ByTxIns txIns ->
-        queryUTxOByTxIn networkId nodeSocket QueryTip txIns
+        runQuery queryUTxOByTxIn txIns
       ByAddress address ->
-        queryUTxO networkId nodeSocket QueryTip [address]
+        runQuery queryUTxO [address]
+    where
+      runQuery f v = runWithNetworkParams (applyValue f v) QueryTip
+      applyValue f v x y z = f x y z v
 
 instance MonadNetworkId L1Runner where
-  askNetworkId = do
-    MkExecutionContext {node} <- ask
-    let RunningNode {networkId} = node
-    return networkId
+  askNetworkId = networkId . node <$> ask
 
 instance MonadBlockchainParams L1Runner where
   queryBlockchainParams :: L1Runner BlockchainParams
   queryBlockchainParams = do
-    MkExecutionContext {node} <- ask
-    let RunningNode {networkId, nodeSocket} = node
-    liftIO $
-      MkBlockchainParams
-        <$> queryProtocolParameters networkId nodeSocket QueryTip
-        <*> querySystemStart networkId nodeSocket QueryTip
-        <*> queryEraHistory networkId nodeSocket QueryTip
-        <*> queryStakePools networkId nodeSocket QueryTip
+    MkBlockchainParams
+      <$> runQuery queryProtocolParameters
+      <*> runQuery querySystemStart
+      <*> runQuery queryEraHistory
+      <*> runQuery queryStakePools
+    where
+      runQuery f = runWithNetworkParams f QueryTip
 
   convertValidityBound (Interval l u) = (,) <$> lowerBoundToValidityBound l <*> upperBoundToValidityBound u
     where
@@ -172,23 +167,23 @@ instance MonadBlockchainParams L1Runner where
         ChainPointAtGenesis -> SlotNo 0
         ChainPoint slotNo _ -> slotNo
 
-callWithTx ::
+runWithNetworkParams ::
   (MonadReader ExecutionContext m, MonadIO m) =>
-  (NetworkId -> FilePath -> Tx -> IO b) ->
-  Tx ->
+  (NetworkId -> FilePath -> d -> IO b) ->
+  d ->
   m b
-callWithTx call tx = do
+runWithNetworkParams call arg = do
   MkExecutionContext {node} <- ask
   let RunningNode {networkId, nodeSocket} = node
   liftIO $
     call
       networkId
       nodeSocket
-      tx
+      arg
 
 instance MonadSubmitTx L1Runner where
-  submitTx = callWithTx submitTransaction
-  awaitTx = callWithTx (\nId nS tx -> void $ awaitTransaction nId nS tx)
+  submitTx = runWithNetworkParams submitTransaction
+  awaitTx = runWithNetworkParams (\nId nS tx -> void $ awaitTransaction nId nS tx)
 
 instance MonadTrace L1Runner where
   type TracerMessage L1Runner = HydraAuctionLog
