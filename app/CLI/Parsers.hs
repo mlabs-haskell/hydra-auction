@@ -25,6 +25,7 @@ import Options.Applicative (
   info,
   long,
   metavar,
+  optional,
   prefs,
   progDesc,
   renderFailure,
@@ -32,7 +33,6 @@ import Options.Applicative (
   showHelpOnEmpty,
   showHelpOnError,
   strOption,
-  switch,
   (<**>),
  )
 import Options.Applicative.Builder (
@@ -77,8 +77,8 @@ data CliOptions
 
 data PromptOptions = MkPromptOptions
   { cliActor :: !Actor
-  , cliVerbosity :: !Bool
   , cliCardanoNode :: !RunningNode
+  , cliNoninteractiveAction :: Maybe String
   }
 
 getCliInput :: IO CliInput
@@ -98,7 +98,7 @@ cliOptionsParser =
   asum
     [ Watch <$> watchAuction
     , InteractivePrompt
-        <$> (MkPromptOptions <$> actor <*> verboseParser <*> cardanoRunningNodeParser)
+        <$> (MkPromptOptions <$> actor <*> cardanoRunningNodeParser <*> action)
     ]
 
 parseCliAction :: [String] -> Either String CliAction
@@ -232,12 +232,18 @@ watchAuction =
           <> help "Watch the status of the given auction"
       )
 
+action :: Parser (Maybe String)
+action =
+  optional $
+    strOption
+      ( short 'c'
+          <> metavar "NON_INTERACTIVE_REPL_ACTION"
+          <> help "To run REPL action non-interactive"
+      )
+
 parseScript :: ReadM AuctionScript
 parseScript = eitherReader $ \case
   "escrow" -> pure Escrow
   "standing-bid" -> pure StandingBid
   "fee-escrow" -> pure FeeEscrow
   _ -> Left "Escrow parsing error"
-
-verboseParser :: Parser Bool
-verboseParser = switch (long "verbose" <> short 'v')

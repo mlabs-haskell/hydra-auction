@@ -74,13 +74,18 @@ handleCliInput input = do
   -- FIXME: refactor this out
 
   let settings = delegateSettings input
-  runClient (Text.unpack $ hostname settings) (fromIntegral $ port settings) "/" $ \client -> do
-    currentDelegateStateRef <- newIORef initialState
+  currentDelegateStateRef <- newIORef initialState
+
+  result <- trySome $ runClient (Text.unpack $ hostname settings) (fromIntegral $ port settings) "/" $ \client -> do
     let tracer = contramap (show . pretty) stdoutTracer
     sendTextData client . encode $ QueryCurrentDelegateState
     -- DelegateState receiving thread
     withAsync (updateStateThread client currentDelegateStateRef tracer) $ \_ -> do
-      handleCliInput' client currentDelegateStateRef (cliOptions input)
+      handleCliInput' (Just client) currentDelegateStateRef (cliOptions input)
+
+  case result of
+    Right x -> return x
+    Left _ -> handleCliInput' Nothing currentDelegateStateRef (cliOptions input)
   where
     updateStateThread client currentDelegateStateRef tracer = forever $ do
       mMessage <- eitherDecode <$> receiveData client
@@ -107,37 +112,38 @@ handleCliInput input = do
               putStrLn "Or that is a bug in Frontend CLI."
         Left err -> traceWith tracer (InvalidDelegateResponse err)
 
-handleCliInput' :: Connection -> IORef DelegateState -> CliOptions -> IO ()
-handleCliInput' client currentDelegateStateRef input = case input of
+handleCliInput' :: Maybe Connection -> IORef DelegateState -> CliOptions -> IO ()
+handleCliInput' mClient currentDelegateStateRef input = case input of
   (Watch auctionName) -> watchAuction auctionName currentDelegateStateRef
   (InteractivePrompt MkPromptOptions {..}) ->
     executeL1RunnerWithNodeAs
       cliCardanoNode
       cliActor
-      (loopCLI client currentDelegateStateRef)
+      (action client currentDelegateStateRef)
+    where
+      client = case mClient of
+        Just x -> x
+        -- FIXME
+        Nothing -> error "Delegate server is not started yet"
+      action =
+        case cliNoninteractiveAction of
+          Just actionStr -> \y z -> handleREPLInput y z actionStr
+          Nothing -> loopCLI
 
 loopCLI :: Connection -> IORef DelegateState -> WithActorT L1Runner ()
 loopCLI client currentDelegateStateRef = do
   actor <- askActor
   let promptString = show actor <> "> "
+      handler = handleREPLInput client currentDelegateStateRef
+  runInputT defaultSettings $ genericREPLLoop promptString handler
 
-      loop :: InputT (WithActorT L1Runner) ()
-      loop = do
-        minput <- getInputLine promptString
-        case minput of
-          Nothing -> pure ()
-          Just "quit" -> pure ()
-          Just input -> do
-            lift $ handleInput input
-            liftIO $ putStrLn ""
-            loop
-  runInputT defaultSettings loop
+handleREPLInput :: Connection -> IORef DelegateState -> String -> WithActorT L1Runner ()
+handleREPLInput client currentDelegateStateRef input =
+  case parseCliAction $ words input of
+    Left e -> liftIO $ putStrLn e
+    Right cmd -> handleCliAction' cmd
   where
     sendRequestToDelegate = sendTextData client . encode
-    handleInput :: String -> WithActorT L1Runner ()
-    handleInput input = case parseCliAction $ words input of
-      Left e -> liftIO $ putStrLn e
-      Right cmd -> handleCliAction' cmd
     handleCliAction' :: CliAction -> WithActorT L1Runner ()
     handleCliAction' cmd = do
       result <-
@@ -149,3 +155,15 @@ loopCLI client currentDelegateStateRef = do
           liftIO $
             putStrLn $
               "Error during CLI action handling: \n\n" <> show actionError
+
+genericREPLLoop ::
+  (MonadMask m, MonadIO m) => String -> (String -> m ()) -> InputT m ()
+genericREPLLoop prompt handler = do
+  minput <- getInputLine prompt
+  case minput of
+    Nothing -> pure ()
+    Just "quit" -> pure ()
+    Just input -> do
+      lift $ handler input
+      liftIO $ putStrLn ""
+      genericREPLLoop prompt handler
