@@ -1,49 +1,42 @@
 -- Prelude imports
 
-import Prelude
+import HydraAuctionUtils.Prelude
 
 -- Haskell imports
 
-import Control.Concurrent (threadDelay)
 import Control.Concurrent.Async (concurrently)
 import Control.Concurrent.STM (
-  TChan,
-  TQueue,
   atomically,
   newTChan,
   newTQueue,
   tryReadTQueue,
   writeTChan,
  )
-import Control.Monad (forever, void)
-import Control.Monad.State (evalStateT)
-import Control.Monad.Trans (MonadIO (..))
 import Data.Foldable (traverse_)
 
 -- HydraAuction imports
 
-import HydraAuction.Platform.Interface (ClientInput, ServerOutput, Some)
+import HydraAuction.Platform.Interface (PlatformProtocol)
 import HydraAuction.Platform.Storage (initialStorage, processClientInput)
 import HydraAuctionUtils.Server.ClientId (
-  ClientId,
   ClientResponseScope (..),
  )
-import HydraAuctionUtils.Server.Websockets (runWebsocketsServer)
+import HydraAuctionUtils.Server.Websockets (
+  ServerQueues (..),
+  runWebsocketsServer,
+ )
 
 runPlatformEventReaction ::
   forall void.
   -- | the time in milliseconds that the runner sleeps between acts
   Int ->
-  TQueue (ClientId, Some ClientInput) ->
-  -- | the broadcast queue of outgoing messages (write only)
-  TChan (ClientResponseScope, Some ServerOutput) ->
+  ServerQueues PlatformProtocol ->
   IO void
 runPlatformEventReaction
   tick
-  clientInputQueue
-  broadcast = do
+  queues = do
     flip evalStateT initialStorage $ forever $ do
-      mEvent <- liftIO . atomically $ tryReadTQueue clientInputQueue
+      mEvent <- liftIO . atomically $ tryReadTQueue (clientInputs queues)
       traverse_
         performStep
         mEvent
@@ -59,17 +52,23 @@ runPlatformEventReaction
       putInToClientsQueue responses =
         liftIO $
           atomically $
-            traverse_ (writeTChan broadcast) responses
+            traverse_ (writeTChan (serverOutputs queues)) responses
 
 runPlatformServer :: IO ()
 runPlatformServer = do
   clientInputQueue <- liftIO . atomically $ newTQueue
   toClientsChannel <- liftIO . atomically $ newTChan
 
+  let queues =
+        MkServerQueues
+          { clientInputs = clientInputQueue
+          , serverOutputs = toClientsChannel
+          }
+
   void $
     concurrently
-      (runWebsocketsServer 8010 clientInputQueue toClientsChannel)
-      (runPlatformEventReaction 1_000 clientInputQueue toClientsChannel)
+      (runWebsocketsServer 8010 queues)
+      (runPlatformEventReaction 1_000 queues)
 
 main :: IO ()
 main = runPlatformServer
