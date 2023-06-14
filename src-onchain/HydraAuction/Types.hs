@@ -2,7 +2,6 @@
 {-# OPTIONS_GHC -fno-unbox-small-strict-fields #-}
 {-# OPTIONS_GHC -fno-unbox-strict-fields #-}
 
--- FIXME: Use template Haskell to derive Eq instances
 module HydraAuction.Types (
   isStarted,
   BidTerms (..),
@@ -39,6 +38,7 @@ import PlutusLedgerApi.V1.Time (POSIXTime)
 import PlutusLedgerApi.V1.Value (AssetClass, CurrencySymbol)
 import PlutusLedgerApi.V2.Contexts (TxOutRef)
 import PlutusTx qualified
+import PlutusTx.Deriving qualified as PlutusTx
 
 -- Hydra auction imports
 import HydraAuction.Addresses (VoucherCS)
@@ -101,22 +101,7 @@ data AuctionTerms = AuctionTerms
 
 PlutusTx.makeIsDataIndexed ''AuctionTerms [('AuctionTerms, 0)]
 PlutusTx.makeLift ''AuctionTerms
-
-instance Eq AuctionTerms where
-  {-# INLINEABLE (==) #-}
-  x == y =
-    (auctionLot x == auctionLot y)
-      && (sellerPKH x == sellerPKH y)
-      && (sellerVK x == sellerVK y)
-      && (delegates x == delegates y)
-      && (biddingStart x == biddingStart y)
-      && (biddingEnd x == biddingEnd y)
-      && (voucherExpiry x == voucherExpiry y)
-      && (cleanup x == cleanup y)
-      && (auctionFeePerDelegate x == auctionFeePerDelegate y)
-      && (startingBid x == startingBid y)
-      && (minimumBidIncrement x == minimumBidIncrement y)
-      && (utxoNonce x == utxoNonce y)
+PlutusTx.deriveEq ''AuctionTerms
 
 calculateTotalFee :: AuctionTerms -> Integer
 calculateTotalFee terms =
@@ -125,10 +110,6 @@ calculateTotalFee terms =
 newtype StandingBidState = StandingBidState {standingBid :: Maybe BidTerms}
   deriving stock (Generic, Prelude.Show, Prelude.Eq)
   deriving anyclass (ToJSON, FromJSON)
-
-instance Eq StandingBidState where
-  {-# INLINEABLE (==) #-}
-  x == y = standingBid x == standingBid y
 
 data BidTerms = BidTerms
   { bidderPKH :: !PubKeyHash
@@ -145,19 +126,12 @@ data BidTerms = BidTerms
   deriving stock (Generic, Prelude.Show, Prelude.Eq)
   deriving anyclass (FromJSON, ToJSON)
 
-instance Eq BidTerms where
-  {-# INLINEABLE (==) #-}
-  x == y =
-    (bidderPKH x == bidderPKH y)
-      && (bidderVK x == bidderVK y)
-      && (bidAmount x == bidAmount y)
-      && (bidderSignature x == bidderSignature y)
-      && (sellerSignature x == sellerSignature y)
-
-PlutusTx.makeIsDataIndexed ''StandingBidState [('StandingBidState, 0)]
-PlutusTx.makeLift ''StandingBidState
 PlutusTx.makeIsDataIndexed ''BidTerms [('BidTerms, 0)]
 PlutusTx.makeLift ''BidTerms
+PlutusTx.deriveEq ''BidTerms
+PlutusTx.makeIsDataIndexed ''StandingBidState [('StandingBidState, 0)]
+PlutusTx.makeLift ''StandingBidState
+PlutusTx.deriveEq ''StandingBidState
 
 data AuctionState
   = Announced
@@ -169,12 +143,7 @@ isStarted :: AuctionState -> Bool
 isStarted BiddingStarted = True
 isStarted _ = False
 
-instance Eq AuctionState where
-  {-# INLINEABLE (==) #-}
-  Announced == Announced = True
-  BiddingStarted == BiddingStarted = True
-  _ == _ = False
-
+PlutusTx.deriveEq ''AuctionState
 PlutusTx.makeIsDataIndexed ''AuctionState [('Announced, 0), ('BiddingStarted, 1)]
 PlutusTx.makeLift ''AuctionState
 
@@ -186,10 +155,7 @@ data AuctionEscrowDatum = AuctionEscrowDatum
   }
   deriving stock (Generic, Prelude.Show, Prelude.Eq)
 
-instance Eq AuctionEscrowDatum where
-  {-# INLINEABLE (==) #-}
-  (AuctionEscrowDatum x x') == (AuctionEscrowDatum y y') = (x == y) && (x' == y')
-
+PlutusTx.deriveEq ''AuctionEscrowDatum
 PlutusTx.makeIsDataIndexed ''AuctionEscrowDatum [('AuctionEscrowDatum, 0)]
 PlutusTx.makeLift ''AuctionEscrowDatum
 
@@ -200,10 +166,7 @@ data StandingBidDatum = StandingBidDatum
   deriving stock (Generic, Prelude.Show, Prelude.Eq)
   deriving anyclass (ToJSON, FromJSON)
 
-instance Eq StandingBidDatum where
-  {-# INLINEABLE (==) #-}
-  (StandingBidDatum x y) == (StandingBidDatum x' y') = (x == x') && (y == y')
-
+PlutusTx.deriveEq ''StandingBidDatum
 PlutusTx.makeIsDataIndexed ''StandingBidDatum [('StandingBidDatum, 0)]
 PlutusTx.makeLift ''StandingBidDatum
 
@@ -214,10 +177,7 @@ data BidDepositDatum = BidDepositDatum
   }
   deriving stock (Generic, Prelude.Show, Prelude.Eq)
 
-instance Eq BidDepositDatum where
-  {-# INLINEABLE (==) #-}
-  (BidDepositDatum x y) == (BidDepositDatum x' y') = (x == x') && (y == y')
-
+PlutusTx.deriveEq ''BidDepositDatum
 PlutusTx.makeIsDataIndexed ''BidDepositDatum [('BidDepositDatum, 0)]
 PlutusTx.makeLift ''BidDepositDatum
 
