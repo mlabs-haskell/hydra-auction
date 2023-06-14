@@ -9,12 +9,10 @@ module HydraAuction.Tx.Common (
 ) where
 
 -- Prelude imports
-import Prelude
+import HydraAuctionUtils.Prelude
 
 -- Haskell imports
-import Control.Monad (void, when)
 import Control.Monad.TimeMachine (MonadTime)
-import Control.Monad.Trans (MonadIO)
 
 -- Plutus imports
 import PlutusLedgerApi.V1.Interval (member)
@@ -42,7 +40,6 @@ import Hydra.Cardano.Api (
   pattern TxOut,
   pattern TxOutDatumNone,
  )
-import Hydra.Chain.Direct.Util (isMarkedOutput)
 
 -- Hydra auction imports
 
@@ -72,7 +69,6 @@ import HydraAuctionUtils.Monads (
  )
 import HydraAuctionUtils.Monads.Actors (
   MonadHasActor,
-  actorTipUtxo,
   addressAndKeys,
  )
 import HydraAuctionUtils.Time (currentPlutusPOSIXTime)
@@ -81,9 +77,7 @@ import HydraAuctionUtils.Tx.AutoCreateTx (
   autoSubmitAndAwaitTx,
  )
 import HydraAuctionUtils.Tx.Build (minLovelace, mintedTokens, tokenToAsset)
-import HydraAuctionUtils.Tx.Utxo (
-  filterAdaOnlyUtxo,
- )
+import HydraAuctionUtils.Tx.Common (selectAdaUtxo)
 
 currentAuctionStage ::
   (MonadTime timedMonad) => AuctionTerms -> timedMonad AuctionStage
@@ -113,8 +107,7 @@ createTwoMinAdaUtxo = do
   (actorAddress, _, actorSk) <- addressAndKeys
 
   -- FIXUP: cover no money case, use single utxo
-  actorMoneyUtxo <-
-    UTxO.filter (not . isMarkedOutput) . filterAdaOnlyUtxo <$> actorTipUtxo
+  actorMoneyUtxo <- fromJust <$> selectAdaUtxo (minLovelace * 2)
 
   void $
     autoSubmitAndAwaitTx $
@@ -130,8 +123,10 @@ createTwoMinAdaUtxo = do
         , validityBound = always
         }
 
+  let filterMinLovelace = UTxO.filter $
+        \x -> txOutValue x == lovelaceToValue minLovelace
   (utxo1 : utxo2 : _) <-
-    UTxO.pairs . UTxO.filter (\x -> txOutValue x == lovelaceToValue minLovelace) . filterAdaOnlyUtxo <$> actorTipUtxo
+    UTxO.pairs . filterMinLovelace . fromJust <$> selectAdaUtxo minLovelace
 
   return (utxo1, utxo2)
   where

@@ -36,7 +36,6 @@ import HydraAuction.OnChain.TestNFT (
 import HydraAuctionUtils.L1.Runner (L1Runner)
 import HydraAuctionUtils.Monads.Actors (
   WithActorT (..),
-  actorTipUtxo,
   addressAndKeys,
  )
 import HydraAuctionUtils.Tx.AutoCreateTx (
@@ -48,9 +47,7 @@ import HydraAuctionUtils.Tx.Build (
   mintedTokens,
   tokenToAsset,
  )
-import HydraAuctionUtils.Tx.Utxo (
-  filterAdaOnlyUtxo,
- )
+import HydraAuctionUtils.Tx.Common (selectAdaUtxo)
 
 findTestNFT :: UTxO.UTxO -> Maybe TxIn
 findTestNFT (UTxO.UTxO m) = Map.foldrWithKey isTestNFT Nothing m
@@ -65,7 +62,7 @@ mintOneTestNFT :: WithActorT L1Runner Tx
 mintOneTestNFT = do
   (actorAddress, _, actorSk) <- addressAndKeys
 
-  actorMoneyUtxo <- filterAdaOnlyUtxo <$> actorTipUtxo
+  actorMoneyUtxo <- fromJust <$> selectAdaUtxo minLovelace
 
   let valueOut =
         fromPlutusValue (assetClassValue testNftAssetClass 1)

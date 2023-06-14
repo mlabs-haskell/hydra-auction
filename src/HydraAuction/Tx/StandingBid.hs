@@ -72,7 +72,6 @@ import HydraAuction.OnChain.StandingBid (
  )
 import HydraAuctionUtils.Monads.Actors (
   WithActorT,
-  actorTipUtxo,
   addressAndKeys,
   askActor,
  )
@@ -110,12 +109,11 @@ import HydraAuctionUtils.Tx.AutoCreateTx (
   autoSubmitAndAwaitTx,
  )
 import HydraAuctionUtils.Tx.Build (
+  minLovelace,
   mkInlineDatum,
   mkInlinedDatumScriptWitness,
  )
-import HydraAuctionUtils.Tx.Utxo (
-  filterAdaOnlyUtxo,
- )
+import HydraAuctionUtils.Tx.Common (selectAdaUtxo)
 import HydraAuctionUtils.Types.Natural (Natural)
 
 data DatumDecodingError = CannotDecodeDatum | NoInlineDatum
@@ -163,7 +161,7 @@ newBid terms bidAmount sellerSignature = do
     Just x -> return x
     Nothing -> fail "Standing bid cannot be found"
 
-  moneyUtxo <- filterAdaOnlyUtxo <$> actorTipUtxo
+  moneyUtxo <- fromJust <$> selectAdaUtxo $ Lovelace $ naturalToInt bidAmount
   submitterMoneyUtxo <- case listToMaybe $ UTxO.pairs moneyUtxo of
     Just x -> return x
     Nothing -> fail "Submiter does not have money for transaction"
@@ -327,7 +325,7 @@ cleanupTx terms = do
   (actorAddress, _, actorSk) <- addressAndKeys
 
   standingBidUtxo <- scriptUtxos StandingBid terms
-  actorMoneyUtxo <- filterAdaOnlyUtxo <$> actorTipUtxo
+  actorMoneyUtxo <- fromJust <$> selectAdaUtxo minLovelace
 
   -- FIXME: cover not proper UTxOs
   void $
