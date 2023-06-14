@@ -1,5 +1,3 @@
-{-# LANGUAGE StrictData #-}
-
 -- | Pure logic and Hydra communication used for Delegate server
 module HydraAuction.Delegate (
   delegateFrontendRequestStep,

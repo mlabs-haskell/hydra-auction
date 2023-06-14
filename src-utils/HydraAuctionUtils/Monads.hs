@@ -1,5 +1,4 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
-{-# LANGUAGE StrictData #-}
 
 module HydraAuctionUtils.Monads (
   UtxoQuery (..),

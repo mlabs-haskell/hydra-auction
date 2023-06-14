@@ -1,9 +1,6 @@
 {-# LANGUAGE FunctionalDependencies #-}
-{-# LANGUAGE RankNTypes #-}
 
 module HydraAuctionUtils.Tracing (
-  -- * tracing types
-
   -- ** tracing transformer
   TracerT (..),
   runWithTracer,
