@@ -73,6 +73,7 @@ common common-lang
     EmptyCase
     FlexibleContexts
     FlexibleInstances
+    FunctionalDependencies
     GADTs
     GeneralizedNewtypeDeriving
     HexFloatLiterals
@@ -281,7 +282,9 @@ library hydra-auction-utils
     HydraAuctionUtils.Plutus
     HydraAuctionUtils.Prelude
     HydraAuctionUtils.PrettyPrinting
+    HydraAuctionUtils.Server.Client
     HydraAuctionUtils.Server.ClientId
+    HydraAuctionUtils.Server.Protocol
     HydraAuctionUtils.Server.Websockets
     HydraAuctionUtils.Time
     HydraAuctionUtils.Tracing
