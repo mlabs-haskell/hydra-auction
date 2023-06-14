@@ -131,7 +131,7 @@ delegateFrontendRequestStep (clientId, request) =
                 newVoucherCS = standingBidVoucherCS datum
             if validNewBidTerms auctionTerms newVoucherCS standingBidTerms newBidTerms
               then do
-                lift $ do
+                _ <- lift $ do
                   tx <-
                     createNewBidTx
                       auctionTerms
@@ -233,7 +233,7 @@ delegateEventStep event = case event of
       Initialized _ (Open utxoState mCachedTerms) -> do
         case (txResentRequired delegatePublicKey, mCachedTerms) of
           (Just newBidDatum, Just auctionTerms) -> do
-            lift $ resentBid actor utxoState auctionTerms newBidDatum
+            _ <- lift $ resentBid actor utxoState auctionTerms newBidDatum
             return []
           (Just _, Nothing) ->
             -- If tx was sent initialy by this server,
