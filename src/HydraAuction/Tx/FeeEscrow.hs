@@ -3,10 +3,7 @@ module HydraAuction.Tx.FeeEscrow (
 ) where
 
 -- Prelude imports
-import Prelude
-
--- Haskell imports
-import Control.Monad (void)
+import HydraAuctionUtils.Prelude
 
 -- Plutus imports
 import PlutusLedgerApi.V1.Address (pubKeyHashAddress)
@@ -45,7 +42,6 @@ import HydraAuctionUtils.Monads (
  )
 import HydraAuctionUtils.Monads.Actors (
   WithActorT,
-  actorTipUtxo,
   addressAndKeys,
  )
 import HydraAuctionUtils.Tx.AutoCreateTx (
@@ -53,11 +49,10 @@ import HydraAuctionUtils.Tx.AutoCreateTx (
   autoSubmitAndAwaitTx,
  )
 import HydraAuctionUtils.Tx.Build (
+  minLovelace,
   mkInlinedDatumScriptWitness,
  )
-import HydraAuctionUtils.Tx.Utxo (
-  filterAdaOnlyUtxo,
- )
+import HydraAuctionUtils.Tx.Common (selectAdaUtxo)
 
 distributeFee :: AuctionTerms -> WithActorT L1Runner ()
 distributeFee terms = do
@@ -65,7 +60,7 @@ distributeFee terms = do
 
   (actorAddress, _, actorSk) <- addressAndKeys
 
-  actorMoneyUtxo <- filterAdaOnlyUtxo <$> actorTipUtxo
+  actorMoneyUtxo <- fromJust <$> selectAdaUtxo minLovelace
 
   feeEscrowUtxo <- scriptUtxos FeeEscrow terms
 

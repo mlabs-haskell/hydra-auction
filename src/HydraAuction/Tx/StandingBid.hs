@@ -31,6 +31,7 @@ import Cardano.Api.UTxO qualified as UTxO
 import Hydra.Cardano.Api (
   CtxUTxO,
   Key (..),
+  Lovelace (..),
   PaymentKey,
   PlutusScriptV2,
   Tx,
@@ -72,7 +73,6 @@ import HydraAuction.OnChain.StandingBid (
  )
 import HydraAuctionUtils.Monads.Actors (
   WithActorT,
-  actorTipUtxo,
   addressAndKeys,
   askActor,
  )
@@ -110,13 +110,12 @@ import HydraAuctionUtils.Tx.AutoCreateTx (
   autoSubmitAndAwaitTx,
  )
 import HydraAuctionUtils.Tx.Build (
+  minLovelace,
   mkInlineDatum,
   mkInlinedDatumScriptWitness,
  )
-import HydraAuctionUtils.Tx.Utxo (
-  filterAdaOnlyUtxo,
- )
-import HydraAuctionUtils.Types.Natural (Natural)
+import HydraAuctionUtils.Tx.Common (selectAdaUtxo)
+import HydraAuctionUtils.Types.Natural (Natural, naturalToInt)
 
 data DatumDecodingError = CannotDecodeDatum | NoInlineDatum
 
@@ -163,7 +162,7 @@ newBid terms bidAmount sellerSignature = do
     Just x -> return x
     Nothing -> fail "Standing bid cannot be found"
 
-  moneyUtxo <- filterAdaOnlyUtxo <$> actorTipUtxo
+  moneyUtxo <- fromJust <$> selectAdaUtxo (Lovelace $ naturalToInt bidAmount)
   submitterMoneyUtxo <- case listToMaybe $ UTxO.pairs moneyUtxo of
     Just x -> return x
     Nothing -> fail "Submiter does not have money for transaction"
@@ -175,7 +174,7 @@ newBid terms bidAmount sellerSignature = do
       standingBidSingleUtxo
       submitterMoneyUtxo
       datum
-  submitAndAwaitTx tx
+  void $ submitAndAwaitTx tx
 
 sellerSignatureForActor :: AuctionTerms -> Actor -> IO BuiltinByteString
 sellerSignatureForActor terms actor = do
@@ -327,7 +326,7 @@ cleanupTx terms = do
   (actorAddress, _, actorSk) <- addressAndKeys
 
   standingBidUtxo <- scriptUtxos StandingBid terms
-  actorMoneyUtxo <- filterAdaOnlyUtxo <$> actorTipUtxo
+  actorMoneyUtxo <- fromJust <$> selectAdaUtxo minLovelace
 
   -- FIXME: cover not proper UTxOs
   void $

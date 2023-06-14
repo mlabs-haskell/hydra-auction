@@ -6,13 +6,20 @@ Includes imports not giving any name-collisions for:
 * Basic containers types and utilities
 * Our MTL-like stack
 -}
-module HydraAuctionUtils.Prelude (module X, trySome) where
+module HydraAuctionUtils.Prelude (module X, trySome, hush) where
 
 -- Prelude imports
 import Prelude as X
 
 -- Haskell imports
 
+import Control.Concurrent as X (
+  MVar,
+  newMVar,
+  putMVar,
+  takeMVar,
+  threadDelay,
+ )
 import Control.Exception (SomeException)
 import Control.Monad as X (
   forM_,
@@ -51,3 +58,7 @@ import GHC.Stack as X (HasCallStack)
 
 trySome :: forall a. IO a -> IO (Either SomeException a)
 trySome = try
+
+-- | Suppress the 'Left' value of an 'Either'
+hush :: Either a b -> Maybe b
+hush = either (const Nothing) Just

@@ -18,14 +18,7 @@ import HydraAuctionUtils.Prelude
 
 -- Haskell import
 
-import Control.Concurrent (threadDelay)
 import Control.Concurrent.Async (mapConcurrently)
-import Control.Concurrent.MVar (
-  MVar,
-  newMVar,
-  putMVar,
-  takeMVar,
- )
 import Control.Exception (finally)
 import Control.Tracer (nullTracer)
 import Data.Map qualified as Map
@@ -206,7 +199,8 @@ runEmulatorInTest action = do
           flip runEmulator action
     else executeTestL1Runner $ do
       MkExecutionContext {node} <- ask
-      (hydraScriptsTxId, _) <- liftIO $ prepareScriptRegistry node
+      -- FIXME: race condition on Faucet
+      (!hydraScriptsTxId, !_) <- liftIO $ prepareScriptRegistry node
       spinUpHeads 0 hydraScriptsTxId $
         flip runEmulator action
 

@@ -11,6 +11,7 @@ module HydraAuctionUtils.Hydra.Interface (
 import HydraAuctionUtils.Prelude
 
 -- Hydra imports
+-- Orphan `IsChainState Tx` needed for `Show ServerOutput` instance imported
 
 import Hydra.API.ClientInput (ClientInput (..))
 import Hydra.API.ServerOutput (ServerOutput (..))

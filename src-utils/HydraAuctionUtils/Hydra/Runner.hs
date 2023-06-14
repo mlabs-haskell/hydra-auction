@@ -21,7 +21,6 @@ import GHC.Natural (Natural, naturalToInt)
 import Test.HUnit.Lang (HUnitFailure)
 
 -- Hydra imports
-import Hydra.Chain.Direct.State ()
 import HydraNode (
   HydraClient,
   send,

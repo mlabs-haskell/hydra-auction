@@ -39,13 +39,6 @@ import Hydra.Cardano.Api (
 -- Hydra auction imports
 import HydraAuction.OnChain (AuctionScript (..), voucherCurrencySymbol)
 import HydraAuction.OnChain.Common (stageToInterval)
-import HydraAuctionUtils.Monads.Actors (
-  WithActorT,
-  actorTipUtxo,
-  addressAndKeys,
- )
-import HydraAuctionUtils.Plutus (extendIntervalRight)
-
 import HydraAuction.Tx.Common (
   scriptAddress,
   scriptPlutusScript,
@@ -61,17 +54,21 @@ import HydraAuctionUtils.L1.Runner (L1Runner)
 import HydraAuctionUtils.Monads (
   logMsg,
  )
+import HydraAuctionUtils.Monads.Actors (
+  WithActorT,
+  addressAndKeys,
+ )
+import HydraAuctionUtils.Plutus (extendIntervalRight)
 import HydraAuctionUtils.Tx.AutoCreateTx (
   AutoCreateParams (..),
   autoSubmitAndAwaitTx,
  )
 import HydraAuctionUtils.Tx.Build (
+  minLovelace,
   mkInlineDatum,
   mkInlinedDatumScriptWitness,
  )
-import HydraAuctionUtils.Tx.Utxo (
-  filterAdaOnlyUtxo,
- )
+import HydraAuctionUtils.Tx.Common (selectAdaUtxo)
 import HydraAuctionUtils.Types.Natural (
   Natural,
   naturalToInt,
@@ -111,7 +108,8 @@ mkDeposit terms depositAmount = do
 
   (bidderAddress, bidderVk, bidderSk) <- addressAndKeys
 
-  bidderMoneyUtxo <- filterAdaOnlyUtxo <$> actorTipUtxo
+  let depositLovelace = Lovelace (naturalToInt depositAmount)
+  bidderMoneyUtxo <- fromJust <$> selectAdaUtxo depositLovelace
 
   let voucherCS = voucherCurrencySymbol terms
       bidDepositDatum = BidDepositDatum (toPlutusKeyHash $ verificationKeyHash bidderVk) voucherCS
@@ -121,7 +119,7 @@ mkDeposit terms depositAmount = do
           depositValue
           (mkInlineDatum bidDepositDatum)
           ReferenceScriptNone
-      depositValue = lovelaceToValue (Lovelace (naturalToInt depositAmount))
+      depositValue = lovelaceToValue depositLovelace
 
   void $
     autoSubmitAndAwaitTx $
@@ -143,7 +141,7 @@ losingBidderClaimDeposit terms = do
 
   (bidderAddress, bidderVk, bidderSk) <- addressAndKeys
 
-  bidderMoneyUtxo <- filterAdaOnlyUtxo <$> actorTipUtxo
+  bidderMoneyUtxo <- fromJust <$> selectAdaUtxo minLovelace
   standingBidUtxo <- scriptUtxos StandingBid terms
   allDeposits <- scriptUtxos Deposit terms
 
@@ -172,7 +170,7 @@ sellerClaimDepositFor terms bidderPkh = do
 
   (sellerAddress, _, sellerSk) <- addressAndKeys
 
-  sellerMoneyUtxo <- filterAdaOnlyUtxo <$> actorTipUtxo
+  sellerMoneyUtxo <- fromJust <$> selectAdaUtxo minLovelace
   standingBidUtxo <- scriptUtxos StandingBid terms
   auctionEscrowUtxo <- scriptUtxos Escrow terms
 
@@ -203,7 +201,7 @@ cleanupDeposit terms = do
 
   (bidderAddress, bidderVk, bidderSk) <- addressAndKeys
 
-  bidderMoneyUtxo <- filterAdaOnlyUtxo <$> actorTipUtxo
+  bidderMoneyUtxo <- fromJust <$> selectAdaUtxo minLovelace
 
   allDeposits <- scriptUtxos Deposit terms
 

@@ -7,11 +7,9 @@ module HydraAuction.Tx.Escrow (
 ) where
 
 -- Prelude imports
-import PlutusTx.Prelude (emptyByteString)
-import Prelude
 
--- Haskell imports
-import Control.Monad (void)
+import HydraAuctionUtils.Prelude
+import PlutusTx.Prelude (emptyByteString)
 
 -- Plutus imports
 import PlutusLedgerApi.V1.Address (pubKeyHashAddress)
@@ -78,7 +76,6 @@ import HydraAuctionUtils.Monads (
  )
 import HydraAuctionUtils.Monads.Actors (
   WithActorT,
-  actorTipUtxo,
   addressAndKeys,
  )
 import HydraAuctionUtils.Plutus (extendIntervalRight)
@@ -91,13 +88,13 @@ import HydraAuctionUtils.Tx.Build (
   mkInlineDatum,
   mkInlinedDatumScriptWitness,
  )
+import HydraAuctionUtils.Tx.Common (selectAdaUtxo)
 import HydraAuctionUtils.Tx.Utxo (
-  filterAdaOnlyUtxo,
   filterUtxoByCurrencySymbols,
  )
 import HydraAuctionUtils.Types.Natural (naturalToInt)
 
-announceAuction :: AuctionTerms -> WithActorT L1Runner ()
+announceAuction :: HasCallStack => AuctionTerms -> WithActorT L1Runner ()
 announceAuction terms = do
   logMsg "Doing announce auction"
 
@@ -121,7 +118,7 @@ announceAuction terms = do
   utxoWithLotNFT <-
     queryUtxo (ByTxIns [fromPlutusTxOutRef $ utxoNonce terms])
 
-  sellerMoneyUtxo <- filterAdaOnlyUtxo <$> actorTipUtxo
+  sellerMoneyUtxo <- fromJust <$> selectAdaUtxo minLovelace
 
   case length utxoWithLotNFT of
     0 -> fail "Utxo with Lot was consumed or not created"
@@ -142,7 +139,7 @@ announceAuction terms = do
         , validityBound = stageToInterval terms AnnouncedStage
         }
 
-startBidding :: AuctionTerms -> WithActorT L1Runner ()
+startBidding :: HasCallStack => AuctionTerms -> WithActorT L1Runner ()
 startBidding terms = do
   logMsg "Doing start bidding"
 
@@ -179,7 +176,7 @@ startBidding terms = do
 
   (sellerAddress, _, sellerSk) <- addressAndKeys
 
-  sellerMoneyUtxo <- filterAdaOnlyUtxo <$> actorTipUtxo
+  sellerMoneyUtxo <- fromJust <$> selectAdaUtxo minLovelace
 
   let escrowAnnounceSymbols =
         [ fst $
@@ -213,7 +210,7 @@ startBidding terms = do
         , validityBound = stageToInterval terms BiddingStartedStage
         }
 
-bidderBuys :: AuctionTerms -> WithActorT L1Runner ()
+bidderBuys :: HasCallStack => AuctionTerms -> WithActorT L1Runner ()
 bidderBuys terms = do
   feeEscrowAddress <- scriptAddress FeeEscrow terms
   sellerAddress <-
@@ -262,7 +259,7 @@ bidderBuys terms = do
 
   (bidderAddress, bidderVk, bidderSk) <- addressAndKeys
 
-  bidderMoneyUtxo <- filterAdaOnlyUtxo <$> actorTipUtxo
+  bidderMoneyUtxo <- fromJust <$> selectAdaUtxo minLovelace
 
   let escrowBiddingStartedSymbols =
         [ CurrencySymbol emptyByteString
@@ -305,7 +302,7 @@ bidderBuys terms = do
         , validityBound = stageToInterval terms BiddingEndedStage
         }
 
-sellerReclaims :: AuctionTerms -> WithActorT L1Runner ()
+sellerReclaims :: HasCallStack => AuctionTerms -> WithActorT L1Runner ()
 sellerReclaims terms = do
   feeEscrowAddress <- scriptAddress FeeEscrow terms
 
@@ -336,7 +333,7 @@ sellerReclaims terms = do
 
   (sellerAddress, _, sellerSk) <- addressAndKeys
 
-  sellerMoneyUtxo <- filterAdaOnlyUtxo <$> actorTipUtxo
+  sellerMoneyUtxo <- fromJust <$> selectAdaUtxo minLovelace
 
   let escrowBiddingStartedSymbols =
         [ CurrencySymbol emptyByteString

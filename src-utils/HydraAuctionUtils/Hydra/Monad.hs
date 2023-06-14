@@ -70,9 +70,9 @@ newtype ViaMonadHydra m a = MkViaMonadHydra (m a)
 
 -- FIXME: this does not work without `Monad m`, do not know why
 instance (Monad m, MonadHydra m) => MonadSubmitTx (ViaMonadHydra m) where
-  submitTx :: Tx -> ViaMonadHydra m ()
   submitTx tx = do
     sendCommand $ NewTx tx
+    return $ Right ()
 
   awaitTx :: Tx -> ViaMonadHydra m ()
   awaitTx tx = do

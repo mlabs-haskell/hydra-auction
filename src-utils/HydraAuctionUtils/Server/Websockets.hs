@@ -1,4 +1,7 @@
-module HydraAuctionUtils.Server.Websockets (runWebsocketsServer) where
+module HydraAuctionUtils.Server.Websockets (
+  ServerQueues (..),
+  runWebsocketsServer,
+) where
 
 -- Prelude imports
 
@@ -6,7 +9,6 @@ import HydraAuctionUtils.Prelude
 
 -- Haskell imports
 
-import Control.Concurrent (MVar, newMVar, putMVar, takeMVar)
 import Control.Concurrent.Async (race_)
 import Control.Concurrent.STM (
   TChan,
@@ -16,7 +18,7 @@ import Control.Concurrent.STM (
   readTChan,
   writeTQueue,
  )
-import Data.Aeson (FromJSON, ToJSON, eitherDecode, encode)
+import Data.Aeson (eitherDecode, encode)
 import Network.WebSockets (
   Connection,
   PendingConnection,
@@ -33,32 +35,35 @@ import HydraAuctionUtils.Server.ClientId (
   ClientResponseScope (..),
   clientIsInScope,
  )
+import HydraAuctionUtils.Server.Protocol (Protocol (..))
+
+data ServerQueues protocol = MkServerQueues
+  { clientInputs :: TQueue (ClientId, Input protocol)
+  -- ^ the queue where WS server thread puts client inputs
+  , serverOutputs :: TChan (ClientResponseScope, Output protocol)
+  -- ^ the queue where WS server thread gets outputs created
+  -- by some another thread with internal logic
+  }
 
 -- FIXME: return proper logging
 websocketsServerConnectionHanler ::
-  forall input output.
-  (FromJSON input, ToJSON output) =>
+  forall protocol.
+  Protocol protocol =>
   -- | the amount of seconds between pings
   Int ->
-  -- | the queue for the client requests
-  TQueue (ClientId, input) ->
-  -- | the queue for the broadcast
-  TChan (ClientResponseScope, output) ->
+  ServerQueues protocol ->
+  IO ClientId ->
   PendingConnection ->
   IO ()
 websocketsServerConnectionHanler
   pingSecs
-  clientInputQueue
-  broadcast
-  pending = do
-    clientIdCounter <- liftIO $ newMVar 0
-    let genFreshClientId = freshClientIdGenerator clientIdCounter
-
-    connection <- liftIO $ acceptRequest pending
-    clientId <- liftIO genFreshClientId
-
-    liftIO $ do
-      toClientsChannelCopy <- atomically $ dupTChan broadcast
+  clientQueues
+  genFreshClientId
+  pending =
+    do
+      connection <- acceptRequest pending
+      clientId <- genFreshClientId
+      toClientsChannelCopy <- atomically $ dupTChan (serverOutputs clientQueues)
       -- From the Documentation of 'withPingThread' in 'Network.Websockets':
       -- This is useful to keep idle connections open through proxies and whatnot.
       -- Many (but not all) proxies have a 60 second default timeout, so based on
@@ -70,44 +75,46 @@ websocketsServerConnectionHanler
               sendFromChannel connection clientId toClientsChannelCopy
           )
     where
-      sendToClient :: forall a. ToJSON a => Connection -> a -> IO ()
       sendToClient connection = sendTextData connection . encode
       receiveAndPutInQueue ::
         Connection ->
         ClientId ->
         IO ()
+
       receiveAndPutInQueue connection clientId = do
         inp <- liftIO $ receiveData connection
-        case eitherDecode @input inp of
+        case eitherDecode inp of
           Left _ -> return ()
           Right request -> do
             liftIO . atomically $
-              writeTQueue clientInputQueue (clientId, request)
+              writeTQueue (clientInputs clientQueues) (clientId, request)
       sendFromChannel ::
         Connection ->
         ClientId ->
-        TChan (ClientResponseScope, output) ->
+        TChan (ClientResponseScope, Output protocol) ->
         IO ()
       sendFromChannel connection clientId broadcastCopy = do
         (scope, message) <- atomically (readTChan broadcastCopy)
         when (clientIsInScope clientId scope) $
           sendToClient connection message
-      freshClientIdGenerator :: MVar ClientId -> IO ClientId
-      freshClientIdGenerator clientCounter = do
-        v <- takeMVar clientCounter
-        putMVar clientCounter (v + 1)
-        return v
 
 runWebsocketsServer ::
-  forall input output.
-  (FromJSON input, ToJSON output) =>
+  forall protocol.
+  Protocol protocol =>
   Int ->
-  -- | the queue for the client requests
-  TQueue (ClientId, input) ->
-  -- | the queue for the broadcast
-  TChan (ClientResponseScope, output) ->
+  ServerQueues protocol ->
   IO ()
-runWebsocketsServer port clientInputQueue toClientsChannel =
+runWebsocketsServer port queues = do
+  clientIdCounter <- liftIO $ newMVar 0
   -- FIXME: parametrize with custom config datatype
   runServer "127.0.0.1" port $
-    websocketsServerConnectionHanler 30_000 clientInputQueue toClientsChannel
+    websocketsServerConnectionHanler
+      30_000
+      queues
+      (freshClientIdGenerator clientIdCounter)
+  where
+    freshClientIdGenerator :: MVar ClientId -> IO ClientId
+    freshClientIdGenerator clientCounter = do
+      v <- takeMVar clientCounter
+      putMVar clientCounter (v + 1)
+      return v

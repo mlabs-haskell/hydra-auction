@@ -18,6 +18,7 @@ for nested types like `EntityQuery`, and not `ClientInput` as whole.
 {-# OPTIONS_GHC -Wno-orphans #-}
 
 module HydraAuction.Platform.Interface (
+  PlatformProtocol,
   Entity (..),
   EntityFilter (..),
   AnnouncedAuction (..),
@@ -68,6 +69,7 @@ import HydraAuction.Delegate.Interface (
  )
 import HydraAuction.Types (AuctionTerms)
 import HydraAuctionUtils.Fixture (Actor)
+import HydraAuctionUtils.Server.Protocol (Protocol (..))
 import HydraAuctionUtils.Types.Natural (Natural)
 
 -- Interfaces
@@ -403,6 +405,12 @@ instance
       [ "kind" Aeson..= kind
       , jsonSubFieldName (Proxy @container) Aeson..= container
       ]
+
+data PlatformProtocol
+
+instance Protocol PlatformProtocol where
+  type Input PlatformProtocol = Some ClientInput
+  type Output PlatformProtocol = Some ServerOutput
 
 instance ContainerForEntity ClientInput where
   jsonSubFieldName Proxy = "input"
