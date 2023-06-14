@@ -227,6 +227,8 @@ https://plutus.readthedocs.io/en/latest/troubleshooting.html#wrong-version
 * `TESTS_VERBOSE` - disables stdout capture
 * `USE_DOCKER_FOR_TESTS` - spawns `hydra-node`s for E2E tests,
   using same `docker-compose` as for real demoing.
+   * `CLUSTER_ENV` should work in that case, but you will need
+      to adjust timings.
 
 ## Documentation
 

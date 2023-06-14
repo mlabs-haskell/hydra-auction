@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 set -eo pipefail
 
+parent_path="$(realpath $(dirname $(realpath $0)))/.."
+
 # Envs
 
-CLUSTER_ENV=CLUSTER_ENV:-devnet
+CLUSTER_ENV=${CLUSTER_ENV:-devnet}
 
 CARDANO_IMAGE="inputoutput/cardano-node:1.35.4"
 
@@ -46,9 +48,9 @@ function frontend-cli() {
 
     if [ "${RUN_CLI_IN_DOCKER:-0}" ]; then
         docker run --network hydra-auction_hydra_net --rm -it \
-        -v ./devnet/node.socket:/node.socket \
-        -v ./example:/example \
-        -v ./auction-state:/auction-state hydra-auction-cli:latest \
+        -v ${parent_path}/devnet/node.socket:/node.socket \
+        -v ${parent_path}/example:/example \
+        -v ${parent_path}/auction-state:/auction-state hydra-auction-cli:latest \
         "hydra-auction" "${cmdArray[@]}" "-d" "delegate-server-${delegate}:8001"
     else
         cabal run hydra-auction -- "${cmdArray[@]}" "-d" "127.0.0.1:800${delegate}"

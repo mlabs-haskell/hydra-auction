@@ -6,3 +6,4 @@ services:
           - ./testnet:/ipc
         environment:
           - NETWORK=preprod
+          - CARDANO_NODE_SOCKET_PATH=/ipc/node.socket # used by cardano-cli

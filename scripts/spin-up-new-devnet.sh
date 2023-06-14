@@ -1,4 +1,4 @@
-#!/usr/bin/bash
+#!/usr/bin/env bash
 parent_path=$( cd "$(dirname "${BASH_SOURCE[0]}")" ; pwd -P )
 cd "$parent_path/.."
 
@@ -27,14 +27,15 @@ done
 echo '. done'
 
 echo "Changing node.socket owner to current user"
-sudo chown $USER:$USER "$CARDANO_NODE_SOCKET_PATH"
+GROUP=$(id -gn)
+sudo chown $USER:$GROUP "$CARDANO_NODE_SOCKET_PATH"
 
 echo 'Waiting for cardano node sync ..'
 
 SYNC_PROGRESS=""
 while ! [ "$SYNC_PROGRESS" = '"100.00"' ]
 do
-  SYNC_PROGRESS="$(cardano-cli query tip --testnet-magic $TESTNET_MAGIC | jq '.syncProgress')"
+  SYNC_PROGRESS="$(ccli query tip | jq '.syncProgress')"
   echo "Sync progress is:" "$SYNC_PROGRESS"
   sleep 2
 done
