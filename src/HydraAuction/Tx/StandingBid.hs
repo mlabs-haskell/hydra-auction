@@ -31,6 +31,7 @@ import Cardano.Api.UTxO qualified as UTxO
 import Hydra.Cardano.Api (
   CtxUTxO,
   Key (..),
+  Lovelace (..),
   PaymentKey,
   PlutusScriptV2,
   Tx,
@@ -114,7 +115,7 @@ import HydraAuctionUtils.Tx.Build (
   mkInlinedDatumScriptWitness,
  )
 import HydraAuctionUtils.Tx.Common (selectAdaUtxo)
-import HydraAuctionUtils.Types.Natural (Natural)
+import HydraAuctionUtils.Types.Natural (Natural, naturalToInt)
 
 data DatumDecodingError = CannotDecodeDatum | NoInlineDatum
 
@@ -161,7 +162,7 @@ newBid terms bidAmount sellerSignature = do
     Just x -> return x
     Nothing -> fail "Standing bid cannot be found"
 
-  moneyUtxo <- fromJust <$> selectAdaUtxo $ Lovelace $ naturalToInt bidAmount
+  moneyUtxo <- fromJust <$> selectAdaUtxo (Lovelace $ naturalToInt bidAmount)
   submitterMoneyUtxo <- case listToMaybe $ UTxO.pairs moneyUtxo of
     Just x -> return x
     Nothing -> fail "Submiter does not have money for transaction"
