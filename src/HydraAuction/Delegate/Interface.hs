@@ -154,8 +154,7 @@ data ResponseReason = WasQueried | Updated
   deriving anyclass (FromJSON, ToJSON)
 
 data DelegateResponse
-  = ClosingTxTemplate
-  | CurrentDelegateState ResponseReason DelegateState
+  = CurrentDelegateState ResponseReason DelegateState
   | RequestIgnored RequestIgnoredReason
   | -- FIXME: possible duplication with CurrentDelegateState
     AuctionSet AuctionTerms
