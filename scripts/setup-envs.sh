@@ -47,8 +47,8 @@ function frontend-cli() {
     local cmdArray=("$@")
 
     if [ "${RUN_CLI_IN_DOCKER:-0}" ]; then
-        docker run --network hydra-auction_hydra_net --rm -it \
-        -v ${parent_path}/devnet/node.socket:/node.socket \
+        docker run --rm -it \
+        -v ${parent_path}/devnet/node.socket:/devnet/node.socket \
         -v ${parent_path}/example:/example \
         -v ${parent_path}/auction-state:/auction-state hydra-auction-cli:latest \
         "hydra-auction" "${cmdArray[@]}" "-d" "delegate-server-${delegate}:8001"
