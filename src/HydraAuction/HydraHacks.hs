@@ -4,10 +4,9 @@
 module HydraAuction.HydraHacks (submitAndAwaitCommitTx, prepareScriptRegistry) where
 
 -- Prelude imports
-import Prelude
+import HydraAuctionUtils.Prelude
 
 -- Haskell imports
-import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Function ((&))
 import Data.Set qualified as Set
 
@@ -276,4 +275,5 @@ submitAndAwaitCommitTx
           return $
             makeSignedTransactionWithKeys [commitingNodeSk] txBody
 
-      submitAndAwaitTx tx
+      -- FiXME
+      void $ submitAndAwaitTx tx

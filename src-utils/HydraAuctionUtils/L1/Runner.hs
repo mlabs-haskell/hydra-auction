@@ -25,13 +25,14 @@ import Test.Hydra.Prelude (withTempDir)
 
 -- Haskell imports
 
-import Control.Concurrent (threadDelay)
 import Control.Tracer (nullTracer, stdoutTracer, traceWith)
+import Data.List (isInfixOf)
 
 -- Cardano imports
 import CardanoClient (
   QueryPoint (..),
   awaitTransaction,
+  localNodeConnectInfo,
   queryEraHistory,
   queryProtocolParameters,
   queryStakePools,
@@ -39,9 +40,7 @@ import CardanoClient (
   queryTip,
   queryUTxO,
   queryUTxOByTxIn,
-  submitTransaction,
  )
-
 import CardanoNode (
   NodeLog (..),
   RunningNode (RunningNode, networkId, nodeSocket),
@@ -59,9 +58,12 @@ import Hydra.Cardano.Api (
   NetworkId (Testnet),
   NetworkMagic (NetworkMagic),
   SlotNo (..),
-  Tx,
+  SubmitResult (..),
   TxValidityLowerBound,
   TxValidityUpperBound,
+  submitTxToNodeLocal,
+  pattern BabbageEraInCardanoMode,
+  pattern TxInMode,
   pattern TxValidityLowerBound,
   pattern TxValidityNoLowerBound,
   pattern TxValidityNoUpperBound,
@@ -183,7 +185,21 @@ runWithNetworkParams call arg = do
       arg
 
 instance MonadSubmitTx L1Runner where
-  submitTx = runWithNetworkParams submitTransaction
+  submitTx = runWithNetworkParams submitTx'
+    where
+      submitTx' networkId socket tx = do
+        result <-
+          submitTxToNodeLocal
+            (localNodeConnectInfo networkId socket)
+            (TxInMode tx BabbageEraInCardanoMode)
+        return $ case result of
+          -- FIXME: encoding for errorData is too hard for me to understand
+          SubmitFail errorData ->
+            if "BadInputsUTxO" `isInfixOf` show errorData
+              then Left "InvalidatedTxIn"
+              else Left $ show errorData
+          SubmitSuccess -> Right ()
+
   awaitTx = runWithNetworkParams (\nId nS tx -> void $ awaitTransaction nId nS tx)
 
 instance MonadTrace L1Runner where

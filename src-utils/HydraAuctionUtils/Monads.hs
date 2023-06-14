@@ -24,7 +24,6 @@ import HydraAuctionUtils.Prelude
 
 -- Haskell imports
 
-import Control.Concurrent (threadDelay)
 import Data.Set (Set)
 
 -- Cardano imports
@@ -34,7 +33,8 @@ import Hydra.Cardano.Api (
   AddressInEra,
   CardanoMode,
   EraHistory,
-  NetworkId,
+  NetworkId (..),
+  NetworkMagic (..),
   PaymentKey,
   PoolId,
   ProtocolParameters,
@@ -106,6 +106,14 @@ addressAndKeysForActor actor = do
   let actorAddress = buildAddress actorVk networkId'
   pure (actorAddress, actorVk, actorSk)
 
+askL1Timeout :: (MonadNetworkId m) => m Int
+askL1Timeout = do
+  -- FIXME: better numbers
+  x <- askNetworkId
+  return $ case x of
+    Testnet (NetworkMagic magic) | fromIntegral magic == (42 :: Int) -> 5
+    _ -> 100
+
 -- MonadTrace
 
 class Monad m => MonadTrace m where
@@ -124,17 +132,23 @@ logMsg = traceMessage . (stringToMessage @m)
 
 -- MonadSubmitTx
 
+type SubmitingError = String
+
 class Monad m => MonadSubmitTx m where
-  submitTx :: Tx -> m ()
+  submitTx :: Tx -> m (Either SubmitingError ())
   awaitTx :: Tx -> m ()
 
-submitAndAwaitTx :: (MonadSubmitTx m, MonadTrace m) => Tx -> m ()
+submitAndAwaitTx ::
+  (MonadSubmitTx m, MonadTrace m) => Tx -> m (Either SubmitingError ())
 submitAndAwaitTx tx = do
-  submitTx tx
-  logMsg "Submited"
-  awaitTx tx
-  logMsg $ "Created Tx id: " <> show (getTxId $ txBody tx)
-
+  result <- submitTx tx
+  case result of
+    Right () -> do
+      logMsg "Submited"
+      awaitTx tx
+      logMsg $ "Created Tx id: " <> show (getTxId $ txBody tx)
+      return $ Right ()
+    Left _ -> return result
 instance {-# OVERLAPPABLE #-} (MonadSubmitTx m, MonadTrans t, Monad (t m)) => MonadSubmitTx (t m) where
   submitTx = lift . submitTx
   awaitTx = lift . awaitTx

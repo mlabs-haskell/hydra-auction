@@ -173,7 +173,7 @@ newBid terms bidAmount sellerSignature = do
       standingBidSingleUtxo
       submitterMoneyUtxo
       datum
-  submitAndAwaitTx tx
+  void $ submitAndAwaitTx tx
 
 sellerSignatureForActor :: AuctionTerms -> Actor -> IO BuiltinByteString
 sellerSignatureForActor terms actor = do
