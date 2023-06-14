@@ -1,5 +1,3 @@
-{-# OPTIONS_GHC -fno-specialise #-}
-
 module HydraAuction.OnChain.Deposit (mkDepositValidator) where
 
 -- Prelude imports

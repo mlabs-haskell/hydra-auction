@@ -1,7 +1,3 @@
-{-# OPTIONS_GHC -fno-specialise #-}
-{-# OPTIONS_GHC -fno-unbox-small-strict-fields #-}
-{-# OPTIONS_GHC -fno-unbox-strict-fields #-}
-
 -- FIXME: Use template Haskell to derive Eq instances
 module HydraAuction.Types (
   isStarted,

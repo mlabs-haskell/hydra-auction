@@ -1,5 +1,3 @@
-{-# OPTIONS_GHC -fno-specialise #-}
-
 module HydraAuction.OnChain.FeeEscrow (mkFeeEscrowValidator) where
 
 -- Prelude imports
