@@ -43,9 +43,10 @@ lint: requires_nix_shell
 build-docker:
 	nix build .#packages.x86_64-linux.cliImage
 	docker load < result
+	mv result build-images/hydra-auction-cli
 	nix build .#packages.x86_64-linux.delegateImage
 	docker load < result
-	rm result
+	mv result build-images/hydra-auction-delegate
 
 start-cluster:
 	./scripts/spin-up-new-devnet.sh 1
