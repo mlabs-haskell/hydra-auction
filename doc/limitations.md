@@ -23,10 +23,14 @@
   on some form of communication or centralization.
   This issue covers the matter:
   https://github.com/input-output-hk/hydra/issues/240
-* Peer network timeouts are not always handled
-  and overall strategy on them is not clear.
-  https://github.com/input-output-hk/hydra/issues/188#issuecomment-1583110768
-* Hydra error responses strategy is not clear
+* We depend on Hydra behaviour and responses, but they are not always clear.
+  * Peer network timeouts are not always handled
+    and overall strategy on them is not clear.
+    https://github.com/input-output-hk/hydra/issues/188#issuecomment-1583110768
+  * Hydra error responses strategy is not clear
+  * Issues with persistence on node fails:
+    * https://github.com/input-output-hk/hydra/issues/913
+    * https://github.com/input-output-hk/hydra/issues/927
 
 ## Limitations inherent in Hydra
 
@@ -118,6 +122,8 @@
     https://github.com/input-output-hk/plutus/issues/5369
   * `Head` is for off-chain use only:
     https://github.com/input-output-hk/hydra/issues/919
-* `Ord Head` missing: https://github.com/input-output-hk/hydra/pull/918
+* `Ord Head` and something else is missing:
+  * https://github.com/input-output-hk/hydra/pull/918 (merged in master)
+  * https://github.com/input-output-hk/hydra/pull/929
 * Hydra errors handling hacks in Delegate:
   https://github.com/input-output-hk/hydra/issues/839
