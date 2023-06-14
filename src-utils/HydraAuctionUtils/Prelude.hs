@@ -6,13 +6,14 @@ Includes imports not giving any name-collisions for:
 * Basic containers types and utilities
 * Our MTL-like stack
 -}
-module HydraAuctionUtils.Prelude (module X) where
+module HydraAuctionUtils.Prelude (module X, trySome) where
 
 -- Prelude imports
 import Prelude as X
 
 -- Haskell imports
 
+import Control.Exception (SomeException)
 import Control.Monad as X (
   forM_,
   forever,
@@ -47,3 +48,6 @@ import Data.Map as X (Map)
 import Data.Maybe as X (fromJust)
 import GHC.Generics as X (Generic)
 import GHC.Stack as X (HasCallStack)
+
+trySome :: forall a. IO a -> IO (Either SomeException a)
+trySome = try

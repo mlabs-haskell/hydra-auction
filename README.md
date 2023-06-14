@@ -37,6 +37,8 @@ Will build the CLI application and link it to `./result/bin/hydra-auction`.
 
 ## Starting docker-compose environment
 
+### General case
+
 To setup the environment required for the demo, we have a compose file
 that will start a single cardano-node,
 3 hydra-nodes for the delgates,
@@ -46,10 +48,41 @@ Before starting the demo we will need to build the delegate server docker images
 This is done inside nix shell and can be done by `make build-docker`.
 This command will build the image and load it as `hydra-auction-delegate:latest`.
 
-We recommend call the `./spin-up-new-devnet.sh 1` script
+We recommend call the `make start-cluster` command
 to start all cluster components,
 as it will take care of setting up the correct files for the cardano-node
 and seeding the actors running the hydra-nodes with enough funds to manage the head lifecycle.
+
+### Working on Mac
+
+By default `make` shortcuts run Frontend CLI code in local Nix env.
+
+That does not work on Mac due to bug with socket sharing (see #180).
+To mitigate this set env `RUN_CLI_IN_DOCKER=1`,
+so `make` shortcuts will run Frontend CLI inside docker.
+use params for local nodes started with `docker-compose`.
+
+If your machine is unable to build Docker images, you may find them
+in our repo Git LFS dir:
+https://github.com/mlabs-haskell/hydra-auction/tree/staging/build-images
+
+### Testing on public testnet (preprod)
+
+`make` shortcuts should work just the same,
+once you set env `CLUSTER_ENV` to `testnet`.
+
+You also should change auction timings, because they are much longer
+on `testnet`. Default auction config example is `demo-testnet`.
+
+Other two differences of public testnet is that
+their ADA and blockchain history cannot be faked localy.
+
+So you need to ensure, that `Faucet` actor has enough ADA
+before starting cluster. You can find its address with `make faucet-address`.
+
+To make blockchain syncronisation much faster, you may use snapshots.
+Download fresh snapshot as described by: https://csnapshots.io/about
+Then move its `db` dir into `testnet` dir in project root.
 
 ## CLI usage
 
@@ -79,9 +112,6 @@ To start their REPLs run: `make demo-seller` and `make demo-bidder`.
 
 Also run `make demo-monitor`.
 This is ncurses CLI, which shows current state of auction and Head.
-
-`make` shortcuts use params for local nodes started with `docker-compose`.
-REPLs will be started inside docker image, to prevent issues on Mac (#180).
 
 ### Bidder wins case
 
@@ -165,6 +195,8 @@ and you can continue to rest of auction usecase.
 
 ## Development
 
+### Starting Nix devshell
+
 You can enter the development shell with:
 
 ```bash
@@ -180,10 +212,7 @@ or
 
 `nix flake check -Lv --impure --allow-import-from-derivation`
 
-To run the projects without errors on warnings, pass the `-Wwarn` flag as such:
-```bash
-cabal run --ghc-option='-Wwarn'
-```
+### Starting HLS
 
 If you are having trouble using HLS with this project, you can
 add the path to `script/run-hls.sh` into your LSP-extension config
@@ -192,6 +221,14 @@ This script will start HLS in our Nix environment.
 
 You may also find other solutions here:
 https://plutus.readthedocs.io/en/latest/troubleshooting.html#wrong-version
+
+### Useful environents for tests
+
+* `TESTS_VERBOSE` - disables stdout capture
+* `USE_DOCKER_FOR_TESTS` - spawns `hydra-node`s for E2E tests,
+  using same `docker-compose` as for real demoing.
+   * `CLUSTER_ENV` should work in that case, but you will need
+      to adjust timings.
 
 ## Documentation
 
@@ -204,6 +241,8 @@ for the Hydra Auction.
 and the APIs that they use to communicate with each other
 and users.
 - the [adr](doc/adr) folder contains [Architecture Decision Records](https://adr.github.io/) made so far in the project.
+
+Haddock may be builded lockally, with cabal.
 
 ## Licensing
 

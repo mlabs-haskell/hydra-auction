@@ -29,9 +29,9 @@ announceActionExecution ::
 announceActionExecution action = do
   currentActor <- askActor
   liftIO . putStrLn $ case action of
-    Seed -> "Seeding all wallets with 10,000 ADA."
+    Seed -> "Seeding all wallets with 100 ADA."
     Prepare sellerActor ->
-      "Seeding all wallets with 10,000 ADA and minting the test NFT for "
+      "Seeding all wallets with 100 ADA and minting the test NFT for "
         <> show sellerActor
         <> "."
     ShowScriptUtxos auctionName script ->

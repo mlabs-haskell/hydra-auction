@@ -101,7 +101,7 @@ import CLI.Printing (
 import CLI.Types (CliAction (..), Layer (..))
 
 seedAmount :: Lovelace
-seedAmount = 10_000_000_000
+seedAmount = 100_000_000
 
 doOnMatchingStage ::
   (MonadIO m, MonadHasActor m, MonadCardanoClient m) =>
