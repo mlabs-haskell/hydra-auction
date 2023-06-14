@@ -291,6 +291,7 @@ library hydra-auction-utils
     HydraAuctionUtils.Tx.Utxo
     HydraAuctionUtils.Types.Natural
     Paths_hydra_auction
+    PlutusTx.Deriving
 
   other-modules:   HydraAuctionUtils.L1.Runner.Tracer
   build-depends:
@@ -303,6 +304,7 @@ library hydra-auction-utils
     , parsec
     , plutus-tx
     , protolude
+    , template-haskell
     , transformers-base
 
 test-suite hydra-auction-test
