@@ -7,7 +7,6 @@ import HydraAuctionUtils.Prelude
 
 -- Haskell imports
 
-import Control.Concurrent (threadDelay)
 import Data.IORef (IORef, readIORef)
 import Data.Time.Clock (getCurrentTime)
 import Data.Time.Format (defaultTimeLocale, formatTime)
