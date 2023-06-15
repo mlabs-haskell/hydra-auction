@@ -1,3 +1,5 @@
+{-# LANGUAGE AllowAmbiguousTypes #-}
+
 -- | Pure logic and Hydra communication used for Delegate server
 module HydraAuction.Delegate (
   delegateFrontendRequestStep,
@@ -7,11 +9,7 @@ module HydraAuction.Delegate (
 ) where
 
 -- Prelude imports
-import Prelude
-
--- Haskell imports
-import Control.Monad.State (MonadState, StateT, get, put)
-import Control.Monad.Trans (MonadIO (..), MonadTrans (lift))
+import HydraAuctionUtils.Prelude
 
 -- Cardano imports
 import Cardano.Api.UTxO qualified as UTxO
@@ -21,17 +19,18 @@ import Cardano.Api.UTxO qualified as UTxO
 import Hydra.API.ClientInput (ClientInput (..))
 import Hydra.API.ServerOutput (ServerOutput (..))
 import Hydra.Cardano.Api (
+  Lovelace (..),
   toPlutusKeyHash,
   verificationKeyHash,
   pattern ShelleyAddressInEra,
   pattern TxOut,
  )
 import Hydra.Chain (PostChainTx (..), PostTxError (..))
+import Hydra.Chain.Direct.Tx (headIdToCurrencySymbol)
 import Hydra.Snapshot (Snapshot (..))
 
 -- HydraAuction imports
 
-import Hydra.Chain.Direct.Tx (headIdToCurrencySymbol)
 import HydraAuction.Delegate.Interface (
   AbortReason (..),
   DelegateResponse (..),
@@ -48,6 +47,14 @@ import HydraAuction.Delegate.Interface (
  )
 import HydraAuction.OnChain.Common (validAuctionTerms)
 import HydraAuction.OnChain.StandingBid (validNewBidTerms)
+import HydraAuction.Platform.Interface (
+  ClientCommand (..),
+  ClientInput (..),
+  EntityKind (..),
+  HydraHeadInfo (..),
+  PlatformProtocol,
+  Some (..),
+ )
 import HydraAuction.Tx.Common (createTwoMinAdaUtxo)
 import HydraAuction.Tx.FeeEscrow (
   distributeFee,
@@ -65,10 +72,7 @@ import HydraAuction.Types (
   StandingBidDatum (..),
   StandingBidState (..),
  )
-import HydraAuctionUtils.Composite.Runner (
-  CompositeRunner,
-  runL1RunnerInComposite,
- )
+import HydraAuctionUtils.Composite.Runner (CompositeRunner)
 import HydraAuctionUtils.Fixture (partyFor)
 import HydraAuctionUtils.Hydra.Interface (HydraEvent)
 import HydraAuctionUtils.Hydra.Monad (MonadHydra (..))
@@ -83,10 +87,17 @@ import HydraAuctionUtils.Server.ClientId (
   ClientId,
   ClientResponseScope (..),
  )
+import HydraAuctionUtils.Server.Protocol (
+  MonadHasClient (..),
+  ProtocolClient (..),
+  ProtocolClientFor,
+  WithClientT,
+ )
 import HydraAuctionUtils.Tx.Utxo (
   filterAdaOnlyUtxo,
   filterNotAdaOnlyUtxo,
  )
+import HydraAuctionUtils.Types.Natural (intToNatural)
 
 data DelegateEvent
   = Start
@@ -173,10 +184,11 @@ delegateFrontendRequestStep (clientId, request) =
                 ]
             else cont
 
--- FIXME: return to polymorphism back from CompositeRunner
 delegateEventStep ::
+  forall client.
+  ProtocolClientFor PlatformProtocol client =>
   DelegateEvent ->
-  StateT DelegateState CompositeRunner [DelegateResponse]
+  WithClientT client (StateT DelegateState CompositeRunner) [DelegateResponse]
 delegateEventStep event = case event of
   Start -> do
     sendCommand Init
@@ -190,7 +202,7 @@ delegateEventStep event = case event of
         return []
   AuctionStageStarted terms CleanupStage -> do
     -- FIXME: handle case of not used Escrow Hydra
-    _ <- lift $ runL1RunnerInComposite $ distributeFee terms
+    _ <- runL1RunnerInComposite $ distributeFee terms
     return []
   AuctionStageStarted {} -> return []
   HydraEvent Committed {utxo, party} -> do
@@ -226,12 +238,12 @@ delegateEventStep event = case event of
   HydraEvent (TxInvalid {utxo, transaction}) -> do
     state <- get
     actor <- askActor
-    (_, delegatePublicKey, _) <- lift $ runL1RunnerInComposite addressAndKeys
+    (_, delegatePublicKey, _) <- runL1RunnerInComposite addressAndKeys
     case state of
       Initialized _ (Open utxoState mCachedTerms) -> do
         case (txResentRequired delegatePublicKey, mCachedTerms) of
           (Just newBidDatum, Just auctionTerms) -> do
-            _ <- lift $ resentBid actor utxoState auctionTerms newBidDatum
+            _ <- resentBid actor utxoState auctionTerms newBidDatum
             return []
           (Just _, Nothing) ->
             -- If tx was sent initialy by this server,
@@ -272,8 +284,17 @@ delegateEventStep event = case event of
   HydraEvent ReadyToFanout {} -> do
     sendCommand Fanout
     return []
-  HydraEvent (HeadIsInitializing {headId}) -> do
+  HydraEvent (HeadIsInitializing {headId, parties}) -> do
     let newState = AwaitingCommits {stangingBidWasCommited = False}
+    let info =
+          MkHydraHeadInfo
+            { headId
+            , delegatesNumber =
+                fromJust $ intToNatural $ toInteger $ length parties
+            , auctionFeePerDelegate = Lovelace 4_000_000
+            }
+    plaformClient <- askClient @client
+    reportDelegateToPlatformServer plaformClient info
     put $ Initialized headId newState
     -- Yes, this is code duplication
     updateStateAndResponse newState
@@ -327,7 +348,7 @@ delegateEventStep event = case event of
       let previousCache = case state of
             Initialized _ (Open _ x) -> x
             _ -> Nothing
-      (delegateAddress, _, _) <- lift $ runL1RunnerInComposite addressAndKeys
+      (delegateAddress, _, _) <- runL1RunnerInComposite addressAndKeys
       case UTxO.pairs $ filterNotAdaOnlyUtxo utxo of
         [(txIn, txOut)] ->
           case ( decodeStandingBidTerms txOut
@@ -353,25 +374,30 @@ delegateEventStep event = case event of
             belongTo _ = False
     commitCollateralAda = do
       (forCollateralUtxo, _) <-
-        lift $ runL1RunnerInComposite createTwoMinAdaUtxo
+        runL1RunnerInComposite createTwoMinAdaUtxo
       sendCommand (Commit $ UTxO.fromPairs [forCollateralUtxo])
       return $ Right ()
     getDelegateParty = do
       delegateActor <- askActor
       liftIO $ partyFor delegateActor
+    -- reportDelegateToPlatformServer :: ProtocolClientFor PlatformProtocol client => client -> _ -> _
+    reportDelegateToPlatformServer client info = do
+      actor <- askActor
+      sendInputH client $
+        MkSome HydraHead (Command $ ReportHeadDelegate info actor)
 
 abort ::
-  ( MonadIO (t CompositeRunner)
-  , MonadTrans t
-  , MonadState DelegateState (t CompositeRunner)
-  , MonadFail (t CompositeRunner)
+  ( MonadIO m
+  , MonadState DelegateState m
+  , MonadFail m
+  , MonadHydra m
   ) =>
   AbortReason ->
-  t CompositeRunner [DelegateResponse]
+  m [DelegateResponse]
 abort reason = do
   state <- get
   let command = if wasOpened state then Close else Abort
-  lift $ sendCommand command
+  sendCommand command
   updateStateAndResponse $ AbortRequested reason
 
 updateStateAndResponse ::

@@ -12,20 +12,8 @@ import HydraAuctionUtils.Prelude
 -- Haskell imports
 
 import Control.Tracer (Tracer, stdoutTracer, traceWith)
-import Data.Aeson (
-  Result (..),
-  fromJSON,
-  toJSON,
- )
 import GHC.Natural (Natural, naturalToInt)
-import Test.HUnit.Lang (HUnitFailure)
-
--- Hydra imports
-import HydraNode (
-  HydraClient,
-  send,
-  waitMatch,
- )
+import System.Timeout (timeout)
 
 -- HydraAuction imports
 
@@ -34,11 +22,10 @@ import HydraAuctionUtils.Fixture (Actor)
 import HydraAuctionUtils.Hydra.Interface (
   HydraCommand,
   HydraEvent,
-  getHydraEventKind,
+  HydraProtocol,
  )
 import HydraAuctionUtils.Hydra.Monad (
-  AwaitedHydraEvent (..),
-  EventMatcher (..),
+  AwaitedHydraEvent,
   MonadHydra (..),
   ViaMonadHydra (..),
  )
@@ -60,6 +47,12 @@ import HydraAuctionUtils.Monads.Actors (
   WithActorT,
   withActor,
  )
+import HydraAuctionUtils.Server.Client (
+  AwaitedOutput,
+  RealProtocolClient,
+  waitForMatchingOutputH,
+ )
+import HydraAuctionUtils.Server.Protocol (ProtocolClient (..))
 
 data HydraRunnerLog
   = HydraRunnerStringMessage String
@@ -69,7 +62,7 @@ data HydraRunnerLog
   deriving stock (Show)
 
 data HydraExecutionContext = MkHydraExecutionContext
-  { node :: HydraClient
+  { node :: RealProtocolClient HydraProtocol
   , tracer :: Tracer IO HydraRunnerLog
   , l1Context :: ExecutionContext
   , actor :: Actor
@@ -97,33 +90,29 @@ instance MonadHydra HydraRunner where
   sendCommand command = do
     MkHydraExecutionContext {node} <- ask
     traceMessage $ SendCommand command
-    liftIO $ send node $ toJSON command
+    liftIO $ sendInputH node command
 
   waitForHydraEvent' ::
-    Natural -> AwaitedHydraEvent -> HydraRunner (Maybe HydraEvent)
+    Natural -> AwaitedOutput HydraProtocol -> HydraRunner (Maybe HydraEvent)
   waitForHydraEvent' timeoutSeconds awaitedSpec = do
     MkHydraExecutionContext {node} <- ask
     traceMessage $ AwaitingHydraEvent awaitedSpec
-    mEvent <- liftIO $ try $ waitMatch timeout node matchingHandler
-    case mEvent of
-      Left (_ :: HUnitFailure) -> return Nothing
-      Right event -> do
-        traceMessage $ AwaitedHydraEvent event
-        return $ Just event
+    mResult <-
+      liftIO $
+        timeout timeoutMicroseconds $
+          waitForMatchingOutputH node awaitedSpec
+    case mResult of
+      Just result -> traceMessage $ AwaitedHydraEvent result
+      Nothing -> return ()
+    return mResult
     where
-      timeout = fromInteger $ toInteger $ naturalToInt timeoutSeconds
-      matchingHandler value = do
-        event <- case fromJSON value of
-          Success x -> Just x
-          Error _ -> Nothing
-        guard $ matchingPredicate event
-        return event
-      matchingPredicate event = case awaitedSpec of
-        Any -> True
-        SpecificKind expectedKind ->
-          getHydraEventKind event == expectedKind
-        SpecificEvent expectedEvent -> event == expectedEvent
-        CustomMatcher (EventMatcher customMatcher) -> customMatcher event
+      timeoutMicroseconds =
+        1_000_000 * fromInteger (toInteger $ naturalToInt timeoutSeconds)
+
+  runL1RunnerInComposite action = do
+    actor <- askActor
+    MkHydraExecutionContext {l1Context} <- ask
+    liftIO $ executeL1Runner l1Context $ withActor actor action
 
 instance MonadNetworkId HydraRunner where
   askNetworkId = runL1RunnerInComposite askNetworkId
@@ -161,7 +150,10 @@ executeHydraRunner context runner =
   runReaderT (unHydraRunner runner) context
 
 executeHydraRunnerFakingParams ::
-  HydraClient -> HydraRunner a -> WithActorT L1Runner a
+  forall a.
+  RealProtocolClient HydraProtocol ->
+  HydraRunner a ->
+  WithActorT L1Runner a
 executeHydraRunnerFakingParams node monad = do
   l1Context <- lift ask
   actor <- askActor
@@ -175,9 +167,3 @@ executeHydraRunnerFakingParams node monad = do
         , l1Context = l1Context
         , actor = actor
         }
-
-runL1RunnerInComposite :: forall a. WithActorT L1Runner a -> HydraRunner a
-runL1RunnerInComposite action = do
-  actor <- askActor
-  MkHydraExecutionContext {l1Context} <- ask
-  liftIO $ executeL1Runner l1Context $ withActor actor action

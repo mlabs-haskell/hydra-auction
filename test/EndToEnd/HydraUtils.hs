@@ -8,6 +8,7 @@ module EndToEnd.HydraUtils (
   runL1InEmulator,
   runEmulator,
   runEmulatorInTest,
+  DelegateAction,
 ) where
 
 -- Preludes import
@@ -21,7 +22,6 @@ import Control.Exception (finally)
 import Control.Tracer (nullTracer)
 import Data.Map qualified as Map
 import Data.Maybe (fromMaybe)
-import Network.WebSockets (runClient)
 import System.Environment (lookupEnv, setEnv)
 import System.Process (system)
 import Text.Read (readMaybe)
@@ -31,30 +31,42 @@ import Text.Read (readMaybe)
 import CardanoNode (
   RunningNode (..),
  )
+import Hydra.Cardano.Api (TxId)
 import Hydra.Cluster.Faucet (Marked (..), seedFromFaucet_)
 import Hydra.ContestationPeriod (
   ContestationPeriod (UnsafeContestationPeriod),
  )
-import HydraNode (HydraClient (..), waitForNodesConnected, withHydraCluster)
+import Hydra.Network (Host (..))
+import HydraNode (connection, waitForNodesConnected, withHydraCluster)
 import Test.Hydra.Prelude (withTempDir)
 
 -- HydraAuction imports
-
-import Hydra.Cardano.Api (TxId)
-import HydraAuction.Delegate.Interface (DelegateState, initialState)
+import HydraAuction.Delegate (DelegateEvent, delegateEventStep)
+import HydraAuction.Delegate.Interface (
+  DelegateResponse,
+  DelegateState,
+  initialState,
+ )
 import HydraAuction.HydraHacks (prepareScriptRegistry)
+import HydraAuction.Platform.Interface (PlatformProtocol)
+import HydraAuction.Platform.Storage (PlatformImplementation)
 import HydraAuctionUtils.BundledData (lookupProtocolParamPath)
 import HydraAuctionUtils.Composite.Runner (CompositeRunner)
 import HydraAuctionUtils.Fixture (
-  Actor (..),
   ActorKind (..),
   actorsByKind,
   hydraKeysFor,
   keysFor,
  )
+import HydraAuctionUtils.Hydra.Interface (
+  HydraConnectionConfig (..),
+  HydraProtocol,
+ )
 import HydraAuctionUtils.Hydra.Runner (
+  HydraExecutionContext,
   executeHydraRunner,
   executeHydraRunnerFakingParams,
+  runL1RunnerInComposite,
  )
 import HydraAuctionUtils.L1.Runner (
   ExecutionContext (..),
@@ -64,12 +76,24 @@ import HydraAuctionUtils.L1.Runner (
   executeL1RunnerWithNode,
   executeL1RunnerWithNodeAs,
   executeTestL1Runner,
+  withActor,
  )
+import HydraAuctionUtils.Server.Client (
+  FakeProtocolClient,
+  ProtocolClient (..),
+  ProtocolClientFor,
+  RealProtocolClient (MkRealProtocolClient),
+  newFakeClient,
+  withProtocolClient,
+ )
+import HydraAuctionUtils.Server.Protocol (WithClientT (..), withClient)
+
+-- Ways to spin up Hydra cluster
 
 -- This function will set the HYDRA_CONFIG_DIR env var locally
 -- This is required so the hydra nodes pick up on the correct protocol-parameters.json
 -- file.
-withManualHydraCluster :: Int -> TxId -> ([HydraClient] -> L1Runner ()) -> L1Runner ()
+withManualHydraCluster :: Int -> TxId -> ([RealProtocolClient HydraProtocol] -> L1Runner ()) -> L1Runner ()
 withManualHydraCluster clusterIx hydraScriptsTxId cont = do
   liftIO $ do
     hydraDir <- lookupProtocolParamPath
@@ -94,7 +118,10 @@ withManualHydraCluster clusterIx hydraScriptsTxId cont = do
         $ \nodes -> do
           waitForNodesConnected nullTracer $ toList nodes
           seedHydraNodes node cardanoKeys
-          executeL1Runner ctx $ cont $ toList nodes
+          executeL1Runner ctx $
+            cont $
+              map (MkRealProtocolClient . connection) $
+                toList nodes
   where
     seedHydraNodes node cardanoKeys = do
       let initActor mark key =
@@ -103,31 +130,28 @@ withManualHydraCluster clusterIx hydraScriptsTxId cont = do
       mapM_ (initActor Normal . fst) cardanoKeys
 
 withDockerComposeCluster ::
-  ([HydraClient] -> L1Runner b) ->
+  ([RealProtocolClient HydraProtocol] -> L1Runner b) ->
   IO b
 withDockerComposeCluster cont = do
   _ <- system "./scripts/spin-up-new-devnet.sh 0"
   withNClients 3 action
   where
-    withHydraClientN n cont' = liftIO $
-      runClient "127.0.0.1" (4000 + n) "/history=no" $
-        \connection ->
-          cont' $
-            HydraClient
-              { hydraNodeId = n
-              , connection = connection
-              , tracer = contramap show nullTracer
-              }
+    withHydraClientN n =
+      withProtocolClient
+        (Host "127.0.0.1" (4000 + fromInteger n))
+        (MkHydraConnectionConfig {retrieveHistory = False})
     withNClients' clientsAcc n cont' =
       if length clientsAcc == n
         then cont' clientsAcc
-        else withHydraClientN n $
+        else withHydraClientN (toInteger n) $
           \client -> withNClients' (client : clientsAcc) n cont'
     withNClients = withNClients' []
     action' nodes = do
-      waitForNodesConnected nullTracer nodes
+      -- FIXME: wait for nodes
       executeL1RunnerWithNode dockerNode (cont nodes)
     action nodes = finally (action' nodes) (system "./scripts/stop-demo.sh")
+
+-- Implementation of Emulator
 
 data EmulatorDelegate = Main | Second | Third
   deriving stock (Eq, Show, Enum, Bounded, Ord)
@@ -136,12 +160,14 @@ allDelegates :: [EmulatorDelegate]
 allDelegates = [Main, Second, Third]
 
 data EmulatorContext = MkEmulatorContext
-  { l1Node :: RunningNode
+  { platformClient :: FakeProtocolClient PlatformImplementation
   , clients :: EmulatorDelegateClients
   , delegateStatesRef :: MVar (Map EmulatorDelegate DelegateState)
   }
 
-type EmulatorDelegateClients = Map EmulatorDelegate (HydraClient, Actor)
+type EmulatorDelegateClients =
+  Map EmulatorDelegate HydraExecutionContext
+
 newtype DelegatesClusterEmulator a = DelegatesClusterEmulator
   { unDelegatesClusterEmulator :: ReaderT EmulatorContext IO a
   }
@@ -163,72 +189,73 @@ runEmulatorInTest action = do
     then
       liftIO $
         withDockerComposeCluster $
-          flip runEmulator action . makeThreeClients actors
+          flip runEmulator action
     else executeTestL1Runner $ do
       MkExecutionContext {node} <- ask
       -- FIXME: race condition on Faucet
       (!hydraScriptsTxId, !_) <- liftIO $ prepareScriptRegistry node
       withManualHydraCluster 0 hydraScriptsTxId $
-        flip runEmulator action . makeThreeClients actors
-  where
-    actors = (Map.!) actorsByKind HydraNodeActor
-    makeThreeClients actors nodes =
-      Map.fromList $ zip allDelegates (zip nodes actors)
+        flip runEmulator action
 
-runEmulator :: EmulatorDelegateClients -> DelegatesClusterEmulator a -> L1Runner a
+runEmulator ::
+  [RealProtocolClient HydraProtocol] -> DelegatesClusterEmulator a -> L1Runner a
 runEmulator clients action = do
-  MkExecutionContext {node} <- ask
   intialStatesRef <-
     liftIO $
       newMVar $
         Map.fromList [(name, initialState) | name <- allDelegates]
+  platformClient <- liftIO newFakeClient
+  contexts <- mapM createHydraContext (zip actors clients)
   let context =
         MkEmulatorContext
-          { l1Node = node
-          , clients = clients
+          { platformClient = platformClient
+          , clients = Map.fromList $ zip allDelegates contexts
           , delegateStatesRef = intialStatesRef
           }
   liftIO $ flip runReaderT context $ unDelegatesClusterEmulator action
+  where
+    actors = (Map.!) actorsByKind HydraNodeActor
+    createHydraContext (actor, client) =
+      withActor actor $ executeHydraRunnerFakingParams client ask
+
+-- Using Emulator
+
+-- FIXME: this is bad
+type DelegateAction client x =
+  ProtocolClientFor PlatformProtocol client =>
+  WithClientT client (StateT DelegateState CompositeRunner) x
 
 runL1InEmulator :: forall x. L1Runner x -> DelegatesClusterEmulator x
-runL1InEmulator action = do
-  node <- l1Node <$> ask
-  liftIO $ executeL1RunnerWithNode node action
+runL1InEmulator action =
+  runCompositeForDelegate Main $ runL1RunnerInComposite $ lift action
 
 runCompositeForDelegate ::
   forall x.
   EmulatorDelegate ->
-  StateT DelegateState CompositeRunner x ->
+  DelegateAction (FakeProtocolClient PlatformImplementation) x ->
   DelegatesClusterEmulator x
 runCompositeForDelegate name action = do
-  MkEmulatorContext {l1Node, clients, delegateStatesRef} <- ask
-  context <- liftIO $ createContext l1Node clients
+  MkEmulatorContext {platformClient, clients, delegateStatesRef} <- ask
 
   -- Get state
   states <- liftIO $ takeMVar delegateStatesRef
   let state = (Map.!) states name
+  let context = (Map.!) clients name
 
   -- Run
   (result, newState) <-
     liftIO $
-      executeHydraRunner
-        context
-        (runStateT action state)
+      executeHydraRunner context (runStateT (withClient platformClient action) state)
 
   -- Update state
   liftIO $ putMVar delegateStatesRef $ Map.insert name newState states
 
   -- Return
   return result
-  where
-    createContext l1Node clients = do
-      let (hydraClient, actor) = (Map.!) clients name
-      executeL1RunnerWithNodeAs l1Node actor $
-        executeHydraRunnerFakingParams hydraClient ask
 
 runCompositeForAllDelegates ::
   forall x.
-  StateT DelegateState CompositeRunner x ->
+  DelegateAction (FakeProtocolClient PlatformImplementation) x ->
   DelegatesClusterEmulator [x]
 runCompositeForAllDelegates action = do
   context <- ask

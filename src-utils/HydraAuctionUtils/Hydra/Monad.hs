@@ -1,8 +1,7 @@
 module HydraAuctionUtils.Hydra.Monad (
   ViaMonadHydra (..),
   MonadHydra (..),
-  EventMatcher (..),
-  AwaitedHydraEvent (..),
+  AwaitedHydraEvent,
   waitForHydraEvent,
   sendCommandAndWaitFor,
 ) where
@@ -30,28 +29,27 @@ import HydraAuctionUtils.Hydra.Interface (
   HydraCommand,
   HydraEvent,
   HydraEventKind (GetUTxOResponseKind),
+  HydraProtocol,
  )
+import HydraAuctionUtils.L1.Runner (L1Runner)
 import HydraAuctionUtils.Monads (
   MonadQueryUtxo (..),
   MonadSubmitTx (..),
   UtxoQuery (..),
  )
+import HydraAuctionUtils.Monads.Actors (WithActorT)
+import HydraAuctionUtils.Server.Client (AwaitedOutput (..), OutputMatcher (..))
+import HydraAuctionUtils.Server.Protocol (WithClientT)
 
-data AwaitedHydraEvent
-  = Any
-  | SpecificEvent HydraEvent
-  | SpecificKind HydraEventKind
-  | CustomMatcher EventMatcher
-  deriving stock (Show)
-
-newtype EventMatcher = EventMatcher (HydraEvent -> Bool)
-
-instance Show EventMatcher where
-  show (EventMatcher _) = "EventMatcher <some HydraEvent predicate>"
+-- FIXME: this is for transition. Should be removed, maybe with ModadHydra
+type AwaitedHydraEvent = AwaitedOutput HydraProtocol
 
 class Monad m => MonadHydra m where
   sendCommand :: HydraCommand -> m ()
   waitForHydraEvent' :: Natural -> AwaitedHydraEvent -> m (Maybe HydraEvent)
+
+  -- FIXME: rename and use polymorphic L1
+  runL1RunnerInComposite :: forall a. WithActorT L1Runner a -> m a
 
 defaultTimeout :: Natural
 defaultTimeout = 30
@@ -76,7 +74,7 @@ instance (Monad m, MonadHydra m) => MonadSubmitTx (ViaMonadHydra m) where
 
   awaitTx :: Tx -> ViaMonadHydra m ()
   awaitTx tx = do
-    void $ waitForHydraEvent . CustomMatcher . EventMatcher $ \case
+    void $ waitForHydraEvent . CustomMatcher . OutputMatcher $ \case
       SnapshotConfirmed {snapshot} -> tx `elem` confirmed snapshot
       _ -> False
 
@@ -101,3 +99,9 @@ instance (Monad m, MonadHydra m) => MonadQueryUtxo (ViaMonadHydra m) where
 instance MonadHydra m => MonadHydra (StateT s m) where
   sendCommand = lift . sendCommand
   waitForHydraEvent' timeout = lift . waitForHydraEvent' timeout
+  runL1RunnerInComposite = lift . runL1RunnerInComposite
+
+instance MonadHydra m => MonadHydra (WithClientT client m) where
+  sendCommand = lift . sendCommand
+  waitForHydraEvent' x = lift . waitForHydraEvent' x
+  runL1RunnerInComposite = lift . runL1RunnerInComposite

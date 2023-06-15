@@ -258,5 +258,6 @@ autoSubmitAndAwaitTx ::
   m Tx
 autoSubmitAndAwaitTx params = do
   tx <- autoCreateTx params
+  -- FIXME
   _ <- submitAndAwaitTx tx
   return tx

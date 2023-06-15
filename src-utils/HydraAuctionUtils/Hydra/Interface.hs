@@ -3,6 +3,8 @@ module HydraAuctionUtils.Hydra.Interface (
   HydraEventKind (..),
   HydraEvent,
   HydraCommand,
+  HydraProtocol,
+  HydraConnectionConfig (..),
 ) where
 
 -- Prelude imports
@@ -16,8 +18,26 @@ import Hydra.API.ServerOutput (ServerOutput (..))
 import Hydra.Cardano.Api (Tx)
 import Hydra.Chain.Direct.State ()
 
+-- HydraAuction imports
+import HydraAuctionUtils.Server.Protocol (Protocol (..))
+
 type HydraCommand = ClientInput Tx
 type HydraEvent = ServerOutput Tx
+
+data HydraProtocol
+
+newtype HydraConnectionConfig = MkHydraConnectionConfig
+  { retrieveHistory :: Bool
+  }
+
+instance Protocol HydraProtocol where
+  type Input HydraProtocol = HydraCommand
+  type Output HydraProtocol = HydraEvent
+  type OutputKind HydraProtocol = HydraEventKind
+  type ConnectionConfig HydraProtocol = HydraConnectionConfig
+  getOutputKind = getHydraEventKind
+  configToConnectionPath config =
+    "/history=" <> (if retrieveHistory config then "yes" else "no")
 
 data HydraEventKind
   = GetUTxOResponseKind

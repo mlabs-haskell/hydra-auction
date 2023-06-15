@@ -4,6 +4,7 @@ module HydraAuction.Platform.Storage (
   queryByFilter,
   processCommand,
   processClientInput,
+  PlatformImplementation,
 ) where
 
 -- Prelude imports
@@ -35,9 +36,12 @@ import HydraAuction.Platform.Interface (
   HeadDelegate (..),
   HydraHead (..),
   HydraHeadInfo (..),
+  PlatformProtocol,
   ServerOutput (..),
   Some (..),
  )
+import HydraAuctionUtils.Server.ClientId (ClientId, ClientResponseScope (..))
+import HydraAuctionUtils.Server.Protocol (ProtocolServerLogic (..))
 import HydraAuctionUtils.Types.Natural (naturalToInt)
 
 --- Storage
@@ -155,7 +159,7 @@ processCommand command = case command of
     where
       newEntity =
         MkAnnouncedAuction
-          { terms
+          { auctionTerms = terms
           , auctionId = voucherCurrencySymbol terms
           , auctionStandingBidAddress = standingBidAddress terms
           }
@@ -214,3 +218,17 @@ processClientInput ::
 processClientInput (MkSome kind input) = do
   x <- processClientInput' kind input
   return $ MkSome kind x
+
+data PlatformImplementation
+
+instance ProtocolServerLogic PlatformImplementation where
+  type ImplementationFor PlatformImplementation = PlatformProtocol
+  type State PlatformImplementation = EntityStorage
+  initialState = initialStorage
+  implementation ::
+    (Monad m, MonadState EntityStorage m) =>
+    (ClientId, Some ClientInput) ->
+    m [(ClientResponseScope, Some ServerOutput)]
+  implementation (clientId, input) = do
+    output <- processClientInput input
+    return [(PerClient clientId, output)]

@@ -9,6 +9,8 @@ used to uniform queries and storage access.
 `Some` datatype is existential type to wrap types parametric on Entitiy:
 like `EntityQuery` and `EntityQueryResponse`.
 It includes `EntityKind` tag, essentialy emulating dependent pair.
+This is actually similar to `SomeSing` datatype,
+but I am not sure if it will be profitable to use `singletones`.
 
 Existential/GADTs cannot use GHC deriving,
 which affect design decision of using `Some` on top-level types.
@@ -49,6 +51,7 @@ import Data.Aeson.Types qualified as Aeson
 import Data.Kind (Type)
 import Data.Proxy (Proxy (..))
 import Data.Text qualified as T
+import Data.Type.Equality ((:~:) (..))
 import GHC.Generics (Generic)
 
 -- Plutus imports
@@ -93,7 +96,7 @@ class
 -- Entities
 
 data AnnouncedAuction = MkAnnouncedAuction
-  { terms :: AuctionTerms
+  { auctionTerms :: AuctionTerms
   , auctionId :: VoucherCS
   , -- Required for Delegate Servers
     auctionStandingBidAddress :: StandingBidAddress
@@ -274,6 +277,20 @@ data EntityKind entity where
   BidderApproval :: EntityKind BidderApproval
   BidderDeposit :: EntityKind BidderDeposit
 
+data Void
+data Decision p = Yes p | No (p -> Void)
+
+decideEq ::
+  EntityKind kind1 -> EntityKind kind2 -> Decision (kind1 :~: kind2)
+decideEq kind1 kind2 =
+  case (kind1, kind2) of
+    (AnnouncedAuction, AnnouncedAuction) -> Yes Refl
+    (HydraHead, HydraHead) -> Yes Refl
+    (HeadDelegate, HeadDelegate) -> Yes Refl
+    (BidderApproval, BidderApproval) -> Yes Refl
+    (BidderDeposit, BidderDeposit) -> Yes Refl
+    (_, _) -> No (\_ -> error "Impossible")
+
 instance Show (EntityKind x) where
   show x = case x of
     AnnouncedAuction -> "AnnouncedAuction"
@@ -338,6 +355,15 @@ data Some (container :: Type -> Type)
   = forall entity.
     Entity entity =>
     MkSome (EntityKind entity) (container entity)
+
+instance
+  (forall entity. Entity entity => Eq (container entity)) =>
+  Eq (Some container)
+  where
+  MkSome kind1 container == MkSome kind2 container2 =
+    case decideEq kind1 kind2 of
+      Yes Refl -> container == container2
+      No _ -> False
 
 deriving stock instance
   (forall entity. Entity entity => Show (container entity)) =>
@@ -408,9 +434,15 @@ instance
 
 data PlatformProtocol
 
+data ServerOutputKind = NotImplemented deriving stock (Eq, Show)
+
 instance Protocol PlatformProtocol where
   type Input PlatformProtocol = Some ClientInput
   type Output PlatformProtocol = Some ServerOutput
+  type OutputKind PlatformProtocol = ServerOutputKind
+  type ConnectionConfig PlatformProtocol = ()
+  getOutputKind _ = NotImplemented
+  configToConnectionPath _ = ""
 
 instance ContainerForEntity ClientInput where
   jsonSubFieldName Proxy = "input"

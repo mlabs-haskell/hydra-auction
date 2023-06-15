@@ -52,6 +52,7 @@ data DelegateServerConfig = DelegateServerConfig
   { websocketsHost :: Host
   , cardanoNode :: RunningNode
   , hydraNodeHost :: Host
+  , platformHost :: Host
   , l1Actor :: Actor
   -- ^ should match Hydra node acto
   , tick :: Int

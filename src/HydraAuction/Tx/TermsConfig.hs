@@ -83,6 +83,7 @@ constructTermsDynamic ::
   timedMonad AuctionTermsDynamic
 constructTermsDynamic sellerActor utxoNonce headId = do
   currentTimeSeconds' <- currentTimeSeconds
+
   -- FIXUP
   configDelegates <- liftIO $ getActorsPubKeyHash $ (Map.!) actorsByKind HydraNodeActor
   return $

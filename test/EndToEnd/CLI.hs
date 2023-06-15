@@ -73,6 +73,7 @@ auctionName = "test"
 handleCliActionWithMockDelegates :: CliAction -> WithActorT L1Runner ()
 handleCliActionWithMockDelegates action = do
   delegateS <- newIORef mockDelegateState
+  -- platformClient <- liftIO newFakeClient
   handleCliAction (\_ -> pure ()) delegateS action
 
 bidderBuysTest :: Assertion
