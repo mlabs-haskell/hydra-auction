@@ -76,8 +76,8 @@ data CliOptions
   | InteractivePrompt !PromptOptions
 
 data PromptOptions = MkPromptOptions
-  { cliActor :: !Actor
-  , cliCardanoNode :: !RunningNode
+  { cliActor :: Actor
+  , cliCardanoNode :: RunningNode
   , cliNoninteractiveAction :: Maybe String
   }
 

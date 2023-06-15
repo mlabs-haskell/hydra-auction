@@ -199,7 +199,8 @@ library hydra-auction-onchain
 
   ghc-options:
     -fobject-code -fno-ignore-interface-pragmas
-    -fno-omit-interface-pragmas
+    -fno-omit-interface-pragmas -fno-specialize
+    -fno-unbox-small-strict-fields -fno-unbox-strict-fields
 
   exposed-modules:
     HydraAuction.Addresses

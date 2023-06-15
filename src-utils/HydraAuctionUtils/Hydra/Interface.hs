@@ -1,5 +1,3 @@
-{-# LANGUAGE StrictData #-}
-
 module HydraAuctionUtils.Hydra.Interface (
   getHydraEventKind,
   HydraEventKind (..),

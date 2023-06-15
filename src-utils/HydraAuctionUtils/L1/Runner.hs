@@ -100,8 +100,8 @@ import HydraAuctionUtils.Tx.Common (transferAda)
  as well as the running node.
 -}
 data ExecutionContext = MkExecutionContext
-  { tracer :: !(Tracer IO HydraAuctionLog)
-  , node :: !RunningNode
+  { tracer :: Tracer IO HydraAuctionLog
+  , node :: RunningNode
   }
 
 -- | HydraAuction specific L1 computation executor.

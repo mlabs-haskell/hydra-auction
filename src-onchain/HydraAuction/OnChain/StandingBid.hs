@@ -1,5 +1,3 @@
-{-# OPTIONS_GHC -fno-specialise #-}
-
 module HydraAuction.OnChain.StandingBid (
   mkStandingBidValidator,
   validNewBidTerms,

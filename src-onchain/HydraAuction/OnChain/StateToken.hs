@@ -1,5 +1,3 @@
-{-# OPTIONS_GHC -fno-specialise #-}
-
 module HydraAuction.OnChain.StateToken (StateTokenKind (..), stateTokenKindToTokenName, mkPolicy) where
 
 -- Prelude imports

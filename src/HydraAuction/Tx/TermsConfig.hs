@@ -40,13 +40,13 @@ import HydraAuctionUtils.Time (currentTimeSeconds)
 import HydraAuctionUtils.Types.Natural (Natural)
 
 data AuctionTermsConfig = AuctionTermsConfig
-  { configDiffBiddingStart :: !Integer
-  , configDiffBiddingEnd :: !Integer
-  , configDiffVoucherExpiry :: !Integer
-  , configDiffCleanup :: !Integer
-  , configAuctionFeePerDelegate :: !Natural
-  , configStartingBid :: !Natural
-  , configMinimumBidIncrement :: !Natural
+  { configDiffBiddingStart :: Integer
+  , configDiffBiddingEnd :: Integer
+  , configDiffVoucherExpiry :: Integer
+  , configDiffCleanup :: Integer
+  , configAuctionFeePerDelegate :: Natural
+  , configStartingBid :: Natural
+  , configMinimumBidIncrement :: Natural
   }
   deriving stock (Generic, Prelude.Show, Prelude.Eq)
 
@@ -55,14 +55,14 @@ instance ToJSON AuctionTermsConfig
 instance FromJSON AuctionTermsConfig
 
 data AuctionTermsDynamic = AuctionTermsDynamic
-  { configAuctionLot :: !AssetClass
+  { configAuctionLot :: AssetClass
   , -- Storing Actor, not only PubKeyHash,
     -- is required to simplify CLI actions on seller behalf
-    configSellerActor :: !Actor
-  , configHeadId :: !CurrencySymbol
-  , configDelegates :: ![PubKeyHash]
-  , configUtxoNonce :: !TxOutRef
-  , configAnnouncementTime :: !POSIXTime
+    configSellerActor :: Actor
+  , configHeadId :: CurrencySymbol
+  , configDelegates :: [PubKeyHash]
+  , configUtxoNonce :: TxOutRef
+  , configAnnouncementTime :: POSIXTime
   }
   deriving stock (Generic, Prelude.Show, Prelude.Eq)
 

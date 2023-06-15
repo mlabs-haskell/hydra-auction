@@ -1,7 +1,3 @@
-{-# OPTIONS_GHC -fno-specialise #-}
-{-# OPTIONS_GHC -fno-unbox-small-strict-fields #-}
-{-# OPTIONS_GHC -fno-unbox-strict-fields #-}
-
 module HydraAuction.Types (
   isStarted,
   BidTerms (..),
@@ -69,30 +65,30 @@ auctionStages :: [AuctionStage]
 auctionStages = [Prelude.minBound .. Prelude.maxBound]
 
 data AuctionTerms = AuctionTerms
-  { auctionLot :: !AssetClass
+  { auctionLot :: AssetClass
   -- ^ What is being sold at the auction?
-  , sellerPKH :: !PubKeyHash
+  , sellerPKH :: PubKeyHash
   -- ^ Who is selling it?
-  , sellerVK :: !BuiltinByteString
+  , sellerVK :: BuiltinByteString
   -- ^ Verification key of the seller
-  , hydraHeadId :: !CurrencySymbol
+  , hydraHeadId :: CurrencySymbol
   -- ^ Which Hydra Head is authorized to host the bidding for this auction?
-  , delegates :: ![PubKeyHash]
+  , delegates :: [PubKeyHash]
   -- ^ Who is running the Hydra Head where bidding occurs?
-  , biddingStart :: !POSIXTime
+  , biddingStart :: POSIXTime
   -- ^ Auction lifecycle times.
-  , biddingEnd :: !POSIXTime
-  , voucherExpiry :: !POSIXTime
-  , cleanup :: !POSIXTime
-  , auctionFeePerDelegate :: !Natural
+  , biddingEnd :: POSIXTime
+  , voucherExpiry :: POSIXTime
+  , cleanup :: POSIXTime
+  , auctionFeePerDelegate :: Natural
   -- ^ Each delegate will receive this fee portion from the proceeds of
   -- the auction, when the auction lot is purchased or reclaimed.
-  , startingBid :: !Natural
+  , startingBid :: Natural
   -- ^ The auction lot cannot be sold for less than this bid price.
-  , minimumBidIncrement :: !Natural
+  , minimumBidIncrement :: Natural
   -- ^ A new bid can only supersede the standing bid if it is larger
   -- by this increment.
-  , utxoNonce :: !TxOutRef
+  , utxoNonce :: TxOutRef
   -- ^ The seller consumed this utxo input in the transaction that
   -- announced this auction, to provide the auction lot to the auction.
   }
@@ -112,11 +108,11 @@ newtype StandingBidState = StandingBidState {standingBid :: Maybe BidTerms}
   deriving anyclass (ToJSON, FromJSON)
 
 data BidTerms = BidTerms
-  { bidderPKH :: !PubKeyHash
+  { bidderPKH :: PubKeyHash
   -- ^ PubKeyHash of whoever submitted the bid?
   , bidderVK :: BuiltinByteString
   -- ^ Verification Key of whoever submitted the bid
-  , bidAmount :: !Natural
+  , bidAmount :: Natural
   -- ^ Which amount did the bidder set to buy the auction lot?
   , bidderSignature :: BuiltinByteString
   -- ^ Represents the signed payload by the bidder
@@ -150,8 +146,8 @@ PlutusTx.makeLift ''AuctionState
 -- Datums
 
 data AuctionEscrowDatum = AuctionEscrowDatum
-  { auctionState :: !AuctionState
-  , auctionVoucherCS :: !VoucherCS
+  { auctionState :: AuctionState
+  , auctionVoucherCS :: VoucherCS
   }
   deriving stock (Generic, Prelude.Show, Prelude.Eq)
 
@@ -160,8 +156,8 @@ PlutusTx.makeIsDataIndexed ''AuctionEscrowDatum [('AuctionEscrowDatum, 0)]
 PlutusTx.makeLift ''AuctionEscrowDatum
 
 data StandingBidDatum = StandingBidDatum
-  { standingBidState :: !StandingBidState
-  , standingBidVoucherCS :: !VoucherCS
+  { standingBidState :: StandingBidState
+  , standingBidVoucherCS :: VoucherCS
   }
   deriving stock (Generic, Prelude.Show, Prelude.Eq)
   deriving anyclass (ToJSON, FromJSON)
@@ -171,9 +167,9 @@ PlutusTx.makeIsDataIndexed ''StandingBidDatum [('StandingBidDatum, 0)]
 PlutusTx.makeLift ''StandingBidDatum
 
 data BidDepositDatum = BidDepositDatum
-  { bidDepositBidder :: !PubKeyHash
+  { bidDepositBidder :: PubKeyHash
   -- ^ Which bidder made this deposit?
-  , bidDepositVoucherCS :: !VoucherCS
+  , bidDepositVoucherCS :: VoucherCS
   }
   deriving stock (Generic, Prelude.Show, Prelude.Eq)
 
