@@ -232,15 +232,15 @@ https://plutus.readthedocs.io/en/latest/troubleshooting.html#wrong-version
 
 ## Documentation
 
-This project's documentation is organized (in the [doc](doc)) as follows:
+This project's documentation is organized (in the [doc](docs)) as follows:
 
-- [domain_logic.md](doc/domain_logic.md) describes the terminology and models
+- [domain_logic.md](docs/domain_logic.md) describes the terminology and models
 for the Hydra Auction.
-- [on_chain_spec.md](doc/on_chain_spec.md) describes the on-chain scripts.
-- [off_chain_spec.md](doc/off_chain_spec.md) describes the architecture of off-chain components
+- [on_chain_spec.md](docs/on_chain_spec.md) describes the on-chain scripts.
+- [off_chain_spec.md](docs/off_chain_spec.md) describes the architecture of off-chain components
 and the APIs that they use to communicate with each other
 and users.
-- the [adr](doc/adr) folder contains [Architecture Decision Records](https://adr.github.io/) made so far in the project.
+- the [adr](docs/adr) folder contains [Architecture Decision Records](https://adr.github.io/) made so far in the project.
 
 Haddock may be builded lockally, with cabal.
 
