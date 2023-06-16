@@ -21,17 +21,18 @@ import Cardano.Api.UTxO qualified as UTxO
 import Hydra.API.ClientInput (ClientInput (..))
 import Hydra.API.ServerOutput (ServerOutput (..))
 import Hydra.Cardano.Api (
+  Lovelace (..),
   toPlutusKeyHash,
   verificationKeyHash,
   pattern ShelleyAddressInEra,
   pattern TxOut,
  )
 import Hydra.Chain (PostChainTx (..), PostTxError (..))
+import Hydra.Chain.Direct.Tx (headIdToCurrencySymbol)
 import Hydra.Snapshot (Snapshot (..))
 
 -- HydraAuction imports
 
-import Hydra.Chain.Direct.Tx (headIdToCurrencySymbol)
 import HydraAuction.Delegate.Interface (
   AbortReason (..),
   DelegateResponse (..),
@@ -48,6 +49,14 @@ import HydraAuction.Delegate.Interface (
  )
 import HydraAuction.OnChain.Common (validAuctionTerms)
 import HydraAuction.OnChain.StandingBid (validNewBidTerms)
+import HydraAuction.Platform.Interface (
+  ClientCommand (..),
+  ClientInput (..),
+  EntityKind (..),
+  HydraHeadInfo (..),
+  PlatformProtocol,
+  Some (..),
+ )
 import HydraAuction.Tx.Common (createTwoMinAdaUtxo)
 import HydraAuction.Tx.FeeEscrow (
   distributeFee,
@@ -83,6 +92,7 @@ import HydraAuctionUtils.Server.ClientId (
   ClientId,
   ClientResponseScope (..),
  )
+import HydraAuctionUtils.Server.Protocol (ProtocolClient (..))
 import HydraAuctionUtils.Tx.Utxo (
   filterAdaOnlyUtxo,
   filterNotAdaOnlyUtxo,
@@ -175,9 +185,11 @@ delegateFrontendRequestStep (clientId, request) =
 
 -- FIXME: return to polymorphism back from CompositeRunner
 delegateEventStep ::
+  (ProtocolClient client, ClientFor client ~ PlatformProtocol) =>
+  client ->
   DelegateEvent ->
   StateT DelegateState CompositeRunner [DelegateResponse]
-delegateEventStep event = case event of
+delegateEventStep plaformClient event = case event of
   Start -> do
     sendCommand Init
     return []
@@ -272,11 +284,18 @@ delegateEventStep event = case event of
   HydraEvent ReadyToFanout {} -> do
     sendCommand Fanout
     return []
-  HydraEvent (HeadIsInitializing {headId}) -> do
+  HydraEvent (HeadIsInitializing {headId, parties}) -> do
     let newState = AwaitingCommits {stangingBidWasCommited = False}
     put $ Initialized headId newState
     -- Yes, this is code duplication
     updateStateAndResponse newState
+    let info =
+          MkHydraHeadInfo
+            { headId
+            , delegatesNumber = fromJust $ intToNatural $ length parties
+            , auctionFeePerDelegate = Lovelace 4_000_000
+            }
+    reportDelegateToPlatformServer info
   HydraEvent (HeadIsOpen {utxo}) ->
     updateStateWithStandingBidOrAbort utxo
   HydraEvent HeadIsClosed {} -> do
@@ -359,6 +378,9 @@ delegateEventStep event = case event of
     getDelegateParty = do
       delegateActor <- askActor
       liftIO $ partyFor delegateActor
+    reportDelegateToPlatformServer info = do
+      actor <- askActor
+      sendInputH $ MkSome HydraHead (Command $ ReportHeadDelegate info actor)
 
 abort ::
   ( MonadIO (t CompositeRunner)

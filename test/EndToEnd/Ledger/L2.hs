@@ -142,7 +142,7 @@ bidderBuysTest = mkAssertionOfIO $ do
     -- Delegates got fees
 
     -- FIXUP: check amount change, this is impossible without fee tracking
-    emulateCleanup headId terms
+    emulateCleanup terms
 
 -- Regression test: commit should not fail when delegate has multiple UTxOs
 multipleUtxosToCommitTest :: Assertion

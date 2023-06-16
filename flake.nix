@@ -57,7 +57,7 @@
               compiler-nix-name = "ghc8107";
 
               shell.tools = {
-                cabal = "3.8.1.0";
+                cabal = "3.10.1.0";
                 fourmolu = "0.9.0.0";
                 # haskell-language-server = "latest";
               };

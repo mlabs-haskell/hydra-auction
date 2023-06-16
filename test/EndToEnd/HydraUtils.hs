@@ -10,6 +10,7 @@ module EndToEnd.HydraUtils (
   runL1InEmulator,
   runEmulator,
   runEmulatorInTest,
+  delegateEventStepEmulated,
 ) where
 
 -- Preludes import
@@ -43,6 +44,7 @@ import Test.Hydra.Prelude (withTempDir)
 -- HydraAuction imports
 
 import Hydra.Cardano.Api (TxId)
+import HydraAuction.Delegate (delegateEventStep)
 import HydraAuction.Delegate.Interface (DelegateState, initialState)
 import HydraAuction.HydraHacks (prepareScriptRegistry)
 import HydraAuctionUtils.BundledData (lookupProtocolParamPath)
@@ -67,6 +69,8 @@ import HydraAuctionUtils.L1.Runner (
   executeL1RunnerWithNodeAs,
   executeTestL1Runner,
  )
+
+-- Ways to spin up Hydra cluster
 
 -- This function will set the HYDRA_CONFIG_DIR env var locally
 -- This is required so the hydra nodes pick up on the correct protocol-parameters.json
@@ -162,6 +166,8 @@ runningThreeNodesDockerComposeHydra cont = do
               , tracer = contramap show nullTracer
               }
 
+-- Implementation of Emulator
+
 data EmulatorDelegate = Main | Second | Third
   deriving stock (Eq, Show, Enum, Bounded, Ord)
 
@@ -169,12 +175,12 @@ allDelegates :: [EmulatorDelegate]
 allDelegates = [Main, Second, Third]
 
 data EmulatorContext = MkEmulatorContext
-  { l1Node :: RunningNode
+  { platformClient :: FakeProtocolClient PlatformProtocol
   , clients :: EmulatorDelegateClients
   , delegateStatesRef :: MVar (Map EmulatorDelegate DelegateState)
   }
 
-type EmulatorDelegateClients = Map EmulatorDelegate (HydraClient, Actor)
+type EmulatorDelegateClients = Map EmulatorDelegate HydraClient
 newtype DelegatesClusterEmulator a = DelegatesClusterEmulator
   { unDelegatesClusterEmulator :: ReaderT EmulatorContext IO a
   }
@@ -206,22 +212,24 @@ runEmulatorInTest action = do
 
 runEmulator :: EmulatorDelegateClients -> DelegatesClusterEmulator a -> L1Runner a
 runEmulator clients action = do
-  MkExecutionContext {node} <- ask
   intialStatesRef <-
     liftIO $
       newMVar $
         Map.fromList [(name, initialState) | name <- allDelegates]
+  platformClient <- newFakeClient
   let context =
         MkEmulatorContext
-          { l1Node = node
+          { platformClient = platformClient
           , clients = clients
           , delegateStatesRef = intialStatesRef
           }
   liftIO $ flip runReaderT context $ unDelegatesClusterEmulator action
 
+-- Using Emulator
+
 runL1InEmulator :: forall x. L1Runner x -> DelegatesClusterEmulator x
 runL1InEmulator action = do
-  node <- l1Node <$> ask
+  -- node <- l1Node <$> ask
   liftIO $ executeL1RunnerWithNode node action
 
 runCompositeForDelegate ::
@@ -230,30 +238,22 @@ runCompositeForDelegate ::
   StateT DelegateState CompositeRunner x ->
   DelegatesClusterEmulator x
 runCompositeForDelegate name action = do
-  MkEmulatorContext {l1Node, clients, delegateStatesRef} <- ask
-  context <- liftIO $ createContext l1Node clients
+  MkEmulatorContext {platformClient, clients, delegateStatesRef} <- ask
 
   -- Get state
   states <- liftIO $ takeMVar delegateStatesRef
   let state = (Map.!) states name
+  let context = (Map.!) clients name
 
   -- Run
   (result, newState) <-
-    liftIO $
-      executeHydraRunner
-        context
-        (runStateT action state)
+    liftIO $ executeHydraRunner context (runStateT action state)
 
   -- Update state
   liftIO $ putMVar delegateStatesRef $ Map.insert name newState states
 
   -- Return
   return result
-  where
-    createContext l1Node clients = do
-      let (hydraClient, actor) = (Map.!) clients name
-      executeL1RunnerWithNodeAs l1Node actor $
-        executeHydraRunnerFakingParams hydraClient ask
 
 runCompositeForAllDelegates ::
   forall x.
