@@ -30,6 +30,7 @@ module HydraAuction.Platform.Interface (
   FilterOrd (..),
   HeadDelegate (..),
   BidderApproval (..),
+  BidderDeposit (..),
   EntityKind (..),
   ServerOutput (..),
   Some (..),

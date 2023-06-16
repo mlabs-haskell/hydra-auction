@@ -24,6 +24,7 @@ import HydraAuction.OnChain (standingBidAddress, voucherCurrencySymbol)
 import HydraAuction.Platform.Interface (
   AnnouncedAuction (..),
   BidderApproval (..),
+  BidderDeposit (..),
   ClientCommand (..),
   ClientInput (..),
   CommandResult (..),
@@ -51,6 +52,7 @@ type StorageMap entity = Map (PrimaryKey entity) entity
 data EntityStorage = MkEntityStorage
   { storageAnnouncedAuction :: StorageMap AnnouncedAuction
   , storageBidderApproval :: StorageMap BidderApproval
+  , storageBidderDeposit :: StorageMap BidderDeposit
   , storageHeadDelegate :: StorageMap HeadDelegate
   , storageHydraHead :: StorageMap HydraHead
   }
@@ -61,6 +63,7 @@ initialStorage =
   MkEntityStorage
     { storageAnnouncedAuction = Map.empty
     , storageBidderApproval = Map.empty
+    , storageBidderDeposit = Map.empty
     , storageHeadDelegate = Map.empty
     , storageHydraHead = Map.empty
     }
@@ -72,6 +75,7 @@ entityStorageMap entity = selector
     selector = case entity of
       AnnouncedAuction -> storageAnnouncedAuction
       BidderApproval -> storageBidderApproval
+      BidderDeposit -> storageBidderDeposit
       HeadDelegate -> storageHeadDelegate
       HydraHead -> storageHydraHead
 
@@ -89,6 +93,11 @@ overStorageMap entity func storage = case entity of
     storage
       { storageBidderApproval =
           func $ storageBidderApproval storage
+      }
+  BidderDeposit ->
+    storage
+      { storageBidderDeposit =
+          func $ storageBidderDeposit storage
       }
   HeadDelegate ->
     storage
