@@ -8,6 +8,7 @@ module HydraAuctionUtils.Fixture (
   partyFor,
   allActors,
   actorFromPkh,
+  actorFromSk,
   getActorPubKeyHash,
   getActorsPubKeyHash,
   getActorKind,
@@ -21,6 +22,7 @@ import Control.Monad.Extra (findM, unless)
 import Data.Aeson qualified as Aeson
 import Data.Bifunctor (first)
 import Data.Char (toLower)
+import Data.List qualified as List
 import Data.Map qualified as Map
 import System.FilePath ((<.>), (</>))
 
@@ -29,8 +31,8 @@ import Hydra.Cardano.Api (
   AsType (AsPaymentKey, AsSigningKey),
   HasTypeProxy (AsType),
   Key (VerificationKey, getVerificationKey),
-  PaymentKey,
-  SigningKey,
+  PaymentKey (..),
+  SigningKey (..),
   TextEnvelopeError (TextEnvelopeAesonDecodeError),
   deserialiseFromTextEnvelope,
   toPlutusKeyHash,
@@ -87,7 +89,9 @@ getActorKind actor
       HydraNodeActor
   | otherwise = FaucetActor
 
--- | Get the "well-known" keys for given actor.
+{- | Get the "well-known" keys for given actor.
+ FIXME: cache this
+-}
 keysFor :: Actor -> IO (VerificationKey PaymentKey, SigningKey PaymentKey)
 keysFor actor = do
   bs <- readDataFile $ "credentials" </> actorName actor <.> "sk"
@@ -105,6 +109,15 @@ keysFor actor = do
   where
     asSigningKey :: AsType (SigningKey PaymentKey)
     asSigningKey = AsSigningKey AsPaymentKey
+
+deriving instance Eq (SigningKey PaymentKey)
+
+actorFromSk :: SigningKey PaymentKey -> IO (Maybe Actor)
+actorFromSk key = do
+  allKeys <- mapM keysFor allActors
+  let keyToActor = zip (map snd allKeys) allActors
+  -- No `Ord (SigningKey PaymentKey)` available
+  return $ snd <$> List.find ((key ==) . fst) keyToActor
 
 partyFor :: Actor -> IO Party
 partyFor actor = do
