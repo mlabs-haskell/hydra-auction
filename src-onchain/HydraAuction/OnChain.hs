@@ -11,16 +11,21 @@ module HydraAuction.OnChain (
   escrowAddress,
   standingBidAddress,
   singleUtxoScripts,
+  getScriptByAddress,
 ) where
 
 -- Prelude imports
 
-import GHC.Stack (HasCallStack)
 import PlutusTx.Prelude
 import Prelude qualified
 
+-- Haskell imports
+import Data.List qualified as List
+import GHC.Stack (HasCallStack)
+
 -- Plutus imports
 import PlutusLedgerApi.Common (SerialisedScript, serialiseCompiledCode)
+import PlutusLedgerApi.V1.Address (Address)
 import PlutusLedgerApi.V1.Value (AssetClass (..))
 import PlutusTx qualified
 
@@ -52,7 +57,7 @@ import HydraAuctionUtils.Extras.Plutus (
 -- Addresses
 
 data AuctionScript = Escrow | StandingBid | FeeEscrow | Deposit
-  deriving stock (Prelude.Show, Prelude.Eq, Prelude.Bounded, Prelude.Enum)
+  deriving stock (Prelude.Show, Prelude.Eq, Prelude.Enum, Prelude.Bounded)
 
 -- This is scripts for which on-chain script ensure that
 -- no more than single UTxO exists for given AuctionTerms
@@ -64,6 +69,22 @@ scriptValidatorForTerms Escrow = escrowValidator
 scriptValidatorForTerms StandingBid = standingBidValidator
 scriptValidatorForTerms FeeEscrow = feeEscrowValidator
 scriptValidatorForTerms Deposit = depositValidator
+
+enumInversion ::
+  (Eq i, Prelude.Enum a, Prelude.Bounded a) =>
+  (a -> i) ->
+  i ->
+  Maybe a
+enumInversion func image =
+  snd <$> List.find ((image ==) . fst) imageToDomain
+  where
+    domain = [Prelude.minBound .. Prelude.maxBound]
+    imageToDomain = zip (map func domain) domain
+
+getScriptByAddress :: AuctionTerms -> Address -> Maybe AuctionScript
+getScriptByAddress terms = enumInversion addressByScript
+  where
+    addressByScript = validatorAddress . flip scriptValidatorForTerms terms
 
 -- State Tokens
 
