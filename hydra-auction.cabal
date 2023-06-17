@@ -90,6 +90,7 @@ common common-lang
     RankNTypes
     ScopedTypeVariables
     StandaloneDeriving
+    StrictData
     TemplateHaskell
     TupleSections
     TypeApplications
