@@ -2,6 +2,7 @@ module CLI.Actions (
   CliAction (..),
   Layer (..),
   handleCliAction,
+  handlePerAuctionAction,
   seedAmount,
   auctionTermsFor,
 ) where
@@ -88,9 +89,7 @@ import HydraAuctionUtils.Tx.Common (transferAda)
 import CLI.Config (
   AuctionName,
   CliEnhancedAuctionTerms (..),
-  configToAuctionTerms,
   readAuctionTerms,
-  readAuctionTermsConfig,
   readCliEnhancedAuctionTerms,
   writeAuctionTermsDynamic,
  )
@@ -130,11 +129,6 @@ handleCliAction ::
 handleCliAction sendRequestToDelegate currentDelegateStateRef userAction = do
   actor <- askActor
   case userAction of
-    ShowCurrentStage auctionName -> do
-      terms <- auctionTermsFor auctionName
-      liftIO $ do
-        stage <- currentAuctionStage terms
-        putStrLn $ "Current stage: " <> show stage
     Seed -> do
       announceActionExecution userAction
       void $ initWallet seedAmount actor
@@ -162,145 +156,165 @@ handleCliAction sendRequestToDelegate currentDelegateStateRef userAction = do
         liftIO $ print a
         liftIO $ prettyPrintUtxo utxos
         liftIO $ putStrLn "\n"
-    ShowCurrentWinningBidder auctionName -> do
-      terms <- auctionTermsFor auctionName
-      winningActor <- do
-        winningBidder <- currentWinningBidder terms
-        liftIO $ mapM actorFromPkh winningBidder
-      liftIO $ print winningActor
-    ShowActorsMinDeposit auctionName minDeposit -> do
-      terms <- auctionTermsFor auctionName
-      allDeposits <- scriptUtxos Deposit terms
-
-      let matchingDatums = (parseBidDepositDatum . snd <$>) . UTxO.pairs $ filterDepositGreaterThan minDeposit allDeposits
-      actors <- liftIO $ mapM (actorFromPkh . bidDepositBidder) matchingDatums
-      -- FIXME: pretty print on separate lines
-      liftIO . putStrLn $
-        "Showing actors that satisfy min deposit: "
-          <> show actors
     MintTestNFT -> do
       announceActionExecution userAction
       void mintOneTestNFT
     TransferAda actorTo marked amount ->
       void $ transferAda actorTo marked amount
-    AuctionAnounce auctionName -> do
-      mTxIn <- findTestNFT <$> actorTipUtxo
-      case mTxIn of
-        Just txIn -> do
-          delegateState <- liftIO $ readIORef currentDelegateStateRef
-          case delegateState of
-            Initialized headId _ -> do
-              dynamic <-
-                liftIO $
-                  constructTermsDynamic
-                    actor
-                    txIn
-                    (headIdToCurrencySymbol headId)
-              liftIO $ writeAuctionTermsDynamic auctionName dynamic
-              config <-
-                liftIO $
-                  noteM ("could not read auction terms config for " <> show auctionName) $
-                    readAuctionTermsConfig auctionName
-              terms <- liftIO $ configToAuctionTerms config dynamic
-              announceActionExecution userAction
-              announceAuction terms
-            _ -> liftIO . putStrLn $ "Hydra is not initialized yet"
-        Nothing -> liftIO . putStrLn $ "User doesn't have the \"Mona Lisa\" token.\nThis demo is configured to use this token as the auction lot."
-    StartBidding auctionName -> do
-      terms <- auctionTermsFor auctionName
-      doOnMatchingStage terms BiddingStartedStage $ do
-        announceActionExecution userAction
-        startBidding terms
-    MoveToL2 auctionName -> do
-      terms <- auctionTermsFor auctionName
-      doOnMatchingStage terms BiddingStartedStage $ do
-        mUtxo <- scriptSingleUtxo StandingBid terms
-        stadingBidUtxo <- case mUtxo of
-          Just x -> return x
-          Nothing -> fail "No Standing bid found"
-        liftIO $
-          sendRequestToDelegate $
-            DelegateInterface.CommitStandingBid
-              { auctionTerms = terms
-              , utxoToCommit = stadingBidUtxo
-              }
-    NewBid auctionName bidAmount layer -> do
-      CliEnhancedAuctionTerms {terms, sellerActor} <-
-        liftIO $
-          noteM ("could not read enhanced auction terms for " <> show auctionName) $
-            readCliEnhancedAuctionTerms auctionName
-      if actor == sellerActor
-        then liftIO $ putStrLn "Seller cannot place a bid"
-        else do
-          announceActionExecution userAction
-          -- FIXME: temporaral stub until Platform server
-          sellerSignature <- liftIO $ sellerSignatureForActor terms actor
-          doOnMatchingStage terms BiddingStartedStage $
-            case layer of
-              L1 -> newBid terms bidAmount sellerSignature
-              L2 -> do
-                (_, _, bidderSigningKey) <- addressAndKeys
-                let bidDatum =
-                      createStandingBidDatum terms bidAmount sellerSignature bidderSigningKey
-                liftIO $
-                  sendRequestToDelegate $
-                    DelegateInterface.NewBid
-                      { auctionTerms = terms
-                      , datum = bidDatum
-                      }
-    MakeDeposit auctionName depositAmount -> do
-      terms <- auctionTermsFor auctionName
-      doOnMatchingStage terms AnnouncedStage $
-        mkDeposit terms depositAmount
-    BidderBuys auctionName -> do
-      terms <- auctionTermsFor auctionName
-      doOnMatchingStage terms BiddingEndedStage $ do
-        mWinningBidderPk <- currentWinningBidder terms
-        (currentActorAddress, _, _) <- addressAndKeys
-        case mWinningBidderPk of
-          Just winningBidderPk -> do
-            winningBidderAddress <-
-              fromPlutusAddressInMonad $
-                pubKeyHashAddress winningBidderPk
-            if winningBidderAddress == ShelleyAddressInEra currentActorAddress
-              then do
+    _ ->
+      handlePerAuctionAction
+        sendRequestToDelegate
+        currentDelegateStateRef
+        userAction
+
+handlePerAuctionAction ::
+  (DelegateInterface.FrontendRequest -> IO ()) ->
+  IORef DelegateState ->
+  CliAction ->
+  WithActorT L1Runner ()
+handlePerAuctionAction
+  sendRequestToDelegate
+  currentDelegateStateRef
+  userAction = do
+    -- FIXUP: separate type
+    actor <- askActor
+    case userAction of
+      ShowCurrentStage auctionName -> do
+        terms <- auctionTermsFor auctionName
+        liftIO $ do
+          stage <- currentAuctionStage terms
+          putStrLn $ "Current stage: " <> show stage
+      ShowCurrentWinningBidder auctionName -> do
+        terms <- auctionTermsFor auctionName
+        winningActor <- do
+          winningBidder <- currentWinningBidder terms
+          liftIO $ mapM actorFromPkh winningBidder
+        liftIO $ print winningActor
+      ShowActorsMinDeposit auctionName minDeposit -> do
+        terms <- auctionTermsFor auctionName
+        allDeposits <- scriptUtxos Deposit terms
+
+        let matchingDatums = (parseBidDepositDatum . snd <$>) . UTxO.pairs $ filterDepositGreaterThan minDeposit allDeposits
+        actors <- liftIO $ mapM (actorFromPkh . bidDepositBidder) matchingDatums
+        -- FIXME: pretty print on separate lines
+        liftIO . putStrLn $
+          "Showing actors that satisfy min deposit: "
+            <> show actors
+      AuctionAnounce auctionName -> do
+        mTxIn <- findTestNFT <$> actorTipUtxo
+        case mTxIn of
+          Just txIn -> do
+            delegateState <- liftIO $ readIORef currentDelegateStateRef
+            case delegateState of
+              Initialized headId _ -> do
+                terms <- createNewAuctionConfig txIn auctionName headId
                 announceActionExecution userAction
-                bidderBuys terms
-                prettyPrintCurrentActorUtxos
-              else
-                liftIO $
-                  putStrLn "Cannot perform: Other actor is the winning bidder!"
-          Nothing ->
-            liftIO $ putStrLn "Cannot perform: No bid is placed!"
-    BidderClaimsDeposit auctionName -> do
-      terms <- auctionTermsFor auctionName
-      -- doOnMatchingStage terms BiddingEndedStage $ do
-      announceActionExecution userAction
-      losingBidderClaimDeposit terms
-    CleanupDeposit auctionName -> do
-      terms <- auctionTermsFor auctionName
-      doOnMatchingStage terms CleanupStage $ do
+                announceAuction terms
+              _ -> liftIO . putStrLn $ "Hydra is not initialized yet"
+          Nothing -> liftIO . putStrLn $ "User doesn't have the \"Mona Lisa\" token.\nThis demo is configured to use this token as the auction lot."
+      StartBidding auctionName -> do
+        terms <- auctionTermsFor auctionName
+        doOnMatchingStage terms BiddingStartedStage $ do
+          announceActionExecution userAction
+          startBidding terms
+      MoveToL2 auctionName -> do
+        terms <- auctionTermsFor auctionName
+        doOnMatchingStage terms BiddingStartedStage $ do
+          mUtxo <- scriptSingleUtxo StandingBid terms
+          stadingBidUtxo <- case mUtxo of
+            Just x -> return x
+            Nothing -> fail "No Standing bid found"
+          liftIO $
+            sendRequestToDelegate $
+              DelegateInterface.CommitStandingBid
+                { auctionTerms = terms
+                , utxoToCommit = stadingBidUtxo
+                }
+      NewBid auctionName bidAmount layer -> do
+        CliEnhancedAuctionTerms {terms, sellerActor} <-
+          liftIO $
+            noteM ("could not read enhanced auction terms for " <> show auctionName) $
+              readCliEnhancedAuctionTerms auctionName
+        if actor == sellerActor
+          then liftIO $ putStrLn "Seller cannot place a bid"
+          else do
+            announceActionExecution userAction
+            -- FIXME: temporaral stub until Platform server
+            sellerSignature <- liftIO $ sellerSignatureForActor terms actor
+            doOnMatchingStage terms BiddingStartedStage $
+              case layer of
+                L1 -> newBid terms bidAmount sellerSignature
+                L2 -> do
+                  (_, _, bidderSigningKey) <- addressAndKeys
+                  let bidDatum =
+                        createStandingBidDatum terms bidAmount sellerSignature bidderSigningKey
+                  liftIO $
+                    sendRequestToDelegate $
+                      DelegateInterface.NewBid
+                        { auctionTerms = terms
+                        , datum = bidDatum
+                        }
+      MakeDeposit auctionName depositAmount -> do
+        terms <- auctionTermsFor auctionName
+        doOnMatchingStage terms AnnouncedStage $
+          mkDeposit terms depositAmount
+      BidderBuys auctionName -> do
+        terms <- auctionTermsFor auctionName
+        doOnMatchingStage terms BiddingEndedStage $ do
+          mWinningBidderPk <- currentWinningBidder terms
+          (currentActorAddress, _, _) <- addressAndKeys
+          case mWinningBidderPk of
+            Just winningBidderPk -> do
+              winningBidderAddress <-
+                fromPlutusAddressInMonad $
+                  pubKeyHashAddress winningBidderPk
+              if winningBidderAddress == ShelleyAddressInEra currentActorAddress
+                then do
+                  announceActionExecution userAction
+                  bidderBuys terms
+                  prettyPrintCurrentActorUtxos
+                else
+                  liftIO $
+                    putStrLn "Cannot perform: Other actor is the winning bidder!"
+            Nothing ->
+              liftIO $ putStrLn "Cannot perform: No bid is placed!"
+      BidderClaimsDeposit auctionName -> do
+        terms <- auctionTermsFor auctionName
+        -- doOnMatchingStage terms BiddingEndedStage $ do
         announceActionExecution userAction
-        cleanupDeposit terms
-    SellerReclaims auctionName -> do
-      terms <- auctionTermsFor auctionName
-      doOnMatchingStage terms VoucherExpiredStage $ do
+        losingBidderClaimDeposit terms
+      CleanupDeposit auctionName -> do
+        terms <- auctionTermsFor auctionName
+        doOnMatchingStage terms CleanupStage $ do
+          announceActionExecution userAction
+          cleanupDeposit terms
+      SellerReclaims auctionName -> do
+        terms <- auctionTermsFor auctionName
+        doOnMatchingStage terms VoucherExpiredStage $ do
+          announceActionExecution userAction
+          sellerReclaims terms
+          prettyPrintCurrentActorUtxos
+      SellerClaimsDepositFor auctionName bidderActor -> do
+        terms <- auctionTermsFor auctionName
         announceActionExecution userAction
-        sellerReclaims terms
-        prettyPrintCurrentActorUtxos
-    SellerClaimsDepositFor auctionName bidderActor -> do
-      terms <- auctionTermsFor auctionName
-      announceActionExecution userAction
-      bidderPKH <- liftIO $ getActorPubKeyHash bidderActor
-      doOnMatchingStage terms VoucherExpiredStage $
-        sellerClaimDepositFor terms bidderPKH
-    Cleanup auctionName -> do
-      terms <- auctionTermsFor auctionName
-      doOnMatchingStage terms CleanupStage $ do
-        announceActionExecution userAction
-        cleanupTx
-          terms
-        prettyPrintCurrentActorUtxos
+        bidderPKH <- liftIO $ getActorPubKeyHash bidderActor
+        doOnMatchingStage terms VoucherExpiredStage $
+          sellerClaimDepositFor terms bidderPKH
+      Cleanup auctionName -> do
+        terms <- auctionTermsFor auctionName
+        doOnMatchingStage terms CleanupStage $ do
+          announceActionExecution userAction
+          cleanupTx
+            terms
+          prettyPrintCurrentActorUtxos
+    where
+      createNewAuctionConfig txIn auctionName headId = do
+        actor <- askActor
+        dynamic <-
+          liftIO $
+            constructTermsDynamic actor txIn (headIdToCurrencySymbol headId)
+        liftIO $ writeAuctionTermsDynamic auctionName dynamic
+        liftIO $ auctionTermsFor auctionName
 
 noteM :: forall m a. MonadFail m => String -> m (Maybe a) -> m a
 noteM s = (>>= maybe (fail s) pure)
