@@ -19,7 +19,7 @@ import HydraAuctionUtils.PrettyPrinting (prettyPrintUtxo)
 import HydraAuctionUtils.Types.Natural (naturalToInt)
 
 -- Hydra auction CLI imports
-import CLI.Types (CliAction (..))
+import CLI.Types (CliAction (..), PerAuctionCliAction (..))
 
 announceActionExecution ::
   forall m.
@@ -34,7 +34,7 @@ announceActionExecution action = do
       "Seeding all wallets with 100 ADA and minting the test NFT for "
         <> show sellerActor
         <> "."
-    ShowScriptUtxos auctionName script ->
+    PerAuction auctionName (ShowScriptUtxos script) ->
       "Showing all utxos under the "
         <> show script
         <> " script for auction"
@@ -45,34 +45,34 @@ announceActionExecution action = do
       "Minting the test NFT for "
         <> show currentActor
         <> "."
-    AuctionAnounce auctionName ->
+    PerAuction auctionName AuctionAnounce ->
       show currentActor
         <> " announces auction called "
         <> show auctionName
         <> "."
-    StartBidding auctionName ->
+    PerAuction auctionName StartBidding ->
       show currentActor
         <> " starts the bidding phase of auction "
         <> show auctionName
         <> "."
-    NewBid auctionName bidAmount _ ->
+    PerAuction auctionName (NewBid bidAmount _) ->
       show currentActor
         <> " places a new bid of "
         <> show (naturalToInt bidAmount `div` 1_000_000)
         <> " ADA in auction "
         <> show auctionName
         <> "."
-    BidderBuys {} ->
+    PerAuction _ (BidderBuys {}) ->
       show currentActor <> " buys the auction lot, as the winning bidder."
-    BidderClaimsDeposit {} ->
+    PerAuction _ (BidderClaimsDeposit {}) ->
       show currentActor <> " reclaims their deposit, as a losing bidder."
-    SellerReclaims {} ->
+    PerAuction _ (SellerReclaims {}) ->
       show currentActor <> " reclaims the auction lot, as the seller."
-    SellerClaimsDepositFor _ bidderActor ->
+    PerAuction _ (SellerClaimsDepositFor bidderActor) ->
       show currentActor
         <> ", as the seller, reclaims the deposit for "
         <> show bidderActor
-    Cleanup auctionName ->
+    PerAuction auctionName Cleanup ->
       "Cleaning up all remaining script utxos for auction "
         <> show auctionName
         <> "."
