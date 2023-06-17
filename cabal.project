@@ -28,11 +28,11 @@ source-repository-package
 
 -- NOTE: We need to have the hackage index-state twice because of
 -- cabal/haskell.nix oddities. That is, cabal ignores this one
-index-state: 2023-04-21T02:04:45Z
+index-state: 2023-06-16T12:36:05Z
 index-state:
   -- while haskell.nix, ignores this one
-  , hackage.haskell.org 2023-04-21T02:04:45Z
-  , cardano-haskell-packages 2023-03-22T09:20:07Z
+  , hackage.haskell.org 2023-06-16T12:36:05Z
+  , cardano-haskell-packages 2023-06-16T11:58:14Z
 
 tests: true
 
@@ -42,15 +42,6 @@ tests: true
 test-show-details: direct
 
 packages: .
-
--- XXX: Latest cardano-api is not on CHaP yet
-source-repository-package
-  type: git
-  location: https://github.com/input-output-hk/cardano-node.git
-  tag: 2dcdbb7bafb5045aa3565c1b41858af07d2da631
-  --sha256: 10k4nk7mmy62fw2y095rrbxzsaxvj3jb822a1fmhh8z2zqa1hvhj
-  subdir:
-    cardano-api
 
 -- XXX: Needed to export mkTermToEvaluate on plutus 1.1.1.0
 source-repository-package
@@ -63,8 +54,8 @@ source-repository-package
 
 constraints:
   -- For ouroboros-consensus-0.3.0.0
-  ouroboros-consensus >= 0.3.0.0
-  , unix-bytestring < 0.4
+  -- ouroboros-consensus == 0.3.0.0
+  , cardano-api ^>= 8.0.0
 
 -- Constraints / allow-newer from cardano-node
 allow-newer:
