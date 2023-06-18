@@ -24,6 +24,7 @@ import HydraAuctionUtils.Prelude
 -- Haskell imports
 
 import Data.Set (Set)
+import Data.Time.Clock (diffUTCTime, getCurrentTime, nominalDiffTimeToSeconds)
 
 -- Cardano imports
 import Cardano.Api.UTxO qualified as UTxO
@@ -138,16 +139,38 @@ class Monad m => MonadSubmitTx m where
   awaitTx :: Tx -> m ()
 
 submitAndAwaitTx ::
-  (MonadSubmitTx m, MonadTrace m) => Tx -> m (Either SubmitingError ())
+  (MonadIO m, MonadSubmitTx m, MonadTrace m) =>
+  Tx ->
+  m (Either SubmitingError ())
 submitAndAwaitTx tx = do
+  before <- liftIO getCurrentTime
+  logMsg "Submiting (might take time if Slots on L1 are sloppy)"
   result <- submitTx tx
   case result of
     Right () -> do
       logMsg "Submited"
       awaitTx tx
-      logMsg $ "Created Tx id: " <> show (getTxId $ txBody tx)
+      after <- liftIO getCurrentTime
+      let passedSecs = nominalDiffTimeToSeconds (diffUTCTime after before)
+      logMsg $
+        "Tx appeard on blockchain in "
+          <> show passedSecs
+          <> " secs, with id: "
+          <> show (getTxId $ txBody tx)
       return $ Right ()
-    Left _ -> return result
+    -- FIXME: should be handled in CLI
+    Left error -> do
+      liftIO $ case error of
+        "Timeout" ->
+          putStrLn
+            "Tx submit timeout. Maybe its validity range is ended."
+        "InvalidatedTxIn" ->
+          putStrLn $
+            "Tx inputs are not longer valid, another transaction changed them.\n"
+              <> "You may try to submit it again."
+        _ -> putStrLn $ "Unknown submitting error: " <> show error
+      return result
+
 instance {-# OVERLAPPABLE #-} (MonadSubmitTx m, MonadTrans t, Monad (t m)) => MonadSubmitTx (t m) where
   submitTx = lift . submitTx
   awaitTx = lift . awaitTx
