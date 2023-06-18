@@ -7,6 +7,7 @@ module HydraAuctionUtils.Parsers (
   parseHost,
   cardanoRunningNodeParser,
   execParserForCliArgs,
+  platform,
 ) where
 
 -- Prelude imports
@@ -20,7 +21,21 @@ import Data.Map qualified as Map
 import Data.Text qualified as Text
 import Network.HostAndPort (maybeHostAndPort)
 import Options.Applicative (Parser, customExecParser, helper)
-import Options.Applicative.Builder (ReadM, eitherReader, fullDesc, help, info, long, metavar, option, prefs, showHelpOnEmpty, showHelpOnError, strOption)
+import Options.Applicative.Builder (
+  ReadM,
+  eitherReader,
+  fullDesc,
+  help,
+  info,
+  long,
+  metavar,
+  option,
+  prefs,
+  short,
+  showHelpOnEmpty,
+  showHelpOnError,
+  strOption,
+ )
 import Protolude.Exceptions (note)
 import Text.Read (readMaybe)
 
@@ -112,3 +127,13 @@ cardanoRunningNodeParser =
               <> metavar "NETWORK_MAGIC"
               <> help "Network magic for cardano"
           )
+
+platform :: Parser Host
+platform =
+  option
+    (parseHost Nothing)
+    ( short 'p'
+        <> long "platform-server"
+        <> metavar "PLATFORM"
+        <> help "Host and port of platform server"
+    )
