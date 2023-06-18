@@ -1,4 +1,6 @@
 module HydraAuctionUtils.L1.Runner (
+  feeSpent,
+  queryAdaWithoutFees,
   HydraAuctionLog (..),
   EndToEndLog (..),
   NodeLog (..),
@@ -94,13 +96,19 @@ import HydraAuctionUtils.Monads (
   MonadQueryUtxo (..),
   MonadSubmitTx (..),
   MonadTrace (..),
+  TxStat (..),
   UtxoQuery (..),
   askL1Timeout,
   toSlotNo,
   waitUntilSlot,
  )
-import HydraAuctionUtils.Monads.Actors (WithActorT, withActor)
-import HydraAuctionUtils.Tx.Common (transferAda)
+import HydraAuctionUtils.Monads.Actors (
+  MonadHasActor (..),
+  WithActorT,
+  actorTipUtxo,
+  withActor,
+ )
+import HydraAuctionUtils.Tx.Common (transferAda, utxoLovelaceValue)
 
 {- | Execution context holding the current tracer,
  as well as the running node.
@@ -108,6 +116,7 @@ import HydraAuctionUtils.Tx.Common (transferAda)
 data ExecutionContext = MkExecutionContext
   { tracer :: Tracer IO HydraAuctionLog
   , node :: RunningNode
+  , recordedStatsVar :: MVar [TxStat]
   }
 
 -- | HydraAuction specific L1 computation executor.
@@ -175,6 +184,10 @@ instance MonadBlockchainParams L1Runner where
       case tip of
         ChainPointAtGenesis -> SlotNo 0
         ChainPoint slotNo _ -> slotNo
+
+  recordTxStat stat = do
+    MkExecutionContext {recordedStatsVar} <- ask
+    liftIO $ modifyMVar_ recordedStatsVar (return . (stat :))
 
 runWithNetworkParams ::
   (MonadReader ExecutionContext m, MonadIO m) =>
@@ -257,8 +270,11 @@ dockerNode =
 
 executeL1RunnerWithNode :: forall x. RunningNode -> L1Runner x -> IO x
 executeL1RunnerWithNode node runner = do
-  let tracer = contramap show stdoutTracer
-  executeL1Runner (MkExecutionContext {tracer = tracer, node}) runner
+  recordedStatsVar <- newMVar []
+  let
+    tracer = contramap show stdoutTracer
+    context = MkExecutionContext {tracer = tracer, node, recordedStatsVar}
+  executeL1Runner context runner
 
 executeL1RunnerWithNodeAs :: forall x. RunningNode -> Actor -> WithActorT L1Runner x -> IO x
 executeL1RunnerWithNodeAs node actor runner =
@@ -280,3 +296,17 @@ initWallet ::
 initWallet amount actor = do
   liftIO $ threadDelay 1_000_000
   void $ withActor Faucet $ transferAda actor Normal amount
+
+feeSpent :: WithActorT L1Runner Lovelace
+feeSpent = do
+  MkExecutionContext {recordedStatsVar} <- lift ask
+  stats <- liftIO $ readMVar recordedStatsVar
+  actor <- askActor
+  let relevantStats = filter (\x -> actor `elem` signers x) stats
+  return $ sum $ map fee relevantStats
+
+queryAdaWithoutFees :: WithActorT L1Runner Lovelace
+queryAdaWithoutFees = do
+  spent <- feeSpent
+  amount <- utxoLovelaceValue <$> actorTipUtxo
+  return $ amount + spent

@@ -10,7 +10,10 @@ import Data.Maybe (fromJust)
 
 -- Haskell test imports
 import Test.Tasty (TestTree, testGroup)
-import Test.Tasty.HUnit (Assertion, testCase)
+import Test.Tasty.HUnit (Assertion, assertEqual, testCase)
+
+-- Hydra imports
+import Hydra.Cardano.Api (Lovelace (..))
 
 -- Hydra auction imports
 import HydraAuction.OnChain (AuctionScript (..))
@@ -32,7 +35,9 @@ import HydraAuction.Tx.TermsConfig (
 import HydraAuction.Types (AuctionTerms (..))
 import HydraAuctionUtils.Fixture (Actor (..), getActorPubKeyHash)
 import HydraAuctionUtils.L1.Runner (
+  feeSpent,
   initWallet,
+  queryAdaWithoutFees,
   withActor,
  )
 import HydraAuctionUtils.Monads (waitUntil)
@@ -65,10 +70,15 @@ losingBidderClaimDepositTest = mkAssertion $ do
       buyer2 = Carol
 
   mapM_ (initWallet 100_000_000) [seller, buyer1, buyer2]
+  amount <- withActor seller queryAdaWithoutFees
+  liftIO $ assertEqual "test" amount (Lovelace 100_000_000)
 
   terms <-
     withActor seller $
       createTermsWithTestNFT config nonExistentHeadIdStub
+
+  amount <- withActor seller queryAdaWithoutFees
+  liftIO $ assertEqual "test" amount (Lovelace 100_000_000)
 
   withActor seller $ announceAuction terms
 

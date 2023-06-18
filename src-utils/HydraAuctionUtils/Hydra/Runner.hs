@@ -144,6 +144,12 @@ instance MonadBlockchainParams HydraRunner where
   queryCurrentSlot = runL1RunnerInComposite queryCurrentSlot
   convertValidityBound = runL1RunnerInComposite . convertValidityBound
 
+  {-
+  \| This records stats to underlying L1 Runner
+  Not sure if this works well, but seems to match current L2 interation test
+  -}
+  recordTxStat = runL1RunnerInComposite . recordTxStat
+
 instance MonadHasActor HydraRunner where
   askActor = actor <$> ask
 
