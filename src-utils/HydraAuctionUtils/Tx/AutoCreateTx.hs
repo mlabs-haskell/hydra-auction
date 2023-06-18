@@ -188,10 +188,10 @@ callBodyAutoBalance
           Nothing
 
 autoSubmitAndAwaitTx ::
-  (MonadTrace m, MonadFail m, MonadBlockchainParams m, MonadSubmitTx m) =>
+  (MonadIO m, MonadTrace m, MonadFail m, MonadBlockchainParams m, MonadSubmitTx m) =>
   AutoCreateParams ->
   m Tx
 autoSubmitAndAwaitTx params = do
   tx <- autoCreateTx params
-  submitAndAwaitTx tx
+  _ <- submitAndAwaitTx tx
   return tx

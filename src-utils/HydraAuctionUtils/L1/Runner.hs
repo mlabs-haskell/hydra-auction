@@ -27,6 +27,7 @@ import Test.Hydra.Prelude (withTempDir)
 
 import Control.Tracer (nullTracer, stdoutTracer, traceWith)
 import Data.List (isInfixOf)
+import System.Timeout (timeout)
 
 -- Cardano imports
 import CardanoClient (
@@ -61,8 +62,11 @@ import Hydra.Cardano.Api (
   SubmitResult (..),
   TxValidityLowerBound,
   TxValidityUpperBound,
+  getTxBody,
   submitTxToNodeLocal,
+  txValidityRange,
   pattern BabbageEraInCardanoMode,
+  pattern TxBody,
   pattern TxInMode,
   pattern TxValidityLowerBound,
   pattern TxValidityNoLowerBound,
@@ -91,7 +95,9 @@ import HydraAuctionUtils.Monads (
   MonadSubmitTx (..),
   MonadTrace (..),
   UtxoQuery (..),
+  askL1Timeout,
   toSlotNo,
+  waitUntilSlot,
  )
 import HydraAuctionUtils.Monads.Actors (WithActorT, withActor)
 import HydraAuctionUtils.Tx.Common (transferAda)
@@ -185,9 +191,20 @@ runWithNetworkParams call arg = do
       arg
 
 instance MonadSubmitTx L1Runner where
-  submitTx = runWithNetworkParams submitTx'
+  submitTx tx = do
+    waitForTxSlot
+    timeoutSecs <- askL1Timeout
+    context <- ask
+    mResult <-
+      liftIO $
+        timeout (timeoutSecs * 1_000_000) $
+          executeL1Runner context $
+            runWithNetworkParams submitTx' ()
+    return $ case mResult of
+      Just result -> result
+      Nothing -> Left Timeout
     where
-      submitTx' networkId socket tx = do
+      submitTx' networkId socket () = do
         result <-
           submitTxToNodeLocal
             (localNodeConnectInfo networkId socket)
@@ -196,9 +213,18 @@ instance MonadSubmitTx L1Runner where
           -- FIXME: encoding for errorData is too hard for me to understand
           SubmitFail errorData ->
             if "BadInputsUTxO" `isInfixOf` show errorData
-              then Left "InvalidatedTxIn"
-              else Left $ show errorData
+              then Left InvalidatedTxIn
+              else
+                if "OutsideValidityIntervalUTxO" `isInfixOf` show errorData
+                  then -- FIXME: actually it could be too early, but we check that
+                    Left TooLate
+                  else Left $ NotExpected $ show errorData
           SubmitSuccess -> Right ()
+      TxBody bodyContent = getTxBody tx
+      waitForTxSlot = do
+        case fst (txValidityRange bodyContent) of
+          TxValidityLowerBound slot -> waitUntilSlot slot
+          TxValidityNoLowerBound -> return ()
 
   awaitTx = runWithNetworkParams (\nId nS tx -> void $ awaitTransaction nId nS tx)
 
