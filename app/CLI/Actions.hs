@@ -101,6 +101,26 @@ import CLI.Types (CliAction (..), Layer (..), PerAuctionCliAction (..))
 seedAmount :: Lovelace
 seedAmount = 100_000_000
 
+doOnMatchingStageOrLater ::
+  (MonadIO m, MonadHasActor m, MonadCardanoClient m) =>
+  AuctionTerms ->
+  AuctionStage ->
+  m () ->
+  m ()
+doOnMatchingStageOrLater terms requiredStage action = do
+  stage <- liftIO $ currentAuctionStage terms
+  if stage >= requiredStage
+    then action
+    else
+      liftIO $
+        putStrLn
+          ( "Wrong stage for this transaction. Now: "
+              <> show stage
+              <> ", while required: "
+              <> show requiredStage
+              <> " or later."
+          )
+
 doOnMatchingStage ::
   (MonadIO m, MonadHasActor m, MonadCardanoClient m) =>
   AuctionTerms ->
@@ -292,23 +312,23 @@ handlePerAuctionAction
                     putStrLn "Cannot perform: Other actor is the winning bidder!"
             Nothing ->
               liftIO $ putStrLn "Cannot perform: No bid is placed!"
-      BidderClaimsDeposit -> do
-        -- doOnMatchingStage terms BiddingEndedStage $ do
-        announceActionExecution userAction
-        losingBidderClaimDeposit terms
+      BidderClaimsDeposit ->
+        doOnMatchingStageOrLater terms BiddingEndedStage $ do
+          announceActionExecution userAction
+          losingBidderClaimDeposit terms
       CleanupDeposit -> do
         doOnMatchingStage terms CleanupStage $ do
           announceActionExecution userAction
           cleanupDeposit terms
       SellerReclaims -> do
-        doOnMatchingStage terms VoucherExpiredStage $ do
+        doOnMatchingStageOrLater terms VoucherExpiredStage $ do
           announceActionExecution userAction
           sellerReclaims terms
           prettyPrintCurrentActorUtxos
       SellerClaimsDepositFor bidderActor -> do
         announceActionExecution userAction
         bidderPKH <- liftIO $ getActorPubKeyHash bidderActor
-        doOnMatchingStage terms VoucherExpiredStage $
+        doOnMatchingStageOrLater terms VoucherExpiredStage $
           sellerClaimDepositFor terms bidderPKH
       Cleanup -> do
         doOnMatchingStage terms CleanupStage $ do
