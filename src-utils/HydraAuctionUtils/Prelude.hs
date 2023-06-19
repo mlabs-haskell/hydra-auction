@@ -15,8 +15,10 @@ import Prelude as X
 
 import Control.Concurrent as X (
   MVar,
+  modifyMVar_,
   newMVar,
   putMVar,
+  readMVar,
   takeMVar,
   threadDelay,
  )

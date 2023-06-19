@@ -1,4 +1,8 @@
-module HydraAuctionUtils.Tx.Common (transferAda, selectAdaUtxo) where
+module HydraAuctionUtils.Tx.Common (
+  transferAda,
+  utxoLovelaceValue,
+  selectAdaUtxo,
+) where
 
 -- Prelude imports
 import HydraAuctionUtils.Prelude
@@ -56,9 +60,10 @@ selectAdaUtxo minRequiredAmount = do
   allAdaUtxo <- filterNonFuelUtxo . filterAdaOnlyUtxo <$> actorTipUtxo
   let foundEnough = utxoLovelaceValue allAdaUtxo >= minRequiredAmount
   return $ guard foundEnough >> Just allAdaUtxo
-  where
-    utxoLovelaceValue =
-      sum . fmap (selectLovelace . txOutValue . snd) . UTxO.pairs
+
+utxoLovelaceValue :: UTxO.UTxO -> Lovelace
+utxoLovelaceValue =
+  sum . fmap (selectLovelace . txOutValue . snd) . UTxO.pairs
 
 transferAda ::
   forall m.

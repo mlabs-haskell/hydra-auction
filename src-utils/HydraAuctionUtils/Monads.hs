@@ -36,6 +36,7 @@ import Hydra.Cardano.Api (
   AddressInEra,
   CardanoMode,
   EraHistory,
+  Lovelace,
   NetworkId (..),
   NetworkMagic (..),
   PaymentKey,
@@ -194,15 +195,28 @@ data BlockchainParams = MkBlockchainParams
   , stakePools :: Set PoolId
   }
 
+data TxStat = MkTxStat
+  { signers :: [Actor]
+  , fee :: Lovelace
+  }
+
 class Monad m => MonadBlockchainParams m where
   queryBlockchainParams :: m BlockchainParams
   queryCurrentSlot :: m SlotNo
-  convertValidityBound :: Interval POSIXTime -> m (TxValidityLowerBound, TxValidityUpperBound)
+  convertValidityBound ::
+    Interval POSIXTime -> m (TxValidityLowerBound, TxValidityUpperBound)
 
-instance (MonadBlockchainParams m, MonadTrans t, Monad (t m)) => MonadBlockchainParams (t m) where
+  -- FIXME: not best thing semantically, but not sure what is better
+  recordTxStat :: TxStat -> m ()
+
+instance
+  (MonadBlockchainParams m, MonadTrans t, Monad (t m)) =>
+  MonadBlockchainParams (t m)
+  where
   queryBlockchainParams = lift queryBlockchainParams
   queryCurrentSlot = lift queryCurrentSlot
   convertValidityBound = lift . convertValidityBound
+  recordTxStat = lift . recordTxStat
 
 toSlotNo :: MonadBlockchainParams m => POSIXTime -> m SlotNo
 toSlotNo ptime = do
