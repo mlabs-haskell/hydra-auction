@@ -131,6 +131,7 @@ cliActionParser =
       , command "show-current-winner-bidder" (info (perAuction $ pure ShowCurrentWinningBidder) (progDesc "Show current winning bidder for auction"))
       , command "show-actors-with-min-deposit" (info (perAuction $ ShowActorsMinDeposit <$> depositAmount) (progDesc "Show actors that deposited at least DEPOSIT_AMOUNT"))
       , command "show-address" (info (pure ShowAddress) (progDesc "Show address of current actor"))
+      , command "show-script-info" (info (pure ShowScriptInfo) (progDesc "Show scripts hashes and lenghts"))
       , command "seed" (info (pure Seed) (progDesc $ "Provides " <> show seedAmount <> " Lovelace for the given actor"))
       , command "prepare-for-demo" (info (Prepare <$> actor) (progDesc $ "Provides " <> show seedAmount <> " Lovelace for every actor and 1 Test NFT for given actor"))
       , command "transfer-ada" (info (TransferAda <$> actor <*> marked <*> amount) (progDesc "Tranfer ADA to other actor"))

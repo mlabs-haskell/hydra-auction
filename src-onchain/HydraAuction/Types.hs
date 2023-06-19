@@ -1,4 +1,5 @@
 module HydraAuction.Types (
+  exampleTerms,
   isStarted,
   BidTerms (..),
   BidDepositDatum (..),
@@ -26,20 +27,33 @@ import Prelude qualified
 -- Haskell imports
 
 import Data.Aeson (FromJSON, ToJSON)
+import Data.Maybe (fromJust)
+import Data.String (IsString (..))
 import GHC.Generics (Generic)
 
 -- Plutus imports
 import PlutusLedgerApi.V1.Crypto (PubKeyHash)
-import PlutusLedgerApi.V1.Time (POSIXTime)
+import PlutusLedgerApi.V1.Time (POSIXTime (..))
 import PlutusLedgerApi.V1.Value (AssetClass, CurrencySymbol)
 import PlutusLedgerApi.V2.Contexts (TxOutRef)
 import PlutusTx qualified
 import PlutusTx.Deriving qualified as PlutusTx
 
 -- Hydra auction imports
+import Hydra.Cardano.Api (
+  PaymentKey,
+  VerificationKey,
+  serialiseToRawBytes,
+  toPlutusKeyHash,
+  toPlutusTxOutRef,
+  verificationKeyHash,
+  pattern TxIn,
+  pattern TxIx,
+ )
 import HydraAuction.Addresses (VoucherCS)
+import HydraAuction.OnChain.TestNFT (testNftAssetClass, testNftCurrencySymbol)
 import HydraAuctionUtils.Extras.PlutusOrphans ()
-import HydraAuctionUtils.Types.Natural (Natural, naturalToInt)
+import HydraAuctionUtils.Types.Natural (Natural, intToNatural, naturalToInt)
 
 -- Base datatypes
 data AuctionStage
@@ -98,6 +112,33 @@ data AuctionTerms = AuctionTerms
 PlutusTx.makeIsDataIndexed ''AuctionTerms [('AuctionTerms, 0)]
 PlutusTx.makeLift ''AuctionTerms
 PlutusTx.deriveEq ''AuctionTerms
+
+-- | Should not differ between the versions
+exampleTerms :: VerificationKey PaymentKey -> AuctionTerms
+exampleTerms sellerVk =
+  let
+   in AuctionTerms
+        { auctionLot = testNftAssetClass
+        , sellerPKH = toPlutusKeyHash $ verificationKeyHash sellerVk
+        , sellerVK = toBuiltin $ serialiseToRawBytes sellerVk
+        , hydraHeadId = testNftCurrencySymbol
+        , delegates = []
+        , biddingStart = POSIXTime 0
+        , biddingEnd = POSIXTime 1
+        , voucherExpiry = POSIXTime 2
+        , cleanup = POSIXTime 3
+        , auctionFeePerDelegate = fromJust $ intToNatural 4000000
+        , startingBid = fromJust $ intToNatural 1
+        , minimumBidIncrement = fromJust $ intToNatural 1
+        , utxoNonce =
+            toPlutusTxOutRef $
+              TxIn
+                ( fromString $
+                    "d68eeb8a86479fa6e173211203914e4601"
+                      <> "fead46f6ed711c4036daa69d095f6f"
+                )
+                (TxIx 0)
+        }
 
 calculateTotalFee :: AuctionTerms -> Integer
 calculateTotalFee terms =

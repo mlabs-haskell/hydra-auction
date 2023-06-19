@@ -54,6 +54,7 @@ data CliAction
   = ShowAddress
   | ShowUtxos
   | ShowAllUtxos
+  | ShowScriptInfo
   | Seed
   | Prepare Actor
   | TransferAda Actor Marked Lovelace

@@ -12,6 +12,7 @@ import HydraAuctionUtils.Prelude
 
 -- Haskell imports
 
+import Data.ByteString.Lazy qualified as LBS
 import Data.IORef (IORef, readIORef)
 import Data.Text qualified as T
 
@@ -22,19 +23,24 @@ import PlutusLedgerApi.V1.Address (pubKeyHashAddress)
 
 import Hydra.Cardano.Api (
   Lovelace,
+  fromPlutusScript,
+  hashScript,
   serialiseAddress,
+  pattern PlutusScript,
   pattern ShelleyAddressInEra,
  )
 import Hydra.Chain.Direct.Tx (headIdToCurrencySymbol)
 
 -- Cardano node imports
+
 import Cardano.Api.UTxO qualified as UTxO
+import Cardano.Binary (serialize)
 
 -- Hydra auction imports
 
 import HydraAuction.Delegate.Interface (DelegateState (..))
 import HydraAuction.Delegate.Interface qualified as DelegateInterface
-import HydraAuction.OnChain (AuctionScript (..))
+import HydraAuction.OnChain (AuctionScript (..), scriptValidatorForTerms)
 import HydraAuction.Tx.Common (
   currentAuctionStage,
   scriptSingleUtxo,
@@ -61,11 +67,13 @@ import HydraAuction.Types (
   AuctionStage (..),
   AuctionTerms,
   BidDepositDatum (..),
+  exampleTerms,
  )
 import HydraAuctionUtils.Fixture (
+  Actor (..),
   actorFromPkh,
   allActors,
-  getActorPubKeyHash,
+  keysFor,
  )
 import HydraAuctionUtils.L1.Runner (
   L1Runner,
@@ -170,6 +178,20 @@ handleCliAction sendRequestToDelegate currentDelegateStateRef userAction = do
         liftIO $ print a
         liftIO $ prettyPrintUtxo utxos
         liftIO $ putStrLn "\n"
+    ShowScriptInfo -> do
+      (vk, _) <- liftIO $ keysFor Alice
+      forM_ [minBound .. maxBound] $ \script -> do
+        let validator = scriptValidatorForTerms script (exampleTerms vk)
+        printInfo script "Script hash" (plutusScriptHash validator)
+        printInfo script "Script size" (scriptSize validator)
+      where
+        plutusScriptHash =
+          hashScript . PlutusScript . fromPlutusScript
+        scriptSize = LBS.length . serialize
+        printInfo script name value =
+          liftIO $
+            putStrLn $
+              name <> " for script " <> show script <> " is: " <> show value
     MintTestNFT -> do
       announceActionExecution userAction
       void mintOneTestNFT
