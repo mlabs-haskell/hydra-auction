@@ -47,6 +47,9 @@ build-docker:
 	nix build .#packages.x86_64-linux.delegateImage
 	docker load < result
 	mv result build-images/hydra-auction-delegate
+	nix build .#packages.x86_64-linux.platformImage
+	docker load < result
+	mv result build-images/hydra-auction-platform
 
 start-cluster:
 	./scripts/spin-up-new-devnet.sh 1

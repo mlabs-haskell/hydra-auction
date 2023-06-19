@@ -380,7 +380,6 @@ delegateEventStep event = case event of
     getDelegateParty = do
       delegateActor <- askActor
       liftIO $ partyFor delegateActor
-    -- reportDelegateToPlatformServer :: ProtocolClientFor PlatformProtocol client => client -> _ -> _
     reportDelegateToPlatformServer client info = do
       actor <- askActor
       sendInputH client $

@@ -46,7 +46,7 @@ function frontend-cli() {
     shift
     local cmdArray=("$@")
 
-    if [ "${RUN_CLI_IN_DOCKER:-0}" ]; then
+    if [ "${RUN_CLI_IN_DOCKER:-0}" != "0" ]; then
         docker run --rm -it \
         -v ${parent_path}/devnet/node.socket:/devnet/node.socket \
         -v ${parent_path}/example:/example \

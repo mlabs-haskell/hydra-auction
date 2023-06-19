@@ -104,12 +104,27 @@ services:
         ipv4_address: 172.16.238.30
     restart: always
 
+  platform-server:
+    image: hydra-auction-platform:latest
+    profiles:
+      - delegate-server
+    ports:
+      - "8010:8010"
+    networks:
+      hydra_net:
+    command:
+      ["hydra-auction-platform"
+      , "--platform-server platform-server:8010"
+      ]
+
   delegate-server-1:
     image: hydra-auction-delegate:latest
     profiles:
       - delegate-server
     depends_on:
       hydra-node-1:
+        condition: service_started
+      platform-server:
         condition: service_started
     volumes:
       - ./data/hydra-keys:/keys:ro
@@ -135,6 +150,8 @@ services:
     depends_on:
       hydra-node-2:
         condition: service_started
+      platform-server:
+        condition: service_started
     volumes:
       - ./data/hydra-keys:/keys:ro
       - ./data/credentials:/devnet/credentials
@@ -158,6 +175,8 @@ services:
       - delegate-server
     depends_on:
       hydra-node-3:
+        condition: service_started
+      platform-server:
         condition: service_started
     volumes:
       - ./data/hydra-keys:/keys:ro
