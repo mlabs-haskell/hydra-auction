@@ -17,7 +17,9 @@ import PlutusLedgerApi.V2.Tx (txOutAddress)
 import PlutusTx qualified
 
 -- Hydra auction imports
+
 import HydraAuction.Addresses (EscrowAddress (..), StandingBidAddress (..))
+import HydraAuction.OnChain.Common (checkNonAdaOutputsNum)
 import HydraAuction.Types (
   AuctionEscrowDatum (..),
   AuctionTerms (..),
@@ -53,6 +55,7 @@ mkDepositValidator (StandingBidAddress standingBidAddr, EscrowAddress escrowAddr
         (contains (from (biddingEnd terms)) (txInfoValidRange info))
       -- No tokens are minted or burned
       && nothingForged info
+      && checkNonAdaOutputsNum context 0
   SellerClaimsDeposit ->
     -- There is one reference input from the auction escrow validator, mentioning the same voucher and voucher expiry time.
     traceIfFalse "Voucher CS does not match auction escrow" (auctionVoucherCS auctionEscrowReferenceInputDatum == bidDepositVoucherCS datum)
@@ -67,6 +70,7 @@ mkDepositValidator (StandingBidAddress standingBidAddr, EscrowAddress escrowAddr
       && traceIfFalse "Seller not signed" (txSignedBy info (sellerPKH terms))
       -- No tokens are minted or burned
       && nothingForged info
+      && checkNonAdaOutputsNum context 0
   WinningBidder ->
     -- There is one input spent from the auction escrow validator, mentioning the same voucher as the bid deposit in its datum.
     traceIfFalse "Voucher CS does not match auction escrow" (auctionVoucherCS auctionEscrowInputDatum == bidDepositVoucherCS datum)
@@ -74,6 +78,7 @@ mkDepositValidator (StandingBidAddress standingBidAddr, EscrowAddress escrowAddr
       && traceIfFalse "Bidder not signed" (txSignedBy info (bidDepositBidder datum))
       -- No tokens are minted or burned.
       && nothingForged info
+  -- checkNonAdaOutputsNum would be checked by Escrow
   CleanupDeposit ->
     -- There is one output sent to the bidder containing the bid deposit.
     checkBidDepositOutToBidder
@@ -83,6 +88,7 @@ mkDepositValidator (StandingBidAddress standingBidAddr, EscrowAddress escrowAddr
         (contains (from (cleanup terms)) (txInfoValidRange info))
       -- No tokens are minted or burned.
       && nothingForged info
+      && checkNonAdaOutputsNum context 0
   where
     info :: TxInfo
     info = scriptContextTxInfo context

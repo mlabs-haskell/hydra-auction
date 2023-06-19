@@ -23,6 +23,7 @@ import HydraAuction.Addresses (
  )
 import HydraAuction.OnChain.Common (
   checkInterval,
+  checkNonAdaOutputsNum,
   checkVoucherExpiredOrLater,
  )
 import HydraAuction.OnChain.StateToken (
@@ -60,13 +61,16 @@ mkEscrowValidator (StandingBidAddress standingBidAddressLocal, FeeEscrowAddress 
               && traceIfFalse "Seller not signed" (txSignedBy info (sellerPKH terms))
               && checkInterval terms BiddingStartedStage info
               && checkStartBiddingOutputs
+              && checkNonAdaOutputsNum context 2
           SellerReclaims ->
             checkVoucherExpiredOrLater terms info
               && checkSellerReclaimsOutputs
+              && checkNonAdaOutputsNum context 1
           BidderBuys ->
             checkAuctionState isStarted escrowInputOutput
               && checkInterval terms BiddingEndedStage info
               && checkBidderBuys escrowInputOutput
+              && checkNonAdaOutputsNum context 1
       )
   where
     ownAddress = case findOwnInput context of

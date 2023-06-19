@@ -28,7 +28,7 @@ import Hydra.Contract.Head (hasPT)
 
 -- Hydra auction imports
 import HydraAuction.Addresses (VoucherCS (..))
-import HydraAuction.OnChain.Common (checkInterval)
+import HydraAuction.OnChain.Common (checkInterval, checkNonAdaOutputsNum)
 import HydraAuction.OnChain.StateToken (StateTokenKind (..), stateTokenKindToTokenName)
 import HydraAuction.Types (
   AuctionStage (..),
@@ -63,6 +63,7 @@ mkStandingBidValidator terms datum redeemer context =
               -- The only thing we should check is Tx has right PT
               traceIfFalse "No Hydra Participation Token" $
                 hasPT (hydraHeadId terms) standingBidOutput
+                  && checkNonAdaOutputsNum context 1
             _ -> traceError "Wrong number of standing bid outputs"
             && nothingForged info
         NewBid ->
@@ -71,10 +72,12 @@ mkStandingBidValidator terms datum redeemer context =
             && traceIfFalse
               "Wrong interval for NewBid"
               (checkInterval terms BiddingStartedStage info)
+            && checkNonAdaOutputsNum context 1
         Cleanup ->
           -- XXX: interval is checked on burning
           checkExactlyOneVoucherBurned
             && checkOutputIsToSeller
+            && checkNonAdaOutputsNum context 0
     _ : _ -> traceError "More than one standing bid input"
     [] -> traceError "Impossible happened: no inputs for staning bid validator"
   where
