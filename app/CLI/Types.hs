@@ -74,7 +74,6 @@ data PerAuctionCliAction
   | BidderBuys
   | BidderClaimsDeposit
   | SellerReclaims
-  | SellerClaimsDepositFor Actor
   | Cleanup
   | CleanupDeposit
   deriving stock (Show)

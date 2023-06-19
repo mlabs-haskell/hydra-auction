@@ -311,7 +311,7 @@ handlePerAuctionAction
                   liftIO $
                     putStrLn "Cannot perform: Other actor is the winning bidder!"
             Nothing ->
-              liftIO $ putStrLn "Cannot perform: No bid is placed!"
+              liftIO $ putStrLn "Cannot perform: Auction got no bids"
       BidderClaimsDeposit ->
         doOnMatchingStageOrLater terms BiddingEndedStage $ do
           announceActionExecution userAction
@@ -324,12 +324,19 @@ handlePerAuctionAction
         doOnMatchingStageOrLater terms VoucherExpiredStage $ do
           announceActionExecution userAction
           sellerReclaims terms
-          prettyPrintCurrentActorUtxos
-      SellerClaimsDepositFor bidderActor -> do
-        announceActionExecution userAction
-        bidderPKH <- liftIO $ getActorPubKeyHash bidderActor
-        doOnMatchingStageOrLater terms VoucherExpiredStage $
-          sellerClaimDepositFor terms bidderPKH
+          mWinningBidderPKH <- currentWinningBidder terms
+          case mWinningBidderPKH of
+            Just winnerPKH -> do
+              winner <- liftIO $ actorFromPkh winnerPKH
+              liftIO $
+                putStrLn $
+                  show actor
+                    <> ", as the seller, reclaims the deposit for "
+                    <> "actor with public key: "
+                    <> show winner
+              sellerClaimDepositFor terms winnerPKH
+              prettyPrintCurrentActorUtxos
+            Nothing -> liftIO $ putStrLn "Auction got no bids"
       Cleanup -> do
         doOnMatchingStage terms CleanupStage $ do
           announceActionExecution userAction

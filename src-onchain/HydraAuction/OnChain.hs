@@ -52,7 +52,7 @@ import HydraAuctionUtils.Extras.Plutus (
 -- Addresses
 
 data AuctionScript = Escrow | StandingBid | FeeEscrow | Deposit
-  deriving stock (Prelude.Show, Prelude.Eq)
+  deriving stock (Prelude.Show, Prelude.Eq, Prelude.Bounded, Prelude.Enum)
 
 -- This is scripts for which on-chain script ensure that
 -- no more than single UTxO exists for given AuctionTerms

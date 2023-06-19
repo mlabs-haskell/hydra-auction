@@ -147,7 +147,6 @@ cliActionParser =
       , command "bidder-buys" (info (perAuction $ pure BidderBuys) (progDesc "Pay and recieve a lot after auction end"))
       , command "losing-bidder-reclaims-deposit" (info (perAuction $ pure BidderClaimsDeposit) (progDesc "Recieve deposit back after losing on auction"))
       , command "seller-reclaims" (info (perAuction $ pure SellerReclaims) (progDesc "Seller reclaims lot after voucher end time"))
-      , command "seller-claims-deposit" (info (perAuction $ SellerClaimsDepositFor <$> actor) (progDesc "Seller claims deposit from winning bidder, who did not pay in time"))
       , command "cleanup" (info (perAuction $ pure Cleanup) (progDesc "Remove standing bid UTxO after cleanup time. Is performed by seller."))
       , command "cleanup-all-deposits" (info (perAuction $ pure CleanupDeposit) (progDesc "Return deposit to bidders after cleanup time. Is performed by anyone."))
       ]

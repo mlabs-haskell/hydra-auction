@@ -68,10 +68,6 @@ announceActionExecution action = do
       show currentActor <> " reclaims their deposit, as a losing bidder."
     PerAuction _ (SellerReclaims {}) ->
       show currentActor <> " reclaims the auction lot, as the seller."
-    PerAuction _ (SellerClaimsDepositFor bidderActor) ->
-      show currentActor
-        <> ", as the seller, reclaims the deposit for "
-        <> show bidderActor
     PerAuction auctionName Cleanup ->
       "Cleaning up all remaining script utxos for auction "
         <> show auctionName
