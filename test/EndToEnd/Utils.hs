@@ -6,6 +6,7 @@ module EndToEnd.Utils (
   EnvParam,
   assertNFTNumEquals,
   assertUTxOsInScriptEquals,
+  assertAdaWithoutFeesEquals,
 ) where
 
 -- Prelude imports
@@ -28,6 +29,7 @@ import PlutusLedgerApi.V1.Value (assetClassValueOf)
 
 -- Hydra imports
 import Hydra.Cardano.Api (
+  Lovelace (..),
   toPlutusValue,
   txOutValue,
  )
@@ -40,17 +42,24 @@ import HydraAuction.Tx.Common (scriptUtxos)
 import HydraAuction.Tx.TermsConfig (AuctionTermsConfig (..))
 import HydraAuction.Types (AuctionTerms (..))
 import HydraAuctionUtils.Fixture (Actor)
-import HydraAuctionUtils.L1.Runner (L1Runner, executeTestL1Runner, withActor)
-import HydraAuctionUtils.Monads.Actors (actorTipUtxo)
+import HydraAuctionUtils.L1.Runner (
+  L1Runner,
+  executeTestL1Runner,
+  queryAdaWithoutFees,
+  withActor,
+ )
+import HydraAuctionUtils.Monads.Actors (WithActorT, actorTipUtxo)
 import HydraAuctionUtils.Types.Natural (intToNatural)
 
 config :: AuctionTermsConfig
 config =
   AuctionTermsConfig
     { configDiffBiddingStart = 2
-    , configDiffBiddingEnd = 5
-    , configDiffVoucherExpiry = 8
-    , configDiffCleanup = 10
+    , -- 5 was too little, leading to flacky tests
+      configDiffBiddingEnd = 8
+    , -- 8 was too little, leading to flacky tests
+      configDiffVoucherExpiry = 12
+    , configDiffCleanup = 14
     , configAuctionFeePerDelegate = fromJust $ intToNatural 4_000_000
     , configStartingBid = fromJust $ intToNatural 15_000_000
     , configMinimumBidIncrement = fromJust $ intToNatural 10_000_000
@@ -82,13 +91,14 @@ autoCaptureStdout action = do
 
 -- FIXME: autoCaptureStdout eats Tasty output as well
 -- FIXME: shorter timeout
-mkAssertionOfIO :: IO () -> Assertion
+mkAssertionOfIO :: HasCallStack => IO () -> Assertion
 mkAssertionOfIO = autoCaptureStdout . failAfter 120
 
-mkAssertion :: L1Runner () -> Assertion
+mkAssertion :: HasCallStack => L1Runner () -> Assertion
 mkAssertion = mkAssertionOfIO . executeTestL1Runner
 
-assertNFTNumEquals :: Actor -> Integer -> L1Runner ()
+assertNFTNumEquals ::
+  HasCallStack => Actor -> Integer -> L1Runner ()
 assertNFTNumEquals actor expectedNum = do
   utxo <- withActor actor actorTipUtxo
   liftIO $ do
@@ -97,7 +107,14 @@ assertNFTNumEquals actor expectedNum = do
             [toPlutusValue $ txOutValue out | (_, out) <- UTxO.pairs utxo]
     assetClassValueOf value testNftAssetClass @=? expectedNum
 
-assertUTxOsInScriptEquals :: AuctionScript -> AuctionTerms -> Integer -> L1Runner ()
+assertUTxOsInScriptEquals ::
+  HasCallStack => AuctionScript -> AuctionTerms -> Integer -> L1Runner ()
 assertUTxOsInScriptEquals script terms expectedNum = do
   utxo <- scriptUtxos script terms
   liftIO $ length (UTxO.pairs utxo) @?= fromInteger expectedNum
+
+assertAdaWithoutFeesEquals ::
+  HasCallStack => Lovelace -> WithActorT L1Runner ()
+assertAdaWithoutFeesEquals num = do
+  amount <- queryAdaWithoutFees
+  liftIO $ amount @?= num
