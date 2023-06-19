@@ -40,14 +40,16 @@ import HydraAuction.Delegate.Interface (
   RequestIgnoredReason (..),
   initialState,
  )
+import HydraAuction.Platform.Interface (PlatformProtocol)
 import HydraAuctionUtils.L1.Runner (
   L1Runner,
   executeL1RunnerWithNodeAs,
  )
 import HydraAuctionUtils.Monads.Actors (MonadHasActor (..), WithActorT)
+import HydraAuctionUtils.Server.Client (ProtocolClientFor, withProtocolClient)
 
 -- Hydra auction CLI imports
-import CLI.Actions (CliAction, handleCliAction)
+import CLI.Actions (CliAction, CliActionHandle (..), handleCliAction)
 import CLI.Parsers (
   CliInput,
   CliOptions (InteractivePrompt, Watch),
@@ -115,39 +117,56 @@ handleCliInput' :: Maybe Connection -> IORef DelegateState -> CliOptions -> IO (
 handleCliInput' mClient currentDelegateStateRef input = case input of
   (Watch auctionName) -> watchAuction auctionName currentDelegateStateRef
   (InteractivePrompt MkPromptOptions {..}) ->
-    executeL1RunnerWithNodeAs
-      cliCardanoNode
-      cliActor
-      (action client currentDelegateStateRef)
+    withHandle $ \handle ->
+      executeL1RunnerWithNodeAs
+        cliCardanoNode
+        cliActor
+        (action handle)
     where
-      client = case mClient of
-        Just x -> x
+      withHandle cont = case mClient of
+        Just client ->
+          withProtocolClient (Host "127.0.0.1" 8010) () $
+            \platformClient ->
+              cont $
+                MkCliActionHandle
+                  { platformClient
+                  , sendRequestToDelegate = sendTextData client . encode
+                  , currentDelegateStateRef
+                  }
         -- FIXME
-        Nothing -> error "Delegate server is not started yet"
+        Nothing ->
+          cont (error "Delegate server is not started yet")
       action =
         case cliNoninteractiveAction of
-          Just actionStr -> \y z -> handleREPLInput y z actionStr
+          Just actionStr -> flip handleREPLInput actionStr
           Nothing -> loopCLI
 
-loopCLI :: Connection -> IORef DelegateState -> WithActorT L1Runner ()
-loopCLI client currentDelegateStateRef = do
+loopCLI ::
+  forall client.
+  ProtocolClientFor PlatformProtocol client =>
+  CliActionHandle client ->
+  WithActorT L1Runner ()
+loopCLI handle = do
   actor <- askActor
   let promptString = show actor <> "> "
-      handler = handleREPLInput client currentDelegateStateRef
-  runInputT defaultSettings $ genericREPLLoop promptString handler
+  runInputT defaultSettings $
+    genericREPLLoop promptString $
+      handleREPLInput handle
 
-handleREPLInput :: Connection -> IORef DelegateState -> String -> WithActorT L1Runner ()
-handleREPLInput client currentDelegateStateRef input =
+handleREPLInput ::
+  forall client.
+  ProtocolClientFor PlatformProtocol client =>
+  CliActionHandle client ->
+  String ->
+  WithActorT L1Runner ()
+handleREPLInput handle input =
   case parseCliAction $ words input of
     Left e -> liftIO $ putStrLn e
     Right cmd -> handleCliAction' cmd
   where
-    sendRequestToDelegate = sendTextData client . encode
     handleCliAction' :: CliAction -> WithActorT L1Runner ()
     handleCliAction' cmd = do
-      result <-
-        try $
-          handleCliAction sendRequestToDelegate currentDelegateStateRef cmd
+      result <- try $ handleCliAction handle cmd
       case result of
         Right _ -> pure ()
         Left (actionError :: SomeException) ->

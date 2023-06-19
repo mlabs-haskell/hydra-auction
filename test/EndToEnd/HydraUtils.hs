@@ -41,9 +41,7 @@ import HydraNode (connection, waitForNodesConnected, withHydraCluster)
 import Test.Hydra.Prelude (withTempDir)
 
 -- HydraAuction imports
-import HydraAuction.Delegate (DelegateEvent, delegateEventStep)
 import HydraAuction.Delegate.Interface (
-  DelegateResponse,
   DelegateState,
   initialState,
  )
@@ -74,19 +72,17 @@ import HydraAuctionUtils.L1.Runner (
   dockerNode,
   executeL1Runner,
   executeL1RunnerWithNode,
-  executeL1RunnerWithNodeAs,
   executeTestL1Runner,
   withActor,
  )
 import HydraAuctionUtils.Server.Client (
   FakeProtocolClient,
-  ProtocolClient (..),
   ProtocolClientFor,
   RealProtocolClient (MkRealProtocolClient),
   newFakeClient,
   withProtocolClient,
  )
-import HydraAuctionUtils.Server.Protocol (WithClientT (..), withClient)
+import HydraAuctionUtils.Server.Protocol (WithClientT, withClient)
 
 -- Ways to spin up Hydra cluster
 

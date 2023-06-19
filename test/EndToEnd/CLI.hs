@@ -1,7 +1,11 @@
 module EndToEnd.CLI (testSuite) where
 
 -- Prelude imports
-import Hydra.Prelude
+import HydraAuctionUtils.Prelude
+
+-- Haskell imports
+
+import Data.IORef (newIORef)
 
 -- Haskell test imports
 
@@ -20,6 +24,8 @@ import HydraAuction.Delegate.Interface (
   OpenHeadUtxo (..),
  )
 import HydraAuction.OnChain (AuctionScript (..))
+import HydraAuction.Platform.Interface (PlatformProtocol)
+import HydraAuction.Platform.Storage (PlatformImplementation)
 import HydraAuction.Tx.TermsConfig (nonExistentHeadIdStub)
 import HydraAuction.Types (AuctionTerms (..))
 import HydraAuctionUtils.Fixture (Actor (..))
@@ -30,9 +36,20 @@ import HydraAuctionUtils.L1.Runner (
 import HydraAuctionUtils.Monads (waitUntil)
 import HydraAuctionUtils.Monads.Actors (WithActorT)
 
+import HydraAuctionUtils.Server.Client (
+  FakeProtocolClient,
+  ProtocolClientFor,
+  newFakeClient,
+ )
+
 -- CLI imports
 
-import CLI.Actions (Layer (..), auctionTermsFor, handleCliAction)
+import CLI.Actions (
+  CliActionHandle (..),
+  Layer (..),
+  auctionTermsFor,
+  handleCliAction,
+ )
 import CLI.Config (AuctionName, DirectoryKind (..), toJsonFileName, writeAuctionTermsConfig)
 import CLI.Types (CliAction (..), PerAuctionCliAction (..))
 
@@ -70,11 +87,32 @@ mockDelegateState =
 auctionName :: AuctionName
 auctionName = "test"
 
-handleCliActionWithMockDelegates :: CliAction -> WithActorT L1Runner ()
-handleCliActionWithMockDelegates action = do
-  delegateS <- newIORef mockDelegateState
-  -- platformClient <- liftIO newFakeClient
-  handleCliAction (\_ -> pure ()) delegateS action
+newFakeHandle ::
+  forall m.
+  (MonadIO m) =>
+  m (CliActionHandle (FakeProtocolClient PlatformImplementation))
+newFakeHandle = do
+  currentDelegateStateRef <- liftIO $ newIORef mockDelegateState
+  platformClient <- liftIO newFakeClient
+  return $
+    MkCliActionHandle
+      { platformClient
+      , sendRequestToDelegate = \_ -> pure ()
+      , currentDelegateStateRef
+      }
+
+performAnnounceAndApproveBidders ::
+  forall client.
+  ProtocolClientFor PlatformProtocol client =>
+  CliActionHandle client ->
+  [Actor] ->
+  WithActorT L1Runner ()
+performAnnounceAndApproveBidders handle approvedBidders = do
+  handleCliAction handle $ PerAuction auctionName AuctionAnounce
+  forM_ approvedBidders $ \bidder ->
+    handleCliAction handle $
+      PerAuction auctionName $
+        ApproveBidder bidder
 
 bidderBuysTest :: Assertion
 bidderBuysTest = mkAssertion $ do
@@ -82,11 +120,14 @@ bidderBuysTest = mkAssertion $ do
       buyer1 = Bob
       buyer2 = Carol
 
+  handle <- newFakeHandle
+  let handleCliActionWithMockDelegates = handleCliAction handle
+
   withActor seller $ handleCliActionWithMockDelegates $ Prepare seller
 
   assertNFTNumEquals seller 1
 
-  withActor seller $ handleCliActionWithMockDelegates $ PerAuction auctionName AuctionAnounce
+  withActor seller $ performAnnounceAndApproveBidders handle [buyer1, buyer2]
 
   terms <- auctionTermsFor auctionName
 
@@ -115,12 +156,14 @@ depositTest = mkAssertion $ do
   let seller = Alice
       buyer1 = Bob
       buyer2 = Carol
+  handle <- newFakeHandle
+  let handleCliActionWithMockDelegates = handleCliAction handle
 
   withActor seller $ handleCliActionWithMockDelegates $ Prepare seller
 
   assertNFTNumEquals seller 1
 
-  withActor seller $ handleCliActionWithMockDelegates $ PerAuction auctionName AuctionAnounce
+  withActor seller $ performAnnounceAndApproveBidders handle [buyer1, buyer2]
 
   terms <- auctionTermsFor auctionName
 
@@ -165,12 +208,14 @@ depositCleanupClaimTest :: Assertion
 depositCleanupClaimTest = mkAssertion $ do
   let seller = Alice
       buyer1 = Bob
+  handle <- newFakeHandle
+  let handleCliActionWithMockDelegates = handleCliAction handle
 
   withActor seller $ handleCliActionWithMockDelegates $ Prepare seller
 
   assertNFTNumEquals seller 1
 
-  withActor seller $ handleCliActionWithMockDelegates $ PerAuction auctionName AuctionAnounce
+  withActor seller $ performAnnounceAndApproveBidders handle [buyer1]
 
   terms <- auctionTermsFor auctionName
 
