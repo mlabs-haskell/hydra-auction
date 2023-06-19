@@ -103,7 +103,6 @@ handleCliInput input = do
               (IncorrectRequestData InvalidBidTerms) -> notExpectedResponse
               (IncorrectRequestData TxIdDoesNotExist) -> notExpectedResponse
               (WrongDelegateState _) -> notExpectedResponse
-            ClosingTxTemplate -> return ()
             AuctionSet {} -> return ()
           where
             notExpectedResponse = do

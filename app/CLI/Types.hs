@@ -4,6 +4,7 @@ module CLI.Types (
   CLILog (..),
   Layer (..),
   CliAction (..),
+  PerAuctionCliAction (..),
 ) where
 
 -- Prelude imports
@@ -50,26 +51,30 @@ data Layer = L1 | L2 deriving stock (Show)
 deriving stock instance Show Marked
 
 data CliAction
-  = ShowCurrentStage !AuctionName
-  | ShowAddress
-  | ShowScriptUtxos !AuctionName !AuctionScript
+  = ShowAddress
   | ShowUtxos
   | ShowAllUtxos
-  | ShowCurrentWinningBidder !AuctionName
-  | ShowActorsMinDeposit !AuctionName !Natural
+  | ShowScriptInfo
   | Seed
-  | Prepare !Actor
-  | TransferAda !Actor !Marked !Lovelace
+  | Prepare Actor
+  | TransferAda Actor Marked Lovelace
   | MintTestNFT
-  | AuctionAnounce !AuctionName
-  | MakeDeposit !AuctionName !Natural
-  | StartBidding !AuctionName
-  | MoveToL2 !AuctionName
-  | NewBid !AuctionName !Natural !Layer
-  | BidderBuys !AuctionName
-  | BidderClaimsDeposit !AuctionName
-  | SellerReclaims !AuctionName
-  | SellerClaimsDepositFor !AuctionName !Actor
-  | Cleanup !AuctionName
-  | CleanupDeposit !AuctionName
+  | PerAuction AuctionName PerAuctionCliAction
+  deriving stock (Show)
+
+data PerAuctionCliAction
+  = ShowCurrentStage
+  | ShowScriptUtxos AuctionScript
+  | ShowCurrentWinningBidder
+  | ShowActorsMinDeposit Natural
+  | AuctionAnounce
+  | MakeDeposit Natural
+  | StartBidding
+  | MoveToL2
+  | NewBid Natural Layer
+  | BidderBuys
+  | BidderClaimsDeposit
+  | SellerReclaims
+  | Cleanup
+  | CleanupDeposit
   deriving stock (Show)

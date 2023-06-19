@@ -152,6 +152,7 @@ executable hydra-auction
     , base
     , bytestring
     , cardano-api
+    , cardano-binary
     , cardano-crypto-class
     , cardano-prelude
     , containers
@@ -334,6 +335,7 @@ test-suite hydra-auction-test
   build-depends:
     , bytestring
     , cardano-api
+    , cardano-binary
     , containers
     , directory
     , hydra-auction

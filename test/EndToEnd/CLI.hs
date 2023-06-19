@@ -34,8 +34,9 @@ import HydraAuctionUtils.Types.Natural (intToNatural)
 
 -- CLI imports
 
-import CLI.Actions (CliAction (..), Layer (..), auctionTermsFor, handleCliAction)
+import CLI.Actions (Layer (..), auctionTermsFor, handleCliAction)
 import CLI.Config (AuctionName, DirectoryKind (..), toJsonFileName, writeAuctionTermsConfig)
+import CLI.Types (CliAction (..), PerAuctionCliAction (..))
 
 -- Hydra auction test imports
 import EndToEnd.Utils (assertNFTNumEquals, assertUTxOsInScriptEquals, config, mkAssertion)
@@ -86,28 +87,28 @@ bidderBuysTest = mkAssertion $ do
 
   assertNFTNumEquals seller 1
 
-  withActor seller $ handleCliActionWithMockDelegates $ AuctionAnounce auctionName
+  withActor seller $ handleCliActionWithMockDelegates $ PerAuction auctionName AuctionAnounce
 
   terms <- auctionTermsFor auctionName
 
   waitUntil $ biddingStart terms
 
-  withActor seller $ handleCliActionWithMockDelegates $ StartBidding auctionName
+  withActor seller $ handleCliActionWithMockDelegates $ PerAuction auctionName StartBidding
 
   assertNFTNumEquals seller 0
 
-  withActor buyer2 $ handleCliActionWithMockDelegates $ NewBid auctionName (startingBid terms) L1
+  withActor buyer2 $ handleCliActionWithMockDelegates $ PerAuction auctionName $ NewBid (startingBid terms) L1
 
   waitUntil $ biddingEnd terms
 
-  withActor buyer2 $ handleCliActionWithMockDelegates $ BidderBuys auctionName
+  withActor buyer2 $ handleCliActionWithMockDelegates $ PerAuction auctionName BidderBuys
 
   assertNFTNumEquals seller 0
   assertNFTNumEquals buyer1 0
   assertNFTNumEquals buyer2 1
 
   waitUntil $ cleanup terms
-  withActor seller $ handleCliActionWithMockDelegates $ Cleanup auctionName
+  withActor seller $ handleCliActionWithMockDelegates $ PerAuction auctionName Cleanup
 
 -- Test reclaim with BidderClaimsDeposit and using deposit for BidderBuys
 depositTest :: Assertion
@@ -120,26 +121,26 @@ depositTest = mkAssertion $ do
 
   assertNFTNumEquals seller 1
 
-  withActor seller $ handleCliActionWithMockDelegates $ AuctionAnounce auctionName
+  withActor seller $ handleCliActionWithMockDelegates $ PerAuction auctionName AuctionAnounce
 
   terms <- auctionTermsFor auctionName
 
-  withActor buyer1 $ handleCliActionWithMockDelegates $ MakeDeposit auctionName (fromJust $ intToNatural 10_000_000)
-  withActor buyer2 $ handleCliActionWithMockDelegates $ MakeDeposit auctionName (fromJust $ intToNatural 10_000_000)
+  withActor buyer1 $ handleCliActionWithMockDelegates $ PerAuction auctionName $ MakeDeposit (fromJust $ intToNatural 10_000_000)
+  withActor buyer2 $ handleCliActionWithMockDelegates $ PerAuction auctionName $ MakeDeposit (fromJust $ intToNatural 10_000_000)
 
   assertUTxOsInScriptEquals Deposit terms 2
 
   waitUntil $ biddingStart terms
 
-  withActor seller $ handleCliActionWithMockDelegates $ StartBidding auctionName
+  withActor seller $ handleCliActionWithMockDelegates $ PerAuction auctionName StartBidding
 
   assertNFTNumEquals seller 0
 
-  withActor buyer2 $ handleCliActionWithMockDelegates $ NewBid auctionName (startingBid terms) L1
+  withActor buyer2 $ handleCliActionWithMockDelegates $ PerAuction auctionName $ NewBid (startingBid terms) L1
 
   waitUntil $ biddingEnd terms
 
-  withActor buyer2 $ handleCliActionWithMockDelegates $ BidderBuys auctionName
+  withActor buyer2 $ handleCliActionWithMockDelegates $ PerAuction auctionName BidderBuys
 
   assertNFTNumEquals seller 0
   assertNFTNumEquals buyer1 0
@@ -147,12 +148,12 @@ depositTest = mkAssertion $ do
 
   assertUTxOsInScriptEquals Deposit terms 1
 
-  withActor buyer1 $ handleCliActionWithMockDelegates $ BidderClaimsDeposit auctionName
+  withActor buyer1 $ handleCliActionWithMockDelegates $ PerAuction auctionName BidderClaimsDeposit
 
   assertUTxOsInScriptEquals Deposit terms 0
 
   waitUntil $ cleanup terms
-  withActor seller $ handleCliActionWithMockDelegates $ Cleanup auctionName
+  withActor seller $ handleCliActionWithMockDelegates $ PerAuction auctionName Cleanup
 
 -- Test case of reclaiming
 depositCleanupClaimTest :: Assertion
@@ -164,22 +165,24 @@ depositCleanupClaimTest = mkAssertion $ do
 
   assertNFTNumEquals seller 1
 
-  withActor seller $ handleCliActionWithMockDelegates $ AuctionAnounce auctionName
+  withActor seller $ handleCliActionWithMockDelegates $ PerAuction auctionName AuctionAnounce
 
   terms <- auctionTermsFor auctionName
 
   withActor buyer1 $
     handleCliActionWithMockDelegates $
-      MakeDeposit auctionName (fromJust $ intToNatural 10_000_000)
+      PerAuction auctionName $
+        MakeDeposit (fromJust $ intToNatural 10_000_000)
   assertUTxOsInScriptEquals Deposit terms 1
 
   waitUntil $ biddingStart terms
 
-  withActor seller $ handleCliActionWithMockDelegates $ StartBidding auctionName
+  withActor seller $ handleCliActionWithMockDelegates $ PerAuction auctionName StartBidding
 
   withActor buyer1 $
     handleCliActionWithMockDelegates $
-      NewBid auctionName (startingBid terms) L1
+      PerAuction auctionName $
+        NewBid (startingBid terms) L1
 
   waitUntil $ biddingEnd terms
 
@@ -187,6 +190,5 @@ depositCleanupClaimTest = mkAssertion $ do
 
   withActor buyer1 $
     handleCliActionWithMockDelegates $
-      CleanupDeposit auctionName
-
+      PerAuction auctionName CleanupDeposit
   assertUTxOsInScriptEquals Deposit terms 0

@@ -9,7 +9,7 @@ module CLI.Parsers (
 -- Prelude imports
 
 import Cardano.Prelude (asum)
-import Prelude
+import HydraAuctionUtils.Prelude
 
 -- Haskell imports
 import Options.Applicative (
@@ -63,8 +63,10 @@ import HydraAuctionUtils.Parsers (
 import HydraAuctionUtils.Types.Natural (Natural)
 
 -- Hydra auction CLI imports
-import CLI.Actions (CliAction (..), Layer (..), seedAmount)
+
+import CLI.Actions (Layer (..), seedAmount)
 import CLI.Config (AuctionName (..))
+import CLI.Types (CliAction (..), PerAuctionCliAction (..))
 
 data CliInput = CliInput
   { cliOptions :: CliOptions
@@ -72,8 +74,8 @@ data CliInput = CliInput
   }
 
 data CliOptions
-  = Watch !AuctionName
-  | InteractivePrompt !PromptOptions
+  = Watch AuctionName
+  | InteractivePrompt PromptOptions
 
 data PromptOptions = MkPromptOptions
   { cliActor :: Actor
@@ -117,38 +119,41 @@ cliActionParser :: Parser CliAction
 cliActionParser =
   hsubparser $
     mconcat
-      [ command "show-script-utxos" (info (ShowScriptUtxos <$> auctionName <*> script) (progDesc "Show utxos at a given script. Requires the seller and auction lot for the given script"))
+      [ command "show-script-utxos" (info (perAuction $ ShowScriptUtxos <$> script) (progDesc "Show utxos at a given script. Requires the seller and auction lot for the given script"))
       , command "show-utxos" (info (pure ShowUtxos) (progDesc "Shows utxos for a given actor"))
       , command
           "show-current-stage"
           ( info
-              (ShowCurrentStage <$> auctionName)
+              (perAuction $ pure ShowCurrentStage)
               (progDesc "Show current auction stage - which depends on time since auction announcement")
           )
       , command "show-all-utxos" (info (pure ShowAllUtxos) (progDesc "Shows utxos for all actors"))
-      , command "show-current-winner-bidder" (info (ShowCurrentWinningBidder <$> auctionName) (progDesc "Show current winning bidder for auction"))
-      , command "show-actors-with-min-deposit" (info (ShowActorsMinDeposit <$> auctionName <*> depositAmount) (progDesc "Show actors that deposited at least DEPOSIT_AMOUNT"))
+      , command "show-current-winner-bidder" (info (perAuction $ pure ShowCurrentWinningBidder) (progDesc "Show current winning bidder for auction"))
+      , command "show-actors-with-min-deposit" (info (perAuction $ ShowActorsMinDeposit <$> depositAmount) (progDesc "Show actors that deposited at least DEPOSIT_AMOUNT"))
       , command "show-address" (info (pure ShowAddress) (progDesc "Show address of current actor"))
+      , command "show-script-info" (info (pure ShowScriptInfo) (progDesc "Show scripts hashes and lenghts"))
       , command "seed" (info (pure Seed) (progDesc $ "Provides " <> show seedAmount <> " Lovelace for the given actor"))
       , command "prepare-for-demo" (info (Prepare <$> actor) (progDesc $ "Provides " <> show seedAmount <> " Lovelace for every actor and 1 Test NFT for given actor"))
       , command "transfer-ada" (info (TransferAda <$> actor <*> marked <*> amount) (progDesc "Tranfer ADA to other actor"))
       , command "mint-test-nft" (info (pure MintTestNFT) (progDesc "Mints an NFT that can be used as auction lot"))
-      , command "announce-auction" (info (AuctionAnounce <$> auctionName) (progDesc "Create an auction"))
-      , command "make-deposit" (info (MakeDeposit <$> auctionName <*> bidAmount) (progDesc "Put a deposit"))
-      , command "start-bidding" (info (StartBidding <$> auctionName) (progDesc "Open an auction for bidding"))
-      , command "move-to-l2" (info (MoveToL2 <$> auctionName) (progDesc "Move Standing bid to L2"))
-      , command "new-bid" (info (NewBid <$> auctionName <*> bidAmount <*> pure L1) (progDesc "Actor places new bid after bidding is started"))
+      , command "announce-auction" (info (perAuction $ pure AuctionAnounce) (progDesc "Create an auction"))
+      , command "make-deposit" (info (perAuction $ MakeDeposit <$> bidAmount) (progDesc "Put a deposit"))
+      , command "start-bidding" (info (perAuction $ pure StartBidding) (progDesc "Open an auction for bidding"))
+      , command "move-to-l2" (info (perAuction $ pure MoveToL2) (progDesc "Move Standing bid to L2"))
+      , command "new-bid" (info (perAuction $ NewBid <$> bidAmount <*> pure L1) (progDesc "Actor places new bid after bidding is started"))
       , command
           "new-bid-on-l2"
-          ( info (NewBid <$> auctionName <*> bidAmount <*> pure L2) (progDesc "Actor places new bid on L2 after Standing Bid was moved on L2")
+          ( info (perAuction $ NewBid <$> bidAmount <*> pure L2) (progDesc "Actor places new bid on L2 after Standing Bid was moved on L2")
           )
-      , command "bidder-buys" (info (BidderBuys <$> auctionName) (progDesc "Pay and recieve a lot after auction end"))
-      , command "losing-bidder-reclaims-deposit" (info (BidderClaimsDeposit <$> auctionName) (progDesc "Recieve deposit back after losing on auction"))
-      , command "seller-reclaims" (info (SellerReclaims <$> auctionName) (progDesc "Seller reclaims lot after voucher end time"))
-      , command "seller-claims-deposit" (info (SellerClaimsDepositFor <$> auctionName <*> actor) (progDesc "Seller claims deposit from winning bidder, who did not pay in time"))
-      , command "cleanup" (info (Cleanup <$> auctionName) (progDesc "Remove standing bid UTxO after cleanup time. Is performed by seller."))
-      , command "cleanup-all-deposits" (info (CleanupDeposit <$> auctionName) (progDesc "Return deposit to bidders after cleanup time. Is performed by anyone."))
+      , command "bidder-buys" (info (perAuction $ pure BidderBuys) (progDesc "Pay and recieve a lot after auction end"))
+      , command "losing-bidder-reclaims-deposit" (info (perAuction $ pure BidderClaimsDeposit) (progDesc "Recieve deposit back after losing on auction"))
+      , command "seller-reclaims" (info (perAuction $ pure SellerReclaims) (progDesc "Seller reclaims lot after voucher end time"))
+      , command "cleanup" (info (perAuction $ pure Cleanup) (progDesc "Remove standing bid UTxO after cleanup time. Is performed by seller."))
+      , command "cleanup-all-deposits" (info (perAuction $ pure CleanupDeposit) (progDesc "Return deposit to bidders after cleanup time. Is performed by anyone."))
       ]
+  where
+    perAuction :: Parser PerAuctionCliAction -> Parser CliAction
+    perAuction = (PerAuction <$> auctionName <*>)
 
 auctionName :: Parser AuctionName
 auctionName =

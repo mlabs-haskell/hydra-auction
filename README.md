@@ -183,6 +183,8 @@ Same for all steps except 8.
    until the `VoucherExpiryStage`,
    it can be reclaimed back by its seller.
    For that run `seller-reclaims -n demo` in Alice's REPL.
+   What will claim winning bidder deposit automatically,
+   if it exists.
 11. If that deposit was not claimed by seller until `CleanupStage`,
     it can be returned to bidder. `
 
