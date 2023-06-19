@@ -51,13 +51,13 @@ function frontend-cli() {
         -v ${parent_path}/devnet/node.socket:/devnet/node.socket \
         -v ${parent_path}/example:/example \
         -v ${parent_path}/auction-state:/auction-state hydra-auction-cli:latest \
-        "hydra-auction" "${cmdArray[@]}" "-d" "delegate-server-${delegate}:8001"
+        "hydra-auction" "${cmdArray[@]}" "-d" "delegate-server-${delegateNum}:8001"
     else
-        cabal run hydra-auction -- "${cmdArray[@]}" "-d" "127.0.0.1:800${delegate}"
+        cabal run hydra-auction -- "${cmdArray[@]}" "-d" "127.0.0.1:800${delegateNum}"
     fi;
 }
 
-CARDANO_PARAMS=("--cardano-node-socket" "$CLUSTER_WORKDIR/node.socket" "--network-magic" "$TESTNET_MAGIC")
+CARDANO_PARAMS=("--cardano-node-socket" "$CARDANO_NODE_SOCKET_PATH" "--network-magic" "$TESTNET_MAGIC")
 
 function frontend-cli-repl() {
     frontend-cli "${@}" "${CARDANO_PARAMS[@]}"

@@ -69,13 +69,13 @@ faucet-address:
 	bash -c 'source scripts/setup-envs.sh; frontend-cli-faucet-command "show-address"'
 
 demo-monitor:
-	bash -c 'source scripts/setup-envs.sh; frontend-cli "1" "-w demo"'
+	bash -c 'source scripts/setup-envs.sh; frontend-cli "1" "-w" "demo"'
 
 demo-seller:
-	bash -c 'source scripts/setup-envs.sh; frontend-cli-repl "1" "-a alice"'
+	bash -c 'source scripts/setup-envs.sh; frontend-cli-repl "1" "-a" "alice"'
 
 demo-bidder:
-	bash -c 'source scripts/setup-envs.sh; frontend-cli-repl "2" "-a bob"'
+	bash -c 'source scripts/setup-envs.sh; frontend-cli-repl "2" "-a" "bob"'
 
 demo-bidder2:
-	bash -c 'source scripts/setup-envs.sh; frontend-cli-repl "2" "-a bob"'
+	bash -c 'source scripts/setup-envs.sh; frontend-cli-repl "2" "-a" "bob"'

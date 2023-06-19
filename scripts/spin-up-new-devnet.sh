@@ -2,13 +2,13 @@
 parent_path=$( cd "$(dirname "${BASH_SOURCE[0]}")" ; pwd -P )
 cd "$parent_path/.."
 
+source ./scripts/setup-envs.sh
+
 echo "Current CLUSTER_ENV is $CLUSTER_ENV"
 echo "Change this env to devnet|testnet to change cluster network"
 
 echo "Stopping demo in case anything is already running"
 ./scripts/stop-demo.sh
-
-source ./scripts/setup-envs.sh
 
 echo "Prepare devnet files"
 source ./scripts/reset-devnet.sh
