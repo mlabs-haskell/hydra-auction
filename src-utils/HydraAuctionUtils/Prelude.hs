@@ -58,7 +58,8 @@ import Data.Maybe as X (fromJust)
 import GHC.Generics as X (Generic)
 import GHC.Stack as X (HasCallStack)
 
-trySome :: forall a. IO a -> IO (Either SomeException a)
+trySome ::
+  forall a m. (MonadIO m, MonadCatch m) => m a -> m (Either SomeException a)
 trySome = try
 
 -- | Suppress the 'Left' value of an 'Either'
