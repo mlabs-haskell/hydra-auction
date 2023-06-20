@@ -3,15 +3,14 @@ module EndToEnd.CLI (testSuite) where
 -- Prelude imports
 import Hydra.Prelude
 
--- Haskell imports
-
-import Data.Maybe (fromJust)
-
 -- Haskell test imports
 
 import System.Directory (removeFile)
 import Test.Tasty (TestTree, testGroup, withResource)
 import Test.Tasty.HUnit (Assertion, testCase)
+
+-- Hydra imports
+import Hydra.Cardano.Api (Lovelace (..))
 
 -- Hydra auction imports
 
@@ -30,7 +29,6 @@ import HydraAuctionUtils.L1.Runner (
  )
 import HydraAuctionUtils.Monads (waitUntil)
 import HydraAuctionUtils.Monads.Actors (WithActorT)
-import HydraAuctionUtils.Types.Natural (intToNatural)
 
 -- CLI imports
 
@@ -125,8 +123,14 @@ depositTest = mkAssertion $ do
 
   terms <- auctionTermsFor auctionName
 
-  withActor buyer1 $ handleCliActionWithMockDelegates $ PerAuction auctionName $ MakeDeposit (fromJust $ intToNatural 10_000_000)
-  withActor buyer2 $ handleCliActionWithMockDelegates $ PerAuction auctionName $ MakeDeposit (fromJust $ intToNatural 10_000_000)
+  withActor buyer1 $
+    handleCliActionWithMockDelegates $
+      PerAuction auctionName $
+        MakeDeposit (Lovelace 10_000_000)
+  withActor buyer2 $
+    handleCliActionWithMockDelegates $
+      PerAuction auctionName $
+        MakeDeposit (Lovelace 10_000_000)
 
   assertUTxOsInScriptEquals Deposit terms 2
 
@@ -172,7 +176,7 @@ depositCleanupClaimTest = mkAssertion $ do
   withActor buyer1 $
     handleCliActionWithMockDelegates $
       PerAuction auctionName $
-        MakeDeposit (fromJust $ intToNatural 10_000_000)
+        MakeDeposit (Lovelace 10_000_000)
   assertUTxOsInScriptEquals Deposit terms 1
 
   waitUntil $ biddingStart terms

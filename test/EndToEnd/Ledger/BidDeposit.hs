@@ -33,6 +33,7 @@ import HydraAuction.Tx.TermsConfig (
   nonExistentHeadIdStub,
  )
 import HydraAuction.Types (AuctionTerms (..))
+import HydraAuctionUtils.Extras.CardanoApi (Lovelace (..))
 import HydraAuctionUtils.Fixture (Actor (..), getActorPubKeyHash)
 import HydraAuctionUtils.L1.Runner (
   feeSpent,
@@ -60,8 +61,8 @@ testSuite =
     , testCase "cleanup-deposit" cleanupDepositTest
     ]
 
-depositAmount :: Natural
-depositAmount = fromJust $ intToNatural 20_000_000
+depositAmount :: Lovelace
+depositAmount = Lovelace 20_000_000
 
 losingBidderClaimDepositTest :: Assertion
 losingBidderClaimDepositTest = mkAssertion $ do
