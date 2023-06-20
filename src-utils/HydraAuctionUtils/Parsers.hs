@@ -7,6 +7,7 @@ module HydraAuctionUtils.Parsers (
   parseHost,
   cardanoRunningNodeParser,
   execParserForCliArgs,
+  websocketsHost,
   platform,
 ) where
 
@@ -136,4 +137,13 @@ platform =
         <> long "platform-server"
         <> metavar "PLATFORM"
         <> help "Host and port of platform server"
+    )
+
+websocketsHost :: Parser Host
+websocketsHost =
+  option
+    (parseHost Nothing)
+    ( long "websockets-host"
+        <> metavar "WEBSOCKETS_HOST"
+        <> help "Host and port to use for serving Websocket server"
     )

@@ -309,7 +309,8 @@ delegateEventStep event = case event of
     InvalidInput {} -> abort RequiredHydraRequestFailed
     -- Before `CommandFailed` was returned in some cases,
     -- similar to `PostTxOnChainFailed`. Lets check if thats still the case :D
-    CommandFailed {} -> abort RequiredHydraRequestFailed
+    -- FIXME: better parsing
+    -- CommandFailed {} -> abort RequiredHydraRequestFailed
     PostTxOnChainFailed {postChainTx, postTxError} ->
       case (postChainTx, postTxError) of
         (InitTx _, _)
