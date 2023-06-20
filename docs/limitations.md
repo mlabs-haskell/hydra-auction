@@ -88,6 +88,8 @@
 * Testing
   * Our E2E tests do not cover most of non-succeseful usecases.
     This includes onchain logic coverage.
+  * No full E2E test.
+  * Slow L1 fixture due to `cardano-node` restarting every time.
   * We almost do not use PDD and unit-tests.
     Most of code is covered by E2E tests,
     most of `*-utils` are not covered separately.
