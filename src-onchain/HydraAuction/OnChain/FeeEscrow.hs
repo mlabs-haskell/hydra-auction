@@ -10,6 +10,7 @@ import PlutusLedgerApi.V2 (TxInfo (..), TxOut (..), Value, adaSymbol, adaToken, 
 import PlutusLedgerApi.V2.Contexts (ScriptContext, findOwnInput)
 
 -- Hydra auction imports
+import HydraAuction.OnChain.Common (checkNonAdaOutputsNum)
 import HydraAuction.Types (
   AuctionTerms (..),
   FeeEscrowDatum,
@@ -30,6 +31,7 @@ mkFeeEscrowValidator terms () DistributeFees context =
     && all receivesProportionOfFee (delegates terms)
     -- No tokens are minted or burned.
     && nothingForged info
+    && checkNonAdaOutputsNum context 0
   where
     info :: TxInfo
     info = scriptContextTxInfo context

@@ -2,6 +2,7 @@
 {-# OPTIONS_GHC -fno-specialise #-}
 
 module HydraAuction.OnChain.Common (
+  checkNonAdaOutputsNum,
   minAuctionFee,
   validAuctionTerms,
   checkVoucherExpiredOrLater,
@@ -18,7 +19,12 @@ import Prelude (div)
 -- Plutus imports
 import PlutusLedgerApi.V1.Interval (Extended (..), Interval (..), UpperBound (..), contains, from)
 import PlutusLedgerApi.V1.Time (POSIXTime (..))
-import PlutusLedgerApi.V2.Contexts (TxInfo (..))
+import PlutusLedgerApi.V1.Value (getValue)
+import PlutusLedgerApi.V2.Contexts (
+  ScriptContext (..),
+  TxInfo (..),
+  txOutValue,
+ )
 
 -- Hydra auction imports
 import HydraAuction.Types (AuctionStage (..), AuctionTerms (..))
@@ -49,6 +55,18 @@ checkVoucherExpiredOrLater :: AuctionTerms -> TxInfo -> Bool
 checkVoucherExpiredOrLater terms info =
   traceIfFalse "Wrong interval for transaction (checkcheckVoucherExpiredOrLater)" $
     contains (from (voucherExpiry terms)) (txInfoValidRange info)
+
+{-# INLINEABLE checkNonAdaOutputsNum #-}
+checkNonAdaOutputsNum :: ScriptContext -> Integer -> Bool
+checkNonAdaOutputsNum context expectedNum =
+  traceIfFalse "Wrong outputs number for tx" $
+    length (filter isNotAdaOnlyOutput outputs) == expectedNum
+  where
+    info = scriptContextTxInfo context
+    outputs = txInfoOutputs info
+    isNotAdaOnlyOutput output =
+      let value = txOutValue output
+       in length (getValue value) > 1
 
 {- | Given a POSIXTime, and an 'Interval' this function computes
    the truncated difference in seconds to the 'UpperBound' of the passed 'Interval'.
