@@ -20,6 +20,7 @@ import HydraAuctionUtils.Parsers (
   cardanoRunningNodeParser,
   parseActor,
   parseHost,
+  platform,
  )
 
 delegateConfigParser :: Parser DelegateServerConfig
@@ -28,11 +29,13 @@ delegateConfigParser = do
   cardanoNode <- cardanoRunningNodeParser
   websocketsHost <- websocketsHostParser
   hydraNodeHost <- hydraNodeParser
+  platformHost <- platform
   return
     DelegateServerConfig
       { websocketsHost
       , cardanoNode
       , hydraNodeHost
+      , platformHost
       , l1Actor
       , tick = tick
       , ping = ping

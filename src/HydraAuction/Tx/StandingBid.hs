@@ -60,7 +60,7 @@ import Hydra.Chain (HeadId)
 
 -- Hydra auction imports
 
-import HydraAuction.HydraHacks (prepareScriptRegistry, submitAndAwaitCommitTx)
+import HydraAuction.HydraHacks (submitAndAwaitCommitTx)
 import HydraAuction.OnChain (
   AuctionScript (StandingBid),
   standingBidValidator,
@@ -78,7 +78,7 @@ import HydraAuctionUtils.Monads.Actors (
  )
 
 import HydraAuction.Tx.Common (
-  createTwoMinAdaUtxo,
+  createMinAdaUtxo,
   scriptPlutusScript,
   scriptSingleUtxo,
   scriptUtxos,
@@ -94,7 +94,8 @@ import HydraAuction.Types (
   VoucherForgingRedeemer (BurnVoucher),
  )
 import HydraAuctionUtils.Fixture (Actor, actorFromPkh, getActorPubKeyHash, keysFor)
-import HydraAuctionUtils.L1.Runner (ExecutionContext (..), L1Runner)
+import HydraAuctionUtils.Hydra.Runner (HydraRunner, runL1RunnerInComposite)
+import HydraAuctionUtils.L1.Runner (L1Runner)
 import HydraAuctionUtils.Monads (
   MonadCardanoClient,
   MonadNetworkId,
@@ -114,7 +115,7 @@ import HydraAuctionUtils.Tx.Build (
   mkInlineDatum,
   mkInlinedDatumScriptWitness,
  )
-import HydraAuctionUtils.Tx.Common (selectAdaUtxo)
+import HydraAuctionUtils.Tx.Common (actorAdaOnlyUtxo, selectAdaUtxo)
 import HydraAuctionUtils.Types.Natural (Natural, naturalToInt)
 
 data DatumDecodingError = CannotDecodeDatum | NoInlineDatum
@@ -293,25 +294,22 @@ createStandingBidDatum terms bidAmount sellerSignature bidderSk =
     Signature bidderSignature = dsign bidderSecretKey bidderMessage
 
 moveToHydra ::
+  HasCallStack =>
   HeadId ->
   AuctionTerms ->
   (TxIn, TxOut CtxUTxO) ->
-  WithActorT L1Runner ()
+  HydraRunner ()
 moveToHydra headId terms (standingBidTxIn, standingBidTxOut) = do
   -- FIXME: get headId from AuctionTerms
-  -- FIXME: should use already deployed registry
-  (_, scriptRegistry) <- lift $ do
-    MkExecutionContext {node} <- ask
-    liftIO $ prepareScriptRegistry node
-
-  (utxo1, utxo2) <- createTwoMinAdaUtxo
-
+  utxoForL2Collateral <- runL1RunnerInComposite createMinAdaUtxo
+  utxoForL1Fee : _ <-
+    filter (/= utxoForL2Collateral) . UTxO.pairs
+      <$> runL1RunnerInComposite actorAdaOnlyUtxo
   void $
     submitAndAwaitCommitTx
-      scriptRegistry
       headId
-      utxo1
-      (UTxO.fromPairs [utxo2])
+      utxoForL1Fee
+      (UTxO.fromPairs [utxoForL2Collateral])
       (standingBidTxIn, standingBidTxOut, standingBidWitness)
   where
     script =

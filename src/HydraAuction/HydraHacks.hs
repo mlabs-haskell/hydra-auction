@@ -1,7 +1,7 @@
 -- Things that should be merged in Hydra repo later
 -- Copy-pasting `commitTx` and modifying it
 -- to support script witnessed commited Utxos
-module HydraAuction.HydraHacks (submitAndAwaitCommitTx, prepareScriptRegistry) where
+module HydraAuction.HydraHacks (submitAndAwaitCommitTx) where
 
 -- Prelude imports
 import HydraAuctionUtils.Prelude
@@ -13,7 +13,6 @@ import Data.Set qualified as Set
 -- Caradno imports
 import Cardano.Api.UTxO qualified as UTxO
 import CardanoClient (buildScriptAddress)
-import CardanoNode (RunningNode (..))
 
 -- Hydra imports
 import Hydra.Cardano.Api (
@@ -30,7 +29,6 @@ import Hydra.Cardano.Api (
   PlutusScriptV2,
   SerialiseAsRawBytes (serialiseToRawBytes),
   TxBodyContent,
-  TxId,
   TxIn,
   TxOut,
   UTxO,
@@ -56,13 +54,11 @@ import Hydra.Cardano.Api (
   pattern TxOut,
  )
 import Hydra.Chain (HeadId (..))
-import Hydra.Chain.Direct.ScriptRegistry (ScriptRegistry (..), queryScriptRegistry)
+import Hydra.Chain.Direct.ScriptRegistry (ScriptRegistry (..))
 import Hydra.Chain.Direct.Tx (
   headIdToCurrencySymbol,
   mkCommitDatum,
  )
-import Hydra.Cluster.Faucet (publishHydraScriptsAs)
-import Hydra.Cluster.Fixture qualified as HydraFixture
 import Hydra.Contract.Commit qualified as Commit
 import Hydra.Contract.Initial qualified as Initial
 import Hydra.Ledger.Cardano (addReferenceInputs)
@@ -78,6 +74,11 @@ import Hydra.Party (Party)
 -- HydraAuction imports
 
 import HydraAuctionUtils.Fixture (partyFor)
+import HydraAuctionUtils.Hydra.Runner (
+  HydraExecutionContext (..),
+  HydraRunner,
+  runL1RunnerInComposite,
+ )
 import HydraAuctionUtils.L1.Runner (L1Runner)
 import HydraAuctionUtils.Monads (
   BlockchainParams (..),
@@ -89,13 +90,6 @@ import HydraAuctionUtils.Monads (
  )
 import HydraAuctionUtils.Monads.Actors (WithActorT, addressAndKeys, askActor)
 import HydraAuctionUtils.Tx.AutoCreateTx (callBodyAutoBalance, makeSignedTransactionWithKeys)
-
-prepareScriptRegistry :: RunningNode -> IO (TxId, ScriptRegistry)
-prepareScriptRegistry node@RunningNode {networkId, nodeSocket} = do
-  hydraScriptsTxId <-
-    liftIO $ publishHydraScriptsAs node HydraFixture.Faucet
-  scriptRegistry <- queryScriptRegistry networkId nodeSocket hydraScriptsTxId
-  pure (hydraScriptsTxId, scriptRegistry)
 
 -- | Craft a commit transaction which includes the "committed" utxo as a datum.
 commitTxBody ::
@@ -209,7 +203,6 @@ findInitialScriptRefUtxo scriptRegistry = do
     initialScriptRef = fst (initialReference scriptRegistry)
 
 submitAndAwaitCommitTx ::
-  ScriptRegistry ->
   HeadId ->
   (TxIn, TxOut CtxUTxO) ->
   UTxO ->
@@ -217,16 +210,14 @@ submitAndAwaitCommitTx ::
   , TxOut CtxUTxO
   , BuildTxWith BuildTx (Witness WitCtxTxIn)
   ) ->
-  WithActorT L1Runner ()
-
--- | L1Runner Actor should represent one which runs Hydra Node
+  HydraRunner ()
 submitAndAwaitCommitTx
-  scriptRegistry
   headId
   (l1FeeTxIn, l1FeeTxOut)
   adaOnlyUtxoToCommit
-  (scriptTxIn, scriptTxOut, scriptTxWitness) =
-    do
+  (scriptTxIn, scriptTxOut, scriptTxWitness) = do
+    MkHydraExecutionContext {scriptRegistry} <- ask
+    runL1RunnerInComposite $ do
       actor <- askActor
       networkId <- askNetworkId
 

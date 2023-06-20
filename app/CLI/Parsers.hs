@@ -137,6 +137,7 @@ cliActionParser =
       , command "transfer-ada" (info (TransferAda <$> actor <*> marked <*> amount) (progDesc "Tranfer ADA to other actor"))
       , command "mint-test-nft" (info (pure MintTestNFT) (progDesc "Mints an NFT that can be used as auction lot"))
       , command "announce-auction" (info (perAuction $ pure AuctionAnounce) (progDesc "Create an auction"))
+      , command "approve-bidder" (info (perAuction $ ApproveBidder <$> actor) (progDesc "Approve actor for bidding"))
       , command "make-deposit" (info (perAuction $ MakeDeposit <$> amount) (progDesc "Put a deposit"))
       , command "start-bidding" (info (perAuction $ pure StartBidding) (progDesc "Open an auction for bidding"))
       , command "move-to-l2" (info (perAuction $ pure MoveToL2) (progDesc "Move Standing bid to L2"))

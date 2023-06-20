@@ -1,6 +1,7 @@
 module HydraAuctionUtils.Tx.Common (
   transferAda,
   utxoLovelaceValue,
+  actorAdaOnlyUtxo,
   selectAdaUtxo,
 ) where
 
@@ -50,6 +51,12 @@ import HydraAuctionUtils.Tx.AutoCreateTx (
  )
 import HydraAuctionUtils.Tx.Utxo (filterAdaOnlyUtxo, filterNonFuelUtxo)
 
+actorAdaOnlyUtxo ::
+  forall m.
+  (MonadHasActor m, MonadCardanoClient m, MonadIO m) =>
+  m UTxO
+actorAdaOnlyUtxo = filterNonFuelUtxo . filterAdaOnlyUtxo <$> actorTipUtxo
+
 -- Simplest possible coin-selection algorithm
 selectAdaUtxo ::
   forall m.
@@ -57,7 +64,7 @@ selectAdaUtxo ::
   Lovelace ->
   m (Maybe UTxO)
 selectAdaUtxo minRequiredAmount = do
-  allAdaUtxo <- filterNonFuelUtxo . filterAdaOnlyUtxo <$> actorTipUtxo
+  allAdaUtxo <- actorAdaOnlyUtxo
   let foundEnough = utxoLovelaceValue allAdaUtxo >= minRequiredAmount
   return $ guard foundEnough >> Just allAdaUtxo
 

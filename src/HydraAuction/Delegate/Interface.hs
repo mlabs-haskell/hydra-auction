@@ -30,7 +30,21 @@ import Hydra.Cardano.Api (CtxUTxO, TxIn, TxOut)
 import Hydra.Chain (HeadId)
 
 -- HydraAuction imports
+
 import HydraAuction.Types (AuctionTerms (..), BidTerms, StandingBidDatum)
+import HydraAuctionUtils.Server.Protocol (Protocol (..))
+
+data DelegateProtocol
+
+data DelegateResponseKind = NotImplemented deriving stock (Eq, Show)
+
+instance Protocol DelegateProtocol where
+  type Input DelegateProtocol = FrontendRequest
+  type Output DelegateProtocol = DelegateResponse
+  type OutputKind DelegateProtocol = DelegateResponseKind
+  type ConnectionConfig DelegateProtocol = ()
+  getOutputKind _ = NotImplemented
+  configToConnectionPath () = ""
 
 data FrontendRequest
   = QueryCurrentDelegateState

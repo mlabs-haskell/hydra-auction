@@ -28,12 +28,12 @@ import HydraAuction.Tx.StandingBid (newBid, sellerSignatureForActor)
 import HydraAuction.Tx.TermsConfig (AuctionTermsConfig (..))
 import HydraAuction.Types (AuctionTerms (..))
 import HydraAuctionUtils.Fixture (Actor (..), ActorKind (..), actorsByKind)
-import HydraAuctionUtils.Hydra.Monad (AwaitedHydraEvent (..))
 import HydraAuctionUtils.L1.Runner (
   initWallet,
   withActor,
  )
 import HydraAuctionUtils.Monads (waitUntil)
+import HydraAuctionUtils.Server.Client (AwaitedOutput (..))
 
 -- Hydra auction test imports
 import EndToEnd.HydraUtils (
@@ -85,6 +85,8 @@ bidderBuysTest = mkAssertionOfIO $ do
     -- Init hydra
 
     headId <- emulateDelegatesStart
+
+    -- TODO: Test state of platform
 
     -- Create
 
@@ -142,7 +144,7 @@ bidderBuysTest = mkAssertionOfIO $ do
     -- Delegates got fees
 
     -- FIXUP: check amount change, this is impossible without fee tracking
-    emulateCleanup headId terms
+    emulateCleanup terms
 
 -- Regression test: commit should not fail when delegate has multiple UTxOs
 multipleUtxosToCommitTest :: Assertion
@@ -189,7 +191,7 @@ earlyAbort = mkAssertionOfIO $ do
     headId <- emulateDelegatesStart
 
     runCompositeForDelegate Main $ do
-      [_response] <- abort RequiredHydraRequestFailed
+      [_response] <- lift $ abort RequiredHydraRequestFailed
       return ()
 
     void $
@@ -224,7 +226,7 @@ lateAbort = mkAssertionOfIO $ do
     -- Abort
 
     runCompositeForDelegate Main $ do
-      [_response] <- abort RequiredHydraRequestFailed
+      [_response] <- lift $ abort RequiredHydraRequestFailed
       return ()
 
     void $

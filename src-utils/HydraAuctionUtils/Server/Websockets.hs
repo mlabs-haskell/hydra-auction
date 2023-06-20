@@ -19,6 +19,7 @@ import Control.Concurrent.STM (
   writeTQueue,
  )
 import Data.Aeson (eitherDecode, encode)
+import Data.Text qualified as Text
 import Network.WebSockets (
   Connection,
   PendingConnection,
@@ -28,6 +29,9 @@ import Network.WebSockets (
   sendTextData,
   withPingThread,
  )
+
+-- Hydra imports
+import Hydra.Network (Host (..))
 
 -- HydraAuction imports
 import HydraAuctionUtils.Server.ClientId (
@@ -101,13 +105,13 @@ websocketsServerConnectionHanler
 runWebsocketsServer ::
   forall protocol.
   Protocol protocol =>
-  Int ->
+  _ ->
   ServerQueues protocol ->
   IO ()
-runWebsocketsServer port queues = do
+runWebsocketsServer host queues = do
   clientIdCounter <- liftIO $ newMVar 0
   -- FIXME: parametrize with custom config datatype
-  runServer "127.0.0.1" port $
+  runServer (Text.unpack $ hostname host) (fromIntegral $ port host) $
     websocketsServerConnectionHanler
       30_000
       queues

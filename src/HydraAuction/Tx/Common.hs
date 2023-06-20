@@ -2,7 +2,7 @@ module HydraAuction.Tx.Common (
   scriptUtxos,
   scriptAddress,
   scriptPlutusScript,
-  createTwoMinAdaUtxo,
+  createMinAdaUtxo,
   currentAuctionStage,
   toForgeStateToken,
   scriptSingleUtxo,
@@ -77,7 +77,7 @@ import HydraAuctionUtils.Tx.AutoCreateTx (
   autoSubmitAndAwaitTx,
  )
 import HydraAuctionUtils.Tx.Build (minLovelace, mintedTokens, tokenToAsset)
-import HydraAuctionUtils.Tx.Common (selectAdaUtxo)
+import HydraAuctionUtils.Tx.Common (actorAdaOnlyUtxo, selectAdaUtxo)
 
 currentAuctionStage ::
   (MonadTime timedMonad) => AuctionTerms -> timedMonad AuctionStage
@@ -100,14 +100,12 @@ toForgeStateToken terms redeemer =
       MintVoucher -> 1
       BurnVoucher -> -1
 
-createTwoMinAdaUtxo ::
+createMinAdaUtxo ::
   (MonadIO m, MonadCardanoClient m, MonadTrace m, MonadFail m, MonadHasActor m) =>
-  m ((TxIn, TxOut CtxUTxO), (TxIn, TxOut CtxUTxO))
-createTwoMinAdaUtxo = do
+  m (TxIn, TxOut CtxUTxO)
+createMinAdaUtxo = do
   (actorAddress, _, actorSk) <- addressAndKeys
-
-  -- FIXUP: cover no money case, use single utxo
-  actorMoneyUtxo <- fromJust <$> selectAdaUtxo (minLovelace * 2)
+  actorMoneyUtxo <- fromJust <$> selectAdaUtxo minLovelace
 
   void $
     autoSubmitAndAwaitTx $
@@ -117,7 +115,7 @@ createTwoMinAdaUtxo = do
         , referenceUtxo = mempty
         , witnessedUtxos = []
         , collateral = Nothing
-        , outs = [minAdaOut actorAddress, minAdaOut actorAddress]
+        , outs = [minAdaOut actorAddress]
         , toMint = TxMintValueNone
         , changeAddress = actorAddress
         , validityBound = always
@@ -125,10 +123,8 @@ createTwoMinAdaUtxo = do
 
   let filterMinLovelace = UTxO.filter $
         \x -> txOutValue x == lovelaceToValue minLovelace
-  (utxo1 : utxo2 : _) <-
-    UTxO.pairs . filterMinLovelace . fromJust <$> selectAdaUtxo minLovelace
-
-  return (utxo1, utxo2)
+  utxo : _ <- UTxO.pairs . filterMinLovelace <$> actorAdaOnlyUtxo
+  return utxo
   where
     minAdaOut actorAddress =
       TxOut

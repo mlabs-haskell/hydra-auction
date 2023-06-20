@@ -66,21 +66,29 @@ import HydraAuction.Delegate.Server (
   ThreadSort (..),
  )
 import HydraAuction.OnChain.Common (secondsLeftInInterval, stageToInterval)
+import HydraAuction.Platform.Interface (PlatformProtocol)
 import HydraAuction.Tx.Common (currentAuctionStage)
 import HydraAuction.Types (AuctionTerms)
 import HydraAuctionUtils.Composite.Runner (
   CompositeRunner,
  )
-import HydraAuctionUtils.Hydra.Monad (AwaitedHydraEvent (..), waitForHydraEvent)
+import HydraAuctionUtils.Hydra.Interface (
+  HydraConnectionConfig (..),
+ )
+import HydraAuctionUtils.Hydra.Monad (waitForHydraEvent)
 import HydraAuctionUtils.Hydra.Runner (HydraRunner, executeHydraRunnerFakingParams)
 import HydraAuctionUtils.L1.Runner (executeL1RunnerWithNodeAs)
-import HydraAuctionUtils.Network (runHydraClient)
 import HydraAuctionUtils.Parsers (execParserForCliArgs)
+import HydraAuctionUtils.Server.Client (
+  AwaitedOutput (..),
+  withProtocolClient,
+ )
 import HydraAuctionUtils.Server.ClientId (
   ClientId,
   ClientResponseScope (Broadcast),
   clientIsInScope,
  )
+import HydraAuctionUtils.Server.Protocol (ProtocolClientFor, withClient)
 import HydraAuctionUtils.Time (currentPlutusPOSIXTime)
 import HydraAuctionUtils.Tracing (
   MonadTracer (trace),
@@ -157,9 +165,11 @@ websocketsServer
      and output outgoing events accordingly
 -}
 runDelegateLogicSteps ::
-  forall void.
+  forall void client.
+  ProtocolClientFor PlatformProtocol client =>
   -- | the time in milliseconds that the runner sleeps between acts
   Int ->
+  client ->
   -- | the queue of incoming messages
   TQueue DelegateEvent ->
   TQueue (ClientId, FrontendRequest) ->
@@ -168,6 +178,7 @@ runDelegateLogicSteps ::
   CompositeRunner void
 runDelegateLogicSteps
   tick
+  platformClient
   eventQueue
   frontendRequestQueue
   broadcast = do
@@ -180,7 +191,7 @@ runDelegateLogicSteps
 
       processQueueWith
         eventQueue
-        ( delegateEventStep
+        ( (withClient platformClient . delegateEventStep)
             -- All delegateEventStep responses should be brodcasted
             >=> return . fmap (Broadcast,)
         )
@@ -253,12 +264,14 @@ runDelegateServer conf = do
             DelegateLogicStepsThread ->
               void $
                 liftIO $ do
-                  executeHydraRunnerForConfig $
-                    runDelegateLogicSteps
-                      (tick conf)
-                      eventQueue
-                      frontendRequestQueue
-                      toClientsChannel
+                  withProtocolClient (platformHost conf) () $ \platformClient ->
+                    executeHydraRunnerForConfig $
+                      runDelegateLogicSteps
+                        (tick conf)
+                        platformClient
+                        eventQueue
+                        frontendRequestQueue
+                        toClientsChannel
             QueueAuctionStageThread ->
               mbQueueAuctionPhases (tick conf) eventQueue toClientsChannel
             QueueHydraEventsThread ->
@@ -280,9 +293,10 @@ runDelegateServer conf = do
       putMVar clientCounter (v + 1)
       return v
     executeHydraRunnerForConfig action =
-      runHydraClient (hydraNodeHost conf) True $ \hydraClient -> do
+      withProtocolClient (hydraNodeHost conf) clientConfig $ \hydraClient -> do
         executeL1RunnerWithNodeAs (cardanoNode conf) (l1Actor conf) $ do
           executeHydraRunnerFakingParams hydraClient action
+    clientConfig = MkHydraConnectionConfig {retrieveHistory = True}
 
 queueHydraEvents ::
   forall void. TQueue DelegateEvent -> HydraRunner void

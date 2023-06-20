@@ -69,6 +69,7 @@ data PerAuctionCliAction
   | ShowActorsMinDeposit Natural
   | AuctionAnounce
   | MakeDeposit Lovelace
+  | ApproveBidder Actor
   | StartBidding
   | MoveToL2
   | NewBid Natural Layer
