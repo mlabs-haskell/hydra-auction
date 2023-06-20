@@ -111,11 +111,10 @@ services:
     ports:
       - "8010:8010"
     networks:
-      hydra_net:
+      hydra-auction-servers:
     command:
       ["hydra-auction-platform"
-      , "--platform-server platform-server:8010"
-      ]
+      , "--websockets-host", "0.0.0.0:8010"]
 
   delegate-server-1:
     image: hydra-auction-delegate:latest
@@ -134,10 +133,12 @@ services:
       - "8001:8001"
     networks:
       hydra_net:
+      hydra-auction-servers:
     environment:
-      - HYDRA_SCRIPTS_TX_ID:${HYDRA_SCRIPTS_TX_ID}
+      - HYDRA_SCRIPTS_TX_ID=${HYDRA_SCRIPTS_TX_ID}
     command:
       [ "hydra-auction-delegate"
+      , "--platform-server", "platform-server:8010"
       , "--actor", "oscar"
       , "--hydra-node", "172.16.238.10:4001"
       , "--websockets-host", "0.0.0.0:8001"
@@ -162,10 +163,12 @@ services:
       - "8002:8001"
     networks:
       hydra_net:
+      hydra-auction-servers:
     environment:
-      - HYDRA_SCRIPTS_TX_ID:${HYDRA_SCRIPTS_TX_ID}
+      - HYDRA_SCRIPTS_TX_ID=${HYDRA_SCRIPTS_TX_ID}
     command:
       [ "hydra-auction-delegate"
+      , "--platform-server", "platform-server:8010"
       , "--actor", "patricia"
       , "--hydra-node", "172.16.238.20:4001"
       , "--websockets-host", "0.0.0.0:8001"
@@ -190,10 +193,12 @@ services:
       - "8003:8001"
     networks:
       hydra_net:
+      hydra-auction-servers:
     environment:
-      - HYDRA_SCRIPTS_TX_ID:${HYDRA_SCRIPTS_TX_ID}
+      - HYDRA_SCRIPTS_TX_ID=${HYDRA_SCRIPTS_TX_ID}
     command:
       [ "hydra-auction-delegate"
+      , "--platform-server", "platform-server:8010"
       , "--actor", "rupert"
       , "--hydra-node", "172.16.238.30:4001"
       , "--websockets-host", "0.0.0.0:8001"
@@ -209,3 +214,4 @@ networks:
       config:
         - subnet: 172.16.238.0/24
           gateway: 172.16.238.1
+  hydra-auction-servers:
