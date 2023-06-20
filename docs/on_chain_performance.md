@@ -10,36 +10,40 @@ So maxTxExUnits from our genesis files should be:
 ## General flow
 
 ### AnnounceAuction
-Tx size % of max: 39.02587890625
-CPU % of max: 3.54041683
-Memory % of max: 9.035857142857143
+
+Tx size % of max: 39.02  
+CPU % of max: 3.54  
+Memory % of max: 9.03  
 
 ### StartBidding
-Tx size % of max: 51.434326171875
-CPU % of max: 4.73428863
-Memory % of max: 12.101042857142858
+
+Tx size % of max: 51.43  
+CPU % of max: 4.73  
+Memory % of max: 12.10  
 
 ### NewBid
-Tx size % of max: 45.660400390625
-CPU % of max: 4.65233794
-Memory % of max: 10.582571428571429
+
+Tx size % of max: 45.66  
+CPU % of max: 4.65  
+Memory % of max: 10.58  
 
 ### BidderBuys
-Tx size % of max: 51.092529296875
-CPU % of max: 6.00875878
-Memory % of max: 15.414114285714286
+
+Tx size % of max: 51.09  
+CPU % of max: 6.01  
+Memory % of max: 15.41  
 
 ### DistributeFees
 
-Tx size % of max: 26.922607421875
-CPU % of max: 4.58534647
-Memory % of max: 11.825871428571428
+Tx size % of max: 26.92  
+CPU % of max: 4.58  
+Memory % of max: 11.82  
 
 ### Cleanup
 
-Tx size % of max: 79.26025390625
-CPU % of max: 5.97138646
-Memory % of max: 14.854871428571428
+Tx size % of max: 79.26  
+CPU % of max: 5.97  
+Memory % of max: 14.85  
 
 ## Deposits
 
@@ -48,19 +52,18 @@ It may be used in BidderBuys, so affects its execution costs.
 
 ### BidderBuys with deposit used
 
-Tx size % of max: 94.964599609375
-CPU % of max: 10.32686933
-Memory % of max: 25.704085714285714
+Tx size % of max: 94.96  
+CPU % of max: 10.33  
+Memory % of max: 25.70  
 
 ### SellerClaimsDeposit
 
-Seller claiming bidder deposit
-Tx size % of max: 46.484375
-CPU % of max: 4.14413993
-Memory % of max: 10.2039
+Tx size % of max: 46.48  
+CPU % of max: 4.14  
+Memory % of max: 10.20  
 
 ## LosingBidder
 
-Tx size % of max: 46.2646484375
-CPU % of max: 3.45964679
-Memory % of max: 8.472842857142858
+Tx size % of max: 46.26  
+CPU % of max: 3.46  
+Memory % of max: 8.47  
