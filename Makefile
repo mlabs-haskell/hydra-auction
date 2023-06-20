@@ -81,4 +81,4 @@ demo-bidder:
 	bash -c 'source scripts/setup-envs.sh; frontend-cli-repl "2" "-a" "bob"'
 
 demo-bidder2:
-	bash -c 'source scripts/setup-envs.sh; frontend-cli-repl "2" "-a" "bob"'
+	bash -c 'source scripts/setup-envs.sh; frontend-cli-repl "2" "-a" "carol"'
