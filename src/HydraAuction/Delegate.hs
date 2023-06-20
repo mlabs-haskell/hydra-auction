@@ -55,7 +55,7 @@ import HydraAuction.Platform.Interface (
   PlatformProtocol,
   Some (..),
  )
-import HydraAuction.Tx.Common (createTwoMinAdaUtxo)
+import HydraAuction.Tx.Common (createMinAdaUtxo)
 import HydraAuction.Tx.FeeEscrow (
   distributeFee,
  )
@@ -121,8 +121,7 @@ delegateFrontendRequestStep (clientId, request) =
           validatingAuctionTerms headId auctionTerms $ do
             -- FIXME: Waiting for support by Hydra
             lift $
-              runL1RunnerInComposite $
-                moveToHydra headId auctionTerms (txIn, txOut)
+              moveToHydra headId auctionTerms (txIn, txOut)
             return [(Broadcast, AuctionSet auctionTerms)]
         _ ->
           return
@@ -373,8 +372,7 @@ delegateEventStep event = case event of
               address == address'
             belongTo _ = False
     commitCollateralAda = do
-      (forCollateralUtxo, _) <-
-        runL1RunnerInComposite createTwoMinAdaUtxo
+      forCollateralUtxo <- runL1RunnerInComposite createMinAdaUtxo
       sendCommand (Commit $ UTxO.fromPairs [forCollateralUtxo])
       return $ Right ()
     getDelegateParty = do

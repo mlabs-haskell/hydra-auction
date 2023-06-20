@@ -1,5 +1,6 @@
 module HydraAuctionUtils.Hydra.Runner (
   HydraRunner (..),
+  prepareScriptRegistry,
   HydraExecutionContext (..),
   executeHydraRunnerFakingParams,
   executeHydraRunner,
@@ -12,13 +13,27 @@ import HydraAuctionUtils.Prelude
 -- Haskell imports
 
 import Control.Tracer (Tracer, stdoutTracer, traceWith)
+import Data.ByteString.UTF8 as BSU
 import GHC.Natural (Natural, naturalToInt)
+import System.Environment (lookupEnv)
 import System.Timeout (timeout)
+
+-- Cardano imports
+import CardanoNode (RunningNode (..))
+
+-- Hydra imports
+
+import Hydra.Cardano.Api (AsType (AsTxId), TxId, deserialiseFromRawBytesHex)
+import Hydra.Chain.Direct.ScriptRegistry (
+  ScriptRegistry (..),
+  publishHydraScripts,
+  queryScriptRegistry,
+ )
 
 -- HydraAuction imports
 
 import HydraAuctionUtils.BundledData (readHydraNodeProtocolParams)
-import HydraAuctionUtils.Fixture (Actor)
+import HydraAuctionUtils.Fixture (Actor (..), keysFor)
 import HydraAuctionUtils.Hydra.Interface (
   HydraCommand,
   HydraEvent,
@@ -30,7 +45,7 @@ import HydraAuctionUtils.Hydra.Monad (
   ViaMonadHydra (..),
  )
 import HydraAuctionUtils.L1.Runner (
-  ExecutionContext,
+  ExecutionContext (..),
   L1Runner,
   executeL1Runner,
  )
@@ -45,6 +60,7 @@ import HydraAuctionUtils.Monads (
 import HydraAuctionUtils.Monads.Actors (
   MonadHasActor (..),
   WithActorT,
+  actorTipUtxo,
   withActor,
  )
 import HydraAuctionUtils.Server.Client (
@@ -66,6 +82,7 @@ data HydraExecutionContext = MkHydraExecutionContext
   , tracer :: Tracer IO HydraRunnerLog
   , l1Context :: ExecutionContext
   , actor :: Actor
+  , scriptRegistry :: ScriptRegistry
   }
 
 newtype HydraRunner a = MkHydraRunner
@@ -149,21 +166,37 @@ executeHydraRunner ::
 executeHydraRunner context runner =
   runReaderT (unHydraRunner runner) context
 
+-- | Loads Hydra ScriptRegistry from HYDRA_SCRIPTS_TX_ID env, or deploys new
+prepareScriptRegistry :: L1Runner (TxId, ScriptRegistry)
+prepareScriptRegistry = do
+  MkExecutionContext {node} <- ask
+  let RunningNode {networkId, nodeSocket} = node
+  mTxIdStr <- liftIO $ lookupEnv "HYDRA_SCRIPTS_TX_ID"
+  !_ <- withActor Faucet actorTipUtxo
+  !hydraScriptsTxId <- case deserializeTxId =<< mTxIdStr of
+    Just txId -> return txId
+    Nothing -> liftIO $ do
+      (_, sk) <- keysFor Faucet
+      publishHydraScripts networkId nodeSocket sk
+  scriptRegistry <-
+    liftIO $
+      queryScriptRegistry networkId nodeSocket hydraScriptsTxId
+  pure (hydraScriptsTxId, scriptRegistry)
+  where
+    deserializeTxId =
+      hush . deserialiseFromRawBytesHex AsTxId . BSU.fromString
+
 executeHydraRunnerFakingParams ::
   forall a.
   RealProtocolClient HydraProtocol ->
   HydraRunner a ->
   WithActorT L1Runner a
 executeHydraRunnerFakingParams node monad = do
+  (_, scriptRegistry) <- lift prepareScriptRegistry
   l1Context <- lift ask
   actor <- askActor
-  liftIO $ executeHydraRunner (context l1Context actor) monad
+  let context =
+        MkHydraExecutionContext {node, tracer, l1Context, actor, scriptRegistry}
+  liftIO $ executeHydraRunner context monad
   where
     tracer = contramap show stdoutTracer
-    context l1Context actor =
-      MkHydraExecutionContext
-        { node = node
-        , tracer = tracer
-        , l1Context = l1Context
-        , actor = actor
-        }

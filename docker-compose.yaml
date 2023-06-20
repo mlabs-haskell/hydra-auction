@@ -134,6 +134,8 @@ services:
       - "8001:8001"
     networks:
       hydra_net:
+    environment:
+      - HYDRA_SCRIPTS_TX_ID:${HYDRA_SCRIPTS_TX_ID}
     command:
       [ "hydra-auction-delegate"
       , "--actor", "oscar"
@@ -160,6 +162,8 @@ services:
       - "8002:8001"
     networks:
       hydra_net:
+    environment:
+      - HYDRA_SCRIPTS_TX_ID:${HYDRA_SCRIPTS_TX_ID}
     command:
       [ "hydra-auction-delegate"
       , "--actor", "patricia"
@@ -186,6 +190,8 @@ services:
       - "8003:8001"
     networks:
       hydra_net:
+    environment:
+      - HYDRA_SCRIPTS_TX_ID:${HYDRA_SCRIPTS_TX_ID}
     command:
       [ "hydra-auction-delegate"
       , "--actor", "rupert"

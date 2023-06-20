@@ -45,7 +45,6 @@ import HydraAuction.Delegate.Interface (
   DelegateState,
   initialState,
  )
-import HydraAuction.HydraHacks (prepareScriptRegistry)
 import HydraAuction.Platform.Interface (PlatformProtocol)
 import HydraAuction.Platform.Storage (PlatformImplementation)
 import HydraAuctionUtils.BundledData (lookupProtocolParamPath)
@@ -64,6 +63,7 @@ import HydraAuctionUtils.Hydra.Runner (
   HydraExecutionContext,
   executeHydraRunner,
   executeHydraRunnerFakingParams,
+  prepareScriptRegistry,
   runL1RunnerInComposite,
  )
 import HydraAuctionUtils.L1.Runner (
@@ -187,9 +187,8 @@ runEmulatorInTest action = do
         withDockerComposeCluster $
           flip runEmulator action
     else executeTestL1Runner $ do
-      MkExecutionContext {node} <- ask
       -- FIXME: race condition on Faucet
-      (!hydraScriptsTxId, !_) <- liftIO $ prepareScriptRegistry node
+      (!hydraScriptsTxId, !_) <- prepareScriptRegistry
       withManualHydraCluster 0 hydraScriptsTxId $
         flip runEmulator action
 
