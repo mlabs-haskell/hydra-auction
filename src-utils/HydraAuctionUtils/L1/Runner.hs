@@ -1,4 +1,6 @@
 module HydraAuctionUtils.L1.Runner (
+  feeSpent,
+  queryAdaWithoutFees,
   HydraAuctionLog (..),
   EndToEndLog (..),
   NodeLog (..),
@@ -27,6 +29,7 @@ import Test.Hydra.Prelude (withTempDir)
 
 import Control.Tracer (nullTracer, stdoutTracer, traceWith)
 import Data.List (isInfixOf)
+import System.Timeout (timeout)
 
 -- Cardano imports
 import CardanoClient (
@@ -61,8 +64,11 @@ import Hydra.Cardano.Api (
   SubmitResult (..),
   TxValidityLowerBound,
   TxValidityUpperBound,
+  getTxBody,
   submitTxToNodeLocal,
+  txValidityRange,
   pattern BabbageEraInCardanoMode,
+  pattern TxBody,
   pattern TxInMode,
   pattern TxValidityLowerBound,
   pattern TxValidityNoLowerBound,
@@ -90,11 +96,20 @@ import HydraAuctionUtils.Monads (
   MonadQueryUtxo (..),
   MonadSubmitTx (..),
   MonadTrace (..),
+  SubmitingError (..),
+  TxStat (..),
   UtxoQuery (..),
+  askL1Timeout,
   toSlotNo,
+  waitUntilSlot,
  )
-import HydraAuctionUtils.Monads.Actors (WithActorT, withActor)
-import HydraAuctionUtils.Tx.Common (transferAda)
+import HydraAuctionUtils.Monads.Actors (
+  MonadHasActor (..),
+  WithActorT,
+  actorTipUtxo,
+  withActor,
+ )
+import HydraAuctionUtils.Tx.Common (transferAda, utxoLovelaceValue)
 
 {- | Execution context holding the current tracer,
  as well as the running node.
@@ -102,6 +117,7 @@ import HydraAuctionUtils.Tx.Common (transferAda)
 data ExecutionContext = MkExecutionContext
   { tracer :: Tracer IO HydraAuctionLog
   , node :: RunningNode
+  , recordedStatsVar :: MVar [TxStat]
   }
 
 -- | HydraAuction specific L1 computation executor.
@@ -170,6 +186,10 @@ instance MonadBlockchainParams L1Runner where
         ChainPointAtGenesis -> SlotNo 0
         ChainPoint slotNo _ -> slotNo
 
+  recordTxStat stat = do
+    MkExecutionContext {recordedStatsVar} <- ask
+    liftIO $ modifyMVar_ recordedStatsVar (return . (stat :))
+
 runWithNetworkParams ::
   (MonadReader ExecutionContext m, MonadIO m) =>
   (NetworkId -> FilePath -> d -> IO b) ->
@@ -185,9 +205,20 @@ runWithNetworkParams call arg = do
       arg
 
 instance MonadSubmitTx L1Runner where
-  submitTx = runWithNetworkParams submitTx'
+  submitTx tx = do
+    waitForTxSlot
+    timeoutSecs <- askL1Timeout
+    context <- ask
+    mResult <-
+      liftIO $
+        timeout (timeoutSecs * 1_000_000) $
+          executeL1Runner context $
+            runWithNetworkParams submitTx' ()
+    return $ case mResult of
+      Just result -> result
+      Nothing -> Left Timeout
     where
-      submitTx' networkId socket tx = do
+      submitTx' networkId socket () = do
         result <-
           submitTxToNodeLocal
             (localNodeConnectInfo networkId socket)
@@ -196,9 +227,18 @@ instance MonadSubmitTx L1Runner where
           -- FIXME: encoding for errorData is too hard for me to understand
           SubmitFail errorData ->
             if "BadInputsUTxO" `isInfixOf` show errorData
-              then Left "InvalidatedTxIn"
-              else Left $ show errorData
+              then Left InvalidatedTxIn
+              else
+                if "OutsideValidityIntervalUTxO" `isInfixOf` show errorData
+                  then -- FIXME: actually it could be too early, but we check that
+                    Left TooLate
+                  else Left $ NotExpected $ show errorData
           SubmitSuccess -> Right ()
+      TxBody bodyContent = getTxBody tx
+      waitForTxSlot = do
+        case fst (txValidityRange bodyContent) of
+          TxValidityLowerBound slot -> waitUntilSlot slot
+          TxValidityNoLowerBound -> return ()
 
   awaitTx = runWithNetworkParams (\nId nS tx -> void $ awaitTransaction nId nS tx)
 
@@ -235,8 +275,11 @@ dockerNode =
 
 executeL1RunnerWithNode :: forall x. RunningNode -> L1Runner x -> IO x
 executeL1RunnerWithNode node runner = do
-  let tracer = contramap show stdoutTracer
-  executeL1Runner (MkExecutionContext {tracer = tracer, node}) runner
+  recordedStatsVar <- newMVar []
+  let
+    tracer = contramap show stdoutTracer
+    context = MkExecutionContext {tracer = tracer, node, recordedStatsVar}
+  executeL1Runner context runner
 
 executeL1RunnerWithNodeAs :: forall x. RunningNode -> Actor -> WithActorT L1Runner x -> IO x
 executeL1RunnerWithNodeAs node actor runner =
@@ -258,3 +301,17 @@ initWallet ::
 initWallet amount actor = do
   liftIO $ threadDelay 1_000_000
   void $ withActor Faucet $ transferAda actor Normal amount
+
+feeSpent :: WithActorT L1Runner Lovelace
+feeSpent = do
+  MkExecutionContext {recordedStatsVar} <- lift ask
+  stats <- liftIO $ readMVar recordedStatsVar
+  actor <- askActor
+  let relevantStats = filter (\x -> actor `elem` signers x) stats
+  return $ sum $ map fee relevantStats
+
+queryAdaWithoutFees :: WithActorT L1Runner Lovelace
+queryAdaWithoutFees = do
+  spent <- feeSpent
+  amount <- utxoLovelaceValue <$> actorTipUtxo
+  return $ amount + spent

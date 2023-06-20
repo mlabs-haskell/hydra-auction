@@ -100,15 +100,14 @@ findDepositMatchingPubKeyHash terms pkh allDeposits =
     voucherCS = voucherCurrencySymbol terms
     expectedDatum = BidDepositDatum pkh voucherCS
 
-mkDeposit :: AuctionTerms -> Natural -> WithActorT L1Runner ()
-mkDeposit terms depositAmount = do
+mkDeposit :: AuctionTerms -> Lovelace -> WithActorT L1Runner ()
+mkDeposit terms depositLovelace = do
   logMsg "Doing bidder deposit"
 
   depositAddress <- scriptAddress Deposit terms
 
   (bidderAddress, bidderVk, bidderSk) <- addressAndKeys
 
-  let depositLovelace = Lovelace (naturalToInt depositAmount)
   bidderMoneyUtxo <- fromJust <$> selectAdaUtxo depositLovelace
 
   let voucherCS = voucherCurrencySymbol terms

@@ -1,18 +1,20 @@
 module EndToEnd.Ledger.BidDeposit (testSuite) where
 
 -- Prelude imports
-import Hydra.Prelude (MonadIO (liftIO), SomeException, fail)
+import HydraAuctionUtils.Prelude (
+  HasCallStack,
+  MonadIO (liftIO),
+  fail,
+  trySome,
+ )
 import PlutusTx.Prelude
-
--- Haskell imports
-import Control.Monad.Catch (try)
-import Data.Maybe (fromJust)
 
 -- Haskell test imports
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (Assertion, testCase)
 
 -- Hydra auction imports
+
 import HydraAuction.OnChain (AuctionScript (..))
 import HydraAuction.Tx.Deposit (
   cleanupDeposit,
@@ -22,7 +24,6 @@ import HydraAuction.Tx.Deposit (
  )
 import HydraAuction.Tx.Escrow (
   announceAuction,
-  bidderBuys,
   startBidding,
  )
 import HydraAuction.Tx.StandingBid (cleanupTx, newBid, sellerSignatureForActor)
@@ -30,18 +31,33 @@ import HydraAuction.Tx.TermsConfig (
   nonExistentHeadIdStub,
  )
 import HydraAuction.Types (AuctionTerms (..))
-import HydraAuctionUtils.Fixture (Actor (..), getActorPubKeyHash)
+import HydraAuctionUtils.Extras.CardanoApi (Lovelace (..))
+import HydraAuctionUtils.Fixture (getActorPubKeyHash)
 import HydraAuctionUtils.L1.Runner (
-  initWallet,
+  L1Runner,
   withActor,
  )
 import HydraAuctionUtils.Monads (waitUntil)
-import HydraAuctionUtils.Types.Natural (Natural, intToNatural)
+import HydraAuctionUtils.Tx.Build (minLovelace)
 
 -- Hydra auction test imports
 
-import EndToEnd.Ledger.L1Steps (createTermsWithTestNFT)
-import EndToEnd.Utils (assertNFTNumEquals, assertUTxOsInScriptEquals, config, mkAssertion)
+import EndToEnd.Ledger.L1Steps (
+  buyer1,
+  buyer2,
+  createTermsWithTestNFT,
+  inititalAmount,
+  performBidderBuysWithDeposit,
+  performInit,
+  seller,
+ )
+import EndToEnd.Utils (
+  assertAdaWithoutFeesEquals,
+  assertNFTNumEquals,
+  assertUTxOsInScriptEquals,
+  config,
+  mkAssertion,
+ )
 
 testSuite :: TestTree
 testSuite =
@@ -55,27 +71,36 @@ testSuite =
     , testCase "cleanup-deposit" cleanupDepositTest
     ]
 
-depositAmount :: Natural
-depositAmount = fromJust $ intToNatural 20_000_000
+depositAmount :: Lovelace
+depositAmount = Lovelace 20_000_000
+
+makeBiddersDeposits :: HasCallStack => AuctionTerms -> L1Runner ()
+makeBiddersDeposits terms = do
+  withActor buyer1 $ mkDeposit terms depositAmount
+  withActor buyer2 $ mkDeposit terms depositAmount
+  withActor buyer1 $
+    assertAdaWithoutFeesEquals $
+      inititalAmount - depositAmount
+  withActor buyer2 $
+    assertAdaWithoutFeesEquals $
+      inititalAmount - depositAmount
+  assertUTxOsInScriptEquals Deposit terms 2
 
 losingBidderClaimDepositTest :: Assertion
 losingBidderClaimDepositTest = mkAssertion $ do
-  let seller = Alice
-      buyer1 = Bob
-      buyer2 = Carol
-
-  mapM_ (initWallet 100_000_000) [seller, buyer1, buyer2]
+  performInit
 
   terms <-
     withActor seller $
       createTermsWithTestNFT config nonExistentHeadIdStub
+  withActor seller $ assertAdaWithoutFeesEquals inititalAmount
 
   withActor seller $ announceAuction terms
+  withActor seller $
+    assertAdaWithoutFeesEquals $
+      inititalAmount - minLovelace
 
-  withActor buyer1 $ mkDeposit terms depositAmount
-  withActor buyer2 $ mkDeposit terms depositAmount
-
-  assertUTxOsInScriptEquals Deposit terms 2
+  makeBiddersDeposits terms
 
   waitUntil $ biddingStart terms
   withActor seller $ startBidding terms
@@ -91,26 +116,20 @@ losingBidderClaimDepositTest = mkAssertion $ do
 
   withActor buyer1 $ losingBidderClaimDeposit terms
 
+  withActor buyer1 $
+    assertAdaWithoutFeesEquals inititalAmount
   assertUTxOsInScriptEquals Deposit terms 1
 
 losingBidderDoubleClaimTest :: Assertion
 losingBidderDoubleClaimTest = mkAssertion $ do
-  let seller = Alice
-      buyer1 = Bob
-      buyer2 = Carol
-
-  mapM_ (initWallet 100_000_000) [seller, buyer1, buyer2]
-
+  performInit
   terms <-
     withActor seller $
       createTermsWithTestNFT config nonExistentHeadIdStub
 
   withActor seller $ announceAuction terms
 
-  withActor buyer1 $ mkDeposit terms depositAmount
-  withActor buyer2 $ mkDeposit terms depositAmount
-
-  assertUTxOsInScriptEquals Deposit terms 2
+  makeBiddersDeposits terms
 
   waitUntil $ biddingStart terms
   withActor seller $ startBidding terms
@@ -125,21 +144,19 @@ losingBidderDoubleClaimTest = mkAssertion $ do
   waitUntil $ biddingEnd terms
 
   withActor buyer1 $ losingBidderClaimDeposit terms
+  -- withActor buyer1 $ assertAdaWithoutFeesEquals inititalAmount
 
   assertUTxOsInScriptEquals Deposit terms 1
 
-  result <- try $ withActor buyer1 $ losingBidderClaimDeposit terms
+  result <- trySome $ withActor buyer1 $ losingBidderClaimDeposit terms
 
   case result of
-    Left (_ :: SomeException) -> assertUTxOsInScriptEquals Deposit terms 1
+    Left _ -> assertUTxOsInScriptEquals Deposit terms 1
     Right _ -> fail "User should not be able to claim depoist twice"
 
 sellerClaimsDepositTest :: Assertion
 sellerClaimsDepositTest = mkAssertion $ do
-  let seller = Alice
-      buyer = Bob
-
-  mapM_ (initWallet 100_000_000) [seller, buyer]
+  performInit
 
   terms <-
     withActor seller $
@@ -147,7 +164,10 @@ sellerClaimsDepositTest = mkAssertion $ do
 
   withActor seller $ announceAuction terms
 
-  withActor buyer $ mkDeposit terms depositAmount
+  withActor buyer1 $ mkDeposit terms depositAmount
+  withActor buyer1 $
+    assertAdaWithoutFeesEquals $
+      inititalAmount - depositAmount
 
   assertUTxOsInScriptEquals Deposit terms 1
 
@@ -157,34 +177,29 @@ sellerClaimsDepositTest = mkAssertion $ do
 
   assertNFTNumEquals seller 0
 
-  buyerSellerSignature <- liftIO $ sellerSignatureForActor terms buyer
+  buyerSellerSignature <- liftIO $ sellerSignatureForActor terms buyer1
 
-  withActor buyer $ newBid terms (startingBid terms) buyerSellerSignature
+  withActor buyer1 $ newBid terms (startingBid terms) buyerSellerSignature
 
   waitUntil $ voucherExpiry terms
 
-  buyerPKH <- liftIO $ getActorPubKeyHash buyer
+  buyerPKH <- liftIO $ getActorPubKeyHash buyer1
 
   withActor seller $ sellerClaimDepositFor terms buyerPKH
+  withActor seller $
+    assertAdaWithoutFeesEquals $
+      inititalAmount + depositAmount - (minLovelace * 2)
 
   assertUTxOsInScriptEquals Deposit terms 0
 
 sellerClaimsLosingDepositTest :: Assertion
 sellerClaimsLosingDepositTest = mkAssertion $ do
-  let seller = Alice
-      buyer1 = Bob
-      buyer2 = Carol
-
-  mapM_ (initWallet 100_000_000) [seller, buyer1, buyer2]
-
+  performInit
   terms <- withActor seller $ createTermsWithTestNFT config nonExistentHeadIdStub
 
   withActor seller $ announceAuction terms
 
-  withActor buyer1 $ mkDeposit terms depositAmount
-  withActor buyer2 $ mkDeposit terms depositAmount
-
-  assertUTxOsInScriptEquals Deposit terms 2
+  makeBiddersDeposits terms
 
   waitUntil $ biddingStart terms
 
@@ -200,30 +215,26 @@ sellerClaimsLosingDepositTest = mkAssertion $ do
   waitUntil $ voucherExpiry terms
 
   buyer1PKH <- liftIO $ getActorPubKeyHash buyer1
-  result <- try $ withActor seller $ sellerClaimDepositFor terms buyer1PKH
+  result <- trySome $ withActor seller $ sellerClaimDepositFor terms buyer1PKH
 
   case result of
-    Left (_ :: SomeException) -> assertUTxOsInScriptEquals Deposit terms 2
+    Left _ -> do
+      assertUTxOsInScriptEquals Deposit terms 2
+      withActor seller $
+        assertAdaWithoutFeesEquals $
+          inititalAmount - 2 * minLovelace
     Right _ -> fail "Seller should not be able to claim deposit from losing bidder"
 
 bidderBuysWithDepositTest :: Assertion
 bidderBuysWithDepositTest = mkAssertion $ do
-  let seller = Alice
-      buyer1 = Bob
-      buyer2 = Carol
-
-  mapM_ (initWallet 100_000_000) [seller, buyer1, buyer2]
-
+  performInit
   terms <-
     withActor seller $
       createTermsWithTestNFT config nonExistentHeadIdStub
 
   withActor seller $ announceAuction terms
 
-  withActor buyer1 $ mkDeposit terms depositAmount
-  withActor buyer2 $ mkDeposit terms depositAmount
-
-  assertUTxOsInScriptEquals Deposit terms 2
+  makeBiddersDeposits terms
 
   waitUntil $ biddingStart terms
   withActor seller $ startBidding terms
@@ -235,12 +246,9 @@ bidderBuysWithDepositTest = mkAssertion $ do
   withActor buyer1 $ newBid terms (startingBid terms) buyer1SellerSignature
   withActor buyer2 $ newBid terms (startingBid terms + minimumBidIncrement terms) buyer2SellerSignature
 
-  waitUntil $ biddingEnd terms
-  withActor buyer2 $ bidderBuys terms
+  performBidderBuysWithDeposit terms buyer2 depositAmount $
+    startingBid terms + minimumBidIncrement terms
 
-  assertNFTNumEquals seller 0
-  assertNFTNumEquals buyer1 0
-  assertNFTNumEquals buyer2 1
   assertUTxOsInScriptEquals Deposit terms 1
 
   waitUntil $ cleanup terms
@@ -248,12 +256,7 @@ bidderBuysWithDepositTest = mkAssertion $ do
 
 cleanupDepositTest :: Assertion
 cleanupDepositTest = mkAssertion $ do
-  let seller = Alice
-      buyer1 = Bob
-      buyer2 = Carol
-
-  mapM_ (initWallet 100_000_000) [seller, buyer1, buyer2]
-
+  performInit
   terms <-
     withActor seller $
       createTermsWithTestNFT config nonExistentHeadIdStub

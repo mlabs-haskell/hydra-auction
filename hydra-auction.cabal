@@ -301,6 +301,7 @@ library hydra-auction-utils
 
   other-modules:   HydraAuctionUtils.L1.Runner.Tracer
   build-depends:
+    , cardano-binary
     , HostAndPort
     , HUnit
     , hydra-plutus

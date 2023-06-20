@@ -230,8 +230,10 @@ bidderBuys terms = do
         where
           value =
             lovelaceToValue $
-              Lovelace $
-                bidAmount' - calculateTotalFee terms
+              -- This Tx dissolves Escrow UTxO, so seller should got
+              -- minLovelace for it back
+              minLovelace
+                + Lovelace (bidAmount' - calculateTotalFee terms)
           bidAmount' = case standingBid standingBidState of
             (Just (BidTerms {bidAmount})) -> naturalToInt bidAmount
             Nothing -> error "Standing bid UTxO has no bid"

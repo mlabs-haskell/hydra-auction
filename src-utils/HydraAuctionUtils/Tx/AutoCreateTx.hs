@@ -12,20 +12,27 @@ module HydraAuctionUtils.Tx.AutoCreateTx (
 import HydraAuctionUtils.Prelude
 
 -- Haskell imports
+
+import Data.ByteString.Lazy qualified as LBS
 import Data.Foldable (Foldable (toList))
+import Data.Maybe (catMaybes)
 
 -- Cardano imports
 import Cardano.Api.UTxO qualified as UTxO
+import Cardano.Binary (serialize)
 
 -- Plutus imports
 import PlutusLedgerApi.V1 (Interval, POSIXTime)
 
 -- Hydra imports
+-- Getting orphan for `ToCBOR Tx`
+
 import Hydra.Cardano.Api (
   Address,
   BuildTx,
   BuildTxWith,
   CtxTx,
+  ExecutionUnits (..),
   PaymentKey,
   ShelleyAddr,
   SigningKey,
@@ -40,16 +47,21 @@ import Hydra.Cardano.Api (
   WitCtxTxIn,
   Witness,
   balancedTxBody,
+  bundleProtocolParams,
+  evaluateTransactionExecutionUnits,
   getVerificationKey,
   makeShelleyKeyWitness,
   makeSignedTransaction,
   makeTransactionBodyAutoBalance,
   toLedgerEpochInfo,
+  txFee,
   verificationKeyHash,
   withWitness,
+  pattern BabbageEra,
   pattern BuildTxWith,
   pattern ShelleyAddressInEra,
   pattern TxAuxScriptsNone,
+  pattern TxBody,
   pattern TxBodyContent,
   pattern TxCertificatesNone,
   pattern TxExtraKeyWitnesses,
@@ -64,13 +76,24 @@ import Hydra.Cardano.Api (
   pattern TxWithdrawalsNone,
   pattern WitnessPaymentKey,
  )
+import Hydra.Ledger.Cardano ()
+import Hydra.Ledger.Cardano.Evaluate (
+  maxCpu,
+  maxMem,
+  maxTxSize,
+  usedExecutionUnits,
+ )
 
 -- HydraAuction imports
+
+import HydraAuctionUtils.Fixture (actorFromSk)
 import HydraAuctionUtils.Monads (
   BlockchainParams (..),
   MonadBlockchainParams (..),
   MonadSubmitTx,
   MonadTrace,
+  TxStat (..),
+  logMsg,
   submitAndAwaitTx,
  )
 import HydraAuctionUtils.Tx.Utxo (
@@ -93,23 +116,29 @@ data AutoCreateParams = AutoCreateParams
   , validityBound :: Interval POSIXTime
   }
 
+percentOf :: (Real a) => a -> a -> Double
+part `percentOf` total =
+  100 * realToFrac part / realToFrac total
+
 autoCreateTx ::
-  (MonadFail m, MonadBlockchainParams m) =>
+  forall m.
+  (MonadIO m, MonadFail m, MonadBlockchainParams m, MonadTrace m) =>
   AutoCreateParams ->
   m Tx
 -- FIXME: more docs on usage
 autoCreateTx (AutoCreateParams {..}) = do
   (lowerBound, upperBound) <- convertValidityBound validityBound
 
-  MkBlockchainParams {protocolParameters} <-
-    queryBlockchainParams
+  MkBlockchainParams {protocolParameters} <- queryBlockchainParams
   body <-
     either (\x -> fail $ "Autobalance error: " <> show x) return
       =<< callBodyAutoBalance
         (allSignedUtxos <> allWitnessedUtxos <> referenceUtxo)
         (preBody protocolParameters lowerBound upperBound)
         changeAddress
-  pure $ makeSignedTransactionWithKeys allSigningKeys body
+  let tx = makeSignedTransactionWithKeys allSigningKeys body
+  recordStats tx body
+  return tx
   where
     allSignedUtxos = foldMap snd signedUtxos
     allWitnessedUtxos = foldMap snd witnessedUtxos
@@ -152,6 +181,42 @@ autoCreateTx (AutoCreateParams {..}) = do
         TxUpdateProposalNone
         toMint
         TxScriptValidityNone
+    recordStats :: Tx -> TxBody -> m ()
+    recordStats tx body = do
+      let TxBody content = body
+      signingActors <- liftIO $ mapM actorFromSk allSigningKeys
+      case txFee content of
+        TxFeeExplicit amount ->
+          recordTxStat $
+            MkTxStat
+              { fee = amount
+              , signers = catMaybes signingActors
+              }
+      let txSize = fromIntegral $ LBS.length $ serialize tx
+      logMsg $ "Tx size % of max: " <> show (txSize `percentOf` maxTxSize)
+      eUnits <- evaluateTx
+      case eUnits of
+        Right units' -> do
+          let units = usedExecutionUnits units'
+          -- TODO: show per script and parse scripts
+          logMsg $
+            "CPU % of max: "
+              <> show (executionSteps units `percentOf` maxCpu)
+          logMsg $
+            "Memory % of max: "
+              <> show (executionMemory units `percentOf` maxMem)
+        Left evalError -> logMsg $ "Tx evaluation failed: " <> show evalError
+      where
+        evaluateTx = do
+          MkBlockchainParams {protocolParameters, systemStart, eraHistory} <-
+            queryBlockchainParams
+          return $
+            evaluateTransactionExecutionUnits
+              systemStart
+              (toLedgerEpochInfo eraHistory)
+              (bundleProtocolParams BabbageEra protocolParameters)
+              (UTxO.toApi (allSignedUtxos <> allWitnessedUtxos <> referenceUtxo))
+              body
 
 makeSignedTransactionWithKeys ::
   [SigningKey PaymentKey] ->
@@ -188,10 +253,10 @@ callBodyAutoBalance
           Nothing
 
 autoSubmitAndAwaitTx ::
-  (MonadTrace m, MonadFail m, MonadBlockchainParams m, MonadSubmitTx m) =>
+  (MonadIO m, MonadTrace m, MonadFail m, MonadBlockchainParams m, MonadSubmitTx m) =>
   AutoCreateParams ->
   m Tx
 autoSubmitAndAwaitTx params = do
   tx <- autoCreateTx params
-  submitAndAwaitTx tx
+  _ <- submitAndAwaitTx tx
   return tx

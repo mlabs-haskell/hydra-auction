@@ -2,6 +2,14 @@ module EndToEnd.Ledger.L1Steps (
   createTermsWithTestNFT,
   announceAndStartBidding,
   correctBidNo,
+  inititalAmount,
+  performBidderBuys,
+  performBidderBuysWithDeposit,
+  performInit,
+  natToLovelace,
+  seller,
+  buyer1,
+  buyer2,
 ) where
 
 -- Prelude
@@ -17,7 +25,8 @@ import Hydra.Chain.Direct.Tx (headIdToCurrencySymbol)
 
 -- HydraAuction imports
 
-import HydraAuction.Tx.Escrow (announceAuction, startBidding)
+import HydraAuction.OnChain (AuctionScript (..))
+import HydraAuction.Tx.Escrow (announceAuction, bidderBuys, startBidding)
 import HydraAuction.Tx.TermsConfig (
   AuctionTermsConfig,
   configToAuctionTerms,
@@ -26,9 +35,18 @@ import HydraAuction.Tx.TermsConfig (
 import HydraAuction.Tx.TestNFT (mintOneTestNFT)
 import HydraAuction.Types (
   AuctionTerms (..),
+  calculateTotalFee,
  )
-import HydraAuctionUtils.L1.Runner (L1Runner)
+import HydraAuctionUtils.Extras.CardanoApi (Lovelace (..))
+import HydraAuctionUtils.Fixture (Actor (..))
+import HydraAuctionUtils.L1.Runner (
+  L1Runner,
+  initWallet,
+  queryAdaWithoutFees,
+  withActor,
+ )
 import HydraAuctionUtils.Monads (waitUntil)
+import HydraAuctionUtils.Tx.Build (minLovelace)
 import HydraAuctionUtils.Types.Natural (
   Natural,
   intToNatural,
@@ -37,8 +55,57 @@ import HydraAuctionUtils.Types.Natural (
 
 -- HydraAuction test imports
 
-import EndToEnd.Utils (assertNFTNumEquals)
+import EndToEnd.Utils (
+  assertAdaWithoutFeesEquals,
+  assertNFTNumEquals,
+  assertUTxOsInScriptEquals,
+ )
 import HydraAuctionUtils.Monads.Actors (MonadHasActor (..), WithActorT (..))
+
+natToLovelace :: Natural -> Lovelace
+natToLovelace = Lovelace . naturalToInt
+
+inititalAmount :: Lovelace
+inititalAmount = Lovelace 100_000_000
+
+seller, buyer1, buyer2 :: Actor
+seller = Alice
+buyer1 = Bob
+buyer2 = Carol
+
+performInit :: HasCallStack => L1Runner ()
+performInit = do
+  withActor seller $ assertAdaWithoutFeesEquals (Lovelace 0)
+  withActor buyer1 $ assertAdaWithoutFeesEquals (Lovelace 0)
+  withActor buyer2 $ assertAdaWithoutFeesEquals (Lovelace 0)
+  mapM_ (initWallet 100_000_000) [seller, buyer1, buyer2]
+  withActor seller $ assertAdaWithoutFeesEquals inititalAmount
+  withActor buyer1 $ assertAdaWithoutFeesEquals inititalAmount
+  withActor buyer2 $ assertAdaWithoutFeesEquals inititalAmount
+
+performBidderBuys ::
+  HasCallStack => AuctionTerms -> Actor -> Natural -> L1Runner ()
+performBidderBuys terms buyer =
+  performBidderBuysWithDeposit terms buyer (Lovelace 0)
+
+performBidderBuysWithDeposit ::
+  HasCallStack => AuctionTerms -> Actor -> Lovelace -> Natural -> L1Runner ()
+performBidderBuysWithDeposit terms buyer deposit finalBid = do
+  waitUntil $ biddingEnd terms
+  buyerAmountBefore <- withActor buyer queryAdaWithoutFees
+  sellerAmountBefore <- withActor seller queryAdaWithoutFees
+  let fee = Lovelace $ calculateTotalFee terms
+  withActor buyer $ bidderBuys terms
+  withActor seller $
+    assertAdaWithoutFeesEquals $
+      sellerAmountBefore + natToLovelace finalBid - fee + minLovelace
+  withActor buyer $
+    assertAdaWithoutFeesEquals $
+      buyerAmountBefore - natToLovelace finalBid + deposit
+  assertNFTNumEquals seller 0
+  assertNFTNumEquals buyer1 0
+  assertNFTNumEquals buyer2 1
+  assertUTxOsInScriptEquals FeeEscrow terms 1
 
 correctBidNo :: AuctionTerms -> Integer -> Natural
 correctBidNo terms n =
@@ -53,7 +120,7 @@ correctBidNo terms n =
 createTermsWithTestNFT ::
   AuctionTermsConfig -> HeadId -> WithActorT L1Runner AuctionTerms
 createTermsWithTestNFT config headId = do
-  seller <- askActor
+  seller' <- askActor
 
   utxoRef <- do
     nftTx <- mintOneTestNFT
@@ -66,7 +133,7 @@ createTermsWithTestNFT config headId = do
         utxoRef
         (headIdToCurrencySymbol headId)
 
-  lift $ assertNFTNumEquals seller 1
+  lift $ assertNFTNumEquals seller' 1
 
   liftIO $ configToAuctionTerms config dynamicState
 
