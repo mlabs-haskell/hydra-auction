@@ -32,7 +32,7 @@ import Hydra.Logging (
 
 {- HLINT ignore "Use newtype instead of data" -}
 data HydraAuctionLog
-  = FromHydraAuction !String
+  = FromHydraAuction String
   deriving stock (Eq, Show, Generic)
   deriving anyclass (ToJSON, FromJSON)
 

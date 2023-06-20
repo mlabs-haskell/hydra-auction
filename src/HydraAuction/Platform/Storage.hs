@@ -4,6 +4,7 @@ module HydraAuction.Platform.Storage (
   queryByFilter,
   processCommand,
   processClientInput,
+  PlatformImplementation,
 ) where
 
 -- Prelude imports
@@ -23,6 +24,7 @@ import HydraAuction.OnChain (standingBidAddress, voucherCurrencySymbol)
 import HydraAuction.Platform.Interface (
   AnnouncedAuction (..),
   BidderApproval (..),
+  BidderDeposit (..),
   ClientCommand (..),
   ClientInput (..),
   CommandResult (..),
@@ -35,9 +37,12 @@ import HydraAuction.Platform.Interface (
   HeadDelegate (..),
   HydraHead (..),
   HydraHeadInfo (..),
+  PlatformProtocol,
   ServerOutput (..),
   Some (..),
  )
+import HydraAuctionUtils.Server.ClientId (ClientId, ClientResponseScope (..))
+import HydraAuctionUtils.Server.Protocol (ProtocolServerLogic (..))
 import HydraAuctionUtils.Types.Natural (naturalToInt)
 
 --- Storage
@@ -47,6 +52,7 @@ type StorageMap entity = Map (PrimaryKey entity) entity
 data EntityStorage = MkEntityStorage
   { storageAnnouncedAuction :: StorageMap AnnouncedAuction
   , storageBidderApproval :: StorageMap BidderApproval
+  , storageBidderDeposit :: StorageMap BidderDeposit
   , storageHeadDelegate :: StorageMap HeadDelegate
   , storageHydraHead :: StorageMap HydraHead
   }
@@ -57,6 +63,7 @@ initialStorage =
   MkEntityStorage
     { storageAnnouncedAuction = Map.empty
     , storageBidderApproval = Map.empty
+    , storageBidderDeposit = Map.empty
     , storageHeadDelegate = Map.empty
     , storageHydraHead = Map.empty
     }
@@ -68,6 +75,7 @@ entityStorageMap entity = selector
     selector = case entity of
       AnnouncedAuction -> storageAnnouncedAuction
       BidderApproval -> storageBidderApproval
+      BidderDeposit -> storageBidderDeposit
       HeadDelegate -> storageHeadDelegate
       HydraHead -> storageHydraHead
 
@@ -85,6 +93,11 @@ overStorageMap entity func storage = case entity of
     storage
       { storageBidderApproval =
           func $ storageBidderApproval storage
+      }
+  BidderDeposit ->
+    storage
+      { storageBidderDeposit =
+          func $ storageBidderDeposit storage
       }
   HeadDelegate ->
     storage
@@ -155,7 +168,7 @@ processCommand command = case command of
     where
       newEntity =
         MkAnnouncedAuction
-          { terms
+          { auctionTerms = terms
           , auctionId = voucherCurrencySymbol terms
           , auctionStandingBidAddress = standingBidAddress terms
           }
@@ -214,3 +227,17 @@ processClientInput ::
 processClientInput (MkSome kind input) = do
   x <- processClientInput' kind input
   return $ MkSome kind x
+
+data PlatformImplementation
+
+instance ProtocolServerLogic PlatformImplementation where
+  type ImplementationFor PlatformImplementation = PlatformProtocol
+  type State PlatformImplementation = EntityStorage
+  initialState = initialStorage
+  implementation ::
+    (Monad m, MonadState EntityStorage m) =>
+    (ClientId, Some ClientInput) ->
+    m [(ClientResponseScope, Some ServerOutput)]
+  implementation (clientId, input) = do
+    output <- processClientInput input
+    return [(PerClient clientId, output)]

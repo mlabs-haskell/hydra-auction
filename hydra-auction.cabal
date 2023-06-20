@@ -313,6 +313,7 @@ library hydra-auction-utils
     , protolude
     , template-haskell
     , transformers-base
+    , utf8-string
 
 test-suite hydra-auction-test
   import:         common-executable

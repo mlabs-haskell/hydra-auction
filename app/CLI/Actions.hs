@@ -1,5 +1,6 @@
 module CLI.Actions (
   CliAction (..),
+  CliActionHandle (..),
   Layer (..),
   handleCliAction,
   handlePerAuctionAction,
@@ -40,7 +41,24 @@ import Cardano.Binary (serialize)
 
 import HydraAuction.Delegate.Interface (DelegateState (..))
 import HydraAuction.Delegate.Interface qualified as DelegateInterface
-import HydraAuction.OnChain (AuctionScript (..), scriptValidatorForTerms)
+import HydraAuction.OnChain (
+  AuctionScript (..),
+  scriptValidatorForTerms,
+  voucherCurrencySymbol,
+ )
+import HydraAuction.Platform.Interface (
+  BidderApproval (..),
+  ClientCommand (..),
+  ClientInput (..),
+  EntityFilter (..),
+  EntityKind (..),
+  EntityQuery (..),
+  EntityQueryResponse (..),
+  FilterEq (..),
+  PlatformProtocol,
+  ServerOutput (..),
+  Some (..),
+ )
 import HydraAuction.Tx.Common (
   currentAuctionStage,
   scriptSingleUtxo,
@@ -91,6 +109,7 @@ import HydraAuctionUtils.Monads.Actors (
   withActor,
  )
 import HydraAuctionUtils.PrettyPrinting (prettyPrintUtxo)
+import HydraAuctionUtils.Server.Protocol
 import HydraAuctionUtils.Tx.Common (transferAda)
 
 -- Hydra auction CLI imports
@@ -148,12 +167,19 @@ doOnMatchingStage terms requiredStage action = do
               <> show requiredStage
           )
 
+data CliActionHandle client = MkCliActionHandle
+  { platformClient :: client
+  , sendRequestToDelegate :: DelegateInterface.FrontendRequest -> IO ()
+  , currentDelegateStateRef :: IORef DelegateState
+  }
+
 handleCliAction ::
-  (DelegateInterface.FrontendRequest -> IO ()) ->
-  IORef DelegateState ->
+  forall client.
+  ProtocolClientFor PlatformProtocol client =>
+  CliActionHandle client ->
   CliAction ->
   WithActorT L1Runner ()
-handleCliAction sendRequestToDelegate currentDelegateStateRef userAction = do
+handleCliAction handle userAction = do
   actor <- askActor
   case userAction of
     Seed -> do
@@ -198,7 +224,7 @@ handleCliAction sendRequestToDelegate currentDelegateStateRef userAction = do
     TransferAda actorTo marked amount ->
       void $ transferAda actorTo marked amount
     PerAuction auctionName action -> do
-      delegateState <- liftIO $ readIORef currentDelegateStateRef
+      delegateState <- liftIO $ readIORef $ currentDelegateStateRef handle
       mTxIn <- findTestNFT <$> actorTipUtxo
       canRun <- case delegateState of
         Initialized headId _ ->
@@ -219,12 +245,7 @@ handleCliAction sendRequestToDelegate currentDelegateStateRef userAction = do
       if canRun
         then do
           terms <- auctionTermsFor' auctionName
-          handlePerAuctionAction
-            sendRequestToDelegate
-            currentDelegateStateRef
-            terms
-            auctionName
-            action
+          handlePerAuctionAction handle terms auctionName action
         else liftIO . putStrLn $ "Cannot perform action"
   where
     createNewAuctionConfig txIn auctionName headId = do
@@ -235,15 +256,15 @@ handleCliAction sendRequestToDelegate currentDelegateStateRef userAction = do
       liftIO $ writeAuctionTermsDynamic auctionName dynamic
 
 handlePerAuctionAction ::
-  (DelegateInterface.FrontendRequest -> IO ()) ->
-  IORef DelegateState ->
+  forall client.
+  ProtocolClientFor PlatformProtocol client =>
+  CliActionHandle client ->
   CliEnhancedAuctionTerms ->
   AuctionName ->
   PerAuctionCliAction ->
   WithActorT L1Runner ()
 handlePerAuctionAction
-  sendRequestToDelegate
-  _currentDelegateStateRef
+  handle
   terms'
   auctionName
   action = do
@@ -287,7 +308,7 @@ handlePerAuctionAction
             Just x -> return x
             Nothing -> fail "No Standing bid found"
           liftIO $
-            sendRequestToDelegate $
+            sendRequestToDelegate handle $
               DelegateInterface.CommitStandingBid
                 { auctionTerms = terms
                 , utxoToCommit = stadingBidUtxo
@@ -296,22 +317,27 @@ handlePerAuctionAction
         if actor == sellerActor
           then liftIO $ putStrLn "Seller cannot place a bid"
           else do
-            announceActionExecution userAction
-            -- FIXME: temporaral stub until Platform server
-            sellerSignature <- liftIO $ sellerSignatureForActor terms actor
-            doOnMatchingStage terms BiddingStartedStage $
-              case layer of
-                L1 -> newBid terms bidAmount sellerSignature
-                L2 -> do
-                  (_, _, bidderSigningKey) <- addressAndKeys
-                  let bidDatum =
-                        createStandingBidDatum terms bidAmount sellerSignature bidderSigningKey
+            doOnMatchingStage terms BiddingStartedStage $ do
+              announceActionExecution userAction
+              mApproval <-
+                liftIO $
+                  queryApproval (platformClient handle) terms actor
+              case mApproval of
+                Just approvalEntity -> do
+                  let approvalSignature = approvalBytes approvalEntity
+                  case layer of
+                    L1 -> newBid terms bidAmount approvalSignature
+                    L2 -> newBidOnL2 terms bidAmount approvalSignature
+                Nothing ->
                   liftIO $
-                    sendRequestToDelegate $
-                      DelegateInterface.NewBid
-                        { auctionTerms = terms
-                        , datum = bidDatum
-                        }
+                    putStrLn
+                      "Seller did not approve bidding for current actor"
+      ApproveBidder bidder -> do
+        if actor /= sellerActor
+          then liftIO $ putStrLn "Only seller can approve bidder"
+          else
+            doOnMatchingStage terms AnnouncedStage $
+              publishBiddingApproval (platformClient handle) terms bidder
       MakeDeposit depositAmount -> do
         doOnMatchingStage terms AnnouncedStage $
           mkDeposit terms depositAmount
@@ -365,6 +391,52 @@ handlePerAuctionAction
           cleanupTx
             terms
           prettyPrintCurrentActorUtxos
+    where
+      queryApproval :: client -> AuctionTerms -> Actor -> IO (Maybe BidderApproval)
+      queryApproval client terms actor = do
+        sendInputH client $
+          MkSome BidderApproval $
+            Query $
+              MkQuery
+                { filters =
+                    [ ByApprovedBidder $ Eq actor
+                    , ByApprovedAuctionId $ Eq $ voucherCurrencySymbol terms
+                    ]
+                , limit = Nothing
+                }
+        response <- receiveOutputH client
+        let result = case response of
+              Just (MkSome BidderApproval (QueryPerformed (MkResponse [approval]))) ->
+                Just approval
+              _ -> Nothing
+        return (result :: Maybe BidderApproval)
+      publishBiddingApproval client terms bidder = do
+        approvalBytes <- liftIO $ sellerSignatureForActor terms bidder
+        let approval =
+              MkBidderApproval
+                { approvedAuctionId = voucherCurrencySymbol terms
+                , bidder
+                , approvalBytes
+                }
+        liftIO $
+          sendInputH client $
+            MkSome BidderApproval $
+              Command $
+                ReportBidderApproval approval
+      newBidOnL2 terms bidAmount sellerSignature = do
+        (_, _, bidderSigningKey) <- addressAndKeys
+        let bidDatum =
+              createStandingBidDatum
+                terms
+                bidAmount
+                sellerSignature
+                bidderSigningKey
+        liftIO $
+          sendRequestToDelegate handle $
+            DelegateInterface.NewBid
+              { auctionTerms = terms
+              , datum = bidDatum
+              }
 
 noteM :: forall m a. MonadFail m => String -> m (Maybe a) -> m a
 noteM s = (>>= maybe (fail s) pure)

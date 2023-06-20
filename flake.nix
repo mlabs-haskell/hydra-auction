@@ -192,6 +192,15 @@
                   Cmd = [ "hydra-auction-delegate" ];
                 };
               };
+            platformImage = pkgs.dockerTools.buildLayeredImage
+              {
+                name = "hydra-auction-platform";
+                tag = "latest";
+                contents = [ haskellNixFlake.packages."hydra-auction:exe:hydra-auction-platform" ];
+                config = {
+                  Cmd = [ "hydra-auction-platform" ];
+                };
+              };
           };
 
           devShells = builtins.mapAttrs

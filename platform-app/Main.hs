@@ -14,10 +14,14 @@ import Control.Concurrent.STM (
  )
 import Data.Foldable (traverse_)
 
+-- Hydra imports
+import Hydra.Network (Host (..))
+
 -- HydraAuction imports
 
 import HydraAuction.Platform.Interface (PlatformProtocol)
 import HydraAuction.Platform.Storage (initialStorage, processClientInput)
+import HydraAuctionUtils.Parsers (execParserForCliArgs, websocketsHost)
 import HydraAuctionUtils.Server.ClientId (
   ClientResponseScope (..),
  )
@@ -54,8 +58,8 @@ runPlatformEventReaction
           atomically $
             traverse_ (writeTChan (serverOutputs queues)) responses
 
-runPlatformServer :: IO ()
-runPlatformServer = do
+runPlatformServer :: Host -> IO ()
+runPlatformServer host = do
   clientInputQueue <- liftIO . atomically $ newTQueue
   toClientsChannel <- liftIO . atomically $ newTChan
 
@@ -67,8 +71,10 @@ runPlatformServer = do
 
   void $
     concurrently
-      (runWebsocketsServer 8010 queues)
+      (runWebsocketsServer host queues)
       (runPlatformEventReaction 1_000 queues)
 
 main :: IO ()
-main = runPlatformServer
+main = do
+  host <- execParserForCliArgs websocketsHost
+  runPlatformServer host

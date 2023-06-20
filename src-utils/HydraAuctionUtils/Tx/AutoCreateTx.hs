@@ -192,20 +192,7 @@ autoCreateTx (AutoCreateParams {..}) = do
               { fee = amount
               , signers = catMaybes signingActors
               }
-      let txSize = fromIntegral $ LBS.length $ serialize tx
-      logMsg $ "Tx size % of max: " <> show (txSize `percentOf` maxTxSize)
-      eUnits <- evaluateTx
-      case eUnits of
-        Right units' -> do
-          let units = usedExecutionUnits units'
-          -- TODO: show per script and parse scripts
-          logMsg $
-            "CPU % of max: "
-              <> show (executionSteps units `percentOf` maxCpu)
-          logMsg $
-            "Memory % of max: "
-              <> show (executionMemory units `percentOf` maxMem)
-        Left evalError -> logMsg $ "Tx evaluation failed: " <> show evalError
+      traceStats
       where
         evaluateTx = do
           MkBlockchainParams {protocolParameters, systemStart, eraHistory} <-
@@ -217,6 +204,22 @@ autoCreateTx (AutoCreateParams {..}) = do
               (bundleProtocolParams BabbageEra protocolParameters)
               (UTxO.toApi (allSignedUtxos <> allWitnessedUtxos <> referenceUtxo))
               body
+        traceStats = do
+          let txSize = fromIntegral $ LBS.length $ serialize tx
+          logMsg $ "Tx size % of max: " <> show (txSize `percentOf` maxTxSize)
+          eUnits <- evaluateTx
+          case eUnits of
+            Right units' -> do
+              let units = usedExecutionUnits units'
+              -- TODO: show per script and parse scripts
+              logMsg $
+                "CPU % of max: "
+                  <> show (executionSteps units `percentOf` maxCpu)
+              logMsg $
+                "Memory % of max: "
+                  <> show (executionMemory units `percentOf` maxMem)
+            Left evalError ->
+              logMsg $ "Tx evaluation failed: " <> show evalError
 
 makeSignedTransactionWithKeys ::
   [SigningKey PaymentKey] ->
@@ -258,5 +261,6 @@ autoSubmitAndAwaitTx ::
   m Tx
 autoSubmitAndAwaitTx params = do
   tx <- autoCreateTx params
+  -- FIXME
   _ <- submitAndAwaitTx tx
   return tx

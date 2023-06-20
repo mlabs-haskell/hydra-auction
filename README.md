@@ -135,6 +135,9 @@ This is ncurses CLI, which shows current state of auction and Head.
    Actual approval is not implemented in CLI now.
    Run `show-actors-with-min-deposit -n demo -b 3` on Alice's REPL.
    to get all actors deposited >= than 3 ADA.
+   To approve Bob as bidder run `approve-bidder -n demo -a bob`
+   on Alice's REPL. This only can be done on `AnnouncedStage`.
+   Actors not approved, could not participate in auction.
 5. Wait for `BiddingStartedStage`.
    After that, run `start-bidding -n demo` on Alice's REPL.
 6. After bidding has started auction state still resides on L1.
@@ -244,7 +247,7 @@ and the APIs that they use to communicate with each other
 and users.
 - the [adr](docs/adr) folder contains [Architecture Decision Records](https://adr.github.io/) made so far in the project.
 
-Haddock may be builded lockally, with cabal.
+Haddock may be builded locally, with cabal.
 
 ## Licensing
 
