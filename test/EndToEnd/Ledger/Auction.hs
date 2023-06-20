@@ -1,16 +1,10 @@
 module EndToEnd.Ledger.Auction (testSuite) where
 
 -- Prelude imports
-import HydraAuctionUtils.Prelude (
-  HasCallStack,
-  MonadIO (liftIO),
-  fail,
-  trySome,
- )
-import PlutusTx.Prelude
+import HydraAuctionUtils.Prelude hiding ((+))
+import PlutusTx.Prelude ((+))
 
 -- Haskell imports
-import Control.Monad (void)
 import Data.Map qualified as Map
 
 -- Haskell test imports
@@ -37,7 +31,6 @@ import HydraAuctionUtils.L1.Runner (
   withActor,
  )
 import HydraAuctionUtils.Monads (waitUntil)
-import HydraAuctionUtils.Tx.Build (minLovelace)
 
 -- Hydra auction test imports
 import EndToEnd.Ledger.L1Steps (
@@ -96,12 +89,8 @@ bidderBuysTest = mkAssertion $ do
 
   performBidderBuys terms buyer2 finalBid
 
-  performCleanup terms
   -- Get back minLovelace for standing bid
-  -- FIXME: standing bid bug
-  withActor seller $
-    assertAdaWithoutFeesEquals $
-      inititalAmount - minLovelace + natToLovelace finalBid
+  performCleanup terms
 
 sellerReclaimsTest :: Assertion
 sellerReclaimsTest = mkAssertion $ do

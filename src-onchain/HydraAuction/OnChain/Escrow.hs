@@ -42,13 +42,18 @@ import HydraAuction.Types (
   calculateTotalFee,
   isStarted,
  )
+import HydraAuctionUtils.Extras.CardanoApi (Lovelace (..))
 import HydraAuctionUtils.Plutus (
   byAddress,
   decodeOutputDatum,
   lovelaceOfOutput,
   nothingForged,
  )
+import HydraAuctionUtils.Tx.Build (minLovelace)
 import HydraAuctionUtils.Types.Natural (naturalToInt)
+
+minLovelaceInt :: Integer
+Lovelace minLovelaceInt = minLovelace
 
 {-# INLINEABLE mkEscrowValidator #-}
 mkEscrowValidator :: (StandingBidAddress, FeeEscrowAddress, AuctionTerms) -> AuctionEscrowDatum -> EscrowRedeemer -> ScriptContext -> Bool
@@ -152,7 +157,10 @@ mkEscrowValidator (StandingBidAddress standingBidAddressLocal, FeeEscrowAddress 
                     && checkSingleOutputWithAmount
                       (pubKeyHashAddress $ sellerPKH terms)
                       "Seller"
-                      (naturalToInt (bidAmount bidTerms) - totalFeeToPay)
+                      ( naturalToInt (bidAmount bidTerms)
+                          - totalFeeToPay
+                          + minLovelaceInt
+                      )
                     && checkSingleOutputWithAmount
                       feeEscrowAddressLocal
                       "Fee escrow"

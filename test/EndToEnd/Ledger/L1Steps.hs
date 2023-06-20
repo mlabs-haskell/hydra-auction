@@ -98,11 +98,10 @@ performBidderBuysWithDeposit terms buyer deposit finalBid = do
   withActor buyer $ bidderBuys terms
   withActor seller $
     assertAdaWithoutFeesEquals $
-      sellerAmountBefore + natToLovelace finalBid - fee
-  -- FIXME: this minLovelace distribution is a bug
+      sellerAmountBefore + natToLovelace finalBid - fee + minLovelace
   withActor buyer $
     assertAdaWithoutFeesEquals $
-      buyerAmountBefore - natToLovelace finalBid + deposit + minLovelace
+      buyerAmountBefore - natToLovelace finalBid + deposit
   assertNFTNumEquals seller 0
   assertNFTNumEquals buyer1 0
   assertNFTNumEquals buyer2 1
