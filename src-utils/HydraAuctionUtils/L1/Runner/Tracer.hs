@@ -33,8 +33,11 @@ import Hydra.Logging (
 {- HLINT ignore "Use newtype instead of data" -}
 data HydraAuctionLog
   = FromHydraAuction String
-  deriving stock (Eq, Show, Generic)
+  deriving stock (Eq, Generic)
   deriving anyclass (ToJSON, FromJSON)
+
+instance Show HydraAuctionLog where
+  show (FromHydraAuction message) = message
 
 -- | @FilePath@ used to store the running node data.
 newtype StateDirectory = MkStateDirectory
