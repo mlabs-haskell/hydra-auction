@@ -48,7 +48,7 @@ function frontend-cli() {
 
     if [ "${RUN_CLI_IN_DOCKER:-0}" != "0" ]; then
         docker run --rm -it \
-        -v ${parent_path}/devnet/node.socket:/devnet/node.socket \
+        -v ${CARDANO_NODE_SOCKET_PATH}:/devnet/node.socket \
         -v ${parent_path}/example:/example \
         -v ${parent_path}/auction-state:/auction-state hydra-auction-cli:latest \
         "hydra-auction" "${cmdArray[@]}" "-d" "delegate-server-${delegateNum}:8001"
@@ -71,7 +71,7 @@ function publishReferenceScripts() {
     echo >&2 "Publishing reference scripts ('νInitial' & 'νCommit')..."
     hnode publish-scripts \
         --testnet-magic "${TESTNET_MAGIC}" \
-        --node-socket "${CLUSTER_WORKDIR}/node.socket" \
+        --node-socket devnet/node.socket \
         --cardano-signing-key devnet/credentials/faucet.sk
 }
 
