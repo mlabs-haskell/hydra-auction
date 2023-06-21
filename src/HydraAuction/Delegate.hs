@@ -310,7 +310,7 @@ delegateEventStep event = case event of
     -- Before `CommandFailed` was returned in some cases,
     -- similar to `PostTxOnChainFailed`. Lets check if thats still the case :D
     -- FIXME: better parsing
-    -- CommandFailed {} -> abort RequiredHydraRequestFailed
+    CommandFailed {} -> return []
     PostTxOnChainFailed {postChainTx, postTxError} ->
       case (postChainTx, postTxError) of
         (InitTx _, _)
