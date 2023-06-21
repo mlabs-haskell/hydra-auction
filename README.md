@@ -110,8 +110,8 @@ You need at least one seller (Alice in our example),
 and one bidder (Bob in our example).
 To start their REPLs run: `make demo-seller` and `make demo-bidder`.
 
-Also run `make demo-monitor`.
-This is ncurses CLI, which shows current state of auction and Head.
+Also run `make demo-monitor NAME=demo`.
+This is CLI screen, which shows current state of auction and Head.
 
 ### Bidder wins case
 
