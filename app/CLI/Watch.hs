@@ -10,7 +10,8 @@ import HydraAuctionUtils.Prelude
 import Data.IORef (IORef, readIORef)
 import Data.Time.Clock (getCurrentTime)
 import Data.Time.Format (defaultTimeLocale, formatTime)
-import System.Console.ANSI
+import System.Console.ANSI (clearScreen, setCursorPosition)
+import System.IO (BufferMode (..), hFlush, hSetBuffering, stdout)
 
 -- Hydra auction
 
@@ -32,6 +33,8 @@ import HydraAuctionUtils.Time (currentPlutusPOSIXTime)
 
 watchAuction :: AuctionName -> IORef DelegateState -> IO ()
 watchAuction auctionName currentDelegateStateRef = do
+  -- Flushing once per `watchAuction` to reduce blinking
+  hSetBuffering stdout (BlockBuffering (Just 100500))
   clearScreen
   setCursorPosition 0 0
 
@@ -43,7 +46,7 @@ watchAuction auctionName currentDelegateStateRef = do
     currentSlot <- executeL1RunnerWithNode dockerNode queryCurrentSlot
     putStrLn $ "Current L1 slot: " <> show currentSlot
 
-  void $ showDelegateState <$> readIORef currentDelegateStateRef
+  showDelegateState =<< readIORef currentDelegateStateRef
 
   case mEnhancedTerms of
     Nothing ->
@@ -62,6 +65,7 @@ watchAuction auctionName currentDelegateStateRef = do
             Nothing -> mempty
             Just s -> "\n" <> show s <> " seconds left until next stage"
 
+  hFlush stdout
   threadDelay 100_000
   watchAuction auctionName currentDelegateStateRef
   where
