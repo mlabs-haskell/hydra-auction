@@ -10,7 +10,7 @@ The [Delegated Voucher Auction](https://iohk.io/en/blog/posts/2023/01/20/impleme
 is an auction design that allows bidding to place within a Hydra Head.
 It resolves the zero-sum game deadlock and logistical problems of
 simpler designs where bidders directly participate in the Hydra Head protocol,
-without requiring any third-parties to take custody
+without requiring any third parties to take custody
 of seller or bidder funds.
 
 We hope that this project will blaze the trail for the Cardano Community

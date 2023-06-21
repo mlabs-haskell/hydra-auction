@@ -9,8 +9,8 @@
 * Querying different L2 protocol parameters is not supported.
   Now we just ignoring that and relying on delegate server
   knowing L2 protocol-parameters used by L2,
-  cuz they are always the same and saved in repo.
-  This should work well, cuz our topology presumes same operator
+  because they are always the same and saved in repo.
+  This should work well, because our topology presumes same operator
   for Delegate server and Hydra node.
   Issue on that: https://github.com/input-output-hk/hydra/issues/735
 * Hydra Head can only host one auction and cannot be reused.
