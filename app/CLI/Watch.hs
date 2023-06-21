@@ -27,9 +27,12 @@ import HydraAuction.Delegate.Interface (
  )
 import HydraAuction.OnChain.Common (secondsLeftInInterval, stageToInterval)
 import HydraAuction.Tx.Common (currentAuctionStage)
+import HydraAuction.Types (BidTerms (..))
+import HydraAuctionUtils.Fixture (actorFromPkh)
 import HydraAuctionUtils.L1.Runner (dockerNode, executeL1RunnerWithNode)
 import HydraAuctionUtils.Monads (queryCurrentSlot)
 import HydraAuctionUtils.Time (currentPlutusPOSIXTime)
+import HydraAuctionUtils.Types.Natural (naturalToInt)
 
 watchAuction :: AuctionName -> IORef DelegateState -> IO ()
 watchAuction auctionName currentDelegateStateRef = do
@@ -46,7 +49,7 @@ watchAuction auctionName currentDelegateStateRef = do
     currentSlot <- executeL1RunnerWithNode dockerNode queryCurrentSlot
     putStrLn $ "Current L1 slot: " <> show currentSlot
 
-  showDelegateState =<< readIORef currentDelegateStateRef
+  printDelegateState =<< readIORef currentDelegateStateRef
 
   case mEnhancedTerms of
     Nothing ->
@@ -70,12 +73,18 @@ watchAuction auctionName currentDelegateStateRef = do
   watchAuction auctionName currentDelegateStateRef
   where
     showTime = formatTime defaultTimeLocale "%Y-%m-%d %H:%M:%S"
-    showDelegateState delegateState = case delegateState of
-      Initialized _ initializedState ->
-        let
-          showedState = case initializedState of
-            Open utxoState _ -> "Open " <> show (standingBidTerms utxoState)
-            _ -> show initializedState
-         in
-          putStrLn $ "Delegate state: " <> showedState
+    printDelegateState delegateState = case delegateState of
+      Initialized _ initializedState -> do
+        showedState <- case initializedState of
+          Open utxoState _ -> do
+            bidTermsStr <- showBidTerms (standingBidTerms utxoState)
+            return $ "Open with bid: " <> bidTermsStr
+          _ -> return $ show initializedState
+        putStrLn $ "Delegate state: " <> showedState
       _ -> putStrLn "Delegate is not initialized yet"
+    showBidTerms (Just terms) = do
+      bidder <- actorFromPkh $ bidderPKH terms
+      let bidAmountAda :: Double =
+            realToFrac (naturalToInt (bidAmount terms)) / 1_000_000
+      return $ show bidAmountAda <> " ADA placed by " <> show bidder
+    showBidTerms Nothing = return "No bid placed jet"
