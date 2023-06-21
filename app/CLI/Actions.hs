@@ -335,12 +335,8 @@ handlePerAuctionAction
       ApproveBidder bidder -> do
         if actor /= sellerActor
           then liftIO $ putStrLn "Only seller can approve bidder"
-          else
-            doOnMatchingStage terms AnnouncedStage $
-              publishBiddingApproval (platformClient handle) terms bidder
-      MakeDeposit depositAmount -> do
-        doOnMatchingStage terms AnnouncedStage $
-          mkDeposit terms depositAmount
+          else publishBiddingApproval (platformClient handle) terms bidder
+      MakeDeposit depositAmount -> mkDeposit terms depositAmount
       BidderBuys -> do
         doOnMatchingStage terms BiddingEndedStage $ do
           mWinningBidderPk <- currentWinningBidder terms
