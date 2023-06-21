@@ -187,7 +187,7 @@ handleCliAction handle userAction = do
       void $ initWallet seedAmount actor
     Prepare sellerActor -> do
       announceActionExecution userAction
-      forM_ allActors $ initWallet seedAmount
+      forM_ [Alice .. Carol] $ initWallet seedAmount
       void $ lift $ withActor sellerActor mintOneTestNFT
       prettyPrintCurrentActorUtxos
     ShowAddress -> do
