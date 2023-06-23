@@ -60,27 +60,9 @@ watchAuction' slotsVars auctionName currentDelegateStateRef = do
   clearScreen
   setCursorPosition 0 0
 
-  mEnhancedTerms <- readCliEnhancedAuctionTerms auctionName
-
   printTimeAndSlots
   printDelegateState =<< readIORef currentDelegateStateRef
-
-  case mEnhancedTerms of
-    Nothing ->
-      putStrLn $ "Auction " <> show auctionName <> " does not exist."
-    Just CliEnhancedAuctionTerms {sellerActor, terms} -> do
-      currentPosixTime <- currentPlutusPOSIXTime
-      currentStage <- currentAuctionStage terms
-      let
-        mSecsLeft = secondsLeftInInterval currentPosixTime (stageToInterval terms currentStage)
-      putStrLn $ "Auction: " <> show auctionName
-      putStrLn $ "Seller: " <> show sellerActor
-      putStrLn $
-        "Current stage: "
-          <> show currentStage
-          <> case mSecsLeft of
-            Nothing -> mempty
-            Just s -> "\n" <> show s <> " seconds left until next stage"
+  printAuctionState
 
   hFlush stdout
   threadDelay 100_000
@@ -122,3 +104,24 @@ watchAuction' slotsVars auctionName currentDelegateStateRef = do
         putStrLn $ "Current L1 slot: " <> show currentSlot
         putStrLn $ "Which stayed for " <> show passedSecs <> " seconds"
         putStrLn $ "Seen L1 slots so far: " <> show seen
+    printAuctionState = do
+      mEnhancedTerms <- readCliEnhancedAuctionTerms auctionName
+      case mEnhancedTerms of
+        Nothing ->
+          putStrLn $ "Auction " <> show auctionName <> " does not exist."
+        Just CliEnhancedAuctionTerms {sellerActor, terms} -> do
+          currentPosixTime <- currentPlutusPOSIXTime
+          currentStage <- currentAuctionStage terms
+          let
+            mSecsLeft =
+              secondsLeftInInterval
+                currentPosixTime
+                (stageToInterval terms currentStage)
+          putStrLn $ "Auction: " <> show auctionName
+          putStrLn $ "Seller: " <> show sellerActor
+          putStrLn $
+            "Current stage: "
+              <> show currentStage
+              <> case mSecsLeft of
+                Nothing -> mempty
+                Just s -> "\n" <> show s <> " seconds left until next stage"
