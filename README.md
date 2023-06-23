@@ -51,7 +51,12 @@ This command will build the image and load it as `hydra-auction-delegate:latest`
 We recommend call the `make start-cluster` command
 to start all cluster components,
 as it will take care of setting up the correct files for the cardano-node
-and seeding the actors running the hydra-nodes with enough funds to manage the head lifecycle.
+and seeding the actors running the hydra-nodes with enough funds
+to manage the head lifecycle.
+
+To run demo again Head should be recreated,
+for that just call `make start-cluster` once again.
+Only hydra cluster will be restarted, while `cardano-node-X` will stay.
 
 ### Working on Mac
 

@@ -8,13 +8,17 @@ echo "Current CLUSTER_ENV is $CLUSTER_ENV"
 echo "Change this env to devnet|testnet to change cluster network"
 
 echo "Stopping demo in case anything is already running"
-./scripts/stop-demo.sh
+HYDRA_SCRIPTS_TX_ID="" ./scripts/stop-demo.sh
 
-echo "Prepare devnet files"
-source ./scripts/reset-devnet.sh
-
-echo "Starting cardano node"
-$COMPOSE_CMD up -d
+if [ "$(serviceIsRunning $CARDANO_SERVICE_NAME)" = "true" ];
+then
+  echo "Cardano node is already running"
+else
+  echo "Prepare devnet files"
+  source ./scripts/reset-devnet.sh
+  echo "Starting cardano node"
+  HYDRA_SCRIPTS_TX_ID="" $COMPOSE_CMD up -d --wait
+fi;
 
 export CARDANO_NODE_SOCKET_PATH="${CLUSTER_WORKDIR}/node.socket"
 

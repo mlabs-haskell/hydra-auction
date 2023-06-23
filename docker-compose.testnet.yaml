@@ -1,5 +1,5 @@
 services:
-    cardano-node:
+    cardano-node-testnet:
         image: ${CARDANO_IMAGE}
         volumes:
           - ./testnet/db:/data/db
