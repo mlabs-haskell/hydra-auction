@@ -5,6 +5,7 @@ import HydraAuctionUtils.Prelude
 
 -- Haskell imports
 
+import Control.Monad.Trans.Control (liftBaseOp)
 import Data.Text qualified as Text
 import Network.WebSockets (Connection, runClient)
 
@@ -13,10 +14,12 @@ import Network.WebSockets (Connection, runClient)
 import Hydra.Network (Host (..))
 
 withClientForHost ::
-  forall x m. MonadIO m => Host -> Text.Text -> (Connection -> IO x) -> m x
+  forall x m. MonadBaseControl IO m => Host -> Text.Text -> (Connection -> m x) -> m x
 withClientForHost settings path =
-  liftIO
-    . runClient
-      (Text.unpack $ hostname settings)
-      (fromIntegral $ port settings)
-      (Text.unpack path)
+  liftBaseOp runActionInIO
+  where
+    runActionInIO =
+      runClient
+        (Text.unpack $ hostname settings)
+        (fromIntegral $ port settings)
+        (Text.unpack path)

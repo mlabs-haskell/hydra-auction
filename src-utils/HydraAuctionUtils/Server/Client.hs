@@ -85,10 +85,10 @@ instance Protocol protocol => ProtocolClient (RealProtocolClient protocol) where
 
 withProtocolClient ::
   forall protocol x m.
-  (Protocol protocol, MonadIO m) =>
+  (Protocol protocol, MonadBaseControl IO m) =>
   Host ->
   ConnectionConfig protocol ->
-  (RealProtocolClient protocol -> IO x) ->
+  (RealProtocolClient protocol -> m x) ->
   m x
 withProtocolClient host config action =
   withClientForHost
