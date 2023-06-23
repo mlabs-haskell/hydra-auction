@@ -10,9 +10,9 @@
 * Cardano node imports -- modules from cardano-node
 * Plutus imports -- modules from plutus
 * Hydra imports -- modules from hydra
-* Hydra auction imports -- modules from `./src`
-* Hydra auction CLI imports -- modules from `./app`
-* Hydra auction test imports -- modules from `./test`
+* Hydra auction imports -- modules from `./src-lib`
+* Hydra auction CLI imports -- modules from `./src-app/frontend-cli`
+* Hydra auction test imports -- modules from `./src-test`
 
 ## Other guidelines
 

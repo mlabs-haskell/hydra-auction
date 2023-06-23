@@ -10,7 +10,6 @@ module HydraAuctionUtils.L1.Runner.Tracer (
 import Hydra.Prelude (
   IOMode (ReadWriteMode),
   onException,
-  withFile,
  )
 import HydraAuctionUtils.Prelude
 
