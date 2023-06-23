@@ -27,8 +27,14 @@ CARDANO_NODE_SOCKET_PATH=${CLUSTER_WORKDIR}/node.socket
 
 # Client actions
 
+CARDANO_SERVICE_NAME="cardano-node-${CLUSTER_ENV}"
+
+function serviceIsRunning(){
+    docker inspect -f '{{.State.Running}}' "hydra-auction-$1-1"
+}
+
 function ccli() {
-  $COMPOSE_CMD exec cardano-node cardano-cli ${@} --testnet-magic ${TESTNET_MAGIC}
+  HYDRA_SCRIPTS_TX_ID="" $COMPOSE_CMD exec $CARDANO_SERVICE_NAME cardano-cli ${@} --testnet-magic ${TESTNET_MAGIC}
 }
 
 # Invoke hydra-node in a container or via provided executable

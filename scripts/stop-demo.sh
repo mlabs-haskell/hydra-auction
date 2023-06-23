@@ -3,8 +3,7 @@ set -eo pipefail
 
 source ./scripts/setup-envs.sh
 
-$COMPOSE_CMD --profile delegate-server down
-$COMPOSE_CMD --profile hydra-node down
-$COMPOSE_CMD down --remove-orphans
-# Network could stay by CLIs and mess up with restarting
-docker network rm --force hydra-auction_hydra_net
+# `down` does not respect profiles:
+# https://github.com/docker/compose/issues/8139
+$COMPOSE_CMD stop hydra-node-1 hydra-node-2 hydra-node-3
+$COMPOSE_CMD stop delegate-server-1 delegate-server-2 delegate-server-3

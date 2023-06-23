@@ -1,5 +1,5 @@
 services:
-  cardano-node:
+  cardano-node-devnet:
       image: ${CARDANO_IMAGE}
       volumes:
         - ./devnet:/devnet
