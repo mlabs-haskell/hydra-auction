@@ -299,7 +299,6 @@ initWallet ::
   Actor ->
   m ()
 initWallet amount actor = do
-  liftIO $ threadDelay 1_000_000
   void $ withActor Faucet $ transferAda actor Normal amount
 
 feeSpent :: WithActorT L1Runner Lovelace

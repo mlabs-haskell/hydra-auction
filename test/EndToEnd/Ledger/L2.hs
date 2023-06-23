@@ -73,7 +73,7 @@ config =
 
 -- Includes testing L1 biding before and after L2 moves
 -- Inculdes testing of placing bid by same delegate who moved standing bid
-bidderBuysTest :: Assertion
+bidderBuysTest :: HasCallStack => Assertion
 bidderBuysTest = mkAssertionOfIO $ do
   runEmulatorInTest $ do
     -- Prepare Frontend CLI actors
