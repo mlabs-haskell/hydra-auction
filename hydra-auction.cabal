@@ -311,6 +311,7 @@ library hydra-auction-utils
     , parsec
     , plutus-tx
     , protolude
+    , relude
     , template-haskell
     , transformers-base
     , utf8-string
