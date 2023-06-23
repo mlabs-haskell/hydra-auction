@@ -1,5 +1,3 @@
-{-# LANGUAGE RecordWildCards #-}
-
 module Main (main) where
 
 -- Prelude imports
@@ -43,7 +41,8 @@ import HydraAuction.Delegate.Interface (
 import HydraAuction.Platform.Interface (PlatformProtocol)
 import HydraAuctionUtils.L1.Runner (
   L1Runner,
-  executeL1RunnerWithNodeAs,
+  executeL1RunnerWithNode,
+  withActor,
  )
 import HydraAuctionUtils.Monads.Actors (MonadHasActor (..), WithActorT)
 import HydraAuctionUtils.Server.Client (ProtocolClientFor, withProtocolClient)
@@ -51,11 +50,9 @@ import HydraAuctionUtils.Server.Client (ProtocolClientFor, withProtocolClient)
 -- Hydra auction CLI imports
 import CLI.Actions (CliAction, CliActionHandle (..), handleCliAction)
 import CLI.Parsers (
-  CliInput,
-  CliOptions (InteractivePrompt, Watch),
+  CliInput (..),
+  CliOptions (..),
   PromptOptions (..),
-  cliOptions,
-  delegateSettings,
   getCliInput,
   parseCliAction,
  )
@@ -83,11 +80,11 @@ handleCliInput input = do
     sendTextData client . encode $ QueryCurrentDelegateState
     -- DelegateState receiving thread
     withAsync (updateStateThread client currentDelegateStateRef tracer) $ \_ -> do
-      handleCliInput' (Just client) currentDelegateStateRef (cliOptions input)
+      handleCliInput' (Just client) currentDelegateStateRef input
 
   case result of
     Right x -> return x
-    Left _ -> handleCliInput' Nothing currentDelegateStateRef (cliOptions input)
+    Left _ -> handleCliInput' Nothing currentDelegateStateRef input
   where
     updateStateThread client currentDelegateStateRef tracer = forever $ do
       mMessage <- eitherDecode <$> receiveData client
@@ -113,33 +110,32 @@ handleCliInput input = do
               putStrLn "Or that is a bug in Frontend CLI."
         Left err -> traceWith tracer (InvalidDelegateResponse err)
 
-handleCliInput' :: Maybe Connection -> IORef DelegateState -> CliOptions -> IO ()
-handleCliInput' mClient currentDelegateStateRef input = case input of
-  (Watch auctionName) -> watchAuction auctionName currentDelegateStateRef
-  (InteractivePrompt MkPromptOptions {..}) ->
-    withHandle $ \handle ->
-      executeL1RunnerWithNodeAs
-        cliCardanoNode
-        cliActor
-        (action handle)
-    where
-      withHandle cont = case mClient of
-        Just client ->
-          withProtocolClient (Host "127.0.0.1" 8010) () $
-            \platformClient ->
-              cont $
-                MkCliActionHandle
-                  { platformClient
-                  , sendRequestToDelegate = sendTextData client . encode
-                  , currentDelegateStateRef
-                  }
-        -- FIXME
-        Nothing ->
-          cont (error "Delegate server is not started yet")
-      action =
-        case cliNoninteractiveAction of
-          Just actionStr -> flip handleREPLInput actionStr
-          Nothing -> loopCLI
+handleCliInput' ::
+  Maybe Connection -> IORef DelegateState -> CliInput -> IO ()
+handleCliInput' mClient currentDelegateStateRef input =
+  executeL1RunnerWithNode (cliCardanoNode input) $ case cliOptions input of
+    (Watch auctionName) ->
+      watchAuction auctionName currentDelegateStateRef
+    (InteractivePrompt options) ->
+      withActor (cliActor options) $ withHandle $ action options
+  where
+    withHandle cont = case mClient of
+      Just client ->
+        withProtocolClient (Host "127.0.0.1" 8010) () $
+          \platformClient ->
+            cont $
+              MkCliActionHandle
+                { platformClient
+                , sendRequestToDelegate = sendTextData client . encode
+                , currentDelegateStateRef
+                }
+      -- FIXME
+      Nothing ->
+        cont (error "Delegate server is not started yet")
+    action options =
+      case cliNoninteractiveAction options of
+        Just actionStr -> flip handleREPLInput actionStr
+        Nothing -> loopCLI
 
 loopCLI ::
   forall client.

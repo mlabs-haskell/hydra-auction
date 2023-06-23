@@ -153,7 +153,8 @@ submitAndAwaitTx ::
   m (Either SubmitingError ())
 submitAndAwaitTx tx = do
   before <- liftIO getCurrentTime
-  logMsg "Submiting (might take time if Slots on L1 are sloppy)"
+  logMsg $ "Submiting tx with id: " <> show (getTxId $ txBody tx)
+  logMsg " (it might take time if slots on L1 are sloppy)"
   result <- submitTx tx
   case result of
     Right () -> do
@@ -162,10 +163,7 @@ submitAndAwaitTx tx = do
       after <- liftIO getCurrentTime
       let passedSecs = nominalDiffTimeToSeconds (diffUTCTime after before)
       logMsg $
-        "Tx appeard on blockchain in "
-          <> show passedSecs
-          <> " secs, with id: "
-          <> show (getTxId $ txBody tx)
+        "Tx appeard on blockchain in " <> show passedSecs <> " secs"
       return $ Right ()
     -- FIXME: should be handled in CLI
     Left submitL1Error -> do

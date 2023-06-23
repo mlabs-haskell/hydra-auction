@@ -60,7 +60,6 @@ import HydraAuctionUtils.Monads (
 import HydraAuctionUtils.Monads.Actors (
   MonadHasActor (..),
   WithActorT,
-  actorTipUtxo,
   withActor,
  )
 import HydraAuctionUtils.Server.Client (
@@ -166,14 +165,13 @@ executeHydraRunner ::
 executeHydraRunner context runner =
   runReaderT (unHydraRunner runner) context
 
--- | Loads Hydra ScriptRegistry from HYDRA_SCRIPTS_TX_ID env, or deploys new
-prepareScriptRegistry :: L1Runner (TxId, ScriptRegistry)
-prepareScriptRegistry = do
+-- | Loads known Hydra ScriptRegistry or deploys new
+prepareScriptRegistry ::
+  HasCallStack => Maybe TxId -> L1Runner (TxId, ScriptRegistry)
+prepareScriptRegistry mScriptsTxId = do
   MkExecutionContext {node} <- ask
   let RunningNode {networkId, nodeSocket} = node
-  mTxIdStr <- liftIO $ lookupEnv "HYDRA_SCRIPTS_TX_ID"
-  !_ <- withActor Faucet actorTipUtxo
-  !hydraScriptsTxId <- case deserializeTxId =<< mTxIdStr of
+  !hydraScriptsTxId <- case mScriptsTxId of
     Just txId -> return txId
     Nothing -> liftIO $ do
       (_, sk) <- keysFor Faucet
@@ -182,17 +180,17 @@ prepareScriptRegistry = do
     liftIO $
       queryScriptRegistry networkId nodeSocket hydraScriptsTxId
   pure (hydraScriptsTxId, scriptRegistry)
-  where
-    deserializeTxId =
-      hush . deserialiseFromRawBytesHex AsTxId . BSU.fromString
 
+-- | Loads Hydra ScriptRegistry from HYDRA_SCRIPTS_TX_ID env, or deploys new
 executeHydraRunnerFakingParams ::
   forall a.
   RealProtocolClient HydraProtocol ->
   HydraRunner a ->
   WithActorT L1Runner a
 executeHydraRunnerFakingParams node monad = do
-  (_, scriptRegistry) <- lift prepareScriptRegistry
+  mTxIdStr <- liftIO $ lookupEnv "HYDRA_SCRIPTS_TX_ID"
+  let mTxId = deserializeTxId =<< mTxIdStr
+  (_, scriptRegistry) <- lift $ prepareScriptRegistry mTxId
   l1Context <- lift ask
   actor <- askActor
   let context =
@@ -200,3 +198,5 @@ executeHydraRunnerFakingParams node monad = do
   liftIO $ executeHydraRunner context monad
   where
     tracer = contramap show stdoutTracer
+    deserializeTxId =
+      hush . deserialiseFromRawBytesHex AsTxId . BSU.fromString

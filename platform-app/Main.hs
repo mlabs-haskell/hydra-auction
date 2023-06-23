@@ -6,7 +6,6 @@ import HydraAuctionUtils.Prelude
 
 import Control.Concurrent.Async (concurrently)
 import Control.Concurrent.STM (
-  atomically,
   newTChan,
   newTQueue,
   tryReadTQueue,

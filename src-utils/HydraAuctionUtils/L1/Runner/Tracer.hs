@@ -9,8 +9,6 @@ module HydraAuctionUtils.L1.Runner.Tracer (
 -- Prelude imports
 import Hydra.Prelude (
   IOMode (ReadWriteMode),
-  TVar,
-  atomically,
   onException,
   withFile,
  )
@@ -18,7 +16,6 @@ import HydraAuctionUtils.Prelude
 
 -- Haskell imports
 
-import Control.Concurrent.STM.TVar (modifyTVar, newTVarIO, readTVarIO)
 import Control.Tracer (Tracer (..))
 import Data.Aeson (FromJSON, ToJSON)
 import System.FilePath ((</>))
@@ -33,8 +30,11 @@ import Hydra.Logging (
 {- HLINT ignore "Use newtype instead of data" -}
 data HydraAuctionLog
   = FromHydraAuction String
-  deriving stock (Eq, Show, Generic)
+  deriving stock (Eq, Generic)
   deriving anyclass (ToJSON, FromJSON)
+
+instance Show HydraAuctionLog where
+  show (FromHydraAuction message) = message
 
 -- | @FilePath@ used to store the running node data.
 newtype StateDirectory = MkStateDirectory
@@ -66,7 +66,7 @@ showLogsOnFailure action = do
     `onException` (readTVarIO tvar >>= mapM_ (putStrLn . show) . reverse)
 
 traceInTVar ::
-  TVar IO [msg] ->
+  TVar [msg] ->
   Tracer IO msg
 traceInTVar tvar = Tracer $ \msg -> do
-  atomically $ modifyTVar tvar (msg :)
+  atomically $ modifyTVar' tvar (msg :)

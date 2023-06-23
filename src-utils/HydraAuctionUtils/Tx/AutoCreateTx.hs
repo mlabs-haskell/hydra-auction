@@ -192,7 +192,8 @@ autoCreateTx (AutoCreateParams {..}) = do
               { fee = amount
               , signers = catMaybes signingActors
               }
-      traceStats
+      -- FIXME: parametrize and use proper logs filtering
+      when False traceStats
       where
         evaluateTx = do
           MkBlockchainParams {protocolParameters, systemStart, eraHistory} <-

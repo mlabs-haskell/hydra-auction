@@ -13,7 +13,6 @@ import Control.Concurrent.Async (race_)
 import Control.Concurrent.STM (
   TChan,
   TQueue,
-  atomically,
   dupTChan,
   readTChan,
   writeTQueue,

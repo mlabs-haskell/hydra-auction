@@ -4,22 +4,17 @@ Prelude for off-chain modules.
 Includes imports not giving any name-collisions for:
 
 * Basic containers types and utilities
-* Our MTL-like stack
+* Our MTL-like stack and some basic functions lifted
 -}
 module HydraAuctionUtils.Prelude (module X, trySome, hush) where
 
 -- Prelude imports
-import Prelude as X
+import Prelude as X hiding (getLine, print, putStr, putStrLn)
 
 -- Haskell imports
 
 import Control.Concurrent as X (
-  MVar,
   modifyMVar_,
-  newMVar,
-  putMVar,
-  readMVar,
-  takeMVar,
   threadDelay,
  )
 import Control.Exception (SomeException)
@@ -57,6 +52,9 @@ import Data.Map as X (Map)
 import Data.Maybe as X (fromJust)
 import GHC.Generics as X (Generic)
 import GHC.Stack as X (HasCallStack)
+import Relude.Lifted.Concurrent as X
+import Relude.Lifted.Handle as X
+import Relude.Lifted.Terminal as X
 
 trySome ::
   forall a m. (MonadIO m, MonadCatch m) => m a -> m (Either SomeException a)

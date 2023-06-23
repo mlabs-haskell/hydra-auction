@@ -18,11 +18,11 @@ $COMPOSE_CMD up -d
 
 export CARDANO_NODE_SOCKET_PATH="${CLUSTER_WORKDIR}/node.socket"
 
-echo -n 'Waiting for the node socket ..'
+echo -n 'Waiting for the node socket (this may take long time if you use testnet snapshots)..'
 while ! [ -S $CARDANO_NODE_SOCKET_PATH ]
 do
   echo -n "."
-  sleep 0.1
+  sleep 1
 done
 echo '. done'
 

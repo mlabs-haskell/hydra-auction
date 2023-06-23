@@ -187,7 +187,7 @@ handleCliAction handle userAction = do
       void $ initWallet seedAmount actor
     Prepare sellerActor -> do
       announceActionExecution userAction
-      forM_ allActors $ initWallet seedAmount
+      forM_ [Alice .. Carol] $ initWallet seedAmount
       void $ lift $ withActor sellerActor mintOneTestNFT
       prettyPrintCurrentActorUtxos
     ShowAddress -> do
@@ -335,12 +335,8 @@ handlePerAuctionAction
       ApproveBidder bidder -> do
         if actor /= sellerActor
           then liftIO $ putStrLn "Only seller can approve bidder"
-          else
-            doOnMatchingStage terms AnnouncedStage $
-              publishBiddingApproval (platformClient handle) terms bidder
-      MakeDeposit depositAmount -> do
-        doOnMatchingStage terms AnnouncedStage $
-          mkDeposit terms depositAmount
+          else publishBiddingApproval (platformClient handle) terms bidder
+      MakeDeposit depositAmount -> mkDeposit terms depositAmount
       BidderBuys -> do
         doOnMatchingStage terms BiddingEndedStage $ do
           mWinningBidderPk <- currentWinningBidder terms

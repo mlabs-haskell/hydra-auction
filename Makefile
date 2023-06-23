@@ -72,7 +72,7 @@ faucet-address:
 	bash -c 'source scripts/setup-envs.sh; frontend-cli-faucet-command "show-address"'
 
 demo-monitor:
-	bash -c 'source scripts/setup-envs.sh; frontend-cli "1" "-w" "demo"'
+	bash -c 'source scripts/setup-envs.sh; frontend-cli "1" "-w" "$(NAME)"'
 
 demo-seller:
 	bash -c 'source scripts/setup-envs.sh; frontend-cli-repl "1" "-a" "alice"'

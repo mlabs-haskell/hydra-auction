@@ -44,6 +44,11 @@ newtype WithActorT m a = MkWithActorT (ReaderT Actor m a)
     , MonadMask
     )
 
+deriving newtype instance
+  MonadBase IO m => MonadBase IO (WithActorT m)
+deriving newtype instance
+  MonadBaseControl IO m => MonadBaseControl IO (WithActorT m)
+
 class Monad m => MonadHasActor m where
   askActor :: m Actor
 

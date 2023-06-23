@@ -201,7 +201,12 @@ delegateEventStep event = case event of
         return []
   AuctionStageStarted terms CleanupStage -> do
     -- FIXME: handle case of not used Escrow Hydra
-    _ <- runL1RunnerInComposite $ distributeFee terms
+    result <- trySome $ runL1RunnerInComposite $ distributeFee terms
+    case result of
+      Left _ ->
+        liftIO $
+          putStrLn "Cannot distribute fee, probably no bids placed"
+      Right _ -> return ()
     return []
   AuctionStageStarted {} -> return []
   HydraEvent Committed {utxo, party} -> do
@@ -310,7 +315,7 @@ delegateEventStep event = case event of
     -- Before `CommandFailed` was returned in some cases,
     -- similar to `PostTxOnChainFailed`. Lets check if thats still the case :D
     -- FIXME: better parsing
-    -- CommandFailed {} -> abort RequiredHydraRequestFailed
+    CommandFailed {} -> return []
     PostTxOnChainFailed {postChainTx, postTxError} ->
       case (postChainTx, postTxError) of
         (InitTx _, _)

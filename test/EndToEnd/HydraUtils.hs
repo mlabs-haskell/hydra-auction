@@ -32,7 +32,7 @@ import CardanoNode (
   RunningNode (..),
  )
 import Hydra.Cardano.Api (TxId)
-import Hydra.Cluster.Faucet (Marked (..), seedFromFaucet_)
+import Hydra.Cluster.Faucet (Marked (..))
 import Hydra.ContestationPeriod (
   ContestationPeriod (UnsafeContestationPeriod),
  )
@@ -50,6 +50,7 @@ import HydraAuction.Platform.Storage (PlatformImplementation)
 import HydraAuctionUtils.BundledData (lookupProtocolParamPath)
 import HydraAuctionUtils.Composite.Runner (CompositeRunner)
 import HydraAuctionUtils.Fixture (
+  Actor (..),
   ActorKind (..),
   actorsByKind,
   hydraKeysFor,
@@ -83,13 +84,14 @@ import HydraAuctionUtils.Server.Client (
   withProtocolClient,
  )
 import HydraAuctionUtils.Server.Protocol (WithClientT, withClient)
+import HydraAuctionUtils.Tx.Common (transferAda)
 
 -- Ways to spin up Hydra cluster
 
 -- This function will set the HYDRA_CONFIG_DIR env var locally
 -- This is required so the hydra nodes pick up on the correct protocol-parameters.json
 -- file.
-withManualHydraCluster :: Int -> TxId -> ([RealProtocolClient HydraProtocol] -> L1Runner ()) -> L1Runner ()
+withManualHydraCluster :: HasCallStack => Int -> TxId -> ([RealProtocolClient HydraProtocol] -> L1Runner ()) -> L1Runner ()
 withManualHydraCluster clusterIx hydraScriptsTxId cont = do
   liftIO $ do
     hydraDir <- lookupProtocolParamPath
@@ -97,7 +99,6 @@ withManualHydraCluster clusterIx hydraScriptsTxId cont = do
   ctx@(MkExecutionContext {node}) <- ask
   liftIO $
     withTempDir "end-to-end-test" $ \tmpDir -> do
-      let actors = (Map.!) actorsByKind HydraNodeActor
       cardanoKeys <- mapM keysFor actors
       hydraSks <- mapM (fmap snd . hydraKeysFor) actors
       let firstNodeId = clusterIx * 3
@@ -113,17 +114,18 @@ withManualHydraCluster clusterIx hydraScriptsTxId cont = do
         contestationPeriod
         $ \nodes -> do
           waitForNodesConnected nullTracer $ toList nodes
-          seedHydraNodes node cardanoKeys
-          executeL1Runner ctx $
+          executeL1Runner ctx $ do
+            seedHydraNodes
             cont $
               map (MkRealProtocolClient . connection) $
                 toList nodes
   where
-    seedHydraNodes node cardanoKeys = do
-      let initActor mark key =
-            seedFromFaucet_ node key 100_000_000 mark nullTracer
-      mapM_ (initActor Fuel . fst) cardanoKeys
-      mapM_ (initActor Normal . fst) cardanoKeys
+    actors = (Map.!) actorsByKind HydraNodeActor
+    initActor mark actor =
+      withActor Faucet $ transferAda actor mark 100_000_000
+    seedHydraNodes = do
+      mapM_ (initActor Fuel) actors
+      mapM_ (initActor Normal) actors
 
 withDockerComposeCluster ::
   ([RealProtocolClient HydraProtocol] -> L1Runner b) ->
@@ -143,7 +145,6 @@ withDockerComposeCluster cont = do
           \client -> withNClients' (client : clientsAcc) n cont'
     withNClients = withNClients' []
     action' nodes = do
-      -- FIXME: wait for nodes
       executeL1RunnerWithNode dockerNode (cont nodes)
     action nodes = finally (action' nodes) (system "./scripts/stop-demo.sh")
 
@@ -176,7 +177,7 @@ newtype DelegatesClusterEmulator a = DelegatesClusterEmulator
     , MonadReader EmulatorContext
     )
 
-runEmulatorInTest :: DelegatesClusterEmulator () -> IO ()
+runEmulatorInTest :: HasCallStack => DelegatesClusterEmulator () -> IO ()
 runEmulatorInTest action = do
   mEnvStr <- liftIO $ lookupEnv "USE_DOCKER_FOR_TESTS"
   let useDockerForTests =
@@ -187,8 +188,7 @@ runEmulatorInTest action = do
         withDockerComposeCluster $
           flip runEmulator action
     else executeTestL1Runner $ do
-      -- FIXME: race condition on Faucet
-      (!hydraScriptsTxId, !_) <- prepareScriptRegistry
+      (!hydraScriptsTxId, _) <- prepareScriptRegistry Nothing
       withManualHydraCluster 0 hydraScriptsTxId $
         flip runEmulator action
 

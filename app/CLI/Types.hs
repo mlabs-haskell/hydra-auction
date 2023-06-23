@@ -50,6 +50,7 @@ data Layer = L1 | L2 deriving stock (Show)
 -- FIXME: upstream
 deriving stock instance Show Marked
 
+-- | In fact this is REPL command
 data CliAction
   = ShowAddress
   | ShowUtxos
