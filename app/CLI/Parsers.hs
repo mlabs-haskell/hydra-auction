@@ -71,15 +71,16 @@ import CLI.Types (CliAction (..), PerAuctionCliAction (..))
 data CliInput = CliInput
   { cliOptions :: CliOptions
   , delegateSettings :: Host
+  , cliCardanoNode :: RunningNode
   }
 
+-- FIXME: rename along with CliAction
 data CliOptions
   = Watch AuctionName
   | InteractivePrompt PromptOptions
 
 data PromptOptions = MkPromptOptions
   { cliActor :: Actor
-  , cliCardanoNode :: RunningNode
   , cliNoninteractiveAction :: Maybe String
   }
 
@@ -93,14 +94,15 @@ getCliInput = customExecParser preferences options
     preferences = prefs (showHelpOnEmpty <> showHelpOnError)
 
 cliInputParser :: Parser CliInput
-cliInputParser = CliInput <$> cliOptionsParser <*> delegate
+cliInputParser =
+  CliInput <$> cliOptionsParser <*> delegate <*> cardanoRunningNodeParser
 
 cliOptionsParser :: Parser CliOptions
 cliOptionsParser =
   asum
     [ Watch <$> watchAuction
     , InteractivePrompt
-        <$> (MkPromptOptions <$> actor <*> cardanoRunningNodeParser <*> action)
+        <$> (MkPromptOptions <$> actor <*> action)
     ]
 
 parseCliAction :: [String] -> Either String CliAction

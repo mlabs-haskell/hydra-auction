@@ -16,7 +16,6 @@ import Data.Time.Clock (
  )
 import Data.Time.Format (defaultTimeLocale, formatTime)
 import System.Console.ANSI (clearScreen, setCursorPosition)
-import System.IO (BufferMode (..), hFlush, hSetBuffering, stdout)
 
 -- Hydra imports
 import Hydra.Cardano.Api (SlotNo (..))
@@ -37,15 +36,15 @@ import HydraAuction.OnChain.Common (secondsLeftInInterval, stageToInterval)
 import HydraAuction.Tx.Common (currentAuctionStage)
 import HydraAuction.Types (BidTerms (..))
 import HydraAuctionUtils.Fixture (actorFromPkh)
-import HydraAuctionUtils.L1.Runner (dockerNode, executeL1RunnerWithNode)
+import HydraAuctionUtils.L1.Runner (L1Runner)
 import HydraAuctionUtils.Monads (queryCurrentSlot)
 import HydraAuctionUtils.Time (currentPlutusPOSIXTime)
 import HydraAuctionUtils.Types.Natural (naturalToInt)
 
-watchAuction :: AuctionName -> IORef DelegateState -> IO ()
+watchAuction :: AuctionName -> IORef DelegateState -> L1Runner ()
 watchAuction x y = do
   seenSlotsCounterRef <- newMVar 0
-  currentTime <- getCurrentTime
+  currentTime <- liftIO getCurrentTime
   lastSeenSlot <- newMVar (0, currentTime)
   watchAuction' (seenSlotsCounterRef, lastSeenSlot) x y
 
@@ -53,19 +52,20 @@ watchAuction' ::
   (MVar Integer, MVar (Integer, UTCTime)) ->
   AuctionName ->
   IORef DelegateState ->
-  IO ()
+  L1Runner ()
 watchAuction' slotsVars auctionName currentDelegateStateRef = do
   -- Flushing once per `watchAuction'` to reduce blinking
-  hSetBuffering stdout (BlockBuffering (Just 100500))
-  clearScreen
-  setCursorPosition 0 0
+  liftIO $ do
+    hSetBuffering stdout (BlockBuffering (Just 100500))
+    clearScreen
+    setCursorPosition 0 0
 
   printTimeAndSlots
-  printDelegateState =<< readIORef currentDelegateStateRef
-  printAuctionState
+  liftIO $ printDelegateState =<< readIORef currentDelegateStateRef
+  liftIO printAuctionState
 
   hFlush stdout
-  threadDelay 100_000
+  liftIO $ threadDelay 100_000
   watchAuction' slotsVars auctionName currentDelegateStateRef
   where
     showTime = formatTime defaultTimeLocale "%Y-%m-%d %H:%M:%S"
@@ -84,18 +84,17 @@ watchAuction' slotsVars auctionName currentDelegateStateRef = do
             realToFrac (naturalToInt (bidAmount terms)) / 1_000_000
       return $ show bidAmountAda <> " ADA placed by " <> show bidder
     showBidTerms Nothing = return "No bid placed jet"
+    -- FIXME: refactor state handling
     printTimeAndSlots = do
-      currentTime <- getCurrentTime
+      currentTime <- liftIO getCurrentTime
       putStrLn $ showTime currentTime
-      void $ trySome $ do
-        -- FIXME: parametrize
-        SlotNo currentSlot' <-
-          executeL1RunnerWithNode dockerNode queryCurrentSlot
+      void $ do
+        SlotNo currentSlot' <- queryCurrentSlot
         let currentSlot = fromIntegral currentSlot'
         (lastSeen, lastSeenTime) <- takeMVar (snd slotsVars)
         if lastSeen /= currentSlot
           then do
-            modifyMVar_ (fst slotsVars) (return . (1 +))
+            liftIO $ modifyMVar_ (fst slotsVars) (return . (1 +))
             putMVar (snd slotsVars) (currentSlot, currentTime)
           else putMVar (snd slotsVars) (currentSlot, lastSeenTime)
         seen <- readMVar (fst slotsVars)
