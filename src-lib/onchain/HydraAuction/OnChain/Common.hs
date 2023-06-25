@@ -14,21 +14,20 @@ module HydraAuction.OnChain.Common (
 
 -- Prelude imports
 import PlutusTx.Prelude
-import Prelude (div)
 
 -- Plutus imports
-import PlutusLedgerApi.V1.Interval (Extended (..), Interval (..), UpperBound (..), contains, from)
+import PlutusLedgerApi.V1.Interval (Interval (..), contains, from)
 import PlutusLedgerApi.V1.Time (POSIXTime (..))
-import PlutusLedgerApi.V1.Value (getValue)
-import PlutusLedgerApi.V2.Contexts (
-  ScriptContext (..),
-  TxInfo (..),
-  txOutValue,
- )
+import PlutusLedgerApi.V2.Contexts (TxInfo (..))
 
 -- Hydra auction imports
 import HydraAuction.Types (AuctionStage (..), AuctionTerms (..))
-import HydraAuctionUtils.Plutus (rightExclusiveInterval, strictTo)
+import HydraAuctionUtils.Plutus.Interval (
+  rightExclusiveInterval,
+  secondsLeftInInterval,
+  strictTo,
+ )
+import HydraAuctionUtils.Plutus.TxOut (checkNonAdaOutputsNum)
 import HydraAuctionUtils.Types.Natural (naturalToInt)
 
 {-# INLINEABLE minAuctionFee #-}
@@ -55,30 +54,6 @@ checkVoucherExpiredOrLater :: AuctionTerms -> TxInfo -> Bool
 checkVoucherExpiredOrLater terms info =
   traceIfFalse "Wrong interval for transaction (checkcheckVoucherExpiredOrLater)" $
     contains (from (voucherExpiry terms)) (txInfoValidRange info)
-
-{-# INLINEABLE checkNonAdaOutputsNum #-}
-checkNonAdaOutputsNum :: ScriptContext -> Integer -> Bool
-checkNonAdaOutputsNum context expectedNum =
-  traceIfFalse "Wrong outputs number for tx" $
-    length (filter isNotAdaOnlyOutput outputs) == expectedNum
-  where
-    info = scriptContextTxInfo context
-    outputs = txInfoOutputs info
-    isNotAdaOnlyOutput output =
-      let value = txOutValue output
-       in length (getValue value) > 1
-
-{- | Given a POSIXTime, and an 'Interval' this function computes
-   the truncated difference in seconds to the 'UpperBound' of the passed 'Interval'.
-   If the Interval does not have a finite `UpperBound`,
-   or if the given time is past the finite `UpperBound` the function will return Nothing.
-   Note that this function is not and should not be used on-chain
--}
-secondsLeftInInterval :: POSIXTime -> Interval POSIXTime -> Maybe Integer
-secondsLeftInInterval (POSIXTime now) (Interval _ (UpperBound (Finite (POSIXTime t)) inclusive))
-  | now < t =
-      Just $ (t - now - if inclusive then 0 else 1) `div` 1000
-secondsLeftInInterval _ _ = Nothing
 
 {-# INLINEABLE validAuctionTerms #-}
 validAuctionTerms :: AuctionTerms -> Bool

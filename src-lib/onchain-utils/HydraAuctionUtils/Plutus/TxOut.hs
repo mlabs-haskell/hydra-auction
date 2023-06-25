@@ -1,5 +1,6 @@
 module HydraAuctionUtils.Plutus.TxOut (
   byAddress,
+  checkNonAdaOutputsNum,
   decodeOutputDatum,
   isNotAdaOnlyOutput,
   lovelaceOfOutput,
@@ -20,6 +21,7 @@ import PlutusLedgerApi.V1.Value (
   assetClassValueOf,
  )
 import PlutusLedgerApi.V2.Contexts (
+  ScriptContext (..),
   TxInfo (..),
   TxOut (..),
   findDatum,
@@ -57,3 +59,11 @@ lovelaceOfOutput :: TxOut -> Integer
 lovelaceOfOutput output = assetClassValueOf (txOutValue output) ac
   where
     ac = assetClass (CurrencySymbol emptyByteString) (TokenName emptyByteString)
+
+{-# INLINEABLE checkNonAdaOutputsNum #-}
+checkNonAdaOutputsNum :: ScriptContext -> Integer -> Bool
+checkNonAdaOutputsNum context expectedNum =
+  traceIfFalse "Wrong outputs number for tx" $
+    length (filter isNotAdaOnlyOutput outputs) == expectedNum
+  where
+    outputs = txInfoOutputs $ scriptContextTxInfo context
