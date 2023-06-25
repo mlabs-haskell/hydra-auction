@@ -236,10 +236,12 @@ library hydra-auction-utils-onchain
   hs-source-dirs:  src-lib/onchain-utils
   exposed-modules:
     HydraAuctionUtils.Plutus
+    HydraAuctionUtils.Plutus.Hydra
     HydraAuctionUtils.Plutus.Interval
     HydraAuctionUtils.Plutus.TxOut
 
   build-depends:
+    , hydra-plutus
     , plutus-tx
     , plutus-tx-plugin
 

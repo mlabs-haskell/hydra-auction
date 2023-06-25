@@ -23,9 +23,6 @@ import PlutusLedgerApi.V2.Tx (
   txOutAddress,
  )
 
--- Hydra imporst
-import Hydra.Contract.Head (hasPT)
-
 -- Hydra auction imports
 import HydraAuction.Addresses (VoucherCS (..))
 import HydraAuction.OnChain.Common (checkInterval, checkNonAdaOutputsNum)
@@ -41,9 +38,9 @@ import HydraAuction.Types (
 import HydraAuctionUtils.Plutus (
   byAddress,
   decodeOutputDatum,
-  isNotAdaOnlyOutput,
   nothingForged,
  )
+import HydraAuctionUtils.Plutus.Hydra (checkIsMoveToHydra)
 import HydraAuctionUtils.Types.Natural (Natural, toBuiltinBytestring)
 
 {-# INLINEABLE mkStandingBidValidator #-}
@@ -53,19 +50,7 @@ mkStandingBidValidator terms datum redeemer context =
   case inOutsByAddress standingBidAddress of
     [standingBidInOut] ->
       case redeemer of
-        MoveToHydra ->
-          case filter isNotAdaOnlyOutput $ txInfoOutputs info of
-            [standingBidOutput] ->
-              -- Lot cannot be stolen, cuz we have only one output
-              -- Hydra validator shoud check that datum is not changed
-              -- in commited output
-              -- Also validator checks that output address is correct
-              -- The only thing we should check is Tx has right PT
-              traceIfFalse "No Hydra Participation Token" $
-                hasPT (hydraHeadId terms) standingBidOutput
-                  && checkNonAdaOutputsNum context 1
-            _ -> traceError "Wrong number of standing bid outputs"
-            && nothingForged info
+        MoveToHydra -> checkIsMoveToHydra context (hydraHeadId terms)
         NewBid ->
           checkCorrectNewBidOutput standingBidInOut
             && nothingForged info
