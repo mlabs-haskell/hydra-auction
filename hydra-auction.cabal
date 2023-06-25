@@ -221,12 +221,21 @@ library hydra-auction-onchain
 
   build-depends:
     , hydra-auction-utils
+    , hydra-auction-utils-onchain
     , hydra-cardano-api
     , hydra-cluster
     , hydra-node
     , hydra-plutus
     , hydra-prelude
     , hydra-test-utils
+    , plutus-tx
+    , plutus-tx-plugin
+
+library hydra-auction-utils-onchain
+  import:          common-onchain
+  hs-source-dirs:  src-lib/onchain-utils
+  exposed-modules: HydraAuctionUtils.Plutus
+  build-depends:
     , plutus-tx
     , plutus-tx-plugin
 
@@ -253,6 +262,7 @@ library
     , directory
     , hydra-auction-onchain
     , hydra-auction-utils
+    , hydra-auction-utils-onchain
     , hydra-cardano-api
     , hydra-cluster
     , hydra-node
@@ -282,7 +292,6 @@ library hydra-auction-utils
     HydraAuctionUtils.Network
     HydraAuctionUtils.Parsers
     HydraAuctionUtils.Parsers.TxIn
-    HydraAuctionUtils.Plutus
     HydraAuctionUtils.Prelude
     HydraAuctionUtils.PrettyPrinting
     HydraAuctionUtils.Server.Client

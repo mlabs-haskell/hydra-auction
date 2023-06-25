@@ -36,6 +36,8 @@ import PlutusLedgerApi.V2.Tx (
 import PlutusTx qualified
 import PlutusTx.IsData.Class (fromBuiltinData)
 
+-- TxOut stuff
+
 {-# INLINEABLE decodeOutputDatum #-}
 decodeOutputDatum :: PlutusTx.FromData a => TxInfo -> TxOut -> Maybe a
 decodeOutputDatum info output = do
@@ -64,9 +66,13 @@ lovelaceOfOutput output = assetClassValueOf (txOutValue output) ac
   where
     ac = assetClass (CurrencySymbol emptyByteString) (TokenName emptyByteString)
 
+-- Other TxInfo checks
+
 {-# INLINEABLE nothingForged #-}
 nothingForged :: TxInfo -> Bool
 nothingForged info = traceIfFalse "Something was forged" (isZero $ txInfoMint info)
+
+-- Intervals
 
 {-# INLINEABLE strictTo #-}
 strictTo :: a -> Interval a
