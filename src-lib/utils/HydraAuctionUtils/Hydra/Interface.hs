@@ -36,7 +36,7 @@ instance Protocol HydraProtocol where
   type OutputKind HydraProtocol = HydraEventKind
   type ConnectionConfig HydraProtocol = HydraConnectionConfig
   getOutputKind = getHydraEventKind
-  configToConnectionPath config =
+  configToConnectionPath _ config =
     "/history=" <> (if retrieveHistory config then "yes" else "no")
 
 data HydraEventKind

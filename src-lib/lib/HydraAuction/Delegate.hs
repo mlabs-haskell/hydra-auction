@@ -1,5 +1,3 @@
-{-# LANGUAGE AllowAmbiguousTypes #-}
-
 -- | Pure logic and Hydra communication used for Delegate server
 module HydraAuction.Delegate (
   delegateFrontendRequestStep,

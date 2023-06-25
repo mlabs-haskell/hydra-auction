@@ -18,6 +18,7 @@ import HydraAuctionUtils.Prelude
 
 -- Haskell imports
 import Data.Aeson (eitherDecodeStrict, encode)
+import Data.Proxy (Proxy (..))
 import Network.WebSockets (Connection, receiveData, sendTextData)
 
 -- Hydra imports
@@ -93,7 +94,7 @@ withProtocolClient ::
 withProtocolClient host config action =
   withClientForHost
     host
-    (configToConnectionPath @protocol config)
+    (configToConnectionPath (Proxy :: Proxy protocol) config)
     (action . MkRealProtocolClient)
 
 -- FakeProtocolClient

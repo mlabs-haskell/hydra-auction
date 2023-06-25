@@ -1,5 +1,3 @@
-{-# LANGUAGE AllowAmbiguousTypes #-}
-
 module HydraAuctionUtils.Server.Protocol (
   Protocol (..),
   ProtocolClient (..),
@@ -17,6 +15,7 @@ import HydraAuctionUtils.Prelude
 
 import Control.Monad.State.Class (MonadState (..))
 import Data.Aeson (FromJSON (..), ToJSON (..))
+import Data.Proxy (Proxy)
 import Data.Text (Text)
 
 -- HydraAuction imports
@@ -42,7 +41,8 @@ class
   type ConnectionConfig protocol
 
   getOutputKind :: Output protocol -> OutputKind protocol
-  configToConnectionPath :: ConnectionConfig protocol -> Text
+  configToConnectionPath ::
+    Proxy protocol -> ConnectionConfig protocol -> Text
 
 class Protocol (ClientFor handle) => ProtocolClient handle where
   type ClientFor handle

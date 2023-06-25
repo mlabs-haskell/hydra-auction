@@ -44,7 +44,7 @@ instance Protocol DelegateProtocol where
   type OutputKind DelegateProtocol = DelegateResponseKind
   type ConnectionConfig DelegateProtocol = ()
   getOutputKind _ = NotImplemented
-  configToConnectionPath () = ""
+  configToConnectionPath _ () = ""
 
 data FrontendRequest
   = QueryCurrentDelegateState

@@ -104,7 +104,7 @@ websocketsServerConnectionHanler
 runWebsocketsServer ::
   forall protocol.
   Protocol protocol =>
-  _ ->
+  Host ->
   ServerQueues protocol ->
   IO ()
 runWebsocketsServer host queues = do

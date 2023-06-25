@@ -443,7 +443,7 @@ instance Protocol PlatformProtocol where
   type OutputKind PlatformProtocol = ServerOutputKind
   type ConnectionConfig PlatformProtocol = ()
   getOutputKind _ = NotImplemented
-  configToConnectionPath _ = ""
+  configToConnectionPath _ _ = ""
 
 instance ContainerForEntity ClientInput where
   jsonSubFieldName Proxy = "input"
