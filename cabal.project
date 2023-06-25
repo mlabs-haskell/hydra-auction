@@ -32,7 +32,7 @@ index-state: 2023-04-21T02:04:45Z
 index-state:
   -- while haskell.nix, ignores this one
   , hackage.haskell.org 2023-04-21T02:04:45Z
-  , cardano-haskell-packages 2023-03-22T09:20:07Z
+  , cardano-haskell-packages 2023-03-21T14:44:35Z
 
 tests: true
 
