@@ -1,87 +1,21 @@
 module HydraAuctionUtils.Plutus (
-  byAddress,
-  decodeOutputDatum,
-  isNotAdaOnlyOutput,
-  lovelaceOfOutput,
   nothingForged,
-  strictTo,
-  rightExclusiveInterval,
-  extendIntervalRight,
+  module X,
 ) where
 
 -- Prelude imports
 import PlutusTx.Prelude
 
 -- Plutus imports
+import PlutusLedgerApi.V1.Value (isZero)
+import PlutusLedgerApi.V2.Contexts (TxInfo (..))
 
-import PlutusLedgerApi.V1.Address (Address)
-import PlutusLedgerApi.V1.Interval (Extended (..), Interval (..), LowerBound (..), UpperBound (..), lowerBound, strictUpperBound)
-import PlutusLedgerApi.V1.Scripts (Datum (getDatum))
-import PlutusLedgerApi.V1.Value (
-  CurrencySymbol (..),
-  TokenName (..),
-  Value (..),
-  assetClass,
-  assetClassValueOf,
-  isZero,
- )
-import PlutusLedgerApi.V2.Contexts (
-  TxInfo (..),
-  TxOut (..),
-  findDatum,
- )
-import PlutusLedgerApi.V2.Tx (
-  OutputDatum (..),
- )
-import PlutusTx qualified
-import PlutusTx.IsData.Class (fromBuiltinData)
-
--- TxOut stuff
-
-{-# INLINEABLE decodeOutputDatum #-}
-decodeOutputDatum :: PlutusTx.FromData a => TxInfo -> TxOut -> Maybe a
-decodeOutputDatum info output = do
-  datum <- case txOutDatum output of
-    NoOutputDatum ->
-      Nothing
-    OutputDatumHash hash ->
-      findDatum hash info
-    OutputDatum d ->
-      Just d
-  fromBuiltinData $ getDatum datum
-
-{-# INLINEABLE byAddress #-}
-byAddress :: Address -> [TxOut] -> [TxOut]
-byAddress address = filter (\o -> txOutAddress o == address)
-
-{-# INLINEABLE isNotAdaOnlyOutput #-}
-isNotAdaOnlyOutput :: TxOut -> Bool
-isNotAdaOnlyOutput output =
-  let value = txOutValue output
-   in length (getValue value) > 1
-
--- XXX: PlutusLedgerApi.V1.Ada module requires more dependencies
-lovelaceOfOutput :: TxOut -> Integer
-lovelaceOfOutput output = assetClassValueOf (txOutValue output) ac
-  where
-    ac = assetClass (CurrencySymbol emptyByteString) (TokenName emptyByteString)
+-- HydraAuction imports
+import HydraAuctionUtils.Plutus.Interval as X
+import HydraAuctionUtils.Plutus.TxOut as X
 
 -- Other TxInfo checks
 
 {-# INLINEABLE nothingForged #-}
 nothingForged :: TxInfo -> Bool
 nothingForged info = traceIfFalse "Something was forged" (isZero $ txInfoMint info)
-
--- Intervals
-
-{-# INLINEABLE strictTo #-}
-strictTo :: a -> Interval a
-strictTo s = Interval (LowerBound NegInf True) (strictUpperBound s)
-
-{-# INLINEABLE rightExclusiveInterval #-}
-rightExclusiveInterval :: a -> a -> Interval a
-rightExclusiveInterval s s' = Interval (lowerBound s) (strictUpperBound s')
-
-{-# INLINEABLE extendIntervalRight #-}
-extendIntervalRight :: Interval a -> Interval a
-extendIntervalRight (Interval a _) = Interval a (UpperBound PosInf True)
