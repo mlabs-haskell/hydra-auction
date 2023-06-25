@@ -131,6 +131,20 @@ common common-offchain
     , unix
     , websockets
 
+common common-onchain
+  import:      common-lang
+
+  if flag(dev)
+    ghc-options: -fplugin-opt PlutusTx.Plugin:defer-errors
+
+  -- Options for Plutus Tx compilations
+  -- (some are enabled additionaly in individual modules)
+
+  ghc-options:
+    -fobject-code -fno-ignore-interface-pragmas
+    -fno-omit-interface-pragmas -fno-specialize
+    -fno-unbox-small-strict-fields -fno-unbox-strict-fields
+
 common common-executable
   import:      common-offchain
   ghc-options: -threaded -rtsopts
@@ -166,7 +180,7 @@ executable hydra-auction
     , hydra-test-utils
     , optparse-applicative
 
-  hs-source-dirs: app
+  hs-source-dirs: src-app/frontend-cli
 
 executable hydra-auction-delegate
   import:         common-executable
@@ -175,7 +189,7 @@ executable hydra-auction-delegate
     DelegateServer.Parsers
     HydraAuction.Delegate.Server
 
-  hs-source-dirs: delegate-app
+  hs-source-dirs: src-app/delegate
   build-depends:
     , hydra-auction
     , hydra-auction-onchain
@@ -185,25 +199,14 @@ executable hydra-auction-delegate
 executable hydra-auction-platform
   import:         common-executable
   main-is:        Main.hs
-  hs-source-dirs: platform-app
+  hs-source-dirs: src-app/platform
   build-depends:
     , hydra-auction
     , hydra-auction-utils
 
 library hydra-auction-onchain
-  import:          common-lang
-
-  if flag(dev)
-    ghc-options: -fplugin-opt PlutusTx.Plugin:defer-errors
-
-  -- Options for Plutus Tx compilations
-  -- (some are enabled additionaly in individual modules)
-
-  ghc-options:
-    -fobject-code -fno-ignore-interface-pragmas
-    -fno-omit-interface-pragmas -fno-specialize
-    -fno-unbox-small-strict-fields -fno-unbox-strict-fields
-
+  import:          common-onchain
+  hs-source-dirs:  src-lib/onchain
   exposed-modules:
     HydraAuction.Addresses
     HydraAuction.OnChain
@@ -218,6 +221,7 @@ library hydra-auction-onchain
 
   build-depends:
     , hydra-auction-utils
+    , hydra-auction-utils-onchain
     , hydra-cardano-api
     , hydra-cluster
     , hydra-node
@@ -227,10 +231,21 @@ library hydra-auction-onchain
     , plutus-tx
     , plutus-tx-plugin
 
-  hs-source-dirs:  src-onchain
+library hydra-auction-utils-onchain
+  import:          common-onchain
+  hs-source-dirs:  src-lib/onchain-utils
+  exposed-modules:
+    HydraAuctionUtils.Plutus
+    HydraAuctionUtils.Plutus.Interval
+    HydraAuctionUtils.Plutus.TxOut
+
+  build-depends:
+    , plutus-tx
+    , plutus-tx-plugin
 
 library
   import:          common-offchain
+  hs-source-dirs:  src-lib/lib
   exposed-modules:
     HydraAuction.Delegate
     HydraAuction.Delegate.Interface
@@ -251,6 +266,7 @@ library
     , directory
     , hydra-auction-onchain
     , hydra-auction-utils
+    , hydra-auction-utils-onchain
     , hydra-cardano-api
     , hydra-cluster
     , hydra-node
@@ -261,11 +277,9 @@ library
     , time
     , typed-process
 
-  hs-source-dirs:  src
-
 library hydra-auction-utils
   import:          common-offchain
-  hs-source-dirs:  src-utils
+  hs-source-dirs:  src-lib/utils
   exposed-modules:
     HydraAuctionUtils.BundledData
     HydraAuctionUtils.Composite.Runner
@@ -282,7 +296,6 @@ library hydra-auction-utils
     HydraAuctionUtils.Network
     HydraAuctionUtils.Parsers
     HydraAuctionUtils.Parsers.TxIn
-    HydraAuctionUtils.Plutus
     HydraAuctionUtils.Prelude
     HydraAuctionUtils.PrettyPrinting
     HydraAuctionUtils.Server.Client
@@ -359,4 +372,4 @@ test-suite hydra-auction-test
     , tasty-hunit
 
   -- FIXME: separate Frontend CLI lib
-  hs-source-dirs: test app
+  hs-source-dirs: src-test src-app/frontend-cli
