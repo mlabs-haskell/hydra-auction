@@ -234,6 +234,7 @@ library hydra-auction-onchain
 library hydra-auction-utils-onchain
   import:          common-onchain
   hs-source-dirs:  src-lib/onchain-utils
+  visibility:      public
   exposed-modules:
     HydraAuctionUtils.Plutus
     HydraAuctionUtils.Plutus.Hydra
@@ -247,6 +248,7 @@ library hydra-auction-utils-onchain
 
 library
   import:          common-offchain
+  visibility:      private
   hs-source-dirs:  src-lib/lib
   exposed-modules:
     HydraAuction.Delegate
@@ -281,6 +283,7 @@ library
 
 library hydra-auction-utils
   import:          common-offchain
+  visibility:      public
   hs-source-dirs:  src-lib/utils
   exposed-modules:
     HydraAuctionUtils.BundledData
