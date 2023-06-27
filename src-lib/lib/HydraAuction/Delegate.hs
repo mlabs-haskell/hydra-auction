@@ -53,7 +53,7 @@ import HydraAuction.Platform.Interface (
   PlatformProtocol,
   Some (..),
  )
-import HydraAuction.Tx.Common (createMinAdaUtxo)
+import HydraAuction.Tx.Common (createMinAdaUtxo, queryOrCreateSingleMinAdaUtxo)
 import HydraAuction.Tx.FeeEscrow (
   distributeFee,
  )
@@ -188,7 +188,9 @@ delegateEventStep ::
   WithClientT client (StateT DelegateState CompositeRunner) [DelegateResponse]
 delegateEventStep event = case event of
   Start -> do
+    -- Preparing for collateral
     sendCommand Init
+    _ <- runL1RunnerInComposite createMinAdaUtxo
     return []
   AuctionStageStarted _ BiddingEndedStage -> do
     state <- get
@@ -376,7 +378,9 @@ delegateEventStep event = case event of
               address == address'
             belongTo _ = False
     commitCollateralAda = do
-      forCollateralUtxo <- runL1RunnerInComposite createMinAdaUtxo
+      -- Should exist cuz prepared on Start
+      forCollateralUtxo <-
+        runL1RunnerInComposite queryOrCreateSingleMinAdaUtxo
       sendCommand (Commit $ UTxO.fromPairs [forCollateralUtxo])
       return $ Right ()
     getDelegateParty = do

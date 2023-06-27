@@ -78,7 +78,8 @@ import HydraAuctionUtils.Monads.Actors (
  )
 
 import HydraAuction.Tx.Common (
-  createMinAdaUtxo,
+  queryOrCreateSingleMinAdaUtxo,
+  querySingleMinAdaUtxo,
   scriptPlutusScript,
   scriptSingleUtxo,
   scriptUtxos,
@@ -293,6 +294,7 @@ createStandingBidDatum terms bidAmount sellerSignature bidderSk =
     bidderMessage = fromBuiltin $ bidderSignatureMessage voucherCS bidAmount bidderPKH
     Signature bidderSignature = dsign bidderSecretKey bidderMessage
 
+-- | Actor should have prepared minAda Utxo
 moveToHydra ::
   HasCallStack =>
   HeadId ->
@@ -301,7 +303,8 @@ moveToHydra ::
   HydraRunner ()
 moveToHydra headId terms (standingBidTxIn, standingBidTxOut) = do
   -- FIXME: get headId from AuctionTerms
-  utxoForL2Collateral <- runL1RunnerInComposite createMinAdaUtxo
+  utxoForL2Collateral <- runL1RunnerInComposite queryOrCreateSingleMinAdaUtxo
+
   utxoForL1Fee : _ <-
     filter (/= utxoForL2Collateral) . UTxO.pairs
       <$> runL1RunnerInComposite actorAdaOnlyUtxo

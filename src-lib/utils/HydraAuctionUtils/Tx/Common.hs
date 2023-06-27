@@ -1,5 +1,8 @@
 module HydraAuctionUtils.Tx.Common (
   transferAda,
+  querySingleMinAdaUtxo,
+  queryOrCreateSingleMinAdaUtxo,
+  createMinAdaUtxo,
   utxoLovelaceValue,
   actorAdaOnlyUtxo,
   selectAdaUtxo,
@@ -49,6 +52,7 @@ import HydraAuctionUtils.Tx.AutoCreateTx (
   AutoCreateParams (..),
   autoSubmitAndAwaitTx,
  )
+import HydraAuctionUtils.Tx.Build (minLovelace)
 import HydraAuctionUtils.Tx.Utxo (filterAdaOnlyUtxo, filterNonFuelUtxo)
 
 actorAdaOnlyUtxo ::
@@ -64,9 +68,60 @@ selectAdaUtxo ::
   Lovelace ->
   m (Maybe UTxO)
 selectAdaUtxo minRequiredAmount = do
-  allAdaUtxo <- actorAdaOnlyUtxo
+  let filterMinLovelace = UTxO.filter $
+        \x -> selectLovelace (txOutValue x) >= minLovelace
+  allAdaUtxo <- filterMinLovelace <$> actorAdaOnlyUtxo
   let foundEnough = utxoLovelaceValue allAdaUtxo >= minRequiredAmount
   return $ guard foundEnough >> Just allAdaUtxo
+
+querySingleMinAdaUtxo ::
+  (MonadIO m, MonadCardanoClient m, MonadTrace m, MonadFail m, MonadHasActor m) =>
+  m (Maybe (TxIn, TxOut CtxUTxO))
+querySingleMinAdaUtxo = do
+  let filterMinLovelace = UTxO.filter $
+        \x -> txOutValue x == lovelaceToValue minLovelace
+  utxos <- UTxO.pairs . filterMinLovelace <$> actorAdaOnlyUtxo
+  return $ case utxos of
+    first : _ -> Just first
+    [] -> Nothing
+
+createMinAdaUtxo ::
+  (MonadIO m, MonadCardanoClient m, MonadTrace m, MonadFail m, MonadHasActor m) =>
+  m (TxIn, TxOut CtxUTxO)
+createMinAdaUtxo = do
+  (actorAddress, _, actorSk) <- addressAndKeys
+  actorMoneyUtxo <- fromJust <$> selectAdaUtxo minLovelace
+
+  void $
+    autoSubmitAndAwaitTx $
+      AutoCreateParams
+        { signedUtxos = [(actorSk, actorMoneyUtxo)]
+        , additionalSigners = []
+        , referenceUtxo = mempty
+        , witnessedUtxos = []
+        , collateral = Nothing
+        , outs = [minAdaOut actorAddress]
+        , toMint = TxMintValueNone
+        , changeAddress = actorAddress
+        , validityBound = always
+        }
+
+  -- Safe, cuz we just created it (modulo concurrent txs)
+  fromJust <$> querySingleMinAdaUtxo
+  where
+    minAdaOut actorAddress =
+      TxOut
+        (ShelleyAddressInEra actorAddress)
+        (lovelaceToValue minLovelace)
+        TxOutDatumNone
+        ReferenceScriptNone
+
+queryOrCreateSingleMinAdaUtxo ::
+  (MonadIO m, MonadCardanoClient m, MonadTrace m, MonadFail m, MonadHasActor m) =>
+  m (TxIn, TxOut CtxUTxO)
+queryOrCreateSingleMinAdaUtxo = do
+  mUtxo <- querySingleMinAdaUtxo
+  maybe createMinAdaUtxo return mUtxo
 
 utxoLovelaceValue :: UTxO.UTxO -> Lovelace
 utxoLovelaceValue =
