@@ -1,0 +1,21 @@
+working-dir: ..
+file: echo.cast
+environment:
+  ASCIINEMA_CONFIG_HOME:
+    "./config/asciinema"
+input:
+- type: "make demo-seller\n"
+- waitForOutput: ".*Alice>.*"
+- type: "announce-auction -n demo-testnet\n"
+- waitForOutput: ".*appeard.*"
+- type: "approve-bidder -n demo-testnet -a bob\n"
+- waitForOutput: ".*Alice>.*"
+- type: "approve-bidder -n demo-testnet -a carol\n"
+- waitForOutput: ".*Alice>.*"
+- waitForOutput: "*.AuctionSet.*"
+- type: "start-bidding -n demo-testnet\n"
+- waitForOutput: ".*appeard.*"
+- type: "move-to-l2 -n demo-testnet\n"
+- waitForOutput: "*.AwaitingCommits.*"
+- type: "quit\n"
+- type: "exit\n"

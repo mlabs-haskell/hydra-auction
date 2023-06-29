@@ -1,0 +1,13 @@
+working-dir: ..
+file: echo.cast
+environment:
+  ASCIINEMA_CONFIG_HOME:
+    "./config/asciinema"
+input:
+- type: "make demo-seller\n"
+- wait: 1500
+- type: "mint-test-nft\n"
+- waitForOutput: ".*appeard.*"
+- wait: 100
+- type: "quit\n"
+- type: "exit\n"
