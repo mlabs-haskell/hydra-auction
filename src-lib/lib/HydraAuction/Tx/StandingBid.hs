@@ -7,7 +7,7 @@ module HydraAuction.Tx.StandingBid (
   createNewBidTx,
   createStandingBidDatum,
   decodeNewBidTxOnL2,
-  moveToHydra,
+  moveToHydraTx,
   sellerSignatureForActor,
   NewBidTxInfo (..),
 ) where
@@ -58,9 +58,7 @@ import Hydra.Cardano.Api (
  )
 import Hydra.Chain (HeadId)
 
--- Hydra auction imports
-
-import HydraAuction.HydraHacks (submitAndAwaitCommitTx)
+import HydraAuction.HydraHacks (createCommitTx)
 import HydraAuction.OnChain (
   AuctionScript (StandingBid),
   standingBidValidator,
@@ -294,26 +292,26 @@ createStandingBidDatum terms bidAmount sellerSignature bidderSk =
     bidderMessage = fromBuiltin $ bidderSignatureMessage voucherCS bidAmount bidderPKH
     Signature bidderSignature = dsign bidderSecretKey bidderMessage
 
--- | Actor should have prepared minAda Utxo
-moveToHydra ::
+-- | Uses or creates minAda Utxo for collateral
+moveToHydraTx ::
   HasCallStack =>
   HeadId ->
   AuctionTerms ->
   (TxIn, TxOut CtxUTxO) ->
-  HydraRunner ()
-moveToHydra headId terms (standingBidTxIn, standingBidTxOut) = do
+  HydraRunner Tx
+moveToHydraTx headId terms (standingBidTxIn, standingBidTxOut) = do
   -- FIXME: get headId from AuctionTerms
   utxoForL2Collateral <- runL1RunnerInComposite queryOrCreateSingleMinAdaUtxo
 
   utxoForL1Fee : _ <-
     filter (/= utxoForL2Collateral) . UTxO.pairs
       <$> runL1RunnerInComposite actorAdaOnlyUtxo
-  void $
-    submitAndAwaitCommitTx
-      headId
-      utxoForL1Fee
-      (UTxO.fromPairs [utxoForL2Collateral])
-      (standingBidTxIn, standingBidTxOut, standingBidWitness)
+  -- FIXME: use Hydra external commit instread
+  createCommitTx
+    headId
+    utxoForL1Fee
+    (UTxO.fromPairs [utxoForL2Collateral])
+    (standingBidTxIn, standingBidTxOut, standingBidWitness)
   where
     script =
       fromPlutusScript @PlutusScriptV2 $

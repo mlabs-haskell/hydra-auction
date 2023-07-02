@@ -62,7 +62,7 @@ import HydraAuction.Tx.StandingBid (
   createNewBidTx,
   decodeInlineDatum,
   decodeNewBidTxOnL2,
-  moveToHydra,
+  moveToHydraTx,
  )
 import HydraAuction.Types (
   AuctionStage (..),
@@ -116,11 +116,11 @@ delegateFrontendRequestStep (clientId, request) =
       state <- get
       case state of
         Initialized headId (AwaitingCommits {stangingBidWasCommited = False}) ->
-          validatingAuctionTerms headId auctionTerms $ do
-            -- FIXME: Waiting for support by Hydra
-            lift $
-              moveToHydra headId auctionTerms (txIn, txOut)
-            return [(Broadcast, AuctionSet auctionTerms)]
+          validatingAuctionTerms headId auctionTerms $
+            lift $ do
+              tx <- moveToHydraTx headId auctionTerms (txIn, txOut)
+              _ <- runL1RunnerInComposite $ submitTx tx
+              return [(Broadcast, AuctionSet auctionTerms)]
         _ ->
           return
             [ (PerClient clientId, RequestIgnored $ WrongDelegateState state)
