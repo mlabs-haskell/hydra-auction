@@ -42,6 +42,7 @@ import HydraAuction.Delegate.Interface (
   RequestIgnoredReason (..),
   ResponseReason (..),
   wasOpened,
+  wasStopped,
  )
 import HydraAuction.OnChain.Common (validAuctionTerms)
 import HydraAuction.OnChain.StandingBid (validNewBidTerms)
@@ -401,9 +402,14 @@ abort ::
   m [DelegateResponse]
 abort reason = do
   state <- get
-  let command = if wasOpened state then Close else Abort
-  sendCommand command
-  updateStateAndResponse $ AbortRequested reason
+  if wasStopped state
+    then do
+      putStrLn "Ignoring abort: state is already stopped"
+      return []
+    else do
+      let command = if wasOpened state then Close else Abort
+      sendCommand command
+      updateStateAndResponse $ AbortRequested reason
 
 updateStateAndResponse ::
   (MonadState DelegateState m, MonadFail m) =>

@@ -15,6 +15,7 @@ module HydraAuction.Delegate.Interface (
   initialState,
   isFinalState,
   wasOpened,
+  wasStopped,
 ) where
 
 -- Prelude imports
@@ -87,6 +88,13 @@ wasOpened state = case state of
   NotInitialized -> False
   Initialized _ (AwaitingCommits {}) -> False
   Initialized _ _ -> True
+
+wasStopped :: DelegateState -> Bool
+wasStopped state = case state of
+  NotInitialized -> False
+  Initialized _ initState ->
+    initializedStateKind initState
+      `elem` [ClosedKind, FinalizedKind, AbortedKind, AbortRequestedKind]
 
 data OpenHeadUtxo = MkOpenHeadUtxo
   { standingBidTerms :: Maybe BidTerms
