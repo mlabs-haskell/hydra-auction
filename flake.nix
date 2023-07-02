@@ -11,7 +11,7 @@
   inputs = {
     # when you upgrade `hydra` input remember to also upgrade revs under
     # `source-repository-package`s in `cabal.project`
-    hydra.url = "github:input-output-hk/hydra/85e650ca951feba2b3f139eda4bc58cafeab07f9";
+    hydra.url = "github:input-output-hk/hydra/8bc7a98220d6a33befa7a2ea52858923a4272143";
     haskellNix.url = "github:input-output-hk/haskell.nix";
     # The "empty-flake" is needed until the following is fixed
     # https://github.com/input-output-hk/cardano-node/issues/4525
@@ -57,7 +57,7 @@
               compiler-nix-name = "ghc8107";
 
               shell.tools = {
-                cabal = "3.8.1.0";
+                cabal = "3.10.1.0";
                 fourmolu = "0.9.0.0";
                 # haskell-language-server = "latest";
               };

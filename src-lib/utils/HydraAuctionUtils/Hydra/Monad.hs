@@ -21,7 +21,13 @@ import Cardano.Api.UTxO qualified as UTxO
 
 import Hydra.API.ClientInput (ClientInput (..))
 import Hydra.API.ServerOutput (ServerOutput (..))
-import Hydra.Cardano.Api (Address (ByronAddress, ShelleyAddress), Tx, pattern TxOut)
+import Hydra.Cardano.Api (
+  Address (ByronAddress, ShelleyAddress),
+  Tx,
+  getTxBody,
+  getTxId,
+  pattern TxOut,
+ )
 import Hydra.Snapshot (Snapshot (..))
 
 -- HydraAuction imports
@@ -75,7 +81,8 @@ instance (Monad m, MonadHydra m) => MonadSubmitTx (ViaMonadHydra m) where
   awaitTx :: Tx -> ViaMonadHydra m ()
   awaitTx tx = do
     void $ waitForHydraEvent . CustomMatcher . OutputMatcher $ \case
-      SnapshotConfirmed {snapshot} -> tx `elem` confirmed snapshot
+      SnapshotConfirmed {snapshot} ->
+        getTxId (getTxBody tx) `elem` confirmed snapshot
       _ -> False
 
 instance (Monad m, MonadHydra m) => MonadQueryUtxo (ViaMonadHydra m) where
