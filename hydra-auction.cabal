@@ -287,6 +287,9 @@ library hydra-auction-utils
   exposed-modules:
     HydraAuctionUtils.BundledData
     HydraAuctionUtils.Composite.Runner
+    HydraAuctionUtils.Delegate.Interface
+    HydraAuctionUtils.Delegate.Logic
+    HydraAuctionUtils.Delegate.Server
     HydraAuctionUtils.Extras.CardanoApi
     HydraAuctionUtils.Extras.Plutus
     HydraAuctionUtils.Extras.PlutusOrphans

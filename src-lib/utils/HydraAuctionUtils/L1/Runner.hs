@@ -10,6 +10,7 @@ module HydraAuctionUtils.L1.Runner (
   executeL1RunnerWithNode,
   executeTestL1Runner,
   dockerNode,
+  seedHydraNodes,
   StateDirectory (..),
   ExecutionContext (..),
   -- FIXME: reexport
@@ -75,7 +76,7 @@ import Hydra.Cardano.Api (
   pattern TxValidityNoUpperBound,
   pattern TxValidityUpperBound,
  )
-import Hydra.Cluster.Faucet (Marked (Normal))
+import Hydra.Cluster.Faucet (Marked (..))
 import Hydra.Logging (Tracer)
 import HydraNode (EndToEndLog (FromCardanoNode, FromFaucet))
 
@@ -109,7 +110,12 @@ import HydraAuctionUtils.Monads.Actors (
   actorTipUtxo,
   withActor,
  )
-import HydraAuctionUtils.Tx.Common (transferAda, utxoLovelaceValue)
+import HydraAuctionUtils.Tx.AutoCreateTx (autoSubmitAndAwaitTx, autoSubmitTx)
+import HydraAuctionUtils.Tx.Common (
+  transferAda,
+  transferAdaTxParams,
+  utxoLovelaceValue,
+ )
 
 {- | Execution context holding the current tracer,
  as well as the running node.
@@ -314,3 +320,12 @@ queryAdaWithoutFees = do
   spent <- feeSpent
   amount <- utxoLovelaceValue <$> actorTipUtxo
   return $ amount + spent
+
+seedHydraNodes :: L1Runner ()
+seedHydraNodes = withActor Faucet $ do
+  mapM_ (autoSubmitTx <=< initActorTxParams Fuel) [Oscar, Rupert, Patricia]
+  mapM_ (autoSubmitTx <=< initActorTxParams Normal) [Oscar, Rupert]
+  void $ autoSubmitAndAwaitTx =<< initActorTxParams Normal Patricia
+  where
+    initActorTxParams mark actor =
+      transferAdaTxParams actor mark 50_000_000

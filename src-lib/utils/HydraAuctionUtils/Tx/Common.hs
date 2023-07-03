@@ -1,5 +1,6 @@
 module HydraAuctionUtils.Tx.Common (
   transferAda,
+  transferAdaTxParams,
   querySingleMinAdaUtxo,
   queryOrCreateSingleMinAdaUtxo,
   createMinAdaUtxo,
@@ -21,8 +22,11 @@ import Cardano.Api.UTxO qualified as UTxO
 
 -- Hydra imports
 import Hydra.Cardano.Api (
+  CtxUTxO,
   Lovelace,
   Tx,
+  TxIn,
+  TxOut,
   lovelaceToValue,
   selectLovelace,
   txOutValue,
@@ -127,19 +131,19 @@ utxoLovelaceValue :: UTxO.UTxO -> Lovelace
 utxoLovelaceValue =
   sum . fmap (selectLovelace . txOutValue . snd) . UTxO.pairs
 
-transferAda ::
+transferAdaTxParams ::
   forall m.
   (MonadFail m, MonadTrace m, MonadHasActor m, MonadCardanoClient m, MonadIO m) =>
   Actor ->
   Marked ->
   Lovelace ->
-  m Tx
-transferAda actorTo marked amount = do
-  moneyUtxo <- actorTipUtxo
+  m AutoCreateParams
+transferAdaTxParams actorTo marked amount = do
+  moneyUtxo <- fromJust <$> selectAdaUtxo amount
   (fromAddress, _, fromSk) <- addressAndKeys
   (toAddress, _, _) <- addressAndKeysForActor actorTo
 
-  autoSubmitAndAwaitTx $
+  return $
     AutoCreateParams
       { signedUtxos = [(fromSk, moneyUtxo)]
       , additionalSigners = []
@@ -162,3 +166,14 @@ transferAda actorTo marked amount = do
     theOutputDatum = case marked of
       Fuel -> TxOutDatumHash markerDatumHash
       Normal -> TxOutDatumNone
+
+transferAda ::
+  forall m.
+  (MonadFail m, MonadTrace m, MonadHasActor m, MonadCardanoClient m, MonadIO m) =>
+  Actor ->
+  Marked ->
+  Lovelace ->
+  m Tx
+transferAda actorTo marked amount = do
+  params <- transferAdaTxParams actorTo marked amount
+  autoSubmitAndAwaitTx params

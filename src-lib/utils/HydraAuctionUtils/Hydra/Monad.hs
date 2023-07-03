@@ -79,10 +79,11 @@ instance (Monad m, MonadHydra m) => MonadSubmitTx (ViaMonadHydra m) where
     return $ Right ()
 
   awaitTx :: Tx -> ViaMonadHydra m ()
-  awaitTx tx = do
+  awaitTx expectedTx = do
     void $ waitForHydraEvent . CustomMatcher . OutputMatcher $ \case
       SnapshotConfirmed {snapshot} ->
-        getTxId (getTxBody tx) `elem` confirmed snapshot
+        getTxId (getTxBody expectedTx) `elem` confirmed snapshot
+      TxValid {transaction} -> transaction == expectedTx
       _ -> False
 
 instance (Monad m, MonadHydra m) => MonadQueryUtxo (ViaMonadHydra m) where

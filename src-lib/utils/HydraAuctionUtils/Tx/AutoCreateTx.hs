@@ -1,6 +1,7 @@
 {-# LANGUAGE RecordWildCards #-}
 
 module HydraAuctionUtils.Tx.AutoCreateTx (
+  autoSubmitTx,
   AutoCreateParams (..),
   autoCreateTx,
   makeSignedTransactionWithKeys,
@@ -90,7 +91,7 @@ import HydraAuctionUtils.Fixture (actorFromSk)
 import HydraAuctionUtils.Monads (
   BlockchainParams (..),
   MonadBlockchainParams (..),
-  MonadSubmitTx,
+  MonadSubmitTx (..),
   MonadTrace,
   TxStat (..),
   logMsg,
@@ -115,6 +116,7 @@ data AutoCreateParams = AutoCreateParams
   , changeAddress :: Address ShelleyAddr
   , validityBound :: Interval POSIXTime
   }
+  deriving stock (Show)
 
 percentOf :: (Real a) => a -> a -> Double
 part `percentOf` total =
@@ -255,6 +257,15 @@ callBodyAutoBalance
           preBody
           (ShelleyAddressInEra changeAddress)
           Nothing
+
+autoSubmitTx ::
+  (MonadIO m, MonadTrace m, MonadFail m, MonadBlockchainParams m, MonadSubmitTx m) =>
+  AutoCreateParams ->
+  m Tx
+autoSubmitTx params = do
+  tx <- autoCreateTx params
+  _ <- submitTx tx
+  return tx
 
 autoSubmitAndAwaitTx ::
   (MonadIO m, MonadTrace m, MonadFail m, MonadBlockchainParams m, MonadSubmitTx m) =>
