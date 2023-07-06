@@ -58,7 +58,6 @@ import Hydra.Cardano.Api (
  )
 import Hydra.Chain (HeadId)
 
-import HydraAuction.HydraHacks (createCommitTx)
 import HydraAuction.OnChain (
   AuctionScript (StandingBid),
   standingBidValidator,
@@ -69,6 +68,7 @@ import HydraAuction.OnChain.StandingBid (
   bidderSignatureMessage,
   sellerSignatureMessage,
  )
+import HydraAuctionUtils.HydraHacks (createCommitTx)
 import HydraAuctionUtils.Monads.Actors (
   WithActorT,
   addressAndKeys,

@@ -1,7 +1,7 @@
 -- Things that should be merged in Hydra repo later
 -- Copy-pasting `commitTx` and modifying it
 -- to support script witnessed commited Utxos
-module HydraAuction.HydraHacks (createCommitTx) where
+module HydraAuctionUtils.HydraHacks (createCommitTx) where
 
 -- Prelude imports
 import HydraAuctionUtils.Prelude

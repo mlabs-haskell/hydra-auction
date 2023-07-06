@@ -253,7 +253,6 @@ library
   exposed-modules:
     HydraAuction.Delegate
     HydraAuction.Delegate.Interface
-    HydraAuction.HydraHacks
     HydraAuction.Platform.Interface
     HydraAuction.Platform.Storage
     HydraAuction.Tx.Common
@@ -295,6 +294,7 @@ library hydra-auction-utils
     HydraAuctionUtils.Hydra.Interface
     HydraAuctionUtils.Hydra.Monad
     HydraAuctionUtils.Hydra.Runner
+    HydraAuctionUtils.HydraHacks
     HydraAuctionUtils.L1.Runner
     HydraAuctionUtils.Monads
     HydraAuctionUtils.Monads.Actors
