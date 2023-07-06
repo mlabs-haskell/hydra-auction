@@ -66,9 +66,9 @@ config :: AuctionTermsConfig
 config =
   Utils.config
     { -- L2 stuff testing test take time after bidding end
-      configDiffBiddingEnd = 15
-    , configDiffVoucherExpiry = 18
-    , configDiffCleanup = 22
+      configDiffBiddingEnd = 24
+    , configDiffVoucherExpiry = 26
+    , configDiffCleanup = 28
     }
 
 -- Includes testing L1 biding before and after L2 moves

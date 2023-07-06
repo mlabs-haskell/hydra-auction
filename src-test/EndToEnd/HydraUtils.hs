@@ -144,9 +144,8 @@ withDockerComposeCluster cont = do
         else withHydraClientN (toInteger n) $
           \client -> withNClients' (client : clientsAcc) n cont'
     withNClients = withNClients' []
-    action' nodes = do
+    action nodes = do
       executeL1RunnerWithNode dockerNode (cont nodes)
-    action nodes = finally (action' nodes) (system "./scripts/stop-demo.sh")
 
 -- Implementation of Emulator
 
