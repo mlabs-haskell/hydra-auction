@@ -59,9 +59,9 @@ import HydraAuctionUtils.Hydra.Monad (
   waitForHydraEvent',
  )
 import HydraAuctionUtils.Monads.Actors (MonadHasActor (..))
-import HydraAuctionUtils.Server.Client (AwaitedOutput (..))
-import HydraAuctionUtils.Server.ClientId (ClientId, ClientResponseScope (..))
 import HydraAuctionUtils.Types.Natural (Natural)
+import HydraAuctionUtils.WebSockets.Client (AwaitedOutput (..))
+import HydraAuctionUtils.WebSockets.ClientId (ClientId, ClientResponseScope (..))
 
 -- HydraAuction test imports
 import EndToEnd.HydraUtils (

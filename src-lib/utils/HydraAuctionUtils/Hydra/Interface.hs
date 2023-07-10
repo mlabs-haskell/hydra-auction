@@ -19,7 +19,7 @@ import Hydra.Cardano.Api (Tx)
 import Hydra.Chain.Direct.State ()
 
 -- HydraAuction imports
-import HydraAuctionUtils.Server.Protocol (Protocol (..))
+import HydraAuctionUtils.WebSockets.Protocol (Protocol (..))
 
 type HydraCommand = ClientInput Tx
 type HydraEvent = ServerOutput Tx

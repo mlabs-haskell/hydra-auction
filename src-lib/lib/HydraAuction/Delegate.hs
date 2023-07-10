@@ -82,13 +82,13 @@ import HydraAuctionUtils.Monads.Actors (
   MonadHasActor (askActor),
   addressAndKeys,
  )
-import HydraAuctionUtils.Server.Protocol (
+import HydraAuctionUtils.Types.Natural (intToNatural)
+import HydraAuctionUtils.WebSockets.Protocol (
   MonadHasClient (..),
   ProtocolClient (..),
   ProtocolClientFor,
   WithClientT,
  )
-import HydraAuctionUtils.Types.Natural (intToNatural)
 
 -- Common domain utils
 

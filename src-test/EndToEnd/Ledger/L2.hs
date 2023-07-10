@@ -33,7 +33,7 @@ import HydraAuctionUtils.L1.Runner (
   withActor,
  )
 import HydraAuctionUtils.Monads (waitUntil)
-import HydraAuctionUtils.Server.Client (AwaitedOutput (..))
+import HydraAuctionUtils.WebSockets.Client (AwaitedOutput (..))
 
 -- Hydra auction test imports
 import EndToEnd.HydraUtils (

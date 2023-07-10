@@ -46,7 +46,7 @@ import HydraAuctionUtils.L1.Runner (
   withActor,
  )
 import HydraAuctionUtils.Monads.Actors (MonadHasActor (..), WithActorT)
-import HydraAuctionUtils.Server.Client (ProtocolClientFor, withProtocolClient)
+import HydraAuctionUtils.WebSockets.Client (ProtocolClientFor, withProtocolClient)
 
 -- Hydra auction CLI imports
 import CLI.Actions (CliAction, CliActionHandle (..), handleCliAction)

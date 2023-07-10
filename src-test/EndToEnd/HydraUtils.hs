@@ -76,15 +76,15 @@ import HydraAuctionUtils.L1.Runner (
   executeTestL1Runner,
   withActor,
  )
-import HydraAuctionUtils.Server.Client (
+import HydraAuctionUtils.Tx.Common (transferAda)
+import HydraAuctionUtils.WebSockets.Client (
   FakeProtocolClient,
   ProtocolClientFor,
   RealProtocolClient (MkRealProtocolClient),
   newFakeClient,
   withProtocolClient,
  )
-import HydraAuctionUtils.Server.Protocol (WithClientT, withClient)
-import HydraAuctionUtils.Tx.Common (transferAda)
+import HydraAuctionUtils.WebSockets.Protocol (WithClientT, withClient)
 
 -- Ways to spin up Hydra cluster
 

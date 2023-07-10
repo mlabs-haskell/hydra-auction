@@ -46,7 +46,7 @@ import HydraAuction.Types (
   StandingBidDatum,
  )
 import HydraAuctionUtils.Delegate.Interface
-import HydraAuctionUtils.Server.Protocol (Protocol (..))
+import HydraAuctionUtils.WebSockets.Protocol (Protocol (..))
 
 data DelegateProtocol
 

@@ -45,8 +45,8 @@ import HydraAuction.Delegate.Interface (
  )
 import HydraAuction.Types (AuctionTerms)
 import HydraAuctionUtils.Fixture (Actor)
-import HydraAuctionUtils.Server.ClientId (ClientId, ClientResponseScope)
 import HydraAuctionUtils.Tracing (TracerT)
+import HydraAuctionUtils.WebSockets.ClientId (ClientId, ClientResponseScope)
 
 deriving stock instance Eq RunningNode
 deriving stock instance Show RunningNode

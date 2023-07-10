@@ -1,4 +1,4 @@
-module HydraAuctionUtils.Server.Protocol (
+module HydraAuctionUtils.WebSockets.Protocol (
   Protocol (..),
   ProtocolClient (..),
   ProtocolClientFor,
@@ -19,7 +19,7 @@ import Data.Proxy (Proxy)
 import Data.Text (Text)
 
 -- HydraAuction imports
-import HydraAuctionUtils.Server.ClientId (ClientId, ClientResponseScope)
+import HydraAuctionUtils.WebSockets.ClientId (ClientId, ClientResponseScope)
 
 type ToFromJSON x = (ToJSON x, FromJSON x)
 type Defaults x = (Eq x, Show x)

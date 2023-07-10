@@ -38,7 +38,7 @@ import HydraAuctionUtils.L1.Runner (
 import HydraAuctionUtils.Monads (waitUntil)
 import HydraAuctionUtils.Monads.Actors (WithActorT)
 
-import HydraAuctionUtils.Server.Client (
+import HydraAuctionUtils.WebSockets.Client (
   FakeProtocolClient,
   ProtocolClientFor,
   newFakeClient,

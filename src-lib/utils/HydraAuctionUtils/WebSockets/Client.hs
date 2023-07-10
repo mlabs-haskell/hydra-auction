@@ -1,4 +1,4 @@
-module HydraAuctionUtils.Server.Client (
+module HydraAuctionUtils.WebSockets.Client (
   RealProtocolClient (..),
   FakeProtocolClient (..),
   FakeProtocolClientState (..),
@@ -26,8 +26,8 @@ import Hydra.Network (Host)
 
 -- HydraAuction imports
 import HydraAuctionUtils.Network (withClientForHost)
-import HydraAuctionUtils.Server.ClientId (clientIsInScope)
-import HydraAuctionUtils.Server.Protocol (
+import HydraAuctionUtils.WebSockets.ClientId (clientIsInScope)
+import HydraAuctionUtils.WebSockets.Protocol (
   Protocol (..),
   ProtocolClient (..),
   ProtocolClientFor,

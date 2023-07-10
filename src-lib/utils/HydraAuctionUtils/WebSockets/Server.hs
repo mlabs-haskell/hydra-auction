@@ -1,4 +1,4 @@
-module HydraAuctionUtils.Server.Websockets (
+module HydraAuctionUtils.WebSockets.Server (
   ServerQueues (..),
   runWebsocketsServer,
 ) where
@@ -33,12 +33,12 @@ import Network.WebSockets (
 import Hydra.Network (Host (..))
 
 -- HydraAuction imports
-import HydraAuctionUtils.Server.ClientId (
+import HydraAuctionUtils.WebSockets.ClientId (
   ClientId,
   ClientResponseScope (..),
   clientIsInScope,
  )
-import HydraAuctionUtils.Server.Protocol (Protocol (..))
+import HydraAuctionUtils.WebSockets.Protocol (Protocol (..))
 
 data ServerQueues protocol = MkServerQueues
   { clientInputs :: TQueue (ClientId, Input protocol)

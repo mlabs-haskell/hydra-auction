@@ -49,16 +49,6 @@ import HydraAuctionUtils.Hydra.Interface (
 import HydraAuctionUtils.Hydra.Runner (executeHydraRunnerFakingParams)
 import HydraAuctionUtils.L1.Runner (executeL1RunnerWithNodeAs)
 import HydraAuctionUtils.Parsers (execParserForCliArgs)
-import HydraAuctionUtils.Server.Client (
-  AwaitedOutput (..),
-  withProtocolClient,
- )
-import HydraAuctionUtils.Server.ClientId (
-  ClientId,
-  ClientResponseScope (Broadcast),
-  clientIsInScope,
- )
-import HydraAuctionUtils.Server.Protocol (ProtocolClientFor, withClient)
 import HydraAuctionUtils.Time (currentPlutusPOSIXTime)
 import HydraAuctionUtils.Tracing (
   MonadTracer (trace),

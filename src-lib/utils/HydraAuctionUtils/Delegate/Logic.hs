@@ -39,10 +39,6 @@ import HydraAuctionUtils.Monads.Actors (
   MonadHasActor (askActor),
   addressAndKeys,
  )
-import HydraAuctionUtils.Server.ClientId (
-  ClientId,
-  ClientResponseScope (..),
- )
 import HydraAuctionUtils.Tx.Common (
   createMinAdaUtxo,
   queryOrCreateSingleMinAdaUtxo,

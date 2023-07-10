@@ -74,8 +74,8 @@ import HydraAuction.Delegate.Interface (
  )
 import HydraAuction.Types (AuctionTerms)
 import HydraAuctionUtils.Fixture (Actor)
-import HydraAuctionUtils.Server.Protocol (Protocol (..))
 import HydraAuctionUtils.Types.Natural (Natural)
+import HydraAuctionUtils.WebSockets.Protocol (Protocol (..))
 
 -- Interfaces
 

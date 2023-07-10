@@ -305,10 +305,6 @@ library hydra-auction-utils
     HydraAuctionUtils.Parsers.TxIn
     HydraAuctionUtils.Prelude
     HydraAuctionUtils.PrettyPrinting
-    HydraAuctionUtils.Server.Client
-    HydraAuctionUtils.Server.ClientId
-    HydraAuctionUtils.Server.Protocol
-    HydraAuctionUtils.Server.Websockets
     HydraAuctionUtils.Time
     HydraAuctionUtils.Tracing
     HydraAuctionUtils.Tx.AutoCreateTx
@@ -316,6 +312,10 @@ library hydra-auction-utils
     HydraAuctionUtils.Tx.Common
     HydraAuctionUtils.Tx.Utxo
     HydraAuctionUtils.Types.Natural
+    HydraAuctionUtils.WebSockets.Client
+    HydraAuctionUtils.WebSockets.ClientId
+    HydraAuctionUtils.WebSockets.Protocol
+    HydraAuctionUtils.WebSockets.Server
     Paths_hydra_auction
     PlutusTx.Deriving
 

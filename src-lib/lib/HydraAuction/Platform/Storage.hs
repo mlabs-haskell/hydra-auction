@@ -43,9 +43,9 @@ import HydraAuction.Platform.Interface (
   ServerOutput (..),
   Some (..),
  )
-import HydraAuctionUtils.Server.ClientId (ClientId, ClientResponseScope (..))
-import HydraAuctionUtils.Server.Protocol (ProtocolServerLogic (..))
 import HydraAuctionUtils.Types.Natural (naturalToInt)
+import HydraAuctionUtils.WebSockets.ClientId (ClientId, ClientResponseScope (..))
+import HydraAuctionUtils.WebSockets.Protocol (ProtocolServerLogic (..))
 
 --- Storage
 

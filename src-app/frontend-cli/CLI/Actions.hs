@@ -109,8 +109,8 @@ import HydraAuctionUtils.Monads.Actors (
   withActor,
  )
 import HydraAuctionUtils.PrettyPrinting (prettyPrintUtxo)
-import HydraAuctionUtils.Server.Protocol
 import HydraAuctionUtils.Tx.Common (transferAda)
+import HydraAuctionUtils.WebSockets.Protocol
 
 -- Hydra auction CLI imports
 import CLI.Config (

@@ -44,8 +44,8 @@ import HydraAuctionUtils.Monads (
   UtxoQuery (..),
  )
 import HydraAuctionUtils.Monads.Actors (WithActorT)
-import HydraAuctionUtils.Server.Client (AwaitedOutput (..), OutputMatcher (..))
-import HydraAuctionUtils.Server.Protocol (WithClientT)
+import HydraAuctionUtils.WebSockets.Client (AwaitedOutput (..), OutputMatcher (..))
+import HydraAuctionUtils.WebSockets.Protocol (WithClientT)
 
 -- FIXME: this is for transition. Should be removed, maybe with ModadHydra
 type AwaitedHydraEvent = AwaitedOutput HydraProtocol
