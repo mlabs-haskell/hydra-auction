@@ -315,6 +315,7 @@ library hydra-auction-utils
     HydraAuctionUtils.WebSockets.Client
     HydraAuctionUtils.WebSockets.ClientId
     HydraAuctionUtils.WebSockets.Protocol
+    HydraAuctionUtils.WebSockets.Protocol.Void
     HydraAuctionUtils.WebSockets.Server
     Paths_hydra_auction
     PlutusTx.Deriving
