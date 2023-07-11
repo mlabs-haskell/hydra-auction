@@ -60,23 +60,12 @@ import HydraAuction.Types (
   auctionStages,
  )
 import HydraAuctionUtils.Monads (
-  MonadCardanoClient,
   MonadNetworkId (..),
   MonadQueryUtxo (..),
-  MonadTrace,
   UtxoQuery (..),
  )
-import HydraAuctionUtils.Monads.Actors (
-  MonadHasActor,
-  addressAndKeys,
- )
 import HydraAuctionUtils.Time (currentPlutusPOSIXTime)
-import HydraAuctionUtils.Tx.AutoCreateTx (
-  AutoCreateParams (..),
-  autoSubmitAndAwaitTx,
- )
-import HydraAuctionUtils.Tx.Build (minLovelace, mintedTokens, tokenToAsset)
-import HydraAuctionUtils.Tx.Common (actorAdaOnlyUtxo, selectAdaUtxo)
+import HydraAuctionUtils.Tx.Build (mintedTokens, tokenToAsset)
 
 currentAuctionStage ::
   (MonadTime timedMonad) => AuctionTerms -> timedMonad AuctionStage

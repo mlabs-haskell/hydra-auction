@@ -63,7 +63,14 @@ data AuctionStage
   | VoucherExpiredStage
   | CleanupStage
   deriving stock
-    (Prelude.Eq, Prelude.Ord, Prelude.Bounded, Prelude.Enum, Prelude.Show)
+    ( Prelude.Eq
+    , Prelude.Ord
+    , Prelude.Bounded
+    , Prelude.Enum
+    , Prelude.Show
+    , Generic
+    )
+  deriving anyclass (FromJSON, ToJSON)
 
 PlutusTx.makeIsDataIndexed
   ''AuctionStage

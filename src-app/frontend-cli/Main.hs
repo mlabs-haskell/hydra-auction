@@ -31,6 +31,7 @@ import Hydra.Prelude (SomeException)
 -- Hydra auction imports
 
 import HydraAuction.Delegate.Interface (
+  DelegateProtocol,
   DelegateResponse (..),
   DelegateState,
   FrontendRequest (QueryCurrentDelegateState),
@@ -77,7 +78,7 @@ handleCliInput input = do
 
   result <- trySome $ runClient (Text.unpack $ hostname settings) (fromIntegral $ port settings) "/" $ \client -> do
     let tracer = contramap (show . pretty) stdoutTracer
-    sendTextData client . encode $ QueryCurrentDelegateState
+    sendTextData client . encode $ (QueryCurrentDelegateState @DelegateProtocol)
     -- DelegateState receiving thread
     withAsync (updateStateThread client currentDelegateStateRef tracer) $ \_ -> do
       handleCliInput' (Just client) currentDelegateStateRef input
@@ -102,7 +103,8 @@ handleCliInput input = do
               (IncorrectRequestData InvalidBidTerms) -> notExpectedResponse
               (IncorrectRequestData TxIdDoesNotExist) -> notExpectedResponse
               (WrongDelegateState _) -> notExpectedResponse
-            AuctionSet {} -> return ()
+            -- FIXME: show info for user
+            CustomEventHappened _ -> return ()
           where
             notExpectedResponse = do
               putStrLn "Not expected response from delegate server."
@@ -111,7 +113,7 @@ handleCliInput input = do
         Left err -> traceWith tracer (InvalidDelegateResponse err)
 
 handleCliInput' ::
-  Maybe Connection -> IORef DelegateState -> CliInput -> IO ()
+  Maybe Connection -> IORef (DelegateState DelegateProtocol) -> CliInput -> IO ()
 handleCliInput' mClient currentDelegateStateRef input =
   executeL1RunnerWithNode (cliCardanoNode input) $ case cliOptions input of
     (Watch auctionName) ->

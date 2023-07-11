@@ -27,12 +27,17 @@ import HydraAuction.Delegate (
   delegateFrontendRequestStep,
  )
 import HydraAuction.Delegate.Interface (
+  CommitAction (..),
+  CustomEvent (..),
+  DelegateProtocol,
   DelegateResponse (..),
   DelegateState (..),
   FrontendRequest (..),
   InitializedState (..),
   OpenHeadUtxo (..),
+  OpenState (..),
   ResponseReason (..),
+  TxAction (..),
  )
 import HydraAuction.OnChain (AuctionScript (..))
 import HydraAuction.Tx.Common (scriptSingleUtxo)
@@ -71,7 +76,7 @@ delegateStepOnExpectedHydraEvent' ::
   forall client.
   HasCallStack =>
   AwaitedHydraEvent ->
-  ([DelegateResponse] -> Bool) ->
+  ([DelegateResponse DelegateProtocol] -> Bool) ->
   DelegateAction client HydraEvent
 delegateStepOnExpectedHydraEvent' eventSpec checkResponses = do
   Just event <- lift $ waitForHydraEvent eventSpec
@@ -91,7 +96,7 @@ delegateStepOnExpectedHydraEvent ::
   HasCallStack =>
   forall client.
   AwaitedHydraEvent ->
-  [DelegateResponse] ->
+  [DelegateResponse DelegateProtocol] ->
   DelegateAction client HydraEvent
 delegateStepOnExpectedHydraEvent eventSpec expectedResponses =
   delegateStepOnExpectedHydraEvent'
@@ -104,6 +109,14 @@ dropHydraEvent = void $ do
   case r of
     Just _ -> dropHydraEvent
     Nothing -> return ()
+
+emulateCustomEvent ::
+  CustomEvent DelegateProtocol -> DelegatesClusterEmulator ()
+emulateCustomEvent event = do
+  result <-
+    runCompositeForDelegate Main $ delegateEventStep $ CustomEvent event
+  liftIO $
+    assertEqual "CustomEvent reaction" [CustomEventHappened event] result
 
 emulateDelegatesStart :: HasCallStack => DelegatesClusterEmulator HeadId
 emulateDelegatesStart = do
@@ -137,13 +150,17 @@ emulateCommiting headId terms = do
       lift $
         delegateFrontendRequestStep
           ( 1
-          , CommitStandingBid
-              { auctionTerms = terms
-              , utxoToCommit = standingBidSingleUtxo
-              }
+          , SubmitCommit $
+              MoveStandingBidToL2
+                { commitAuctionTerms = terms
+                , utxoToCommit = standingBidSingleUtxo
+                }
           )
     liftIO $
-      assertEqual "Commit Main" [(Broadcast, AuctionSet terms)] responses
+      assertEqual
+        "Commit Main"
+        [(Broadcast, CustomEventHappened $ AuctionSet terms)]
+        responses
 
   -- Secondary delegates should commit money on L2 in reaction
   -- (we do not check that)
@@ -171,17 +188,18 @@ emulateCommiting headId terms = do
     runCompositeForAllDelegates $
       delegateStepOnExpectedHydraEvent'
         (SpecificKind HeadIsOpenKind)
-        (const True)
+        checkIsOpen
 
   return ()
+  where
+    checkIsOpen [CurrentDelegateState Updated (Initialized _ (Open _))] = True
+    checkIsOpen _ = False
 
 emulateClosing ::
   HasCallStack => HeadId -> AuctionTerms -> DelegatesClusterEmulator ()
 emulateClosing headId terms = do
-  [] <-
-    runCompositeForDelegate Main $
-      delegateEventStep $
-        AuctionStageStarted terms BiddingEndedStage
+  emulateCustomEvent $ AuctionStageStarted terms BiddingEndedStage
+
   _ <-
     runCompositeForAllDelegates $
       delegateStepOnExpectedHydraEvent
@@ -201,12 +219,8 @@ emulateClosing headId terms = do
 
 emulateCleanup ::
   HasCallStack => AuctionTerms -> DelegatesClusterEmulator ()
-emulateCleanup terms = do
-  [] <-
-    runCompositeForDelegate Main $
-      delegateEventStep $
-        AuctionStageStarted terms CleanupStage
-  return ()
+emulateCleanup terms =
+  emulateCustomEvent $ AuctionStageStarted terms CleanupStage
 
 placeNewBidOnL2AndCheck ::
   HasCallStack =>
@@ -240,12 +254,15 @@ placeNewBidOnL2AndCheck _headId terms bidder amount = do
         (const True)
 
 checkResponsesForBidTerms ::
-  Maybe BidTerms -> [DelegateResponse] -> Bool
+  Maybe BidTerms -> [DelegateResponse DelegateProtocol] -> Bool
 checkResponsesForBidTerms expectedBidTerms responses =
   case responses of
     [ CurrentDelegateState
         Updated
-        (Initialized _ (Open (MkOpenHeadUtxo {standingBidTerms}) _))
+        ( Initialized
+            _
+            (Open (MkOpenState (MkOpenHeadUtxo {standingBidTerms}) _))
+          )
       ] ->
         standingBidTerms == expectedBidTerms
     _ -> False
@@ -256,7 +273,7 @@ submitNewBidToDelegate fakeClientId terms bidDatum = do
   responses <-
     lift $
       delegateFrontendRequestStep
-        (fakeClientId, NewBid {auctionTerms = terms, datum = bidDatum})
+        (fakeClientId, SubmitTx $ NewBid {txAuctionTerms = terms, datum = bidDatum})
   liftIO $
     assertEqual
       "New bid"

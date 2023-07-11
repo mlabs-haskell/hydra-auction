@@ -1,5 +1,6 @@
 module HydraAuctionUtils.Tx.Utxo (
   txOutIsAdaOnly,
+  decodeInlineDatum,
   filterAdaOnlyUtxo,
   filterUtxoByCurrencySymbols,
   filterNonFuelUtxo,
@@ -17,10 +18,12 @@ import Data.List (sort)
 import Data.Map qualified as Map
 
 -- Plutus imports
+
 import PlutusLedgerApi.V1.Value (
   CurrencySymbol (..),
   symbols,
  )
+import PlutusLedgerApi.V2 (FromData, fromData)
 import PlutusLedgerApi.V2.Tx (txOutValue)
 
 -- Cardano imports
@@ -34,9 +37,15 @@ import Hydra.Cardano.Api (
   TxOut,
   UTxO,
   UTxO' (UTxO),
+  getScriptData,
+  toPlutusData,
   toPlutusTxOut,
+  txOutDatum,
+  pattern TxOutDatumInline,
  )
 import Hydra.Chain.Direct.Util (isMarkedOutput)
+
+-- Working with utxos
 
 filterNotAdaOnlyUtxo :: UTxO -> UTxO
 filterNotAdaOnlyUtxo =
@@ -66,3 +75,17 @@ extractSingleUtxo :: UTxO.UTxO -> Maybe UTxO.UTxO
 extractSingleUtxo utxo = do
   pair <- listToMaybe $ UTxO.pairs utxo
   return $ UTxO.fromPairs [pair]
+
+-- Working with datums
+
+data DatumDecodingError = CannotDecodeDatum | NoInlineDatum
+
+decodeInlineDatum ::
+  forall a. FromData a => TxOut CtxUTxO -> Either DatumDecodingError a
+decodeInlineDatum out =
+  case txOutDatum out of
+    TxOutDatumInline scriptData ->
+      case fromData $ toPlutusData $ getScriptData scriptData of
+        Just standingBidDatum -> Right standingBidDatum
+        Nothing -> Left CannotDecodeDatum
+    _ -> Left NoInlineDatum

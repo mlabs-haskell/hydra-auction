@@ -28,9 +28,11 @@ import CLI.Config (
   readCliEnhancedAuctionTerms,
  )
 import HydraAuction.Delegate.Interface (
+  DelegateProtocol,
   DelegateState (..),
   InitializedState (..),
   OpenHeadUtxo (..),
+  OpenState (..),
  )
 import HydraAuction.OnChain.Common (secondsLeftInInterval, stageToInterval)
 import HydraAuction.Tx.Common (currentAuctionStage)
@@ -41,7 +43,7 @@ import HydraAuctionUtils.Monads (queryCurrentSlot)
 import HydraAuctionUtils.Time (currentPlutusPOSIXTime)
 import HydraAuctionUtils.Types.Natural (naturalToInt)
 
-watchAuction :: AuctionName -> IORef DelegateState -> L1Runner ()
+watchAuction :: AuctionName -> IORef (DelegateState DelegateProtocol) -> L1Runner ()
 watchAuction x y = do
   seenSlotsCounterRef <- newMVar 0
   currentTime <- liftIO getCurrentTime
@@ -51,7 +53,7 @@ watchAuction x y = do
 watchAuction' ::
   (MVar Integer, MVar (Integer, UTCTime)) ->
   AuctionName ->
-  IORef DelegateState ->
+  IORef (DelegateState DelegateProtocol) ->
   L1Runner ()
 watchAuction' slotsVars auctionName currentDelegateStateRef = do
   -- Flushing once per `watchAuction'` to reduce blinking
@@ -72,7 +74,8 @@ watchAuction' slotsVars auctionName currentDelegateStateRef = do
     printDelegateState delegateState = case delegateState of
       Initialized _ initializedState -> do
         showedState <- case initializedState of
-          Open utxoState _ -> do
+          -- FIXME: move ignoring tech info into delegate server
+          Open (MkOpenState utxoState _) -> do
             bidTermsStr <- showBidTerms (standingBidTerms utxoState)
             return $ "Open with bid: " <> bidTermsStr
           _ -> return $ show initializedState

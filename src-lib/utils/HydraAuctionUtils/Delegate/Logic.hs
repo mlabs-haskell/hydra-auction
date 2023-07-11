@@ -91,6 +91,8 @@ class DelegateLogicTypes protocol => DelegateLogic protocol where
       (StateT (DelegateState protocol) HydraRunner)
       ()
 
+  openStateUpdatedHook :: OpenState protocol -> HydraRunner ()
+
   isCorrectCommit :: TxOut CtxUTxO -> Bool
   parseOpenStateFromUtxo ::
     (TxIn, TxOut CtxUTxO) -> (TxIn, TxOut CtxUTxO) -> Maybe (OpenState protocol)
@@ -261,7 +263,9 @@ delegateEventStepCommon event = case event of
           case collateralUtxosOf delegateAddress of
             [collateralUtxo] ->
               case parseOpenStateFromUtxo (txIn, txOut) collateralUtxo of
-                Just newOpenState -> updateStateAndResponse $ Open newOpenState
+                Just newOpenState -> do
+                  lift $ openStateUpdatedHook newOpenState
+                  updateStateAndResponse $ Open newOpenState
                 _ -> abort' "Wrong main UTxO"
             _ -> abort' "Wrong number (not one) of collaterals"
         _ -> abort' "Wrong number (not one) of main UTxO"

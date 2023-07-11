@@ -13,7 +13,6 @@ import Test.Tasty.HUnit (Assertion, testCase)
 
 -- Hydra auction imports
 
-import HydraAuction.Delegate (abort)
 import HydraAuction.Delegate.Interface (
   AbortReason (..),
   DelegateResponse (..),
@@ -27,6 +26,7 @@ import HydraAuction.Tx.Escrow (
 import HydraAuction.Tx.StandingBid (newBid, sellerSignatureForActor)
 import HydraAuction.Tx.TermsConfig (AuctionTermsConfig (..))
 import HydraAuction.Types (AuctionTerms (..))
+import HydraAuctionUtils.Delegate.Logic (abort)
 import HydraAuctionUtils.Fixture (Actor (..), ActorKind (..), actorsByKind)
 import HydraAuctionUtils.L1.Runner (
   initWallet,

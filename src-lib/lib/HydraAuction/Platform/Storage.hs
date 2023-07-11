@@ -19,7 +19,10 @@ import Data.Map qualified as Map
 
 -- HydraAuction imports
 
-import HydraAuction.Delegate.Interface (InitializedState (..))
+import HydraAuction.Delegate.Interface (
+  HydraHeadInfo (..),
+  InitializedState (..),
+ )
 import HydraAuction.OnChain (standingBidAddress, voucherCurrencySymbol)
 import HydraAuction.Platform.Interface (
   AnnouncedAuction (..),
@@ -36,7 +39,6 @@ import HydraAuction.Platform.Interface (
   FilterEq (..),
   HeadDelegate (..),
   HydraHead (..),
-  HydraHeadInfo (..),
   PlatformProtocol,
   ServerOutput (..),
   Some (..),

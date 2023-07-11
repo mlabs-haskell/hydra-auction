@@ -25,7 +25,6 @@ module HydraAuction.Platform.Interface (
   EntityFilter (..),
   AnnouncedAuction (..),
   HydraHead (..),
-  HydraHeadInfo (..),
   FilterEq (..),
   FilterOrd (..),
   HeadDelegate (..),
@@ -67,6 +66,8 @@ import Hydra.Chain (HeadId (..))
 
 import HydraAuction.Addresses (StandingBidAddress, VoucherCS)
 import HydraAuction.Delegate.Interface (
+  DelegateProtocol,
+  HydraHeadInfo (..),
   InitializedState,
   InitializedStateKind,
   initializedStateKind,
@@ -105,23 +106,13 @@ data AnnouncedAuction = MkAnnouncedAuction
   deriving stock (Generic, Eq, Ord, Show)
   deriving anyclass (ToJSON, FromJSON)
 
-data HydraHeadInfo = MkHydraHeadInfo
-  { headId :: HeadId
-  , delegatesNumber :: Natural
-  , auctionFeePerDelegate :: Lovelace
-  }
-  deriving stock (Generic, Show, Eq, Ord)
-  deriving anyclass (ToJSON, FromJSON)
-
 data HydraHead = MkHydraHead
   { staticInfo :: HydraHeadInfo
   , allDelegatesKnown :: Bool
-  , headDelegateState :: InitializedState
+  , headDelegateState :: InitializedState DelegateProtocol
   }
   deriving stock (Generic, Show, Eq)
   deriving anyclass (ToJSON, FromJSON)
-
-deriving stock instance Ord HeadId
 
 data HeadDelegate = MkHeadDelegate
   { delegateHeadId :: HeadId

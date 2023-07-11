@@ -24,7 +24,7 @@ import Data.Maybe (listToMaybe, mapMaybe)
 -- Plutus imports
 
 import PlutusLedgerApi.V1.Crypto (PubKeyHash)
-import PlutusLedgerApi.V2 (BuiltinByteString, FromData, fromBuiltin, fromData, toBuiltin)
+import PlutusLedgerApi.V2 (BuiltinByteString, fromBuiltin, toBuiltin)
 
 -- Hydra imports
 import Cardano.Api.UTxO qualified as UTxO
@@ -39,14 +39,11 @@ import Hydra.Cardano.Api (
   TxOut,
   fromPlutusScript,
   fromScriptData,
-  getScriptData,
   getTxBody,
   serialiseToRawBytes,
-  toPlutusData,
   toPlutusKeyHash,
   txExtraKeyWits,
   txIns,
-  txOutDatum,
   txOuts,
   verificationKeyHash,
   pattern ReferenceScriptNone,
@@ -74,10 +71,9 @@ import HydraAuctionUtils.Monads.Actors (
   addressAndKeys,
   askActor,
  )
+import HydraAuctionUtils.Tx.Utxo (decodeInlineDatum)
 
 import HydraAuction.Tx.Common (
-  queryOrCreateSingleMinAdaUtxo,
-  querySingleMinAdaUtxo,
   scriptPlutusScript,
   scriptSingleUtxo,
   scriptUtxos,
@@ -114,21 +110,8 @@ import HydraAuctionUtils.Tx.Build (
   mkInlineDatum,
   mkInlinedDatumScriptWitness,
  )
-import HydraAuctionUtils.Tx.Common (actorAdaOnlyUtxo, selectAdaUtxo)
+import HydraAuctionUtils.Tx.Common (actorAdaOnlyUtxo, queryOrCreateSingleMinAdaUtxo, selectAdaUtxo)
 import HydraAuctionUtils.Types.Natural (Natural, naturalToInt)
-
-data DatumDecodingError = CannotDecodeDatum | NoInlineDatum
-
--- FIXME: move to utils
-decodeInlineDatum ::
-  forall a. FromData a => TxOut CtxUTxO -> Either DatumDecodingError a
-decodeInlineDatum out =
-  case txOutDatum out of
-    TxOutDatumInline scriptData ->
-      case fromData $ toPlutusData $ getScriptData scriptData of
-        Just standingBidDatum -> Right standingBidDatum
-        Nothing -> Left CannotDecodeDatum
-    _ -> Left NoInlineDatum
 
 queryStandingBidDatum ::
   (MonadNetworkId m, MonadQueryUtxo m, MonadFail m) =>
