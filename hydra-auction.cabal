@@ -123,6 +123,7 @@ common common-offchain
     , hydra-node
     , hydra-plutus
     , hydra-prelude
+    , pretty-show
     , prettyprinter
     , stm
     , text
@@ -311,6 +312,7 @@ library hydra-auction-utils
     HydraAuctionUtils.Tx.Build
     HydraAuctionUtils.Tx.Common
     HydraAuctionUtils.Tx.Utxo
+    HydraAuctionUtils.Types
     HydraAuctionUtils.Types.Natural
     HydraAuctionUtils.WebSockets.Client
     HydraAuctionUtils.WebSockets.ClientId
