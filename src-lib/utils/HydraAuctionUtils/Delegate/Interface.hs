@@ -9,6 +9,7 @@ module HydraAuctionUtils.Delegate.Interface (
   initializedStateKind,
   RequestIgnoredReason (..),
   ResponseReason (..),
+  TxEventKind (..),
   FrontendRequest (..),
   IncorrectRequestDataReason (..),
   ImposibleEvent (..),
@@ -28,11 +29,12 @@ import Data.Aeson (FromJSON, ToJSON)
 
 -- Hydra imports
 
-import Hydra.Cardano.Api (Lovelace)
+import Hydra.Cardano.Api (Lovelace, TxId)
 import Hydra.Chain (HeadId)
 
 -- HydraAuction imports
 import HydraAuctionUtils.Hydra.Interface (HydraEvent)
+import HydraAuctionUtils.Types (Layer (..))
 import HydraAuctionUtils.Types.Natural (Natural)
 
 type DatatypeInstances x = (Eq x, Show x, Generic x, ToJSON x, FromJSON x)
@@ -190,9 +192,14 @@ data ResponseReason = WasQueried | Updated
   deriving stock (Eq, Show, Generic)
   deriving anyclass (FromJSON, ToJSON)
 
+data TxEventKind = Submited | Valid | Invalid | Awaited
+  deriving stock (Eq, Show, Generic)
+  deriving anyclass (FromJSON, ToJSON)
+
 data DelegateResponse protocol
   = CurrentDelegateState ResponseReason (DelegateState protocol)
   | RequestIgnored (RequestIgnoredReason protocol)
+  | TxEvent Layer TxEventKind TxId
   | CustomEventHappened (CustomEvent protocol)
 
 deriving stock instance DelegateLogicTypes protocol => Eq (DelegateResponse protocol)

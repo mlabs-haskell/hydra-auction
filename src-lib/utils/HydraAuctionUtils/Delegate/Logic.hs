@@ -23,6 +23,8 @@ import Hydra.Cardano.Api (
   Tx,
   TxIn,
   TxOut,
+  getTxBody,
+  getTxId,
   pattern ShelleyAddressInEra,
   pattern TxOut,
  )
@@ -47,6 +49,7 @@ import HydraAuctionUtils.Tx.Utxo (
   filterAdaOnlyUtxo,
   filterNotAdaOnlyUtxo,
  )
+import HydraAuctionUtils.Types (Layer (..))
 import HydraAuctionUtils.WebSockets.ClientId (
   ClientId,
   ClientResponseScope (..),
@@ -198,6 +201,8 @@ delegateEventStepCommon event = case event of
       _ -> abort $ ImpossibleHappened IncorrectHydraEvent
   HydraEvent (SnapshotConfirmed {snapshot}) -> case snapshot of
     Snapshot {utxo} -> updateStateWithStandingBidOrAbort utxo
+  HydraEvent TxValid {transaction} -> do
+    return [TxEvent L2 Valid (getTxId $ getTxBody transaction)]
   HydraEvent TxInvalid {transaction, utxo} -> do
     state <- get
     case state of
@@ -205,7 +210,8 @@ delegateEventStepCommon event = case event of
         reaction <- lift $ reactToTxInvalid transaction utxo openState
         case reaction of
           Left abortReason -> abort abortReason
-          Right () -> return []
+          Right () ->
+            return [TxEvent L2 Invalid (getTxId $ getTxBody transaction)]
       _ -> abort $ ImpossibleHappened IncorrectHydraEvent
   HydraEvent ReadyToFanout {} -> do
     sendCommand Fanout
@@ -219,7 +225,10 @@ delegateEventStepCommon event = case event of
     updateStateWithStandingBidOrAbort utxo
   HydraEvent HeadIsClosed {} -> do
     updateStateAndResponse Closed
-  HydraEvent HeadIsFinalized {} ->
+  HydraEvent HeadIsFinalized {} -> do
+    -- Restart Head
+    -- FIXME: unable to hook that, and otherwise not cool
+    [] <- delegateEventStepCommon Start
     updateStateAndResponse Finalized
   HydraEvent HeadIsAborted {} ->
     updateStateAndResponse Aborted
