@@ -13,7 +13,6 @@ import Test.Tasty.HUnit (Assertion, testCase)
 
 -- Hydra auction imports
 
-import HydraAuction.Delegate (abort)
 import HydraAuction.Delegate.Interface (
   AbortReason (..),
   DelegateResponse (..),
@@ -27,13 +26,14 @@ import HydraAuction.Tx.Escrow (
 import HydraAuction.Tx.StandingBid (newBid, sellerSignatureForActor)
 import HydraAuction.Tx.TermsConfig (AuctionTermsConfig (..))
 import HydraAuction.Types (AuctionTerms (..))
+import HydraAuctionUtils.Delegate.Logic (abort)
 import HydraAuctionUtils.Fixture (Actor (..), ActorKind (..), actorsByKind)
 import HydraAuctionUtils.L1.Runner (
   initWallet,
   withActor,
  )
 import HydraAuctionUtils.Monads (waitUntil)
-import HydraAuctionUtils.Server.Client (AwaitedOutput (..))
+import HydraAuctionUtils.WebSockets.Client (AwaitedOutput (..))
 
 -- Hydra auction test imports
 import EndToEnd.HydraUtils (
@@ -66,9 +66,9 @@ config :: AuctionTermsConfig
 config =
   Utils.config
     { -- L2 stuff testing test take time after bidding end
-      configDiffBiddingEnd = 15
-    , configDiffVoucherExpiry = 18
-    , configDiffCleanup = 22
+      configDiffBiddingEnd = 24
+    , configDiffVoucherExpiry = 26
+    , configDiffCleanup = 28
     }
 
 -- Includes testing L1 biding before and after L2 moves

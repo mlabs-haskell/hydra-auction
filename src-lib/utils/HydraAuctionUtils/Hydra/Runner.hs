@@ -62,12 +62,12 @@ import HydraAuctionUtils.Monads.Actors (
   WithActorT,
   withActor,
  )
-import HydraAuctionUtils.Server.Client (
+import HydraAuctionUtils.WebSockets.Client (
   AwaitedOutput,
   RealProtocolClient,
   waitForMatchingOutputH,
  )
-import HydraAuctionUtils.Server.Protocol (ProtocolClient (..))
+import HydraAuctionUtils.WebSockets.Protocol (ProtocolClient (..))
 
 data HydraRunnerLog
   = HydraRunnerStringMessage String

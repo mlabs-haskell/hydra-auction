@@ -109,8 +109,8 @@ import HydraAuctionUtils.Monads.Actors (
   withActor,
  )
 import HydraAuctionUtils.PrettyPrinting (prettyPrintUtxo)
-import HydraAuctionUtils.Server.Protocol
 import HydraAuctionUtils.Tx.Common (transferAda)
+import HydraAuctionUtils.WebSockets.Protocol
 
 -- Hydra auction CLI imports
 import CLI.Config (
@@ -169,8 +169,11 @@ doOnMatchingStage terms requiredStage action = do
 
 data CliActionHandle client = MkCliActionHandle
   { platformClient :: client
-  , sendRequestToDelegate :: DelegateInterface.FrontendRequest -> IO ()
-  , currentDelegateStateRef :: IORef DelegateState
+  , sendRequestToDelegate ::
+      DelegateInterface.FrontendRequest DelegateInterface.DelegateProtocol ->
+      IO ()
+  , currentDelegateStateRef ::
+      IORef (DelegateState DelegateInterface.DelegateProtocol)
   }
 
 handleCliAction ::
@@ -309,10 +312,11 @@ handlePerAuctionAction
             Nothing -> fail "No Standing bid found"
           liftIO $
             sendRequestToDelegate handle $
-              DelegateInterface.CommitStandingBid
-                { auctionTerms = terms
-                , utxoToCommit = stadingBidUtxo
-                }
+              DelegateInterface.SubmitCommit $
+                DelegateInterface.MoveStandingBidToL2
+                  { commitAuctionTerms = terms
+                  , utxoToCommit = stadingBidUtxo
+                  }
       NewBid bidAmount layer -> do
         if actor == sellerActor
           then liftIO $ putStrLn "Seller cannot place a bid"
@@ -429,10 +433,11 @@ handlePerAuctionAction
                 bidderSigningKey
         liftIO $
           sendRequestToDelegate handle $
-            DelegateInterface.NewBid
-              { auctionTerms = terms
-              , datum = bidDatum
-              }
+            DelegateInterface.SubmitTx $
+              DelegateInterface.NewBid
+                { txAuctionTerms = terms
+                , datum = bidDatum
+                }
 
 noteM :: forall m a. MonadFail m => String -> m (Maybe a) -> m a
 noteM s = (>>= maybe (fail s) pure)

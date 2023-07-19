@@ -123,6 +123,7 @@ common common-offchain
     , hydra-node
     , hydra-plutus
     , hydra-prelude
+    , pretty-show
     , prettyprinter
     , stm
     , text
@@ -248,12 +249,10 @@ library hydra-auction-utils-onchain
 
 library
   import:          common-offchain
-  visibility:      private
   hs-source-dirs:  src-lib/lib
   exposed-modules:
     HydraAuction.Delegate
     HydraAuction.Delegate.Interface
-    HydraAuction.HydraHacks
     HydraAuction.Platform.Interface
     HydraAuction.Platform.Storage
     HydraAuction.Tx.Common
@@ -288,6 +287,9 @@ library hydra-auction-utils
   exposed-modules:
     HydraAuctionUtils.BundledData
     HydraAuctionUtils.Composite.Runner
+    HydraAuctionUtils.Delegate.Interface
+    HydraAuctionUtils.Delegate.Logic
+    HydraAuctionUtils.Delegate.Server
     HydraAuctionUtils.Extras.CardanoApi
     HydraAuctionUtils.Extras.Plutus
     HydraAuctionUtils.Extras.PlutusOrphans
@@ -295,6 +297,7 @@ library hydra-auction-utils
     HydraAuctionUtils.Hydra.Interface
     HydraAuctionUtils.Hydra.Monad
     HydraAuctionUtils.Hydra.Runner
+    HydraAuctionUtils.HydraHacks
     HydraAuctionUtils.L1.Runner
     HydraAuctionUtils.Monads
     HydraAuctionUtils.Monads.Actors
@@ -303,17 +306,19 @@ library hydra-auction-utils
     HydraAuctionUtils.Parsers.TxIn
     HydraAuctionUtils.Prelude
     HydraAuctionUtils.PrettyPrinting
-    HydraAuctionUtils.Server.Client
-    HydraAuctionUtils.Server.ClientId
-    HydraAuctionUtils.Server.Protocol
-    HydraAuctionUtils.Server.Websockets
     HydraAuctionUtils.Time
     HydraAuctionUtils.Tracing
     HydraAuctionUtils.Tx.AutoCreateTx
     HydraAuctionUtils.Tx.Build
     HydraAuctionUtils.Tx.Common
     HydraAuctionUtils.Tx.Utxo
+    HydraAuctionUtils.Types
     HydraAuctionUtils.Types.Natural
+    HydraAuctionUtils.WebSockets.Client
+    HydraAuctionUtils.WebSockets.ClientId
+    HydraAuctionUtils.WebSockets.Protocol
+    HydraAuctionUtils.WebSockets.Protocol.Void
+    HydraAuctionUtils.WebSockets.Server
     Paths_hydra_auction
     PlutusTx.Deriving
 

@@ -25,7 +25,6 @@ module HydraAuction.Platform.Interface (
   EntityFilter (..),
   AnnouncedAuction (..),
   HydraHead (..),
-  HydraHeadInfo (..),
   FilterEq (..),
   FilterOrd (..),
   HeadDelegate (..),
@@ -67,14 +66,16 @@ import Hydra.Chain (HeadId (..))
 
 import HydraAuction.Addresses (StandingBidAddress, VoucherCS)
 import HydraAuction.Delegate.Interface (
+  DelegateProtocol,
+  HydraHeadInfo (..),
   InitializedState,
   InitializedStateKind,
   initializedStateKind,
  )
 import HydraAuction.Types (AuctionTerms)
 import HydraAuctionUtils.Fixture (Actor)
-import HydraAuctionUtils.Server.Protocol (Protocol (..))
 import HydraAuctionUtils.Types.Natural (Natural)
+import HydraAuctionUtils.WebSockets.Protocol (Protocol (..))
 
 -- Interfaces
 
@@ -105,23 +106,13 @@ data AnnouncedAuction = MkAnnouncedAuction
   deriving stock (Generic, Eq, Ord, Show)
   deriving anyclass (ToJSON, FromJSON)
 
-data HydraHeadInfo = MkHydraHeadInfo
-  { headId :: HeadId
-  , delegatesNumber :: Natural
-  , auctionFeePerDelegate :: Lovelace
-  }
-  deriving stock (Generic, Show, Eq, Ord)
-  deriving anyclass (ToJSON, FromJSON)
-
 data HydraHead = MkHydraHead
   { staticInfo :: HydraHeadInfo
   , allDelegatesKnown :: Bool
-  , headDelegateState :: InitializedState
+  , headDelegateState :: InitializedState DelegateProtocol
   }
   deriving stock (Generic, Show, Eq)
   deriving anyclass (ToJSON, FromJSON)
-
-deriving stock instance Ord HeadId
 
 data HeadDelegate = MkHeadDelegate
   { delegateHeadId :: HeadId
@@ -443,7 +434,7 @@ instance Protocol PlatformProtocol where
   type OutputKind PlatformProtocol = ServerOutputKind
   type ConnectionConfig PlatformProtocol = ()
   getOutputKind _ = NotImplemented
-  configToConnectionPath _ = ""
+  configToConnectionPath _ _ = ""
 
 instance ContainerForEntity ClientInput where
   jsonSubFieldName Proxy = "input"

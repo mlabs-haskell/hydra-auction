@@ -38,11 +38,15 @@ import Hydra.Network (Host)
 
 -- Hydra auction imports
 
-import HydraAuction.Delegate.Interface (DelegateResponse, FrontendRequest)
+import HydraAuction.Delegate.Interface (
+  DelegateProtocol,
+  DelegateResponse,
+  FrontendRequest,
+ )
 import HydraAuction.Types (AuctionTerms)
 import HydraAuctionUtils.Fixture (Actor)
-import HydraAuctionUtils.Server.ClientId (ClientId, ClientResponseScope)
 import HydraAuctionUtils.Tracing (TracerT)
+import HydraAuctionUtils.WebSockets.ClientId (ClientId, ClientResponseScope)
 
 deriving stock instance Eq RunningNode
 deriving stock instance Show RunningNode
@@ -66,8 +70,9 @@ data DelegateServerConfig = DelegateServerConfig
 data DelegateServerLog
   = Started DelegateServerConfig
   | GotFrontendConnected ClientId
-  | GotFrontendRequest FrontendRequest
-  | ProducedDelegateResponse (ClientResponseScope, DelegateResponse)
+  | GotFrontendRequest (FrontendRequest DelegateProtocol)
+  | ProducedDelegateResponse
+      (ClientResponseScope, DelegateResponse DelegateProtocol)
   | ThreadEvent ThreadEvent ThreadSort
   | QueueAuctionPhaseEvent QueueAuctionPhaseEvent
   deriving stock (Eq, Show, Generic)

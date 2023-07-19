@@ -1,5 +1,9 @@
 module HydraAuctionUtils.Tx.Common (
   transferAda,
+  transferAdaTxParams,
+  querySingleMinAdaUtxo,
+  queryOrCreateSingleMinAdaUtxo,
+  createMinAdaUtxo,
   utxoLovelaceValue,
   actorAdaOnlyUtxo,
   selectAdaUtxo,
@@ -18,8 +22,11 @@ import Cardano.Api.UTxO qualified as UTxO
 
 -- Hydra imports
 import Hydra.Cardano.Api (
+  CtxUTxO,
   Lovelace,
   Tx,
+  TxIn,
+  TxOut,
   lovelaceToValue,
   selectLovelace,
   txOutValue,
@@ -49,6 +56,7 @@ import HydraAuctionUtils.Tx.AutoCreateTx (
   AutoCreateParams (..),
   autoSubmitAndAwaitTx,
  )
+import HydraAuctionUtils.Tx.Build (minLovelace)
 import HydraAuctionUtils.Tx.Utxo (filterAdaOnlyUtxo, filterNonFuelUtxo)
 
 actorAdaOnlyUtxo ::
@@ -64,27 +72,78 @@ selectAdaUtxo ::
   Lovelace ->
   m (Maybe UTxO)
 selectAdaUtxo minRequiredAmount = do
-  allAdaUtxo <- actorAdaOnlyUtxo
+  let filterMinLovelace = UTxO.filter $
+        \x -> selectLovelace (txOutValue x) >= minLovelace
+  allAdaUtxo <- filterMinLovelace <$> actorAdaOnlyUtxo
   let foundEnough = utxoLovelaceValue allAdaUtxo >= minRequiredAmount
   return $ guard foundEnough >> Just allAdaUtxo
+
+querySingleMinAdaUtxo ::
+  (MonadIO m, MonadCardanoClient m, MonadTrace m, MonadFail m, MonadHasActor m) =>
+  m (Maybe (TxIn, TxOut CtxUTxO))
+querySingleMinAdaUtxo = do
+  let filterMinLovelace = UTxO.filter $
+        \x -> txOutValue x == lovelaceToValue minLovelace
+  utxos <- UTxO.pairs . filterMinLovelace <$> actorAdaOnlyUtxo
+  return $ case utxos of
+    first : _ -> Just first
+    [] -> Nothing
+
+createMinAdaUtxo ::
+  (MonadIO m, MonadCardanoClient m, MonadTrace m, MonadFail m, MonadHasActor m) =>
+  m (TxIn, TxOut CtxUTxO)
+createMinAdaUtxo = do
+  (actorAddress, _, actorSk) <- addressAndKeys
+  actorMoneyUtxo <- fromJust <$> selectAdaUtxo minLovelace
+
+  void $
+    autoSubmitAndAwaitTx $
+      AutoCreateParams
+        { signedUtxos = [(actorSk, actorMoneyUtxo)]
+        , additionalSigners = []
+        , referenceUtxo = mempty
+        , witnessedUtxos = []
+        , collateral = Nothing
+        , outs = [minAdaOut actorAddress]
+        , toMint = TxMintValueNone
+        , changeAddress = actorAddress
+        , validityBound = always
+        }
+
+  -- Safe, cuz we just created it (modulo concurrent txs)
+  fromJust <$> querySingleMinAdaUtxo
+  where
+    minAdaOut actorAddress =
+      TxOut
+        (ShelleyAddressInEra actorAddress)
+        (lovelaceToValue minLovelace)
+        TxOutDatumNone
+        ReferenceScriptNone
+
+queryOrCreateSingleMinAdaUtxo ::
+  (MonadIO m, MonadCardanoClient m, MonadTrace m, MonadFail m, MonadHasActor m) =>
+  m (TxIn, TxOut CtxUTxO)
+queryOrCreateSingleMinAdaUtxo = do
+  mUtxo <- querySingleMinAdaUtxo
+  maybe createMinAdaUtxo return mUtxo
 
 utxoLovelaceValue :: UTxO.UTxO -> Lovelace
 utxoLovelaceValue =
   sum . fmap (selectLovelace . txOutValue . snd) . UTxO.pairs
 
-transferAda ::
+transferAdaTxParams ::
   forall m.
   (MonadFail m, MonadTrace m, MonadHasActor m, MonadCardanoClient m, MonadIO m) =>
   Actor ->
   Marked ->
   Lovelace ->
-  m Tx
-transferAda actorTo marked amount = do
-  moneyUtxo <- actorTipUtxo
+  m AutoCreateParams
+transferAdaTxParams actorTo marked amount = do
+  moneyUtxo <- fromJust <$> selectAdaUtxo amount
   (fromAddress, _, fromSk) <- addressAndKeys
   (toAddress, _, _) <- addressAndKeysForActor actorTo
 
-  autoSubmitAndAwaitTx $
+  return $
     AutoCreateParams
       { signedUtxos = [(fromSk, moneyUtxo)]
       , additionalSigners = []
@@ -107,3 +166,14 @@ transferAda actorTo marked amount = do
     theOutputDatum = case marked of
       Fuel -> TxOutDatumHash markerDatumHash
       Normal -> TxOutDatumNone
+
+transferAda ::
+  forall m.
+  (MonadFail m, MonadTrace m, MonadHasActor m, MonadCardanoClient m, MonadIO m) =>
+  Actor ->
+  Marked ->
+  Lovelace ->
+  m Tx
+transferAda actorTo marked amount = do
+  params <- transferAdaTxParams actorTo marked amount
+  autoSubmitAndAwaitTx params

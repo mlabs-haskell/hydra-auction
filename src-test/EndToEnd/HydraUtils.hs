@@ -18,7 +18,6 @@ import HydraAuctionUtils.Prelude
 -- Haskell import
 
 import Control.Concurrent.Async (mapConcurrently)
-import Control.Exception (finally)
 import Control.Tracer (nullTracer)
 import Data.Map qualified as Map
 import Data.Maybe (fromMaybe)
@@ -41,14 +40,15 @@ import HydraNode (connection, waitForNodesConnected, withHydraCluster)
 import Test.Hydra.Prelude (withTempDir)
 
 -- HydraAuction imports
-import HydraAuction.Delegate.Interface (
-  DelegateState,
-  initialState,
- )
+import HydraAuction.Delegate.Interface (DelegateProtocol)
 import HydraAuction.Platform.Interface (PlatformProtocol)
 import HydraAuction.Platform.Storage (PlatformImplementation)
 import HydraAuctionUtils.BundledData (lookupProtocolParamPath)
 import HydraAuctionUtils.Composite.Runner (CompositeRunner)
+import HydraAuctionUtils.Delegate.Interface (
+  DelegateState,
+  initialState,
+ )
 import HydraAuctionUtils.Fixture (
   Actor (..),
   ActorKind (..),
@@ -76,15 +76,15 @@ import HydraAuctionUtils.L1.Runner (
   executeTestL1Runner,
   withActor,
  )
-import HydraAuctionUtils.Server.Client (
+import HydraAuctionUtils.Tx.Common (transferAda)
+import HydraAuctionUtils.WebSockets.Client (
   FakeProtocolClient,
   ProtocolClientFor,
   RealProtocolClient (MkRealProtocolClient),
   newFakeClient,
   withProtocolClient,
  )
-import HydraAuctionUtils.Server.Protocol (WithClientT, withClient)
-import HydraAuctionUtils.Tx.Common (transferAda)
+import HydraAuctionUtils.WebSockets.Protocol (WithClientT, withClient)
 
 -- Ways to spin up Hydra cluster
 
@@ -144,9 +144,8 @@ withDockerComposeCluster cont = do
         else withHydraClientN (toInteger n) $
           \client -> withNClients' (client : clientsAcc) n cont'
     withNClients = withNClients' []
-    action' nodes = do
+    action nodes = do
       executeL1RunnerWithNode dockerNode (cont nodes)
-    action nodes = finally (action' nodes) (system "./scripts/stop-demo.sh")
 
 -- Implementation of Emulator
 
@@ -159,7 +158,8 @@ allDelegates = [Main, Second, Third]
 data EmulatorContext = MkEmulatorContext
   { platformClient :: FakeProtocolClient PlatformImplementation
   , clients :: EmulatorDelegateClients
-  , delegateStatesRef :: MVar (Map EmulatorDelegate DelegateState)
+  , delegateStatesRef ::
+      MVar (Map EmulatorDelegate (DelegateState DelegateProtocol))
   }
 
 type EmulatorDelegateClients =
@@ -218,7 +218,7 @@ runEmulator clients action = do
 -- FIXME: this is bad
 type DelegateAction client x =
   ProtocolClientFor PlatformProtocol client =>
-  WithClientT client (StateT DelegateState CompositeRunner) x
+  WithClientT client (StateT (DelegateState DelegateProtocol) CompositeRunner) x
 
 runL1InEmulator :: forall x. L1Runner x -> DelegatesClusterEmulator x
 runL1InEmulator action =
@@ -250,6 +250,7 @@ runCompositeForDelegate name action = do
 
 runCompositeForAllDelegates ::
   forall x.
+  HasCallStack =>
   DelegateAction (FakeProtocolClient PlatformImplementation) x ->
   DelegatesClusterEmulator [x]
 runCompositeForAllDelegates action = do

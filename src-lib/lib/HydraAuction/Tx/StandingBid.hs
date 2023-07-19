@@ -7,7 +7,7 @@ module HydraAuction.Tx.StandingBid (
   createNewBidTx,
   createStandingBidDatum,
   decodeNewBidTxOnL2,
-  moveToHydra,
+  moveToHydraTx,
   sellerSignatureForActor,
   NewBidTxInfo (..),
 ) where
@@ -24,7 +24,7 @@ import Data.Maybe (listToMaybe, mapMaybe)
 -- Plutus imports
 
 import PlutusLedgerApi.V1.Crypto (PubKeyHash)
-import PlutusLedgerApi.V2 (BuiltinByteString, FromData, fromBuiltin, fromData, toBuiltin)
+import PlutusLedgerApi.V2 (BuiltinByteString, fromBuiltin, toBuiltin)
 
 -- Hydra imports
 import Cardano.Api.UTxO qualified as UTxO
@@ -39,14 +39,11 @@ import Hydra.Cardano.Api (
   TxOut,
   fromPlutusScript,
   fromScriptData,
-  getScriptData,
   getTxBody,
   serialiseToRawBytes,
-  toPlutusData,
   toPlutusKeyHash,
   txExtraKeyWits,
   txIns,
-  txOutDatum,
   txOuts,
   verificationKeyHash,
   pattern ReferenceScriptNone,
@@ -58,9 +55,6 @@ import Hydra.Cardano.Api (
  )
 import Hydra.Chain (HeadId)
 
--- Hydra auction imports
-
-import HydraAuction.HydraHacks (submitAndAwaitCommitTx)
 import HydraAuction.OnChain (
   AuctionScript (StandingBid),
   standingBidValidator,
@@ -71,14 +65,15 @@ import HydraAuction.OnChain.StandingBid (
   bidderSignatureMessage,
   sellerSignatureMessage,
  )
+import HydraAuctionUtils.HydraHacks (createCommitTx)
 import HydraAuctionUtils.Monads.Actors (
   WithActorT,
   addressAndKeys,
   askActor,
  )
+import HydraAuctionUtils.Tx.Utxo (decodeInlineDatum)
 
 import HydraAuction.Tx.Common (
-  createMinAdaUtxo,
   scriptPlutusScript,
   scriptSingleUtxo,
   scriptUtxos,
@@ -115,21 +110,8 @@ import HydraAuctionUtils.Tx.Build (
   mkInlineDatum,
   mkInlinedDatumScriptWitness,
  )
-import HydraAuctionUtils.Tx.Common (actorAdaOnlyUtxo, selectAdaUtxo)
+import HydraAuctionUtils.Tx.Common (actorAdaOnlyUtxo, queryOrCreateSingleMinAdaUtxo, selectAdaUtxo)
 import HydraAuctionUtils.Types.Natural (Natural, naturalToInt)
-
-data DatumDecodingError = CannotDecodeDatum | NoInlineDatum
-
--- FIXME: move to utils
-decodeInlineDatum ::
-  forall a. FromData a => TxOut CtxUTxO -> Either DatumDecodingError a
-decodeInlineDatum out =
-  case txOutDatum out of
-    TxOutDatumInline scriptData ->
-      case fromData $ toPlutusData $ getScriptData scriptData of
-        Just standingBidDatum -> Right standingBidDatum
-        Nothing -> Left CannotDecodeDatum
-    _ -> Left NoInlineDatum
 
 queryStandingBidDatum ::
   (MonadNetworkId m, MonadQueryUtxo m, MonadFail m) =>
@@ -293,24 +275,26 @@ createStandingBidDatum terms bidAmount sellerSignature bidderSk =
     bidderMessage = fromBuiltin $ bidderSignatureMessage voucherCS bidAmount bidderPKH
     Signature bidderSignature = dsign bidderSecretKey bidderMessage
 
-moveToHydra ::
+-- | Uses or creates minAda Utxo for collateral
+moveToHydraTx ::
   HasCallStack =>
   HeadId ->
   AuctionTerms ->
   (TxIn, TxOut CtxUTxO) ->
-  HydraRunner ()
-moveToHydra headId terms (standingBidTxIn, standingBidTxOut) = do
+  HydraRunner Tx
+moveToHydraTx headId terms (standingBidTxIn, standingBidTxOut) = do
   -- FIXME: get headId from AuctionTerms
-  utxoForL2Collateral <- runL1RunnerInComposite createMinAdaUtxo
+  utxoForL2Collateral <- runL1RunnerInComposite queryOrCreateSingleMinAdaUtxo
+
   utxoForL1Fee : _ <-
     filter (/= utxoForL2Collateral) . UTxO.pairs
       <$> runL1RunnerInComposite actorAdaOnlyUtxo
-  void $
-    submitAndAwaitCommitTx
-      headId
-      utxoForL1Fee
-      (UTxO.fromPairs [utxoForL2Collateral])
-      (standingBidTxIn, standingBidTxOut, standingBidWitness)
+  -- FIXME: use Hydra external commit instread
+  createCommitTx
+    headId
+    utxoForL1Fee
+    (UTxO.fromPairs [utxoForL2Collateral])
+    (standingBidTxIn, standingBidTxOut, standingBidWitness)
   where
     script =
       fromPlutusScript @PlutusScriptV2 $

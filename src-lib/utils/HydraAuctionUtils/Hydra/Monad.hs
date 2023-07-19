@@ -21,7 +21,13 @@ import Cardano.Api.UTxO qualified as UTxO
 
 import Hydra.API.ClientInput (ClientInput (..))
 import Hydra.API.ServerOutput (ServerOutput (..))
-import Hydra.Cardano.Api (Address (ByronAddress, ShelleyAddress), Tx, pattern TxOut)
+import Hydra.Cardano.Api (
+  Address (ByronAddress, ShelleyAddress),
+  Tx,
+  getTxBody,
+  getTxId,
+  pattern TxOut,
+ )
 import Hydra.Snapshot (Snapshot (..))
 
 -- HydraAuction imports
@@ -38,8 +44,8 @@ import HydraAuctionUtils.Monads (
   UtxoQuery (..),
  )
 import HydraAuctionUtils.Monads.Actors (WithActorT)
-import HydraAuctionUtils.Server.Client (AwaitedOutput (..), OutputMatcher (..))
-import HydraAuctionUtils.Server.Protocol (WithClientT)
+import HydraAuctionUtils.WebSockets.Client (AwaitedOutput (..), OutputMatcher (..))
+import HydraAuctionUtils.WebSockets.Protocol (WithClientT)
 
 -- FIXME: this is for transition. Should be removed, maybe with ModadHydra
 type AwaitedHydraEvent = AwaitedOutput HydraProtocol
@@ -73,9 +79,11 @@ instance (Monad m, MonadHydra m) => MonadSubmitTx (ViaMonadHydra m) where
     return $ Right ()
 
   awaitTx :: Tx -> ViaMonadHydra m ()
-  awaitTx tx = do
+  awaitTx expectedTx = do
     void $ waitForHydraEvent . CustomMatcher . OutputMatcher $ \case
-      SnapshotConfirmed {snapshot} -> tx `elem` confirmed snapshot
+      SnapshotConfirmed {snapshot} ->
+        getTxId (getTxBody expectedTx) `elem` confirmed snapshot
+      TxValid {transaction} -> transaction == expectedTx
       _ -> False
 
 instance (Monad m, MonadHydra m) => MonadQueryUtxo (ViaMonadHydra m) where

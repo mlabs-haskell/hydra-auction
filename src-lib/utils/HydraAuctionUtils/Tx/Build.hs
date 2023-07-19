@@ -64,6 +64,7 @@ tokenToAsset :: TokenName -> AssetName
 tokenToAsset (TokenName t) = AssetName $ fromBuiltin t
 
 mintedTokens ::
+  HasCallStack =>
   ToScriptData redeemer =>
   PlutusScript ->
   redeemer ->

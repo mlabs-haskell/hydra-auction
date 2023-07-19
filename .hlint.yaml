@@ -8,3 +8,4 @@
 - ignore: {name: Use notElem}
 - ignore: {name: Use unless}
 - ignore: {name: Use fmap}
+- ignore: {name: Use traverse_}

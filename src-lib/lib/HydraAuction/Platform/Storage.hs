@@ -19,7 +19,10 @@ import Data.Map qualified as Map
 
 -- HydraAuction imports
 
-import HydraAuction.Delegate.Interface (InitializedState (..))
+import HydraAuction.Delegate.Interface (
+  HydraHeadInfo (..),
+  InitializedState (..),
+ )
 import HydraAuction.OnChain (standingBidAddress, voucherCurrencySymbol)
 import HydraAuction.Platform.Interface (
   AnnouncedAuction (..),
@@ -36,14 +39,13 @@ import HydraAuction.Platform.Interface (
   FilterEq (..),
   HeadDelegate (..),
   HydraHead (..),
-  HydraHeadInfo (..),
   PlatformProtocol,
   ServerOutput (..),
   Some (..),
  )
-import HydraAuctionUtils.Server.ClientId (ClientId, ClientResponseScope (..))
-import HydraAuctionUtils.Server.Protocol (ProtocolServerLogic (..))
 import HydraAuctionUtils.Types.Natural (naturalToInt)
+import HydraAuctionUtils.WebSockets.ClientId (ClientId, ClientResponseScope (..))
+import HydraAuctionUtils.WebSockets.Protocol (ProtocolServerLogic (..))
 
 --- Storage
 

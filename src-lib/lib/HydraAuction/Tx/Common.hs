@@ -2,7 +2,6 @@ module HydraAuction.Tx.Common (
   scriptUtxos,
   scriptAddress,
   scriptPlutusScript,
-  createMinAdaUtxo,
   currentAuctionStage,
   toForgeStateToken,
   scriptSingleUtxo,
@@ -61,23 +60,12 @@ import HydraAuction.Types (
   auctionStages,
  )
 import HydraAuctionUtils.Monads (
-  MonadCardanoClient,
   MonadNetworkId (..),
   MonadQueryUtxo (..),
-  MonadTrace,
   UtxoQuery (..),
  )
-import HydraAuctionUtils.Monads.Actors (
-  MonadHasActor,
-  addressAndKeys,
- )
 import HydraAuctionUtils.Time (currentPlutusPOSIXTime)
-import HydraAuctionUtils.Tx.AutoCreateTx (
-  AutoCreateParams (..),
-  autoSubmitAndAwaitTx,
- )
-import HydraAuctionUtils.Tx.Build (minLovelace, mintedTokens, tokenToAsset)
-import HydraAuctionUtils.Tx.Common (actorAdaOnlyUtxo, selectAdaUtxo)
+import HydraAuctionUtils.Tx.Build (mintedTokens, tokenToAsset)
 
 currentAuctionStage ::
   (MonadTime timedMonad) => AuctionTerms -> timedMonad AuctionStage
@@ -99,39 +87,6 @@ toForgeStateToken terms redeemer =
     num = case redeemer of
       MintVoucher -> 1
       BurnVoucher -> -1
-
-createMinAdaUtxo ::
-  (MonadIO m, MonadCardanoClient m, MonadTrace m, MonadFail m, MonadHasActor m) =>
-  m (TxIn, TxOut CtxUTxO)
-createMinAdaUtxo = do
-  (actorAddress, _, actorSk) <- addressAndKeys
-  actorMoneyUtxo <- fromJust <$> selectAdaUtxo minLovelace
-
-  void $
-    autoSubmitAndAwaitTx $
-      AutoCreateParams
-        { signedUtxos = [(actorSk, actorMoneyUtxo)]
-        , additionalSigners = []
-        , referenceUtxo = mempty
-        , witnessedUtxos = []
-        , collateral = Nothing
-        , outs = [minAdaOut actorAddress]
-        , toMint = TxMintValueNone
-        , changeAddress = actorAddress
-        , validityBound = always
-        }
-
-  let filterMinLovelace = UTxO.filter $
-        \x -> txOutValue x == lovelaceToValue minLovelace
-  utxo : _ <- UTxO.pairs . filterMinLovelace <$> actorAdaOnlyUtxo
-  return utxo
-  where
-    minAdaOut actorAddress =
-      TxOut
-        (ShelleyAddressInEra actorAddress)
-        (lovelaceToValue minLovelace)
-        TxOutDatumNone
-        ReferenceScriptNone
 
 scriptPlutusScript :: AuctionScript -> AuctionTerms -> PlutusScript
 scriptPlutusScript script terms = fromPlutusScript $ scriptValidatorForTerms script terms

@@ -22,6 +22,7 @@ import Hydra.Cluster.Faucet (Marked (..))
 
 import HydraAuction.OnChain (AuctionScript (..))
 import HydraAuctionUtils.Fixture (Actor)
+import HydraAuctionUtils.Types (Layer (..))
 import HydraAuctionUtils.Types.Natural (Natural)
 
 -- Hydra auction CLI imports
@@ -44,8 +45,6 @@ instance Pretty CLIError where
 -- | additional information on a log event
 extraInfo :: forall ann. Doc ann -> Doc ann
 extraInfo = (line <>) . indent 2
-
-data Layer = L1 | L2 deriving stock (Show)
 
 -- FIXME: upstream
 deriving stock instance Show Marked

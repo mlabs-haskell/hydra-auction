@@ -1,4 +1,4 @@
-module HydraAuctionUtils.Server.ClientId (ClientId, ClientResponseScope (..), clientIsInScope) where
+module HydraAuctionUtils.WebSockets.ClientId (ClientId, ClientResponseScope (..), clientIsInScope) where
 
 -- Prelude imports
 import HydraAuctionUtils.Prelude

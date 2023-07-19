@@ -19,9 +19,11 @@ import Hydra.Cardano.Api (Lovelace (..))
 -- Hydra auction imports
 
 import HydraAuction.Delegate.Interface (
+  DelegateProtocol,
   DelegateState (..),
   InitializedState (..),
   OpenHeadUtxo (..),
+  OpenState (..),
  )
 import HydraAuction.OnChain (AuctionScript (..))
 import HydraAuction.Platform.Interface (PlatformProtocol)
@@ -36,7 +38,7 @@ import HydraAuctionUtils.L1.Runner (
 import HydraAuctionUtils.Monads (waitUntil)
 import HydraAuctionUtils.Monads.Actors (WithActorT)
 
-import HydraAuctionUtils.Server.Client (
+import HydraAuctionUtils.WebSockets.Client (
   FakeProtocolClient,
   ProtocolClientFor,
   newFakeClient,
@@ -72,10 +74,11 @@ testSuite =
       fn <- toJsonFileName AuctionConfig auctionName
       removeFile fn
 
-mockDelegateState :: DelegateState
+mockDelegateState :: DelegateState DelegateProtocol
 mockDelegateState =
   Initialized nonExistentHeadIdStub $
-    Open headUtxo Nothing
+    Open $
+      MkOpenState headUtxo Nothing
   where
     headUtxo =
       MkOpenHeadUtxo

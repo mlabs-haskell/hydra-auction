@@ -1,6 +1,4 @@
-{-# LANGUAGE AllowAmbiguousTypes #-}
-
-module HydraAuctionUtils.Server.Protocol (
+module HydraAuctionUtils.WebSockets.Protocol (
   Protocol (..),
   ProtocolClient (..),
   ProtocolClientFor,
@@ -17,10 +15,11 @@ import HydraAuctionUtils.Prelude
 
 import Control.Monad.State.Class (MonadState (..))
 import Data.Aeson (FromJSON (..), ToJSON (..))
+import Data.Proxy (Proxy)
 import Data.Text (Text)
 
 -- HydraAuction imports
-import HydraAuctionUtils.Server.ClientId (ClientId, ClientResponseScope)
+import HydraAuctionUtils.WebSockets.ClientId (ClientId, ClientResponseScope)
 
 type ToFromJSON x = (ToJSON x, FromJSON x)
 type Defaults x = (Eq x, Show x)
@@ -42,7 +41,8 @@ class
   type ConnectionConfig protocol
 
   getOutputKind :: Output protocol -> OutputKind protocol
-  configToConnectionPath :: ConnectionConfig protocol -> Text
+  configToConnectionPath ::
+    Proxy protocol -> ConnectionConfig protocol -> Text
 
 class Protocol (ClientFor handle) => ProtocolClient handle where
   type ClientFor handle

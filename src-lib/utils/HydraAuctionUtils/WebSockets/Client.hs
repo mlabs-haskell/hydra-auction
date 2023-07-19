@@ -1,4 +1,4 @@
-module HydraAuctionUtils.Server.Client (
+module HydraAuctionUtils.WebSockets.Client (
   RealProtocolClient (..),
   FakeProtocolClient (..),
   FakeProtocolClientState (..),
@@ -18,6 +18,7 @@ import HydraAuctionUtils.Prelude
 
 -- Haskell imports
 import Data.Aeson (eitherDecodeStrict, encode)
+import Data.Proxy (Proxy (..))
 import Network.WebSockets (Connection, receiveData, sendTextData)
 
 -- Hydra imports
@@ -25,8 +26,8 @@ import Hydra.Network (Host)
 
 -- HydraAuction imports
 import HydraAuctionUtils.Network (withClientForHost)
-import HydraAuctionUtils.Server.ClientId (clientIsInScope)
-import HydraAuctionUtils.Server.Protocol (
+import HydraAuctionUtils.WebSockets.ClientId (clientIsInScope)
+import HydraAuctionUtils.WebSockets.Protocol (
   Protocol (..),
   ProtocolClient (..),
   ProtocolClientFor,
@@ -93,7 +94,7 @@ withProtocolClient ::
 withProtocolClient host config action =
   withClientForHost
     host
-    (configToConnectionPath @protocol config)
+    (configToConnectionPath (Proxy :: Proxy protocol) config)
     (action . MkRealProtocolClient)
 
 -- FakeProtocolClient

@@ -21,10 +21,10 @@ import Hydra.Network (Host (..))
 import HydraAuction.Platform.Interface (PlatformProtocol)
 import HydraAuction.Platform.Storage (initialStorage, processClientInput)
 import HydraAuctionUtils.Parsers (execParserForCliArgs, websocketsHost)
-import HydraAuctionUtils.Server.ClientId (
+import HydraAuctionUtils.WebSockets.ClientId (
   ClientResponseScope (..),
  )
-import HydraAuctionUtils.Server.Websockets (
+import HydraAuctionUtils.WebSockets.Server (
   ServerQueues (..),
   runWebsocketsServer,
  )

@@ -1,8 +1,18 @@
 {
   description = "Hydra Auction";
   nixConfig = {
-    extra-substituters = [ "https://cache.iog.io" ];
-    extra-trusted-public-keys = [ "hydra.iohk.io:f/Ea+s+dFdN+3Y/G+FDgSq+a5NEWhJGzdjvKNGv0/EQ=" ];
+    extra-substituters = [
+      "https://cache.iog.io"
+      "https://hydra-node.cachix.org"
+      "https://cardano-scaling.cachix.org"
+      "https://cache.zw3rk.com"
+    ];
+    extra-trusted-public-keys = [
+      "hydra.iohk.io:f/Ea+s+dFdN+3Y/G+FDgSq+a5NEWhJGzdjvKNGv0/EQ="
+      "hydra-node.cachix.org-1:vK4mOEQDQKl9FTbq76NjOuNaRD4pZLxi1yri31HHmIw="
+      "cardano-scaling.cachix.org-1:RKvHKhGs/b6CBDqzKbDk0Rv6sod2kPSXLwPzcUQg9lY="
+      "loony-tools:pr9m4BkM/5/eSTZlkQyRt57Jz7OMBxNSUiMC4FkcNfk="
+    ];
 
     allow-import-from-derivation = true;
     bash-prompt = "\\[\\e[0m\\][\\[\\e[0;2m\\]nix-develop \\[\\e[0;1m\\]hydra-auction \\[\\e[0;93m\\]\\w\\[\\e[0m\\]]\\[\\e[0m\\]$ \\[\\e[0m\\]";
@@ -11,7 +21,7 @@
   inputs = {
     # when you upgrade `hydra` input remember to also upgrade revs under
     # `source-repository-package`s in `cabal.project`
-    hydra.url = "github:input-output-hk/hydra/85e650ca951feba2b3f139eda4bc58cafeab07f9";
+    hydra.url = "github:input-output-hk/hydra/8bc7a98220d6a33befa7a2ea52858923a4272143";
     haskellNix.url = "github:input-output-hk/haskell.nix";
     # The "empty-flake" is needed until the following is fixed
     # https://github.com/input-output-hk/cardano-node/issues/4525
@@ -57,7 +67,7 @@
               compiler-nix-name = "ghc8107";
 
               shell.tools = {
-                cabal = "3.8.1.0";
+                cabal = "3.10.1.0";
                 fourmolu = "0.9.0.0";
                 # haskell-language-server = "latest";
               };

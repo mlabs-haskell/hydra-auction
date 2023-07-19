@@ -1,6 +1,14 @@
+-- | Bunch of generic stuff is reexported from `HydraAuctionUtils.Delegate`
 module HydraAuction.Delegate.Interface (
   DelegateResponse (..),
   DelegateState (..),
+  HydraHeadInfo (..),
+  DelegateProtocol,
+  DelegateLogicTypes (..),
+  CommitAction (..),
+  CustomEvent (..),
+  TxAction (..),
+  OpenState (..),
   InitializedState (..),
   InitializedStateKind (..),
   initializedStateKind,
@@ -15,6 +23,7 @@ module HydraAuction.Delegate.Interface (
   initialState,
   isFinalState,
   wasOpened,
+  wasStopped,
 ) where
 
 -- Prelude imports
@@ -27,66 +36,55 @@ import GHC.Generics (Generic)
 
 -- Hydra imports
 import Hydra.Cardano.Api (CtxUTxO, TxIn, TxOut)
-import Hydra.Chain (HeadId)
 
 -- HydraAuction imports
 
-import HydraAuction.Types (AuctionTerms (..), BidTerms, StandingBidDatum)
-import HydraAuctionUtils.Server.Protocol (Protocol (..))
+import HydraAuction.Types (
+  AuctionStage,
+  AuctionTerms (..),
+  BidTerms,
+  StandingBidDatum,
+ )
+import HydraAuctionUtils.Delegate.Interface
+import HydraAuctionUtils.WebSockets.Protocol (Protocol (..))
 
 data DelegateProtocol
 
 data DelegateResponseKind = NotImplemented deriving stock (Eq, Show)
 
 instance Protocol DelegateProtocol where
-  type Input DelegateProtocol = FrontendRequest
-  type Output DelegateProtocol = DelegateResponse
+  type Input DelegateProtocol = FrontendRequest DelegateProtocol
+  type Output DelegateProtocol = DelegateResponse DelegateProtocol
   type OutputKind DelegateProtocol = DelegateResponseKind
   type ConnectionConfig DelegateProtocol = ()
   getOutputKind _ = NotImplemented
-  configToConnectionPath () = ""
+  configToConnectionPath _ () = ""
 
-data FrontendRequest
-  = QueryCurrentDelegateState
-  | CommitStandingBid
-      { auctionTerms :: AuctionTerms
-      , utxoToCommit :: (TxIn, TxOut CtxUTxO)
-      }
-  | NewBid
-      { auctionTerms :: AuctionTerms
-      , datum :: StandingBidDatum
-      }
-  deriving stock (Eq, Show, Generic)
-  deriving anyclass (ToJSON, FromJSON)
+instance DelegateLogicTypes DelegateProtocol where
+  data CommitAction DelegateProtocol = MoveStandingBidToL2
+    { commitAuctionTerms :: AuctionTerms
+    , utxoToCommit :: (TxIn, TxOut CtxUTxO)
+    }
+    deriving stock (Eq, Show, Generic)
+    deriving anyclass (ToJSON, FromJSON)
 
-{- |
-   This is an important type.
-   It should encode all Delegate server state required for its logic
-   It should be (eventually) same for all servers, synced by Hydra events
-   Client should have up-to date state, gotten by pushed responses.
--}
-data DelegateState
-  = NotInitialized
-  | -- Hydra calls this Initializing.
-    -- This case covers all Head states after it got Init comand
-    -- and thus obtained HeadId.
-    Initialized HeadId InitializedState
-  deriving stock (Eq, Show, Generic)
-  deriving anyclass (FromJSON, ToJSON)
+  data TxAction DelegateProtocol = NewBid
+    { txAuctionTerms :: AuctionTerms
+    , datum :: StandingBidDatum
+    }
+    deriving stock (Eq, Show, Generic)
+    deriving anyclass (ToJSON, FromJSON)
 
-initialState :: DelegateState
-initialState = NotInitialized
+  data OpenState DelegateProtocol
+    = MkOpenState OpenHeadUtxo (Maybe AuctionTerms)
+    deriving stock (Eq, Show, Generic)
+    deriving anyclass (ToJSON, FromJSON)
 
-isFinalState :: DelegateState -> Bool
-isFinalState (Initialized _ state) =
-  state `elem` [Finalized, Aborted]
-isFinalState NotInitialized = False
-
-wasOpened :: DelegateState -> Bool
-wasOpened state = case state of
-  NotInitialized -> False
-  Initialized _ (AwaitingCommits {}) -> False
-  Initialized _ _ -> True
+  data CustomEvent DelegateProtocol
+    = AuctionSet AuctionTerms
+    | AuctionStageStarted AuctionTerms AuctionStage
+    deriving stock (Eq, Show, Generic)
+    deriving anyclass (ToJSON, FromJSON)
 
 data OpenHeadUtxo = MkOpenHeadUtxo
   { standingBidTerms :: Maybe BidTerms
@@ -94,83 +92,5 @@ data OpenHeadUtxo = MkOpenHeadUtxo
   , -- Collateral of current delegate server
     collateralUtxo :: (TxIn, TxOut CtxUTxO)
   }
-  deriving stock (Eq, Show, Generic)
-  deriving anyclass (FromJSON, ToJSON)
-
-data InitializedState
-  = AwaitingCommits {stangingBidWasCommited :: Bool}
-  | Open OpenHeadUtxo (Maybe AuctionTerms)
-  | Closed
-  | Finalized
-  | AbortRequested AbortReason
-  | Aborted
-  deriving stock (Eq, Show, Generic)
-  deriving anyclass (FromJSON, ToJSON)
-
-data InitializedStateKind
-  = AwaitingCommitsKind
-  | OpenKind
-  | ClosedKind
-  | FinalizedKind
-  | AbortRequestedKind
-  | AbortedKind
-  deriving stock (Eq, Ord, Show, Generic)
-  deriving anyclass (FromJSON, ToJSON)
-
-initializedStateKind :: InitializedState -> InitializedStateKind
-initializedStateKind kind = case kind of
-  AwaitingCommits {} -> AwaitingCommitsKind
-  Open {} -> OpenKind
-  Closed {} -> ClosedKind
-  Finalized {} -> FinalizedKind
-  AbortRequested {} -> AbortRequestedKind
-  Aborted {} -> AbortedKind
-
-data IncorrectRequestDataReason
-  = AuctionTermsAreInvalidOrNotMatchingHead
-  | InvalidBidTerms
-  | TxIdDoesNotExist
-  deriving stock (Eq, Show, Generic)
-  deriving anyclass (FromJSON, ToJSON)
-
-data RequestIgnoredReason
-  = IncorrectRequestData IncorrectRequestDataReason
-  | WrongDelegateState DelegateState
-  deriving stock (Eq, Show, Generic)
-  deriving anyclass (FromJSON, ToJSON)
-
--- It is actually possible if one of Delegates is breaking protocol
-data ImposibleEvent
-  = -- FIXME: add docs and/or split on different cases
-    IncorrectCommit
-  | IncorrectStandingBidUtxoOnL2
-  | IncorrectHydraEvent
-  | OnChainInvariantBreaks
-  deriving stock (Eq, Show, Generic)
-  deriving anyclass (FromJSON, ToJSON)
-
-data MissingPrerequisite
-  = AdaForCommit
-  | HydraInit
-  deriving stock (Eq, Show, Generic)
-  deriving anyclass (FromJSON, ToJSON)
-
-data AbortReason
-  = ImpossibleHappened ImposibleEvent
-  | RequiredHydraRequestFailed
-  | PrerequisiteMissing MissingPrerequisite
-  | NobodyCommitedInTime
-  deriving stock (Eq, Show, Generic)
-  deriving anyclass (FromJSON, ToJSON)
-
-data ResponseReason = WasQueried | Updated
-  deriving stock (Eq, Show, Generic)
-  deriving anyclass (FromJSON, ToJSON)
-
-data DelegateResponse
-  = CurrentDelegateState ResponseReason DelegateState
-  | RequestIgnored RequestIgnoredReason
-  | -- FIXME: possible duplication with CurrentDelegateState
-    AuctionSet AuctionTerms
   deriving stock (Eq, Show, Generic)
   deriving anyclass (FromJSON, ToJSON)

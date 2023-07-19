@@ -19,7 +19,7 @@ import Hydra.Cardano.Api (Tx)
 import Hydra.Chain.Direct.State ()
 
 -- HydraAuction imports
-import HydraAuctionUtils.Server.Protocol (Protocol (..))
+import HydraAuctionUtils.WebSockets.Protocol (Protocol (..))
 
 type HydraCommand = ClientInput Tx
 type HydraEvent = ServerOutput Tx
@@ -36,7 +36,7 @@ instance Protocol HydraProtocol where
   type OutputKind HydraProtocol = HydraEventKind
   type ConnectionConfig HydraProtocol = HydraConnectionConfig
   getOutputKind = getHydraEventKind
-  configToConnectionPath config =
+  configToConnectionPath _ config =
     "/history=" <> (if retrieveHistory config then "yes" else "no")
 
 data HydraEventKind

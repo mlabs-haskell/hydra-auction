@@ -1,7 +1,7 @@
 -- Things that should be merged in Hydra repo later
 -- Copy-pasting `commitTx` and modifying it
 -- to support script witnessed commited Utxos
-module HydraAuction.HydraHacks (submitAndAwaitCommitTx) where
+module HydraAuctionUtils.HydraHacks (createCommitTx) where
 
 -- Prelude imports
 import HydraAuctionUtils.Prelude
@@ -28,6 +28,7 @@ import Hydra.Cardano.Api (
   PaymentKey,
   PlutusScriptV2,
   SerialiseAsRawBytes (serialiseToRawBytes),
+  Tx,
   TxBodyContent,
   TxIn,
   TxOut,
@@ -86,7 +87,6 @@ import HydraAuctionUtils.Monads (
   MonadNetworkId (..),
   MonadQueryUtxo (queryUtxo),
   UtxoQuery (..),
-  submitAndAwaitTx,
  )
 import HydraAuctionUtils.Monads.Actors (WithActorT, addressAndKeys, askActor)
 import HydraAuctionUtils.Tx.AutoCreateTx (callBodyAutoBalance, makeSignedTransactionWithKeys)
@@ -202,7 +202,7 @@ findInitialScriptRefUtxo scriptRegistry = do
   where
     initialScriptRef = fst (initialReference scriptRegistry)
 
-submitAndAwaitCommitTx ::
+createCommitTx ::
   HeadId ->
   (TxIn, TxOut CtxUTxO) ->
   UTxO ->
@@ -210,8 +210,8 @@ submitAndAwaitCommitTx ::
   , TxOut CtxUTxO
   , BuildTxWith BuildTx (Witness WitCtxTxIn)
   ) ->
-  HydraRunner ()
-submitAndAwaitCommitTx
+  HydraRunner Tx
+createCommitTx
   headId
   (l1FeeTxIn, l1FeeTxOut)
   adaOnlyUtxoToCommit
@@ -260,11 +260,8 @@ submitAndAwaitCommitTx
               <> initialScriptRefUtxo
 
       eTxBody <- callBodyAutoBalance utxos patchedPreTxBody commitingNodeAddress
-      tx <- case eTxBody of
+      case eTxBody of
         Left balancingError -> fail $ show balancingError
         Right txBody ->
           return $
             makeSignedTransactionWithKeys [commitingNodeSk] txBody
-
-      -- FiXME
-      void $ submitAndAwaitTx tx
