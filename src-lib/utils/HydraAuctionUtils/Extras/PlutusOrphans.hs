@@ -8,8 +8,9 @@ import HydraAuctionUtils.Prelude
 
 -- Haskell imports
 import Data.Aeson (FromJSON (..), ToJSON (..))
+import Data.Aeson.Types (Parser, Value)
 import Data.ByteString.Base16 qualified as Base16
-import Data.Text.Encoding (decodeUtf8, encodeUtf8)
+import Data.Text.Encoding (decodeUtf8, decodeUtf8With, encodeUtf8)
 
 -- Plutus imports
 import PlutusLedgerApi.V1.Credential (Credential, StakingCredential)
@@ -35,12 +36,20 @@ deriving via Integer instance (ToJSON POSIXTime)
 -- Basic types
 
 instance FromJSON BuiltinByteString where
-  parseJSON x = BuiltinByteString . either (error errorMessage) id . Base16.decode . encodeUtf8 <$> parseJSON x
+  parseJSON :: Value -> Parser BuiltinByteString
+  parseJSON x = do
+    parsedString <- parseJSON x
+    result <-
+      either (\_ -> fail errorMessage) return $ Base16.decode $ encodeUtf8 parsedString
+    return $ BuiltinByteString result
     where
       errorMessage = "Cannot decode base 16 in JSON field"
 
 instance ToJSON BuiltinByteString where
-  toJSON (BuiltinByteString bs) = toJSON $ decodeUtf8 $ Base16.encode bs
+  toJSON (BuiltinByteString bs) = toJSON $ decodeUtf8Safe $ Base16.encode bs
+    where
+      decodeUtf8Safe =
+        decodeUtf8With (\errorMessage _mInput -> fail errorMessage)
 
 -- Addresses
 
