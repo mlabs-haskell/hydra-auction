@@ -200,6 +200,7 @@ data DelegateResponse protocol
   = CurrentDelegateState ResponseReason (DelegateState protocol)
   | RequestIgnored (RequestIgnoredReason protocol)
   | TxEvent Layer TxEventKind TxId
+  | ServerError String
   | CustomEventHappened (CustomEvent protocol)
 
 deriving stock instance DelegateLogicTypes protocol => Eq (DelegateResponse protocol)

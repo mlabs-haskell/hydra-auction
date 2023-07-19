@@ -106,7 +106,7 @@ delegateFrontendRequestStep ::
     (DelegateState delegateProtocol)
     HydraRunner
     [(ClientResponseScope, DelegateResponse delegateProtocol)]
-delegateFrontendRequestStep (clientId, request) =
+delegateFrontendRequestStep (clientId, request) = catchAllErrors $
   case request of
     QueryCurrentDelegateState -> do
       state <- get
@@ -136,6 +136,11 @@ delegateFrontendRequestStep (clientId, request) =
     translateScope (scope, response) = case scope of
       SameClient -> (PerClient clientId, response)
       BroadcastEveryone -> (Broadcast, response)
+    catchAllErrors action = do
+      result <- trySome action
+      case result of
+        Right x -> pure x
+        Left someError -> pure [(PerClient clientId, ServerError $ show someError)]
 
 delegateEventStep ::
   forall delegateProtocol client.
@@ -147,9 +152,15 @@ delegateEventStep ::
     client
     (StateT (DelegateState delegateProtocol) HydraRunner)
     [DelegateResponse delegateProtocol]
-delegateEventStep event = do
+delegateEventStep event = catchAllErrors $ do
   _ <- delegateEventHook event
   lift $ delegateEventStepCommon event
+  where
+    catchAllErrors action = do
+      result <- trySome action
+      case result of
+        Right x -> pure x
+        Left someError -> pure [ServerError $ show someError]
 
 delegateEventStepCommon ::
   forall delegateProtocol.
