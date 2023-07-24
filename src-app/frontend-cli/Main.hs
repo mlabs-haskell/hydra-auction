@@ -31,6 +31,7 @@ import Hydra.Prelude (SomeException)
 -- Hydra auction imports
 
 import HydraAuction.Delegate.Interface (
+  CustomEvent (..),
   DelegateProtocol,
   DelegateResponse (..),
   DelegateState,
@@ -103,8 +104,15 @@ handleCliInput input = do
               (IncorrectRequestData InvalidBidTerms) -> notExpectedResponse
               (IncorrectRequestData TxIdDoesNotExist) -> notExpectedResponse
               (WrongDelegateState _) -> notExpectedResponse
-            -- FIXME: show info for user
-            CustomEventHappened _ -> return ()
+            CustomEventHappened customEvent -> case customEvent of
+              AuctionStageStarted _ stage -> do
+                putStrLn $ "Auction stage started: " <> show stage
+                return ()
+              AuctionSet _ -> return ()
+            TxEvent {} -> return ()
+            ServerError message -> do
+              putStrLn $ "Server error: " <> message
+              return ()
           where
             notExpectedResponse = do
               putStrLn "Not expected response from delegate server."
