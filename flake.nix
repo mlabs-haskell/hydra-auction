@@ -48,6 +48,7 @@
     }:
     let
       # nix flake (show|check) --allow-import-from-derivation --impure
+
       systems =
         if builtins.hasAttr "currentSystem" builtins
         then [ builtins.currentSystem ]
@@ -55,51 +56,60 @@
       overlays = [
         haskellNix.overlay
         iohk-nix.overlays.crypto
-        (final: prev: {
-          hydraProject =
-            final.haskell-nix.cabalProject {
-              src = final.haskell-nix.haskellLib.cleanGit {
-                src = ./.;
-                name = "hydra-auction";
-              };
-              inputMap."https://input-output-hk.github.io/cardano-haskell-packages" = CHaP;
-
-              compiler-nix-name = "ghc8107";
-
-              shell.tools = {
-                cabal = "3.10.1.0";
-                fourmolu = "0.9.0.0";
-                # haskell-language-server = "latest";
-              };
-              shell.buildInputs = with final; [
-                nixpkgs-fmt
-                haskellPackages.apply-refact
-                haskellPackages.cabal-fmt
-                haskellPackages.hlint
-                cardano-node.packages.${prev.system}.cardano-node
-                cardano-node.packages.${prev.system}.cardano-cli
-                hydra.packages.${prev.system}.hydra-node
-              ];
-              modules = [
-                # Set libsodium-vrf on cardano-crypto-{praos,class}. Otherwise
-                # they depend on libsodium, which lacks the vrf functionality.
-                ({ pkgs, lib, ... }:
-                  # Override libsodium with local 'pkgs' to make sure it's using
-                  # overriden 'pkgs', e.g. musl64 packages
-                  {
-                    packages.cardano-crypto-class.components.library.pkgconfig =
-                      lib.mkForce [ [ pkgs.libsodium-vrf pkgs.secp256k1 ] ];
-                    packages.cardano-crypto-praos.components.library.pkgconfig =
-                      lib.mkForce [ [ pkgs.libsodium-vrf ] ];
-
-                    # disable the dev flag in the nix code, s.t. warnings are becoming errors
-                    # the dev flag implies PlutusTx defer plugin error and disabling -Werror
-                    packages.hydra-auction.allComponent.configureFlags = [ "-f-dev" ];
-                  }
-                )
-              ];
+        (final: prev:
+          let
+            # Hack from Hydra codebase
+            haskell-language-server = final.haskell-nix.tool "ghc8107" "haskell-language-server" rec {
+              src = final.haskell-nix.sources."hls-1.10";
+              cabalProject = builtins.readFile (src + "/cabal.project");
+              sha256map."https://github.com/pepeiborra/ekg-json"."7a0af7a8fd38045fd15fb13445bdcc7085325460" = "sha256-fVwKxGgM0S4Kv/4egVAAiAjV7QB5PBqMVMCfsv7otIQ=";
             };
-        })
+          in
+          {
+            hydraProject =
+              final.haskell-nix.cabalProject {
+                src = final.haskell-nix.haskellLib.cleanGit {
+                  src = ./.;
+                  name = "hydra-auction";
+                };
+                inputMap."https://input-output-hk.github.io/cardano-haskell-packages" = CHaP;
+
+                compiler-nix-name = "ghc8107";
+
+                shell.tools = {
+                  cabal = "3.10.1.0";
+                  fourmolu = "0.9.0.0";
+                };
+                shell.buildInputs = with final; [
+                  haskell-language-server
+                  nixpkgs-fmt
+                  haskellPackages.apply-refact
+                  haskellPackages.cabal-fmt
+                  haskellPackages.hlint
+                  cardano-node.packages.${prev.system}.cardano-node
+                  cardano-node.packages.${prev.system}.cardano-cli
+                  hydra.packages.${prev.system}.hydra-node
+                ];
+                modules = [
+                  # Set libsodium-vrf on cardano-crypto-{praos,class}. Otherwise
+                  # they depend on libsodium, which lacks the vrf functionality.
+                  ({ pkgs, lib, ... }:
+                    # Override libsodium with local 'pkgs' to make sure it's using
+                    # overriden 'pkgs', e.g. musl64 packages
+                    {
+                      packages.cardano-crypto-class.components.library.pkgconfig =
+                        lib.mkForce [ [ pkgs.libsodium-vrf pkgs.secp256k1 ] ];
+                      packages.cardano-crypto-praos.components.library.pkgconfig =
+                        lib.mkForce [ [ pkgs.libsodium-vrf ] ];
+
+                      # disable the dev flag in the nix code, s.t. warnings are becoming errors
+                      # the dev flag implies PlutusTx defer plugin error and disabling -Werror
+                      packages.hydra-auction.allComponent.configureFlags = [ "-f-dev" ];
+                    }
+                  )
+                ];
+              };
+          })
       ];
       removeIncompatibleAttrs = pkgNames: attrName: systems: flake:
         let
