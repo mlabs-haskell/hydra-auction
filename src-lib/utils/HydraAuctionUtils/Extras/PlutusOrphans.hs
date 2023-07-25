@@ -10,7 +10,7 @@ import HydraAuctionUtils.Prelude
 import Data.Aeson (FromJSON (..), ToJSON (..))
 import Data.Aeson.Types (Parser, Value)
 import Data.ByteString.Base16 qualified as Base16
-import Data.Text.Encoding (decodeUtf8, decodeUtf8With, encodeUtf8)
+import Data.Text.Encoding (decodeUtf8With, encodeUtf8)
 
 -- Plutus imports
 import PlutusLedgerApi.V1.Credential (Credential, StakingCredential)
