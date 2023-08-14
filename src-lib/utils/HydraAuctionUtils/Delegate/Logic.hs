@@ -116,7 +116,7 @@ delegateFrontendRequestStep (clientId, request) = catchAllErrors $
       case state of
         Initialized
           headId
-          (AwaitingCommits {stangingBidWasCommited = False}) ->
+          (AwaitingCommits {primaryCommitWasSubmitted = False}) ->
             lift $ translateScopes <$> performCommitAction headId action
         _ ->
           return
@@ -186,25 +186,25 @@ delegateEventStepCommon event = case event of
     state <- get
     delegateParty <- getDelegateParty
     case state of
-      Initialized _ (AwaitingCommits {stangingBidWasCommited}) ->
+      Initialized _ (AwaitingCommits {primaryCommitWasSubmitted}) ->
         case UTxO.pairs $ filterNotAdaOnlyUtxo utxo of
           [(_, txOut)] | isCorrectCommit @delegateProtocol txOut ->
-            case (party == delegateParty, stangingBidWasCommited) of
+            case (party == delegateParty, primaryCommitWasSubmitted) of
               -- Cannot commit standing bid twice
               (_, True) -> abort $ ImpossibleHappened IncorrectCommit
               (True, False) ->
                 updateStateAndResponse $
-                  AwaitingCommits {stangingBidWasCommited = True}
+                  AwaitingCommits {primaryCommitWasSubmitted = True}
               (False, False) -> do
                 result <- commitCollateralAda
                 case result of
                   Right () ->
                     updateStateAndResponse $
-                      AwaitingCommits {stangingBidWasCommited = True}
+                      AwaitingCommits {primaryCommitWasSubmitted = True}
                   Left reason -> abort reason
           [] ->
             -- ADA-only commit case (collateral)
-            if stangingBidWasCommited
+            if primaryCommitWasSubmitted
               then return []
               else -- Standing bid commit should come first
                 abort $ ImpossibleHappened IncorrectCommit
@@ -228,7 +228,7 @@ delegateEventStepCommon event = case event of
     sendCommand Fanout
     return []
   HydraEvent (HeadIsInitializing {headId}) -> do
-    let newState = AwaitingCommits {stangingBidWasCommited = False}
+    let newState = AwaitingCommits {primaryCommitWasSubmitted = False}
     put $ Initialized headId newState
     -- Yes, this is code duplication
     updateStateAndResponse newState

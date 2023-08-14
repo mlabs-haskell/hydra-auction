@@ -91,7 +91,7 @@ instance (Monad m, MonadHydra m) => MonadQueryUtxo (ViaMonadHydra m) where
     response <-
       sendCommandAndWaitFor (SpecificKind GetUTxOResponseKind) GetUTxO
     let utxo' = case response of
-          Just (GetUTxOResponse {utxo}) -> utxo
+          Just GetUTxOResponse {utxo} -> utxo
           Just _ -> error "Impossible happened: incorrect response type awaited"
           Nothing -> error "Hydra server not answering"
     return $ UTxO.fromPairs $ filter predicate $ UTxO.pairs utxo'
