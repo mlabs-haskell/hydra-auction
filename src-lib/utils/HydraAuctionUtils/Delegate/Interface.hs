@@ -84,9 +84,9 @@ data DelegateState protocol
   | -- Hydra calls this Initializing.
     -- This case covers all Head states after it got Init comand
     -- and thus obtained HeadId.
-    Initialized {
-      headId :: HeadId,
-      state :: InitializedState protocol
+    Initialized
+      { headId :: HeadId
+      , initializedState :: InitializedState protocol
       }
 
 deriving stock instance DelegateLogicTypes protocol => Eq (DelegateState protocol)

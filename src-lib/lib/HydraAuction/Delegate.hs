@@ -17,8 +17,14 @@ import Hydra.API.ServerOutput (ServerOutput (..))
 import Hydra.Cardano.Api (
   CtxUTxO,
   Lovelace (..),
+  ShelleyWitnessSigningKey (WitnessPaymentKey),
   TxOut,
+  getTxBody,
+  getTxWitnesses,
+  makeShelleyKeyWitness,
+  makeSignedTransaction,
   toPlutusKeyHash,
+  txIns,
   verificationKeyHash,
  )
 import Hydra.Chain (HeadId)
@@ -73,15 +79,19 @@ import HydraAuctionUtils.Delegate.Logic (
   delegateEventStep,
   delegateFrontendRequestStep,
  )
+import HydraAuctionUtils.Fixture (Actor (..))
 import HydraAuctionUtils.Hydra.Monad (MonadHydra (..))
 import HydraAuctionUtils.Hydra.Runner (HydraRunner)
 import HydraAuctionUtils.Monads (
   MonadSubmitTx (..),
+  addressAndKeysForActor,
+  submitAndAwaitTx,
  )
 import HydraAuctionUtils.Monads.Actors (
   MonadHasActor (askActor),
   addressAndKeys,
  )
+import HydraAuctionUtils.Tx.AutoCreateTx (makeSignedTransactionWithKeys)
 import HydraAuctionUtils.Types.Natural (intToNatural)
 import HydraAuctionUtils.WebSockets.Protocol (
   MonadHasClient (..),
@@ -133,8 +143,18 @@ instance DelegateLogic DelegateProtocol where
   performCommitAction headId (MoveStandingBidToL2 {commitAuctionTerms, utxoToCommit}) =
     validatingAuctionTerms headId commitAuctionTerms $ do
       let (txIn, txOut) = utxoToCommit
-      tx <- moveToHydraTx headId commitAuctionTerms (txIn, txOut)
-      _ <- runL1RunnerInComposite $ submitTx tx
+      tx' <- moveToHydraTx headId commitAuctionTerms (txIn, txOut)
+      (_, _, sk1) <- addressAndKeysForActor Faucet
+      (_, _, sk2) <- addressAndKeys
+      let
+        body' = getTxBody tx'
+        hydraSignWitness = getTxWitnesses tx'
+        createWitness key =
+          makeShelleyKeyWitness body' (WitnessPaymentKey key)
+        keyWitnesses = fmap createWitness [sk1, sk2]
+        tx = makeSignedTransaction (hydraSignWitness <> keyWitnesses) body'
+      _ <- runL1RunnerInComposite $ submitAndAwaitTx tx
+
       return
         [
           ( BroadcastEveryone
@@ -158,7 +178,7 @@ instance DelegateLogic DelegateProtocol where
           newBidTerms
           then do
             _ <- do
-              actor <- askActor
+              let actor = Faucet
               tx <-
                 createNewBidTx
                   txAuctionTerms

@@ -13,22 +13,40 @@ import HydraAuctionUtils.Prelude
 -- Haskell imports
 
 import Control.Tracer (Tracer, stdoutTracer, traceWith)
+import Data.Aeson ()
 import Data.ByteString.UTF8 as BSU
-import GHC.Natural (Natural, naturalToInt)
+import Network.HTTP.Req qualified as Req
 import System.Environment (lookupEnv)
 import System.Timeout (timeout)
 
 -- Cardano imports
+
+import Cardano.Api ()
 import CardanoNode (RunningNode (..))
 
 -- Hydra imports
 
-import Hydra.Cardano.Api (AsType (AsTxId), TxId, deserialiseFromRawBytesHex)
+import Cardano.Ledger.Core (PParams)
+import Hydra.API.HTTPServer (DraftCommitTxResponse (..))
+import Hydra.Cardano.Api (
+  AsType (AsTxId),
+  FromJSON,
+  ShelleyBasedEra (ShelleyBasedEraShelley),
+  ToJSON,
+  TxId,
+  deserialiseFromRawBytesHex,
+  fromLedgerPParams,
+  toLedgerPParams,
+  pattern LedgerProtocolParameters,
+  pattern ShelleyBasedEraBabbage,
+ )
 import Hydra.Chain.Direct.ScriptRegistry (
   ScriptRegistry (..),
   publishHydraScripts,
   queryScriptRegistry,
  )
+import Hydra.Ledger.Cardano.Evaluate (pparams)
+import Hydra.Network (Host (..))
 
 -- HydraAuction imports
 
@@ -62,9 +80,10 @@ import HydraAuctionUtils.Monads.Actors (
   WithActorT,
   withActor,
  )
+import HydraAuctionUtils.Types.Natural (Natural, naturalToInt)
 import HydraAuctionUtils.WebSockets.Client (
   AwaitedOutput,
-  RealProtocolClient,
+  RealProtocolClient (..),
   waitForMatchingOutputH,
  )
 import HydraAuctionUtils.WebSockets.Protocol (ProtocolClient (..))
@@ -101,12 +120,43 @@ newtype HydraRunner a = MkHydraRunner
     )
   deriving (MonadSubmitTx, MonadQueryUtxo) via (ViaMonadHydra HydraRunner)
 
+hydraHttpReq ::
+  forall req resp method.
+  ( Req.HttpBody req
+  , Req.HttpMethod method
+  , FromJSON resp
+  , Req.HttpBodyAllowed (Req.AllowsBody method) (Req.ProvidesBody req)
+  ) =>
+  method ->
+  _ ->
+  req ->
+  HydraRunner resp
+hydraHttpReq method path reqBody = do
+  MkHydraExecutionContext {node} <- ask
+  let
+    hostname' = hostname $ host node
+    port' = port $ host node
+    httpRequest =
+      Req.req
+        method
+        (Req.http hostname' Req./: path)
+        reqBody
+        Req.jsonResponse
+        (Req.port $ fromIntegral port')
+  Req.runReq Req.defaultHttpConfig $
+    Req.responseBody <$> httpRequest
+
 instance MonadHydra HydraRunner where
   sendCommand :: HydraCommand -> HydraRunner ()
   sendCommand command = do
     MkHydraExecutionContext {node} <- ask
     traceMessage $ SendCommand command
     liftIO $ sendInputH node command
+
+  createCommitTx request = do
+    DraftCommitTxResponse {commitTx} <-
+      hydraHttpReq Req.POST "commit" $ Req.ReqBodyJson request
+    return commitTx
 
   waitForHydraEvent' ::
     Natural -> AwaitedOutput HydraProtocol -> HydraRunner (Maybe HydraEvent)
@@ -141,9 +191,15 @@ instance MonadTrace HydraRunner where
     liftIO $ traceWith tracer message
 
 instance MonadBlockchainParams HydraRunner where
+  -- FIXME: caching
   queryBlockchainParams = do
     params <- runL1RunnerInComposite queryBlockchainParams
-    protocolParameters <- liftIO readHydraNodeProtocolParams
+
+    --  <- hydraHttpReq Req.GET "protocol-parameters" Req.NoReqBody
+    -- putStrLn $ (bs :: String)
+
+    pp' <- liftIO readHydraNodeProtocolParams
+    let protocolParameters = either (error "TODO") id $ toLedgerPParams ShelleyBasedEraBabbage pp'
     return $ params {protocolParameters}
 
   queryCurrentSlot = runL1RunnerInComposite queryCurrentSlot

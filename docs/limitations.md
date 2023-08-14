@@ -2,17 +2,6 @@
 
 ## Limitations from current Hydra implementation state
 
-* We use our custom Head commiting transaction constuction,
-  instead of calling Hydra Node command because of:
-  * Script commits are not supported by Hydra API.
-    Commiting script UTxO is main part of our project.
-* Querying different L2 protocol parameters is not supported.
-  Now we just ignoring that and relying on delegate server
-  knowing L2 protocol-parameters used by L2,
-  cuz they are always the same and saved in repo.
-  This should work well, cuz our topology presumes same operator
-  for Delegate server and Hydra node.
-  Issue on that: https://github.com/input-output-hk/hydra/issues/735
 * Hydra Head can only host one auction and cannot be reused.
   * Later, when Hydra will support incremental commits and decommits,
     same Hydra Head and set of delegates can be reused
@@ -45,9 +34,8 @@
 
 ## Limitations in Cardano ledger
 
-* While we can (and do) disable script fees, collaterals are required by
-  ledger any way.
-  To work with that we commit collateral UTxOs by all delegates.
+* While we can (and do) disable script fees, collaterals are required by ledger anyway.
+  * To work with that we commit collateral UTxOs by all delegates.
 
 ## Limitations inherent in our implementation
 

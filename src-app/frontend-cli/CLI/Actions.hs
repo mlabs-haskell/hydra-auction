@@ -224,8 +224,8 @@ handleCliAction handle userAction = do
     MintTestNFT -> do
       announceActionExecution userAction
       void mintOneTestNFT
-    TransferAda actorTo marked amount ->
-      void $ transferAda actorTo marked amount
+    TransferAda actorTo amount ->
+      void $ transferAda actorTo amount
     PerAuction auctionName action -> do
       delegateState <- liftIO $ readIORef $ currentDelegateStateRef handle
       mTxIn <- findTestNFT <$> actorTipUtxo

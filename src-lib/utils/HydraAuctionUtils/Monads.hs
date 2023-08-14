@@ -17,6 +17,7 @@ module HydraAuctionUtils.Monads (
   fromPlutusAddressInMonad,
   addressAndKeysForActor,
   toSlotNo,
+  slottyNormalize,
   waitUntil,
   waitUntilSlot,
 ) where
@@ -28,14 +29,19 @@ import HydraAuctionUtils.Prelude
 
 import Data.Set (Set)
 import Data.Time.Clock (diffUTCTime, getCurrentTime, nominalDiffTimeToSeconds)
+import Data.Time.Clock.POSIX qualified as POSIXTime
 
 -- Cardano imports
+
 import Cardano.Api.UTxO qualified as UTxO
+import Cardano.Ledger.Core (PParams)
 import Hydra.Cardano.Api (
   Address,
   AddressInEra,
   CardanoMode,
   EraHistory,
+  LedgerEra,
+  LedgerProtocolParameters,
   Lovelace,
   NetworkId (..),
   NetworkMagic (..),
@@ -44,7 +50,7 @@ import Hydra.Cardano.Api (
   ProtocolParameters,
   ShelleyAddr,
   SigningKey,
-  SlotNo,
+  SlotNo (..),
   SystemStart,
   Tx,
   TxIn,
@@ -55,7 +61,10 @@ import Hydra.Cardano.Api (
   getTxId,
   txBody,
  )
-import Hydra.Chain.Direct.TimeHandle (mkTimeHandle, slotFromUTCTime)
+import Hydra.Chain.Direct.TimeHandle (
+  TimeHandle (..),
+  mkTimeHandle,
+ )
 
 -- Plutus imports
 import PlutusLedgerApi.V1 (Interval)
@@ -120,6 +129,7 @@ askL1Timeout = do
 
 -- MonadTrace
 
+-- | This is legacy logging
 class Monad m => MonadTrace m where
   -- Should be injective, but that does not work with MonadTrace
   type TracerMessage m
@@ -187,7 +197,7 @@ instance {-# OVERLAPPABLE #-} (MonadSubmitTx m, MonadTrans t, Monad (t m)) => Mo
 -- MonadBlockchainParams
 
 data BlockchainParams = MkBlockchainParams
-  { protocolParameters :: ProtocolParameters
+  { protocolParameters :: PParams LedgerEra
   , systemStart :: SystemStart
   , eraHistory :: EraHistory CardanoMode
   , stakePools :: Set PoolId
@@ -198,6 +208,9 @@ data TxStat = MkTxStat
   , fee :: Lovelace
   }
 
+{- | This monad gives access to all information needed to autobalance txs,
+ | which is various kind of Ledger params and ValidityBound/Slots semantics
+-}
 class Monad m => MonadBlockchainParams m where
   queryBlockchainParams :: m BlockchainParams
   queryCurrentSlot :: m SlotNo
@@ -216,17 +229,32 @@ instance
   convertValidityBound = lift . convertValidityBound
   recordTxStat = lift . recordTxStat
 
+queryTimeHandle :: MonadBlockchainParams m => m _
+queryTimeHandle = do
+  MkBlockchainParams {systemStart, eraHistory} <- queryBlockchainParams
+  currentTipSlot <- queryCurrentSlot
+  pure $ mkTimeHandle currentTipSlot systemStart eraHistory
+
 toSlotNo :: MonadBlockchainParams m => POSIXTime -> m SlotNo
 toSlotNo ptime = do
   timeHandle <- queryTimeHandle
   either (error . show) return $
     slotFromUTCTime timeHandle $
       posixTimeToUTC ptime
-  where
-    queryTimeHandle = do
-      MkBlockchainParams {systemStart, eraHistory} <- queryBlockchainParams
-      currentTipSlot <- queryCurrentSlot
-      pure $ mkTimeHandle currentTipSlot systemStart eraHistory
+
+slottyNormalize :: MonadBlockchainParams m => _ -> POSIXTime -> m POSIXTime
+slottyNormalize n ptime = do
+  let mapSlot f (SlotNo n) = SlotNo (f n)
+
+  slotNo <- toSlotNo ptime
+  timeHandle <- queryTimeHandle
+  utcTime <-
+    either (error . show) return $
+      slotToUTCTime timeHandle $
+        mapSlot (+ n) slotNo
+  -- return utcTime
+  let normalizedUTCFractionalSeconds = POSIXTime.utcTimeToPOSIXSeconds utcTime
+  return $ round $ normalizedUTCFractionalSeconds * 1_000
 
 waitUntil :: (MonadIO m, MonadBlockchainParams m) => POSIXTime -> m ()
 waitUntil time = do

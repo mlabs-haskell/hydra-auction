@@ -86,6 +86,7 @@ instance DelegateLogicTypes DelegateProtocol where
     deriving stock (Eq, Show, Generic)
     deriving anyclass (ToJSON, FromJSON)
 
+-- FIXME: this is common data for any single-commit protocol
 data OpenHeadUtxo = MkOpenHeadUtxo
   { standingBidTerms :: Maybe BidTerms
   , standingBidUtxo :: (TxIn, TxOut CtxUTxO)

@@ -16,7 +16,14 @@ import Cardano.Api.UTxO qualified as UTxO
 
 -- Hydra imports
 
+import HydraAuctionUtils.Tx.AutoCreateTx (makeSignedTransactionWithKeys)
+
 import Hydra.API.ClientInput (ClientInput (..))
+import Hydra.API.HTTPServer (
+  DraftCommitTxRequest (..),
+  ScriptInfo (..),
+  TxOutWithWitness (..),
+ )
 import Hydra.API.ServerOutput (ServerOutput (..))
 import Hydra.Cardano.Api (
   CtxUTxO,
@@ -34,12 +41,15 @@ import Hydra.Snapshot (Snapshot (..))
 -- HydraAuctionUtils imports
 
 import HydraAuctionUtils.Delegate.Interface
-import HydraAuctionUtils.Fixture (partyFor)
+import HydraAuctionUtils.Fixture (Actor (..), partyFor)
 import HydraAuctionUtils.Hydra.Monad (MonadHydra (..))
 import HydraAuctionUtils.Hydra.Runner (HydraRunner)
+import HydraAuctionUtils.Monads (addressAndKeysForActor, submitAndAwaitTx)
 import HydraAuctionUtils.Monads.Actors (
   MonadHasActor (askActor),
+  actorTipUtxo,
   addressAndKeys,
+  withActor,
  )
 import HydraAuctionUtils.Tx.Common (
   createMinAdaUtxo,
@@ -173,8 +183,8 @@ delegateEventStepCommon ::
 delegateEventStepCommon event = case event of
   Start -> do
     -- Preparing for collateral
+    -- _ <- runL1RunnerInComposite createMinAdaUtxo
     sendCommand Init
-    _ <- runL1RunnerInComposite createMinAdaUtxo
     return []
   CustomEvent customEvent -> do
     state <- get
@@ -273,11 +283,13 @@ delegateEventStepCommon event = case event of
         return []
   where
     updateStateWithStandingBidOrAbort utxo = do
-      (delegateAddress, _, _) <- runL1RunnerInComposite addressAndKeys
+      -- TODO: HACK using Faucet
+      (delegateAddress, _, _) <- runL1RunnerInComposite $ withActor Faucet $ addressAndKeys
       case UTxO.pairs $ filterNotAdaOnlyUtxo utxo of
         [(txIn, txOut)] ->
           case collateralUtxosOf delegateAddress of
-            [collateralUtxo] ->
+            collateralUtxo : _ ->
+              -- TODO: HACK
               case parseOpenStateFromUtxo (txIn, txOut) collateralUtxo of
                 Just newOpenState -> do
                   lift $ openStateUpdatedHook newOpenState
@@ -295,9 +307,20 @@ delegateEventStepCommon event = case event of
             belongTo _ = False
     commitCollateralAda = do
       -- Should exist cuz prepared on Start
-      forCollateralUtxo <-
-        runL1RunnerInComposite queryOrCreateSingleMinAdaUtxo
-      sendCommand (Commit $ UTxO.fromPairs [forCollateralUtxo])
+      (collateralTxIn, collateralTxOut) <-
+        runL1RunnerInComposite $ withActor Faucet createMinAdaUtxo
+      tx' <-
+        createCommitTx $
+          DraftCommitTxRequest $
+            UTxO.fromPairs
+              [ (collateralTxIn, TxOutWithWitness collateralTxOut Nothing)
+              ]
+      (_, _, sk1) <- addressAndKeysForActor Faucet
+      (_, _, sk2) <- addressAndKeys
+      let
+        body' = getTxBody tx'
+        tx = makeSignedTransactionWithKeys [sk1, sk2] body'
+      runL1RunnerInComposite $ submitAndAwaitTx tx
       return $ Right ()
     getDelegateParty = do
       delegateActor <- askActor

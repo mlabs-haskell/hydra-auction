@@ -46,7 +46,6 @@ import CardanoNode (RunningNode (..))
 
 -- Hydra imports
 import Hydra.Cardano.Api (Lovelace)
-import Hydra.Cluster.Faucet (Marked (..))
 import Hydra.Network (Host)
 
 -- Hydra auction imports
@@ -58,7 +57,6 @@ import HydraAuctionUtils.Parsers (
   parseAda,
   parseAdaAsNatural,
   parseHost,
-  parseMarked,
  )
 import HydraAuctionUtils.Types.Natural (Natural)
 
@@ -136,7 +134,7 @@ cliActionParser =
       , command "show-script-info" (info (pure ShowScriptInfo) (progDesc "Show scripts hashes and lenghts"))
       , command "seed" (info (pure Seed) (progDesc $ "Provides " <> show seedAmount <> " Lovelace for the given actor"))
       , command "prepare-for-demo" (info (Prepare <$> actor) (progDesc $ "Provides " <> show seedAmount <> " Lovelace for every actor and 1 Test NFT for given actor"))
-      , command "transfer-ada" (info (TransferAda <$> actor <*> marked <*> amount) (progDesc "Tranfer ADA to other actor"))
+      , command "transfer-ada" (info (TransferAda <$> actor <*> amount) (progDesc "Tranfer ADA to other actor"))
       , command "mint-test-nft" (info (pure MintTestNFT) (progDesc "Mints an NFT that can be used as auction lot"))
       , command "announce-auction" (info (perAuction $ pure AuctionAnounce) (progDesc "Create an auction"))
       , command "approve-bidder" (info (perAuction $ ApproveBidder <$> actor) (progDesc "Approve actor for bidding"))
@@ -219,15 +217,6 @@ amount =
     ( short 'b'
         <> metavar "AMOUNT"
         <> help "Amount"
-    )
-
-marked :: Parser Marked
-marked =
-  option
-    parseMarked
-    ( short 'm'
-        <> metavar "MARKED"
-        <> help "Is transfered amount marked as Hydra Fuel"
     )
 
 watchAuction :: Parser AuctionName

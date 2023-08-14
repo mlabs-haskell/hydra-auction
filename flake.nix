@@ -21,8 +21,8 @@
   inputs = {
     # when you upgrade `hydra` input remember to also upgrade revs under
     # `source-repository-package`s in `cabal.project`
-    hydra.url = "github:input-output-hk/hydra/8bc7a98220d6a33befa7a2ea52858923a4272143";
-    haskellNix.url = "github:input-output-hk/haskell.nix";
+    hydra.url = "github:input-output-hk/hydra/0a2cdbd243a061aa52f28e992ff571ea80e2e1aa";
+    haskellNix.follows = "hydra/haskellNix";
     # The "empty-flake" is needed until the following is fixed
     # https://github.com/input-output-hk/cardano-node/issues/4525
     cardano-node.follows = "hydra/cardano-node";
@@ -55,15 +55,19 @@
         else nixpkgs.lib.systems.flakeExposed;
       overlays = [
         haskellNix.overlay
+        # This overlay contains libsodium and libblst libraries
         iohk-nix.overlays.crypto
+        # This overlay contains pkg-config mappings via haskell.nix to use the
+        # crypto libraries above
+        iohk-nix.overlays.haskell-nix-crypto
         (final: prev:
           let
             # Hack from Hydra codebase
-            haskell-language-server = final.haskell-nix.tool "ghc8107" "haskell-language-server" rec {
-              src = final.haskell-nix.sources."hls-1.10";
-              cabalProject = builtins.readFile (src + "/cabal.project");
-              sha256map."https://github.com/pepeiborra/ekg-json"."7a0af7a8fd38045fd15fb13445bdcc7085325460" = "sha256-fVwKxGgM0S4Kv/4egVAAiAjV7QB5PBqMVMCfsv7otIQ=";
-            };
+            # haskell-language-server = final.haskell-nix.tool "ghc8107" "haskell-language-server" rec {
+            #   src = final.haskell-nix.sources."hls-1.10";
+            #   cabalProject = builtins.readFile (src + "/cabal.project");
+            #   sha256map."https://github.com/pepeiborra/ekg-json"."7a0af7a8fd38045fd15fb13445bdcc7085325460" = "sha256-fVwKxGgM0S4Kv/4egVAAiAjV7QB5PBqMVMCfsv7otIQ=";
+            # };
           in
           {
             hydraProject =
@@ -74,11 +78,11 @@
                 };
                 inputMap."https://input-output-hk.github.io/cardano-haskell-packages" = CHaP;
 
-                compiler-nix-name = "ghc8107";
+                compiler-nix-name = "ghc928";
 
                 shell.tools = {
                   cabal = "3.10.1.0";
-                  fourmolu = "0.9.0.0";
+                  # fourmolu = "0.13.0.0";
                 };
                 shell.buildInputs = with final; [
                   haskell-language-server
@@ -93,15 +97,10 @@
                 modules = [
                   # Set libsodium-vrf on cardano-crypto-{praos,class}. Otherwise
                   # they depend on libsodium, which lacks the vrf functionality.
-                  ({ pkgs, lib, ... }:
+                  ({ ... }:
                     # Override libsodium with local 'pkgs' to make sure it's using
                     # overriden 'pkgs', e.g. musl64 packages
                     {
-                      packages.cardano-crypto-class.components.library.pkgconfig =
-                        lib.mkForce [ [ pkgs.libsodium-vrf pkgs.secp256k1 ] ];
-                      packages.cardano-crypto-praos.components.library.pkgconfig =
-                        lib.mkForce [ [ pkgs.libsodium-vrf ] ];
-
                       # disable the dev flag in the nix code, s.t. warnings are becoming errors
                       # the dev flag implies PlutusTx defer plugin error and disabling -Werror
                       packages.hydra-auction.allComponent.configureFlags = [ "-f-dev" ];

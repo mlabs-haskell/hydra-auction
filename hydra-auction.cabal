@@ -142,9 +142,10 @@ common common-onchain
   -- (some are enabled additionaly in individual modules)
 
   ghc-options:
-    -fobject-code -fno-ignore-interface-pragmas
-    -fno-omit-interface-pragmas -fno-specialize
-    -fno-unbox-small-strict-fields -fno-unbox-strict-fields
+    -fplugin-opt PlutusTx.Plugin:target-version=1.0.0 -fobject-code
+    -fno-ignore-interface-pragmas -fno-omit-interface-pragmas
+    -fno-specialize -fno-unbox-small-strict-fields
+    -fno-unbox-strict-fields
 
 common common-executable
   import:      common-offchain
@@ -229,6 +230,7 @@ library hydra-auction-onchain
     , hydra-plutus
     , hydra-prelude
     , hydra-test-utils
+    , plutus-core
     , plutus-tx
     , plutus-tx-plugin
 
@@ -297,7 +299,6 @@ library hydra-auction-utils
     HydraAuctionUtils.Hydra.Interface
     HydraAuctionUtils.Hydra.Monad
     HydraAuctionUtils.Hydra.Runner
-    HydraAuctionUtils.HydraHacks
     HydraAuctionUtils.L1.Runner
     HydraAuctionUtils.Monads
     HydraAuctionUtils.Monads.Actors
@@ -328,6 +329,7 @@ library hydra-auction-utils
     , HostAndPort
     , HUnit
     , hydra-plutus
+    , hydra-plutus-extras
     , hydra-test-utils
     , monad-control
     , optparse-applicative
@@ -335,6 +337,7 @@ library hydra-auction-utils
     , plutus-tx
     , protolude
     , relude
+    , req
     , template-haskell
     , transformers-base
     , utf8-string
@@ -367,6 +370,7 @@ test-suite hydra-auction-test
     , hydra-auction
     , hydra-auction-onchain
     , hydra-auction-utils
+    , hydra-auction-utils-onchain
     , hydra-cardano-api
     , hydra-cluster
     , hydra-node

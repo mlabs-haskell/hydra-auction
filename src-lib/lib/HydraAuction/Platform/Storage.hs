@@ -192,7 +192,7 @@ processCommand command = case command of
           , allDelegatesKnown = False
           , headDelegateState =
               -- FIXME
-              AwaitingCommits {stangingBidWasCommited = False}
+              AwaitingCommits {primaryCommitWasSubmitted = False}
           }
       headDelegate = MkHeadDelegate (getPrimaryKey hydraHead) delegateActor
       updateIfAllDelegatesKnown = do

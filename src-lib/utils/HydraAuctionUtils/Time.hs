@@ -11,7 +11,7 @@ import HydraAuctionUtils.Prelude
 -- Haskell imports
 
 import Control.Monad.TimeMachine (MonadTime (getCurrentTime))
-import Data.Time (UTCTime, secondsToNominalDiffTime)
+import Data.Time (UTCTime, picosecondsToDiffTime)
 import Data.Time.Clock.POSIX (posixSecondsToUTCTime)
 import Data.Time.Clock.POSIX qualified as POSIXTime
 
@@ -19,10 +19,9 @@ import Data.Time.Clock.POSIX qualified as POSIXTime
 import PlutusLedgerApi.V1.Time (POSIXTime (..))
 
 posixTimeToUTC :: POSIXTime -> UTCTime
-posixTimeToUTC ptime = posixSecondsToUTCTime ndtime
+posixTimeToUTC ptime = posixSecondsToUTCTime fractionalSeconds
   where
-    timeInSeconds = getPOSIXTime ptime `div` 1000
-    ndtime = secondsToNominalDiffTime $ fromInteger timeInSeconds
+    fractionalSeconds = fromInteger (getPOSIXTime ptime) / 1_000
 
 currentTimeSeconds :: MonadTime timedMonad => timedMonad Integer
 currentTimeSeconds =

@@ -59,7 +59,7 @@ import HydraAuctionUtils.Hydra.Monad (
   waitForHydraEvent',
  )
 import HydraAuctionUtils.Monads.Actors (MonadHasActor (..))
-import HydraAuctionUtils.Types.Natural (Natural)
+import HydraAuctionUtils.Types.Natural (Natural, intToNatural)
 import HydraAuctionUtils.WebSockets.Client (AwaitedOutput (..))
 import HydraAuctionUtils.WebSockets.ClientId (ClientId, ClientResponseScope (..))
 
@@ -105,7 +105,7 @@ delegateStepOnExpectedHydraEvent eventSpec expectedResponses =
 
 dropHydraEvent :: CompositeRunner ()
 dropHydraEvent = void $ do
-  r <- waitForHydraEvent' 0 Any
+  r <- waitForHydraEvent' (fromJust $ intToNatural 0) Any
   case r of
     Just _ -> dropHydraEvent
     Nothing -> return ()
@@ -121,15 +121,16 @@ emulateCustomEvent event = do
 emulateDelegatesStart :: HasCallStack => DelegatesClusterEmulator HeadId
 emulateDelegatesStart = do
   runCompositeForDelegate Main $ do
-    [] <- delegateEventStep Start
+    _ <- delegateEventStep Start
     return ()
 
   headId : _ <- runCompositeForAllDelegates $ do
-    Just event@(HeadIsInitializing {headId}) <- lift $ waitForHydraEvent Any
+    Just event@HeadIsInitializing {headId} <-
+      lift $ waitForHydraEvent $ SpecificKind HeadIsInitializingKind
     responses <- delegateEventStep $ HydraEvent event
     let expectedState =
           Initialized headId $
-            AwaitingCommits {stangingBidWasCommited = False}
+            AwaitingCommits {primaryCommitWasSubmitted = False}
     liftIO $
       assertEqual
         "Initializing reaction"
@@ -167,7 +168,7 @@ emulateCommiting headId terms = do
   -- They states should reflect existence of first commit now
   let expectedState =
         Initialized headId $
-          AwaitingCommits {stangingBidWasCommited = True}
+          AwaitingCommits {primaryCommitWasSubmitted = True}
   _ <-
     runCompositeForAllDelegates $ do
       delegateStepOnExpectedHydraEvent

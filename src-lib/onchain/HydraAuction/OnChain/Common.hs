@@ -16,7 +16,7 @@ module HydraAuction.OnChain.Common (
 import PlutusTx.Prelude
 
 -- Plutus imports
-import PlutusLedgerApi.V1.Interval (Interval (..), contains, from)
+import PlutusLedgerApi.V1.Interval (Interval (..), contains, from, to)
 import PlutusLedgerApi.V1.Time (POSIXTime (..))
 import PlutusLedgerApi.V2.Contexts (TxInfo (..))
 
@@ -37,7 +37,7 @@ minAuctionFee = 2_000_000
 {-# INLINEABLE stageToInterval #-}
 stageToInterval :: AuctionTerms -> AuctionStage -> Interval POSIXTime
 stageToInterval terms stage = case stage of
-  AnnouncedStage -> strictTo (biddingStart terms)
+  AnnouncedStage -> strictTo $ biddingStart terms
   BiddingStartedStage -> rightExclusiveInterval (biddingStart terms) (biddingEnd terms)
   BiddingEndedStage -> rightExclusiveInterval (biddingEnd terms) (voucherExpiry terms)
   VoucherExpiredStage -> rightExclusiveInterval (voucherExpiry terms) (cleanup terms)

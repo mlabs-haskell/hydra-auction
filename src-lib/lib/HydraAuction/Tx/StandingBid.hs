@@ -27,8 +27,15 @@ import PlutusLedgerApi.V1.Crypto (PubKeyHash)
 import PlutusLedgerApi.V2 (BuiltinByteString, fromBuiltin, toBuiltin)
 
 -- Hydra imports
+
 import Cardano.Api.UTxO qualified as UTxO
+import Hydra.API.HTTPServer (
+  DraftCommitTxRequest (..),
+  ScriptInfo (..),
+  TxOutWithWitness (..),
+ )
 import Hydra.Cardano.Api (
+  CtxTx,
   CtxUTxO,
   Key (..),
   Lovelace (..),
@@ -42,8 +49,10 @@ import Hydra.Cardano.Api (
   getTxBody,
   serialiseToRawBytes,
   toPlutusKeyHash,
+  toScriptData,
   txExtraKeyWits,
   txIns,
+  txOutScriptData,
   txOuts,
   verificationKeyHash,
   pattern ReferenceScriptNone,
@@ -65,11 +74,11 @@ import HydraAuction.OnChain.StandingBid (
   bidderSignatureMessage,
   sellerSignatureMessage,
  )
-import HydraAuctionUtils.HydraHacks (createCommitTx)
 import HydraAuctionUtils.Monads.Actors (
   WithActorT,
   addressAndKeys,
   askActor,
+  withActor,
  )
 import HydraAuctionUtils.Tx.Utxo (decodeInlineDatum)
 
@@ -88,8 +97,9 @@ import HydraAuction.Types (
   StandingBidState (..),
   VoucherForgingRedeemer (BurnVoucher),
  )
-import HydraAuctionUtils.Fixture (Actor, actorFromPkh, getActorPubKeyHash, keysFor)
-import HydraAuctionUtils.Hydra.Runner (HydraRunner, runL1RunnerInComposite)
+import HydraAuctionUtils.Fixture (Actor (..), actorFromPkh, getActorPubKeyHash, keysFor)
+import HydraAuctionUtils.Hydra.Monad (MonadHydra (..))
+import HydraAuctionUtils.Hydra.Runner (runL1RunnerInComposite)
 import HydraAuctionUtils.L1.Runner (L1Runner)
 import HydraAuctionUtils.Monads (
   MonadCardanoClient,
@@ -110,7 +120,7 @@ import HydraAuctionUtils.Tx.Build (
   mkInlineDatum,
   mkInlinedDatumScriptWitness,
  )
-import HydraAuctionUtils.Tx.Common (actorAdaOnlyUtxo, queryOrCreateSingleMinAdaUtxo, selectAdaUtxo)
+import HydraAuctionUtils.Tx.Common (actorAdaOnlyUtxo, createMinAdaUtxo, selectAdaUtxo)
 import HydraAuctionUtils.Types.Natural (Natural, naturalToInt)
 
 queryStandingBidDatum ::
@@ -275,31 +285,37 @@ createStandingBidDatum terms bidAmount sellerSignature bidderSk =
     bidderMessage = fromBuiltin $ bidderSignatureMessage voucherCS bidAmount bidderPKH
     Signature bidderSignature = dsign bidderSecretKey bidderMessage
 
--- | Uses or creates minAda Utxo for collateral
+{- | Uses or creates minAda Utxo for collateral
+ FIXME: remove? is simple now
+-}
 moveToHydraTx ::
-  HasCallStack =>
+  (HasCallStack, MonadHydra m, MonadIO m) =>
   HeadId ->
   AuctionTerms ->
   (TxIn, TxOut CtxUTxO) ->
-  HydraRunner Tx
-moveToHydraTx headId terms (standingBidTxIn, standingBidTxOut) = do
-  -- FIXME: get headId from AuctionTerms
-  utxoForL2Collateral <- runL1RunnerInComposite queryOrCreateSingleMinAdaUtxo
-
-  utxoForL1Fee : _ <-
-    filter (/= utxoForL2Collateral) . UTxO.pairs
-      <$> runL1RunnerInComposite actorAdaOnlyUtxo
-  -- FIXME: use Hydra external commit instread
-  createCommitTx
-    headId
-    utxoForL1Fee
-    (UTxO.fromPairs [utxoForL2Collateral])
-    (standingBidTxIn, standingBidTxOut, standingBidWitness)
+  m Tx
+moveToHydraTx _ terms (standingBidTxIn, standingBidTxOut) = do
+  (collateralTxIn, collateralTxOut) <- runL1RunnerInComposite $ withActor Faucet createMinAdaUtxo
+  createCommitTx $
+    DraftCommitTxRequest $
+      UTxO.fromPairs
+        [
+          ( standingBidTxIn
+          , TxOutWithWitness standingBidTxOut info
+          )
+        , (collateralTxIn, TxOutWithWitness collateralTxOut Nothing)
+        ]
   where
     script =
       fromPlutusScript @PlutusScriptV2 $
         standingBidValidator terms
-    standingBidWitness = mkInlinedDatumScriptWitness script MoveToHydra
+    info =
+      Just $
+        ScriptInfo
+          { redeemer = toScriptData MoveToHydra
+          , datum = Nothing
+          , plutusV2Script = script
+          }
 
 cleanupTx :: AuctionTerms -> WithActorT L1Runner ()
 cleanupTx terms = do

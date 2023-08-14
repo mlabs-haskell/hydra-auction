@@ -7,7 +7,8 @@ parent_path="$(realpath $(dirname $(realpath $0)))/.."
 
 CLUSTER_ENV=${CLUSTER_ENV:-devnet}
 
-CARDANO_IMAGE="inputoutput/cardano-node:1.35.4"
+HYDRA_IMAGE="ghcr.io/input-output-hk/hydra-node:unstable"
+CARDANO_IMAGE="inputoutput/cardano-node:8.1.2"
 
 if [ "${CLUSTER_ENV}" = "devnet" ];
 then
@@ -41,7 +42,7 @@ function ccli() {
 function hnode() {
     docker run --rm -it \
     -v ${CLUSTER_WORKDIR}:/devnet \
-    hydra-node:latest -- ${@}
+    ${HYDRA_IMAGE} -- ${@}
 }
 
 function frontend-cli() {
@@ -85,7 +86,8 @@ ENVS="CONTESTATION_PERIOD=${CONTESTATION_PERIOD}
 TESTNET_MAGIC=${TESTNET_MAGIC}
 CLUSTER_WORKDIR=${CLUSTER_WORKDIR}
 COMPOSE_CMD=${COMPOSE_CMD}
-CARDANO_IMAGE=${CARDANO_IMAGE}"
+CARDANO_IMAGE=${CARDANO_IMAGE}
+HYDRA_IMAGE=${HYDRA_IMAGE}"
 
 echo "$ENVS" > .env
 echo >&2 "Environment variables stored in '.env'"

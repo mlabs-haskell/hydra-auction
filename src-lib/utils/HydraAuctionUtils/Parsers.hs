@@ -2,7 +2,6 @@ module HydraAuctionUtils.Parsers (
   parseActor,
   parseAda,
   parseAdaAsNatural,
-  parseMarked,
   parseNetworkMagic,
   parseHost,
   cardanoRunningNodeParser,
@@ -44,8 +43,7 @@ import Text.Read (readMaybe)
 
 import Cardano.Api (NetworkId, NetworkMagic (..), fromNetworkMagic)
 import CardanoNode (RunningNode (..))
-import Hydra.Cardano.Api (Lovelace (..))
-import Hydra.Cluster.Faucet (Marked (..))
+import Hydra.Cardano.Api (File (..), Lovelace (..), SocketPath)
 
 -- Hydra imports
 import Hydra.Network (Host (..))
@@ -86,12 +84,6 @@ parseAdaAsNatural = eitherReader $ \s -> note "failed to parse Ada" $ do
 parseAda :: ReadM Lovelace
 parseAda = Lovelace . naturalToInt <$> parseAdaAsNatural
 
-parseMarked :: ReadM Marked
-parseMarked = eitherReader $ \case
-  "fuel" -> Right Fuel
-  "normal" -> Right Normal
-  _ -> Left "Marked parsing error"
-
 parseNetworkMagic :: ReadM NetworkMagic
 parseNetworkMagic = eitherReader $ \s -> note "failed to parse network magic" $ do
   magic <- readMaybe s
@@ -111,13 +103,14 @@ cardanoRunningNodeParser :: Parser RunningNode
 cardanoRunningNodeParser =
   RunningNode <$> nodeSocketParser <*> networkIdParser
   where
-    nodeSocketParser :: Parser String
+    nodeSocketParser :: Parser (File _ _)
     nodeSocketParser =
-      strOption
-        ( long "cardano-node-socket"
-            <> metavar "CARDANO_NODE_SOCKET"
-            <> help "Absolute path to the cardano node socket"
-        )
+      File
+        <$> strOption
+          ( long "cardano-node-socket"
+              <> metavar "CARDANO_NODE_SOCKET"
+              <> help "Absolute path to the cardano node socket"
+          )
 
     networkIdParser :: Parser NetworkId
     networkIdParser =
