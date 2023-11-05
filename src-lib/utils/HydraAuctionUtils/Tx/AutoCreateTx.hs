@@ -157,7 +157,7 @@ autoCreateTx (AutoCreateParams {..}) = do
         (preBody protocolParameters lowerBound upperBound)
         changeAddress
   let tx = makeSignedTransactionWithKeys allSigningKeys body
-  -- recordStats tx body
+  recordStats tx body
   return tx
   where
     allSignedUtxos = foldMap snd signedUtxos
