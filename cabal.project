@@ -1,6 +1,4 @@
--- File was created on base of https://github.com/input-output-hk/hydra/
-
--- Custom repository for cardano haskell packages
+-- Custom repository for cardano haskell packages, see CONTRIBUTING.md
 repository cardano-haskell-packages
   url: https://input-output-hk.github.io/cardano-haskell-packages
   secure: True
@@ -12,34 +10,41 @@ repository cardano-haskell-packages
     c00aae8461a256275598500ea0e187588c35a5d5d7454fb57eac18d9edb86a56
     d4a35cd3121aa00d18544bb0ac01c3e1691d618f462c46129271bccf39f7e8ee
 
+-- See CONTRIBUTING.md for information about when and how to update these.
+index-state:
+  , hackage.haskell.org 2023-09-14T06:54:18Z
+  , cardano-haskell-packages 2023-09-14T16:16:59Z
+
+packages:
+  .
+
 source-repository-package
     type: git
     location: https://github.com/input-output-hk/hydra
-    tag: 0a2cdbd243a061aa52f28e992ff571ea80e2e1aa
-    --sha256: tpjDFyGDkPhpxOa27zkCtRh2BWTH5pZPIrBdCXDG8lo=
+    tag: 9f1027e0fdff6765f5233f19c4639fdaa3558bfa
+    --sha256: sha256-McZVHq7DctIEivxYKOSjeJ7Njgz4jPkvRY6ihy27/kw=
     subdir:
       hydra-cardano-api
       hydra-prelude
       hydra-cluster
       hydra-test-utils
       hydra-plutus
+      hydra-plutus-extras
       hydra-node
       plutus-cbor
-      hydra-plutus-extras
 
--- NOTE: We need to have the hackage index-state twice because of
--- cabal/haskell.nix oddities. That is, cabal ignores this one
-index-state: 2023-09-14T06:54:18Z
-index-state:
-  -- while haskell.nix, ignores this one
-  , hackage.haskell.org 2023-09-14T06:54:18Z
-  , cardano-haskell-packages 2023-09-14T16:16:59Z
+-- Compile more things in parallel
+package *
+  ghc-options: -j8
 
-tests: true
+-- Always build tests and benchmarks
+tests: True
+benchmarks: False
+documentation: False
 
--- haddock-options: "--optghc=-fplugin-opt PlutusTx.Plugin:defer-errors"
+-- Fix compilation of strict-containers (see also nix/hydra/project.nix)
+package strict-containers
+  ghc-options: "-Wno-noncanonical-monad-instances"
 
 -- Always show detailed output for tests
 test-show-details: direct
-
-packages: .
