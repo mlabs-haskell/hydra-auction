@@ -24,7 +24,7 @@ import Hydra.Cardano.Api (
   makeShelleyKeyWitness,
   makeSignedTransaction,
   toPlutusKeyHash,
-  txIns,
+  -- txIns,
   verificationKeyHash,
  )
 import Hydra.Chain (HeadId)
@@ -91,7 +91,7 @@ import HydraAuctionUtils.Monads.Actors (
   MonadHasActor (askActor),
   addressAndKeys,
  )
-import HydraAuctionUtils.Tx.AutoCreateTx (makeSignedTransactionWithKeys)
+-- import HydraAuctionUtils.Tx.AutoCreateTx (makeSignedTransactionWithKeys)
 import HydraAuctionUtils.Types.Natural (intToNatural)
 import HydraAuctionUtils.WebSockets.Protocol (
   MonadHasClient (..),

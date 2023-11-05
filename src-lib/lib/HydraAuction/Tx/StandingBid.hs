@@ -35,7 +35,7 @@ import Hydra.API.HTTPServer (
   TxOutWithWitness (..),
  )
 import Hydra.Cardano.Api (
-  CtxTx,
+  -- CtxTx,
   CtxUTxO,
   Key (..),
   Lovelace (..),
@@ -52,7 +52,7 @@ import Hydra.Cardano.Api (
   toScriptData,
   txExtraKeyWits,
   txIns,
-  txOutScriptData,
+  -- txOutScriptData,
   txOuts,
   verificationKeyHash,
   pattern ReferenceScriptNone,
@@ -99,7 +99,7 @@ import HydraAuction.Types (
  )
 import HydraAuctionUtils.Fixture (Actor (..), actorFromPkh, getActorPubKeyHash, keysFor)
 import HydraAuctionUtils.Hydra.Monad (MonadHydra (..))
-import HydraAuctionUtils.Hydra.Runner (runL1RunnerInComposite)
+-- import HydraAuctionUtils.Hydra.Runner (runL1RunnerInComposite)
 import HydraAuctionUtils.L1.Runner (L1Runner)
 import HydraAuctionUtils.Monads (
   MonadCardanoClient,
@@ -120,7 +120,10 @@ import HydraAuctionUtils.Tx.Build (
   mkInlineDatum,
   mkInlinedDatumScriptWitness,
  )
-import HydraAuctionUtils.Tx.Common (actorAdaOnlyUtxo, createMinAdaUtxo, selectAdaUtxo)
+import HydraAuctionUtils.Tx.Common (
+  createMinAdaUtxo,
+  selectAdaUtxo,
+ )
 import HydraAuctionUtils.Types.Natural (Natural, naturalToInt)
 
 queryStandingBidDatum ::

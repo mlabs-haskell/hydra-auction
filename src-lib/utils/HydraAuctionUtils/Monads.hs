@@ -30,6 +30,7 @@ import HydraAuctionUtils.Prelude
 import Data.Set (Set)
 import Data.Time.Clock (diffUTCTime, getCurrentTime, nominalDiffTimeToSeconds)
 import Data.Time.Clock.POSIX qualified as POSIXTime
+import GHC.Word (Word64)
 
 -- Cardano imports
 
@@ -41,13 +42,13 @@ import Hydra.Cardano.Api (
   CardanoMode,
   EraHistory,
   LedgerEra,
-  LedgerProtocolParameters,
+  -- LedgerProtocolParameters,
   Lovelace,
   NetworkId (..),
   NetworkMagic (..),
   PaymentKey,
   PoolId,
-  ProtocolParameters,
+  -- ProtocolParameters,
   ShelleyAddr,
   SigningKey,
   SlotNo (..),
@@ -229,7 +230,7 @@ instance
   convertValidityBound = lift . convertValidityBound
   recordTxStat = lift . recordTxStat
 
-queryTimeHandle :: MonadBlockchainParams m => m _
+queryTimeHandle :: MonadBlockchainParams m => m TimeHandle
 queryTimeHandle = do
   MkBlockchainParams {systemStart, eraHistory} <- queryBlockchainParams
   currentTipSlot <- queryCurrentSlot
@@ -242,9 +243,9 @@ toSlotNo ptime = do
     slotFromUTCTime timeHandle $
       posixTimeToUTC ptime
 
-slottyNormalize :: MonadBlockchainParams m => _ -> POSIXTime -> m POSIXTime
+slottyNormalize :: MonadBlockchainParams m => Word64 -> POSIXTime -> m POSIXTime
 slottyNormalize n ptime = do
-  let mapSlot f (SlotNo n) = SlotNo (f n)
+  let mapSlot f (SlotNo n') = SlotNo (f n')
 
   slotNo <- toSlotNo ptime
   timeHandle <- queryTimeHandle

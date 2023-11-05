@@ -17,7 +17,7 @@ import HydraAuctionUtils.Prelude
 
 -- Haskell import
 
-import Control.Concurrent.Async (mapConcurrently)
+-- import Control.Concurrent.Async (mapConcurrently)
 import Control.Tracer (nullTracer)
 import Data.Map qualified as Map
 import Data.Maybe (fromMaybe)
@@ -79,7 +79,7 @@ import HydraAuctionUtils.Tx.Common (transferAda)
 import HydraAuctionUtils.WebSockets.Client (
   FakeProtocolClient,
   ProtocolClientFor,
-  RealProtocolClient (MkRealProtocolClient, host),
+  RealProtocolClient (MkRealProtocolClient),
   newFakeClient,
   withProtocolClient,
  )

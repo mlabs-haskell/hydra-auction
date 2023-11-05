@@ -1,4 +1,5 @@
 module EndToEnd.Ledger.L2Steps (
+  checkResponsesForBidTerms,
   delegateStepOnExpectedHydraEvent,
   emulateDelegatesStart,
   emulateClosing,
@@ -249,7 +250,7 @@ placeNewBidOnL2AndCheck _headId terms bidder amount = do
   where
     checkStandingBidWasUpdated bidDatum = do
       let
-        expectedBidTerms = standingBid $ standingBidState bidDatum
+        _expectedBidTerms = standingBid $ standingBidState bidDatum
       delegateStepOnExpectedHydraEvent'
         (SpecificKind SnapshotConfirmedKind)
         (const True)

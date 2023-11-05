@@ -43,7 +43,7 @@ import Text.Read (readMaybe)
 
 import Cardano.Api (NetworkId, NetworkMagic (..), fromNetworkMagic)
 import CardanoNode (RunningNode (..))
-import Hydra.Cardano.Api (File (..), Lovelace (..), SocketPath)
+import Hydra.Cardano.Api (File (..), Lovelace (..))
 
 -- Hydra imports
 import Hydra.Network (Host (..))
@@ -103,7 +103,6 @@ cardanoRunningNodeParser :: Parser RunningNode
 cardanoRunningNodeParser =
   RunningNode <$> nodeSocketParser <*> networkIdParser
   where
-    nodeSocketParser :: Parser (File _ _)
     nodeSocketParser =
       File
         <$> strOption

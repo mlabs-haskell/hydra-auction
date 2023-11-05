@@ -15,7 +15,7 @@ import Control.Monad.TimeMachine (MonadTime)
 
 -- Plutus imports
 import PlutusLedgerApi.V1.Interval (member)
-import PlutusLedgerApi.V2 (always)
+-- import PlutusLedgerApi.V2 (always)
 
 -- Cardano imports
 import Cardano.Api.UTxO qualified as UTxO
@@ -30,14 +30,14 @@ import Hydra.Cardano.Api (
   TxMintValue,
   TxOut,
   fromPlutusScript,
-  lovelaceToValue,
-  txOutValue,
+  -- lovelaceToValue,
+  -- txOutValue,
   pattern PlutusScript,
-  pattern ReferenceScriptNone,
-  pattern ShelleyAddressInEra,
-  pattern TxMintValueNone,
-  pattern TxOut,
-  pattern TxOutDatumNone,
+  -- pattern ReferenceScriptNone,
+  -- pattern ShelleyAddressInEra,
+  -- pattern TxMintValueNone,
+  -- pattern TxOut,
+  -- pattern TxOutDatumNone,
  )
 
 -- Hydra auction imports

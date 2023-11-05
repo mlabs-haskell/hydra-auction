@@ -15,6 +15,7 @@ import HydraAuctionUtils.Prelude
 import Control.Tracer (Tracer, stdoutTracer, traceWith)
 import Data.Aeson ()
 import Data.ByteString.UTF8 as BSU
+import Data.Text (Text)
 import Network.HTTP.Req qualified as Req
 import System.Environment (lookupEnv)
 import System.Timeout (timeout)
@@ -26,18 +27,17 @@ import CardanoNode (RunningNode (..))
 
 -- Hydra imports
 
-import Cardano.Ledger.Core (PParams)
 import Hydra.API.HTTPServer (DraftCommitTxResponse (..))
 import Hydra.Cardano.Api (
   AsType (AsTxId),
   FromJSON,
-  ShelleyBasedEra (ShelleyBasedEraShelley),
-  ToJSON,
+  -- ShelleyBasedEra (ShelleyBasedEraShelley),
+  -- ToJSON,
   TxId,
   deserialiseFromRawBytesHex,
-  fromLedgerPParams,
+  -- fromLedgerPParams,
   toLedgerPParams,
-  pattern LedgerProtocolParameters,
+  -- pattern LedgerProtocolParameters,
   pattern ShelleyBasedEraBabbage,
  )
 import Hydra.Chain.Direct.ScriptRegistry (
@@ -45,7 +45,7 @@ import Hydra.Chain.Direct.ScriptRegistry (
   publishHydraScripts,
   queryScriptRegistry,
  )
-import Hydra.Ledger.Cardano.Evaluate (pparams)
+-- import Hydra.Ledger.Cardano.Evaluate (pparams)
 import Hydra.Network (Host (..))
 
 -- HydraAuction imports
@@ -128,7 +128,7 @@ hydraHttpReq ::
   , Req.HttpBodyAllowed (Req.AllowsBody method) (Req.ProvidesBody req)
   ) =>
   method ->
-  _ ->
+  Text ->
   req ->
   HydraRunner resp
 hydraHttpReq method path reqBody = do

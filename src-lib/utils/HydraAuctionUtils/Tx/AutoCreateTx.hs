@@ -39,7 +39,7 @@ import Hydra.Cardano.Api (
   ShelleyAddr,
   SigningKey,
   Tx,
-  TxBody (..),
+  TxBody,
   TxBodyContent,
   TxBodyErrorAutoBalance,
   TxIn,
@@ -50,7 +50,6 @@ import Hydra.Cardano.Api (
   Witness,
   balancedTxBody,
   -- bundleProtocolParams,
-  evaluateTransactionExecutionUnits,
   getVerificationKey,
   makeShelleyKeyWitness,
   makeSignedTransaction,
@@ -222,15 +221,15 @@ autoCreateTx (AutoCreateParams {..}) = do
       when False traceStats
       where
         evaluateTx = do
-          MkBlockchainParams {protocolParameters, systemStart, eraHistory} <-
-            queryBlockchainParams
           return $ error "TODO"
-        -- evaluateTransactionExecutionUnits
-        --   systemStart
-        --   (toLedgerEpochInfo eraHistory)
-        --   protocolParameters
-        --   (UTxO.toApi (allSignedUtxos <> allWitnessedUtxos <> referenceUtxo))
-        --   body
+          -- MkBlockchainParams {protocolParameters, systemStart, eraHistory} <-
+          --   queryBlockchainParams
+          -- evaluateTransactionExecutionUnits
+          --   systemStart
+          --   (toLedgerEpochInfo eraHistory)
+          --   protocolParameters
+          --   (UTxO.toApi (allSignedUtxos <> allWitnessedUtxos <> referenceUtxo))
+          --   body
         traceStats = do
           let txSize = fromIntegral $ LBS.length $ serialize tx
           logMsg $ "Tx size % of max: " <> show (txSize `percentOf` maxTxSize)
@@ -245,7 +244,7 @@ autoCreateTx (AutoCreateParams {..}) = do
               logMsg $
                 "Memory % of max: "
                   <> show (executionMemory units `percentOf` maxMem)
-            Left evalError ->
+            Left _evalError ->
               error "TODO"
 
 -- logMsg $ "Tx evaluation failed: " <> show evalError

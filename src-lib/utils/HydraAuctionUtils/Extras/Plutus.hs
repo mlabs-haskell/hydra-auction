@@ -15,7 +15,6 @@ import PlutusTx.Prelude (toBuiltin)
 import PlutusLedgerApi.Common (SerialisedScript)
 import PlutusLedgerApi.V1.Address (Address, scriptHashAddress)
 import PlutusLedgerApi.V1.Value (CurrencySymbol (..))
-import PlutusTx qualified
 
 -- Hydra imports
 
