@@ -51,9 +51,7 @@ import HydraAuction.Types (
   BidDepositRedeemer (..),
  )
 import HydraAuctionUtils.L1.Runner (L1Runner)
-import HydraAuctionUtils.Monads (
-  logMsg,
- )
+-- import HydraAuctionUtils.Monads (logMsg)
 import HydraAuctionUtils.Monads.Actors (
   WithActorT,
   addressAndKeys,
@@ -102,7 +100,7 @@ findDepositMatchingPubKeyHash terms pkh allDeposits =
 
 mkDeposit :: AuctionTerms -> Lovelace -> WithActorT L1Runner ()
 mkDeposit terms depositLovelace = do
-  logMsg "Doing bidder deposit"
+  -- logMsg "Doing bidder deposit"
 
   depositAddress <- scriptAddress Deposit terms
 
@@ -136,7 +134,7 @@ mkDeposit terms depositLovelace = do
 
 losingBidderClaimDeposit :: AuctionTerms -> WithActorT L1Runner ()
 losingBidderClaimDeposit terms = do
-  logMsg "Claiming bidder deposit"
+  -- logMsg "Claiming bidder deposit"
 
   (bidderAddress, bidderVk, bidderSk) <- addressAndKeys
 
@@ -165,7 +163,7 @@ losingBidderClaimDeposit terms = do
 
 sellerClaimDepositFor :: AuctionTerms -> PubKeyHash -> WithActorT L1Runner ()
 sellerClaimDepositFor terms bidderPkh = do
-  logMsg "Seller claiming bidder deposit"
+  -- logMsg "Seller claiming bidder deposit"
 
   (sellerAddress, _, sellerSk) <- addressAndKeys
 
@@ -196,7 +194,7 @@ sellerClaimDepositFor terms bidderPkh = do
 
 cleanupDeposit :: AuctionTerms -> WithActorT L1Runner ()
 cleanupDeposit terms = do
-  logMsg "Cleanup bidder deposit"
+  -- logMsg "Cleanup bidder deposit"
 
   (bidderAddress, bidderVk, bidderSk) <- addressAndKeys
 

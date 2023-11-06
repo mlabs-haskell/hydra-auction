@@ -14,14 +14,14 @@ import HydraAuctionUtils.Prelude
 
 -- Haskell imports
 
-import Data.ByteString.Lazy qualified as LBS
+-- import Data.ByteString.Lazy qualified as LBS
 import Data.Foldable (Foldable (toList))
 import Data.Map qualified as Map
 import Data.Maybe (catMaybes)
 
 -- Cardano imports
 import Cardano.Api.UTxO qualified as UTxO
-import Cardano.Binary (serialize)
+-- import Cardano.Binary (serialize)
 
 -- Plutus imports
 import PlutusLedgerApi.V1 (Interval, POSIXTime)
@@ -34,7 +34,7 @@ import Hydra.Cardano.Api (
   BuildTx,
   BuildTxWith,
   CtxTx,
-  ExecutionUnits (..),
+  -- ExecutionUnits (..),
   PaymentKey,
   ShelleyAddr,
   SigningKey,
@@ -96,12 +96,12 @@ import Hydra.Cardano.Api (
   pattern WitnessPaymentKey,
  )
 import Hydra.Ledger.Cardano ()
-import Hydra.Ledger.Cardano.Evaluate (
-  maxCpu,
-  maxMem,
-  maxTxSize,
-  usedExecutionUnits,
- )
+-- import Hydra.Ledger.Cardano.Evaluate (
+--   maxCpu,
+--   maxMem,
+--   maxTxSize,
+--   usedExecutionUnits,
+--  )
 
 -- HydraAuction imports
 
@@ -112,7 +112,7 @@ import HydraAuctionUtils.Monads (
   MonadSubmitTx (..),
   MonadTrace,
   TxStat (..),
-  logMsg,
+  -- logMsg,
   submitAndAwaitTx,
  )
 import HydraAuctionUtils.Tx.Utxo (
@@ -136,9 +136,9 @@ data AutoCreateParams = AutoCreateParams
   }
   deriving stock (Show)
 
-percentOf :: (Real a) => a -> a -> Double
-part `percentOf` total =
-  100 * realToFrac part / realToFrac total
+-- percentOf :: (Real a) => a -> a -> Double
+-- part `percentOf` total =
+--   100 * realToFrac part / realToFrac total
 
 autoCreateTx ::
   forall m.
@@ -207,7 +207,7 @@ autoCreateTx (AutoCreateParams {..}) = do
         }
 
     recordStats :: Tx -> TxBody -> m ()
-    recordStats tx body = do
+    recordStats _tx body = do
       let TxBody content = body
       signingActors <- liftIO $ mapM actorFromSk allSigningKeys
       case txFee content of
@@ -231,19 +231,20 @@ autoCreateTx (AutoCreateParams {..}) = do
           --   (UTxO.toApi (allSignedUtxos <> allWitnessedUtxos <> referenceUtxo))
           --   body
         traceStats = do
-          let txSize = fromIntegral $ LBS.length $ serialize tx
-          logMsg $ "Tx size % of max: " <> show (txSize `percentOf` maxTxSize)
+          -- let txSize = fromIntegral $ LBS.length $ serialize tx
+          -- logMsg $ "Tx size % of max: " <> show (txSize `percentOf` maxTxSize)
           eUnits <- evaluateTx
           case eUnits of
-            Right units' -> do
-              let units = usedExecutionUnits units'
+            Right _units' -> do
+              return ()
+              -- let units = usedExecutionUnits units'
               -- TODO: show per script and parse scripts
-              logMsg $
-                "CPU % of max: "
-                  <> show (executionSteps units `percentOf` maxCpu)
-              logMsg $
-                "Memory % of max: "
-                  <> show (executionMemory units `percentOf` maxMem)
+              -- logMsg $
+              --   "CPU % of max: "
+              --     <> show (executionSteps units `percentOf` maxCpu)
+              -- logMsg $
+              --   "Memory % of max: "
+              --     <> show (executionMemory units `percentOf` maxMem)
             Left _evalError ->
               error "TODO"
 

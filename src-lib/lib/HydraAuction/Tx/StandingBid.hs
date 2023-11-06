@@ -107,7 +107,7 @@ import HydraAuctionUtils.Monads (
   MonadQueryUtxo (..),
   MonadTrace,
   addressAndKeysForActor,
-  logMsg,
+  -- logMsg,
   submitAndAwaitTx,
  )
 import HydraAuctionUtils.Tx.AutoCreateTx (
@@ -199,7 +199,7 @@ createNewBidTx ::
   m Tx
 createNewBidTx terms actor standingBidSingleUtxo submitterMoneyUtxo bidDatum = do
   -- Actor is not neccesary bidder, on L2 it may be commiter
-  logMsg "Creating new bid transaction"
+  -- logMsg "Creating new bid transaction"
 
   (submitterAddress, _, submitterSk) <- addressAndKeysForActor actor
 
@@ -322,7 +322,7 @@ moveToHydraTx _ terms (standingBidTxIn, standingBidTxOut) = do
 
 cleanupTx :: AuctionTerms -> WithActorT L1Runner ()
 cleanupTx terms = do
-  logMsg "Doing standing bid cleanup"
+  -- logMsg "Doing standing bid cleanup"
 
   (actorAddress, _, actorSk) <- addressAndKeys
 

@@ -80,7 +80,7 @@ bidderBuysTest = mkAssertionOfIO $ do
     actors@[seller, bidder1, bidder2] <- return [Alice, Bob, Carol]
 
     runL1InEmulator $ mapM_ (initWallet 200_000_000) actors
-    liftIO $ putStrLn "Actors initialized"
+    -- liftIO $ putStrLn "Actors initialized"
 
     -- Init hydra
 

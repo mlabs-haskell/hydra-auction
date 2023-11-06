@@ -208,8 +208,9 @@ instance DelegateLogic DelegateProtocol where
       result <- trySome $ runL1RunnerInComposite $ distributeFee terms
       case result of
         Left _ ->
-          liftIO $
-            putStrLn "Cannot distribute fee, probably no bids placed"
+          error "Cannot distribute fee, probably no bids placed"
+          -- liftIO $
+          --   putStrLn "Cannot distribute fee, probably no bids placed"
         Right _ -> return ()
       return $ Right ()
     AuctionStageStarted {} -> return $ Right ()

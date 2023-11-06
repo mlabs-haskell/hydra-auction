@@ -279,7 +279,7 @@ delegateEventStepCommon event = case event of
         _ -> abort RequiredHydraRequestFailed
       ignoreStop = do
         -- FIXME: use logs
-        liftIO $ putStrLn "Abort/Close failed"
+        -- liftIO $ putStrLn "Abort/Close failed"
         return []
   where
     updateStateWithStandingBidOrAbort utxo = do
@@ -339,7 +339,7 @@ abort reason = do
   state <- get
   if wasStopped state
     then do
-      putStrLn "Ignoring abort: state is already stopped"
+      -- putStrLn "Ignoring abort: state is already stopped"
       return []
     else do
       let command = if wasOpened state then Close else Abort

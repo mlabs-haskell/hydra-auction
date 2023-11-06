@@ -230,7 +230,7 @@ runCompositeForDelegate ::
   DelegateAction (FakeProtocolClient PlatformImplementation) x ->
   DelegatesClusterEmulator x
 runCompositeForDelegate name action = do
-  putStrLn $ "Doing action for delegate  " <> show name <> " ..."
+  -- putStrLn $ "Doing action for delegate  " <> show name <> " ..."
 
   MkEmulatorContext {platformClient, clients, delegateStatesRef} <- ask
 

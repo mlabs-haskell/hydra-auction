@@ -81,13 +81,13 @@ autoCaptureStdout action = do
   if verboseMode then action else capturingAction
   where
     capturingAction = do
-      (captured, mResult) <- capture $ try action
+      (_captured, mResult) <- capture $ try action
       case mResult of
         Right result -> return result
         Left (exception :: SomeException) -> do
-          printCaptured captured
+          -- printCaptured captured
           throw exception
-    printCaptured captured = putStrLn $ "Captured stdout: \n" <> captured
+    -- printCaptured captured = putStrLn $ "Captured stdout: \n" <> captured
 
 -- FIXME: autoCaptureStdout eats Tasty output as well
 -- FIXME: shorter timeout

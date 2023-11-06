@@ -234,14 +234,14 @@ placeNewBidOnL2AndCheck ::
 placeNewBidOnL2AndCheck _headId terms bidder amount = do
   delegate <- askActor
   let fakeClientId = fromEnum delegate
-  liftIO $
-    putStrLn $
-      "Placing bid by bidder: "
-        <> show bidder
-        <> " on delegate "
-        <> show delegate
-        <> " for "
-        <> show amount
+  -- liftIO $
+  --   putStrLn $
+  --     "Placing bid by bidder: "
+  --       <> show bidder
+  --       <> " on delegate "
+  --       <> show delegate
+  --       <> " for "
+  --       <> show amount
   (_, bidderSigningKey) <- liftIO $ keysFor bidder
   sellerSignature <- liftIO $ sellerSignatureForActor terms bidder
   let bidDatum = createStandingBidDatum terms amount sellerSignature bidderSigningKey
