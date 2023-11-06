@@ -55,7 +55,7 @@ import EndToEnd.Utils qualified as Utils
 testSuite :: TestTree
 testSuite =
   testGroup
-    "Ledger-L2"
+    "ledger-l2"
     [ testCase "bidder-buys" bidderBuysTest
     , testCase "multiple-utxos-to-commit" multipleUtxosToCommitTest
     , testCase "early-abort" earlyAbort

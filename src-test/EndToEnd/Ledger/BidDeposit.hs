@@ -68,7 +68,7 @@ import EndToEnd.Utils (
 testSuite :: TestTree
 testSuite =
   testGroup
-    "Ledger - BidDeposit"
+    "ledger-bid-deposit"
     [ testCase "test-slots" testSlots
     , testCase "losing-bidder" losingBidderClaimDepositTest
     , testCase "losing-bidder-double-claim" losingBidderDoubleClaimTest

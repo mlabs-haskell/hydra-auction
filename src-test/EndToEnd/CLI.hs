@@ -63,7 +63,7 @@ testSuite =
   withResource createTestConfig deleteTestConfig $
     const $
       testGroup
-        "L1 - CLI"
+        "l1-cli"
         [ testCase "bidder-buys" bidderBuysTest
         , testCase "deposit-test" depositTest
         , testCase "deposit-cleanup-claim" depositCleanupClaimTest

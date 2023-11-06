@@ -25,7 +25,7 @@ main = do
 testSuite :: TestTree
 testSuite =
   testGroup
-    "hydra-auction"
+    "main"
     [ Ledger.Auction.testSuite
     , Ledger.BidDeposit.testSuite
     , LedgerL2.testSuite
