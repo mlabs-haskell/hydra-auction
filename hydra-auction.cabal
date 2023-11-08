@@ -359,6 +359,8 @@ test-suite hydra-auction-test
     EndToEnd.Ledger.L2
     EndToEnd.Ledger.L2Steps
     EndToEnd.Utils
+    EndToEnd.Troubleshooting.L2
+    EndToEnd.Troubleshooting.L2Steps
     Unit.Common
 
   build-depends:
