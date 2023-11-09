@@ -256,9 +256,10 @@ runCompositeForAllDelegates ::
   DelegateAction (FakeProtocolClient PlatformImplementation) x ->
   DelegatesClusterEmulator [x]
 runCompositeForAllDelegates action = do
-  context <- ask
-  let runActionInIO delegate = do
-        flip runReaderT context $
-          unDelegatesClusterEmulator $
-            runCompositeForDelegate delegate action
-  liftIO $ mapM runActionInIO allDelegates
+  -- context <- ask
+  -- let runActionInIO delegate = do
+  --       flip runReaderT context $
+  --         unDelegatesClusterEmulator $
+  --           runCompositeForDelegate delegate action
+  -- liftIO $ mapM runActionInIO allDelegates
+  mapM (flip runCompositeForDelegate action) allDelegates
