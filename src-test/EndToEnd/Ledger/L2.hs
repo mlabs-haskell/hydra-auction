@@ -34,7 +34,7 @@ import HydraAuctionUtils.Monads (waitUntil)
 import HydraAuctionUtils.WebSockets.Client (AwaitedOutput (..))
 
 -- Hydra auction test imports
-import EndToEnd.HydraUtils (
+import EndToEnd.Utils.Emulator (
   EmulatorDelegate (..),
   runCompositeForAllDelegates,
   runCompositeForDelegate,

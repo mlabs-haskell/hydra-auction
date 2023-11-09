@@ -69,7 +69,7 @@ import HydraAuctionUtils.WebSockets.Client (AwaitedOutput (..))
 import HydraAuctionUtils.WebSockets.ClientId (ClientId, ClientResponseScope (..))
 
 -- HydraAuction test imports
-import EndToEnd.HydraUtils (
+import EndToEnd.Utils.Emulator (
   DelegateAction,
   DelegatesClusterEmulator,
   EmulatorDelegate (..),

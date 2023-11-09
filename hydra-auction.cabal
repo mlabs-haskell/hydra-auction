@@ -352,13 +352,14 @@ test-suite hydra-auction-test
     CLI.Printing
     CLI.Types
     EndToEnd.CLI
-    EndToEnd.HydraUtils
     EndToEnd.Ledger.Auction
     EndToEnd.Ledger.BidDeposit
     EndToEnd.Ledger.L1Steps
     EndToEnd.Ledger.L2
     EndToEnd.Ledger.L2Steps
     EndToEnd.Utils
+    EndToEnd.Utils.Emulator
+    EndToEnd.Utils.HydraCluster
     EndToEnd.Troubleshooting.L2
     EndToEnd.Troubleshooting.L2Steps
     Unit.Common
