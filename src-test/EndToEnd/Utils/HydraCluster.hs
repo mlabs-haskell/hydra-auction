@@ -1,6 +1,7 @@
 module EndToEnd.Utils.HydraCluster (
   withManualHydraCluster,
   withDockerComposeCluster,
+  withHydraClusterInTest,
 ) where
 
 -- Preludes import
@@ -12,7 +13,9 @@ import HydraAuctionUtils.Prelude
 -- import Control.Concurrent.Async (mapConcurrently)
 import Control.Tracer (nullTracer)
 import Data.Map qualified as Map
-import System.Environment (setEnv)
+import Data.Maybe (fromMaybe)
+import Text.Read (readMaybe)
+import System.Environment (lookupEnv, setEnv)
 import System.Process (system)
 
 -- Hydra imports
@@ -41,13 +44,16 @@ import HydraAuctionUtils.Hydra.Interface (
   HydraConnectionConfig (..),
   HydraProtocol,
  )
+import HydraAuctionUtils.Hydra.Runner (
+  prepareScriptRegistry,
+ )
 import HydraAuctionUtils.L1.Runner (
   ExecutionContext (..),
   L1Runner,
   dockerNode,
   executeL1Runner,
   executeL1RunnerWithNode,
-  -- executeTestL1Runner,
+  executeTestL1Runner,
   withActor,
  )
 import HydraAuctionUtils.Tx.Common (transferAda)
@@ -56,7 +62,20 @@ import HydraAuctionUtils.WebSockets.Client (
   withProtocolClient,
  )
 
--- Ways to spin up Hydra cluster
+-- ============================================================================
+-- Set up a hydra cluster
+
+withHydraClusterInTest :: HasCallStack => ([RealProtocolClient HydraProtocol] -> L1Runner ()) -> IO ()
+withHydraClusterInTest cont = do
+  mEnvStr <- liftIO $ lookupEnv "USE_DOCKER_FOR_TESTS"
+  let useDockerForTests =
+        fromMaybe False $ readMaybe =<< mEnvStr
+  if useDockerForTests
+    then liftIO $
+      withDockerComposeCluster cont
+    else executeTestL1Runner $ do
+      (!hydraScriptsTxId, _) <- prepareScriptRegistry Nothing
+      withManualHydraCluster hydraScriptsTxId cont
 
 -- This function will set the HYDRA_CONFIG_DIR env var locally
 -- This is required so the hydra nodes pick up on the correct protocol-parameters.json
@@ -102,7 +121,7 @@ withDockerComposeCluster ::
   ([RealProtocolClient HydraProtocol] -> L1Runner b) ->
   IO b
 withDockerComposeCluster cont = do
-  _ <- system "./scripts/spin-up-new-devnet.sh 0"
+  void $ system "./scripts/spin-up-new-devnet.sh 0"
   withNClients 3 (action . reverse)
   where
     withHydraClientN n =

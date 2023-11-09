@@ -15,9 +15,6 @@ import HydraAuctionUtils.Prelude
 
 -- Haskell import
 import Data.Map qualified as Map
-import Data.Maybe (fromMaybe)
-import System.Environment (lookupEnv)
-import Text.Read (readMaybe)
 
 -- HydraAuction imports
 import HydraAuction.Delegate.Interface (DelegateProtocol)
@@ -37,12 +34,10 @@ import HydraAuctionUtils.Hydra.Runner (
   HydraExecutionContext,
   executeHydraRunner,
   executeHydraRunnerFakingParams,
-  prepareScriptRegistry,
   runL1RunnerInComposite,
  )
 import HydraAuctionUtils.L1.Runner (
   L1Runner,
-  executeTestL1Runner,
   withActor,
  )
 import HydraAuctionUtils.WebSockets.Client (
@@ -53,10 +48,7 @@ import HydraAuctionUtils.WebSockets.Client (
  )
 import HydraAuctionUtils.WebSockets.Protocol (WithClientT, withClient)
 
-import EndToEnd.Utils.HydraCluster (
-  withManualHydraCluster,
-  withDockerComposeCluster,
- )
+import EndToEnd.Utils.HydraCluster (withHydraClusterInTest)
 
 -- Implementation of Emulator
 
@@ -89,19 +81,7 @@ newtype DelegatesClusterEmulator a = DelegatesClusterEmulator
     )
 
 runEmulatorInTest :: HasCallStack => DelegatesClusterEmulator () -> IO ()
-runEmulatorInTest action = do
-  mEnvStr <- liftIO $ lookupEnv "USE_DOCKER_FOR_TESTS"
-  let useDockerForTests =
-        fromMaybe False $ readMaybe =<< mEnvStr
-  if useDockerForTests
-    then
-      liftIO $
-        withDockerComposeCluster $
-          flip runEmulator action
-    else executeTestL1Runner $ do
-      (!hydraScriptsTxId, _) <- prepareScriptRegistry Nothing
-      withManualHydraCluster hydraScriptsTxId $
-        flip runEmulator action
+runEmulatorInTest = withHydraClusterInTest . flip runEmulator
 
 runEmulator ::
   [RealProtocolClient HydraProtocol] -> DelegatesClusterEmulator a -> L1Runner a
