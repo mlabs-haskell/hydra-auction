@@ -9,34 +9,34 @@ let
   pkgs = import nixpkgs { inherit system; };
 in
 {
-  cliImage = pkgs.dockerTools.buildLayeredImage
-    {
-      name = "hydra-auction-cli";
-      tag = "latest";
-      created = "now";
-      contents = [ myPackages.hydra-auction ];
-      config = {
-        Cmd = [ "hydra-auction" ];
-      };
-    };
-  delegateImage = pkgs.dockerTools.buildLayeredImage
-    {
-      name = "hydra-auction-delegate";
-      tag = "latest";
-      created = "now";
-      contents = [ myPackages.hydra-auction-delegate ];
-      config = {
-        Cmd = [ "hydra-auction-delegate" ];
-      };
-    };
-  platformImage = pkgs.dockerTools.buildLayeredImage
-    {
-      name = "hydra-auction-platform";
-      tag = "latest";
-      created = "now";
-      contents = [ myPackages.hydra-auction-platform ];
-      config = {
-        Cmd = [ "hydra-auction-platform" ];
-      };
-    };
+  # cliImage = pkgs.dockerTools.buildLayeredImage
+  #   {
+  #     name = "hydra-auction-cli";
+  #     tag = "latest";
+  #     created = "now";
+  #     contents = [ myPackages.hydra-auction ];
+  #     config = {
+  #       Cmd = [ "hydra-auction" ];
+  #     };
+  #   };
+  # delegateImage = pkgs.dockerTools.buildLayeredImage
+  #   {
+  #     name = "hydra-auction-delegate";
+  #     tag = "latest";
+  #     created = "now";
+  #     contents = [ myPackages.hydra-auction-delegate ];
+  #     config = {
+  #       Cmd = [ "hydra-auction-delegate" ];
+  #     };
+  #   };
+  # platformImage = pkgs.dockerTools.buildLayeredImage
+  #   {
+  #     name = "hydra-auction-platform";
+  #     tag = "latest";
+  #     created = "now";
+  #     contents = [ myPackages.hydra-auction-platform ];
+  #     config = {
+  #       Cmd = [ "hydra-auction-platform" ];
+  #     };
+  #   };
 }
