@@ -3,7 +3,6 @@ module HydraAuctionUtils.Tx.Utxo (
   decodeInlineDatum,
   filterAdaOnlyUtxo,
   filterUtxoByCurrencySymbols,
-  filterNonFuelUtxo,
   filterNotAdaOnlyUtxo,
   extractSingleUtxo,
 ) where
@@ -43,7 +42,6 @@ import Hydra.Cardano.Api (
   txOutDatum,
   pattern TxOutDatumInline,
  )
-import Hydra.Chain.Direct.Util (isMarkedOutput)
 
 -- Working with utxos
 
@@ -65,11 +63,6 @@ hasExactlySymbols :: [CurrencySymbol] -> TxOut CtxUTxO -> Bool
 hasExactlySymbols symbolsToMatch x =
   (sort . symbols . txOutValue <$> toPlutusTxOut x)
     == Just (sort symbolsToMatch)
-
--- | Fuel is Utxo mark used by Hydra Node
-filterNonFuelUtxo :: UTxO.UTxO -> UTxO.UTxO
-filterNonFuelUtxo =
-  UTxO . snd . Map.partition isMarkedOutput . UTxO.toMap
 
 extractSingleUtxo :: UTxO.UTxO -> Maybe UTxO.UTxO
 extractSingleUtxo utxo = do

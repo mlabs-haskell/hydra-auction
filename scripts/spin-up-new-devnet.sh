@@ -53,16 +53,14 @@ echo "HYDRA_SCRIPTS_TX_ID=$(publishReferenceScripts)" >> .env
 echo "Faucet address is:"
 frontend-cli-faucet-command "show-address"
 
-frontend-cli-faucet-command "transfer-ada -a oscar -m normal -b 100"
-frontend-cli-faucet-command "transfer-ada -a patricia -m normal -b 100"
-frontend-cli-faucet-command "transfer-ada -a rupert -m normal -b 100"
-
-frontend-cli-faucet-command "transfer-ada -a oscar -m fuel -b 100"
-frontend-cli-faucet-command "transfer-ada -a patricia -m fuel -b 100"
-frontend-cli-faucet-command "transfer-ada -a rupert -m fuel -b 100"
+frontend-cli-faucet-command "transfer-ada -a oscar -b 100"
+frontend-cli-faucet-command "transfer-ada -a patricia -b 100"
+frontend-cli-faucet-command "transfer-ada -a rupert -b 100"
 
 echo "Starting hydra nodes"
-$COMPOSE_CMD --profile hydra-node up -d
+$COMPOSE_CMD --profile hydra-node up -d --wait
+
+sleep 3
 
 start_delegate_servers="${1:-1}";
 

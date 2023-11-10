@@ -84,7 +84,10 @@ data DelegateState protocol
   | -- Hydra calls this Initializing.
     -- This case covers all Head states after it got Init comand
     -- and thus obtained HeadId.
-    Initialized HeadId (InitializedState protocol)
+    Initialized
+      { headId :: HeadId
+      , initializedState :: InitializedState protocol
+      }
 
 deriving stock instance DelegateLogicTypes protocol => Eq (DelegateState protocol)
 deriving stock instance DelegateLogicTypes protocol => Show (DelegateState protocol)
@@ -114,7 +117,7 @@ wasStopped state = case state of
       `elem` [ClosedKind, FinalizedKind, AbortedKind, AbortRequestedKind]
 
 data InitializedState protocol
-  = AwaitingCommits {stangingBidWasCommited :: Bool}
+  = AwaitingCommits {primaryCommitWasSubmitted :: Bool}
   | Open (OpenState protocol)
   | Closed
   | Finalized

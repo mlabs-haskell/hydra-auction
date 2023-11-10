@@ -9,10 +9,6 @@ module HydraAuctionUtils.Hydra.Monad (
 -- Prelude imports
 import HydraAuctionUtils.Prelude
 
--- Haskell imports
-
-import GHC.Natural (Natural)
-
 -- Cardano imports
 import Cardano.Api (AddressInEra (..))
 import Cardano.Api.UTxO qualified as UTxO
@@ -20,6 +16,7 @@ import Cardano.Api.UTxO qualified as UTxO
 -- Hydra imports
 
 import Hydra.API.ClientInput (ClientInput (..))
+import Hydra.API.HTTPServer (DraftCommitTxRequest)
 import Hydra.API.ServerOutput (ServerOutput (..))
 import Hydra.Cardano.Api (
   Address (ByronAddress, ShelleyAddress),
@@ -44,6 +41,7 @@ import HydraAuctionUtils.Monads (
   UtxoQuery (..),
  )
 import HydraAuctionUtils.Monads.Actors (WithActorT)
+import HydraAuctionUtils.Types.Natural (Natural, intToNatural)
 import HydraAuctionUtils.WebSockets.Client (AwaitedOutput (..), OutputMatcher (..))
 import HydraAuctionUtils.WebSockets.Protocol (WithClientT)
 
@@ -52,13 +50,14 @@ type AwaitedHydraEvent = AwaitedOutput HydraProtocol
 
 class Monad m => MonadHydra m where
   sendCommand :: HydraCommand -> m ()
+  createCommitTx :: DraftCommitTxRequest -> m Tx
   waitForHydraEvent' :: Natural -> AwaitedHydraEvent -> m (Maybe HydraEvent)
 
   -- FIXME: rename and use polymorphic L1
   runL1RunnerInComposite :: forall a. WithActorT L1Runner a -> m a
 
 defaultTimeout :: Natural
-defaultTimeout = 30
+defaultTimeout = fromJust $ intToNatural 30
 
 waitForHydraEvent :: MonadHydra m => AwaitedHydraEvent -> m (Maybe HydraEvent)
 waitForHydraEvent = waitForHydraEvent' defaultTimeout
@@ -91,7 +90,7 @@ instance (Monad m, MonadHydra m) => MonadQueryUtxo (ViaMonadHydra m) where
     response <-
       sendCommandAndWaitFor (SpecificKind GetUTxOResponseKind) GetUTxO
     let utxo' = case response of
-          Just (GetUTxOResponse {utxo}) -> utxo
+          Just GetUTxOResponse {utxo} -> utxo
           Just _ -> error "Impossible happened: incorrect response type awaited"
           Nothing -> error "Hydra server not answering"
     return $ UTxO.fromPairs $ filter predicate $ UTxO.pairs utxo'
@@ -106,10 +105,12 @@ instance (Monad m, MonadHydra m) => MonadQueryUtxo (ViaMonadHydra m) where
 
 instance MonadHydra m => MonadHydra (StateT s m) where
   sendCommand = lift . sendCommand
+  createCommitTx = lift . createCommitTx
   waitForHydraEvent' timeout = lift . waitForHydraEvent' timeout
   runL1RunnerInComposite = lift . runL1RunnerInComposite
 
 instance MonadHydra m => MonadHydra (WithClientT client m) where
   sendCommand = lift . sendCommand
+  createCommitTx = lift . createCommitTx
   waitForHydraEvent' x = lift . waitForHydraEvent' x
   runL1RunnerInComposite = lift . runL1RunnerInComposite

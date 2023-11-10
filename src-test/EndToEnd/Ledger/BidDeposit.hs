@@ -1,17 +1,19 @@
 module EndToEnd.Ledger.BidDeposit (testSuite) where
 
 -- Prelude imports
-import HydraAuctionUtils.Prelude (
-  HasCallStack,
-  MonadIO (liftIO),
-  fail,
-  trySome,
- )
-import PlutusTx.Prelude
+import HydraAuctionUtils.Prelude hiding ((*), (+))
+import PlutusTx.Prelude ((*), (+))
 
 -- Haskell test imports
 import Test.Tasty (TestTree, testGroup)
-import Test.Tasty.HUnit (Assertion, testCase)
+import Test.Tasty.HUnit (Assertion, assert, testCase)
+
+-- TODO
+
+import HydraAuctionUtils.Plutus.Interval
+import HydraAuctionUtils.Time
+import PlutusLedgerApi.V1.Interval
+import PlutusLedgerApi.V1.Time (POSIXTime (..))
 
 -- Hydra auction imports
 
@@ -37,7 +39,7 @@ import HydraAuctionUtils.L1.Runner (
   L1Runner,
   withActor,
  )
-import HydraAuctionUtils.Monads (waitUntil)
+import HydraAuctionUtils.Monads (slottyNormalize, toSlotNo, waitUntil)
 import HydraAuctionUtils.Tx.Build (minLovelace)
 
 -- Hydra auction test imports
@@ -63,7 +65,8 @@ testSuite :: TestTree
 testSuite =
   testGroup
     "Ledger - BidDeposit"
-    [ testCase "losing-bidder" losingBidderClaimDepositTest
+    [ testCase "test-slots" testSlots
+    , testCase "losing-bidder" losingBidderClaimDepositTest
     , testCase "losing-bidder-double-claim" losingBidderDoubleClaimTest
     , testCase "seller-claims" sellerClaimsDepositTest
     , testCase "seller-claims-losing-deposit" sellerClaimsLosingDepositTest
@@ -85,6 +88,28 @@ makeBiddersDeposits terms = do
     assertAdaWithoutFeesEquals $
       inititalAmount - depositAmount
   assertUTxOsInScriptEquals Deposit terms 2
+
+testSlots :: Assertion
+testSlots = mkAssertion $ do
+  startTime <- liftIO $ currentTimeMilliseconds
+
+  let
+    posixForTick i = POSIXTime $ startTime + tick * i
+    (from, to) = (posixForTick 2, posixForTick 6)
+    exampleInterval = rightExclusiveInterval from to
+
+  from' <- slottyNormalize 0 from
+  from'' <- slottyNormalize 1 from
+  to' <- slottyNormalize 0 to
+
+  let translated = rightExclusiveInterval from' to'
+  let translatedFixed = rightExclusiveInterval from'' to'
+
+  liftIO $ assert $ not $ exampleInterval `contains` translated
+  liftIO $ assert $ exampleInterval `contains` translatedFixed
+  where
+    slotTime = 100
+    tick = slotTime `div` 4
 
 losingBidderClaimDepositTest :: Assertion
 losingBidderClaimDepositTest = mkAssertion $ do

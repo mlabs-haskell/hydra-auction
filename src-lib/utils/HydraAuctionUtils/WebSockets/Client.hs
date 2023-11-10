@@ -57,6 +57,7 @@ waitForMatchingOutputH ::
 waitForMatchingOutputH client awaitedSpec = do
   -- FIXME: log awaiting and getting
   mOutput <- receiveOutputH client
+  putStrLn $ "Seen output while awaiting: " <> show mOutput
   case mOutput of
     Just output
       | matchingPredicate output ->
@@ -72,15 +73,16 @@ waitForMatchingOutputH client awaitedSpec = do
 
 -- RealProtocolClient
 
-newtype RealProtocolClient protocol = MkRealProtocolClient
-  { connection :: Connection
+data RealProtocolClient protocol = MkRealProtocolClient
+  { host :: Host
+  , connection :: Connection
   }
 
 instance Protocol protocol => ProtocolClient (RealProtocolClient protocol) where
   type ClientFor (RealProtocolClient protocol) = protocol
   sendInputH handle command =
     liftIO $ sendTextData (connection handle) $ encode command
-  receiveOutputH (MkRealProtocolClient connection) = do
+  receiveOutputH (MkRealProtocolClient {connection}) = do
     wsData <- liftIO $ receiveData connection
     return $ hush $ eitherDecodeStrict wsData
 
@@ -95,7 +97,7 @@ withProtocolClient host config action =
   withClientForHost
     host
     (configToConnectionPath (Proxy :: Proxy protocol) config)
-    (action . MkRealProtocolClient)
+    (action . MkRealProtocolClient host)
 
 -- FakeProtocolClient
 

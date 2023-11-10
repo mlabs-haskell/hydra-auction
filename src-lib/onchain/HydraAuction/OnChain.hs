@@ -24,6 +24,8 @@ import Data.List qualified as List
 import GHC.Stack (HasCallStack)
 
 -- Plutus imports
+
+import PlutusCore.Version (plcVersion100)
 import PlutusLedgerApi.Common (SerialisedScript, serialiseCompiledCode)
 import PlutusLedgerApi.V1.Address (Address)
 import PlutusLedgerApi.V1.Value (AssetClass (..))
@@ -88,11 +90,15 @@ getScriptByAddress terms = enumInversion addressByScript
 
 -- State Tokens
 
+-- Should match version used by Hydra and available on chain
+hydraPlcVersion :: _
+hydraPlcVersion = plcVersion100
+
 policy :: AuctionTerms -> SerialisedScript
 policy terms =
   serialiseCompiledCode $
     $$(PlutusTx.compile [||wrapMintingPolicy . mkPolicy||])
-      `PlutusTx.applyCode` PlutusTx.liftCode (escrowAddress terms, terms)
+      `PlutusTx.unsafeApplyCode` PlutusTx.liftCode hydraPlcVersion (escrowAddress terms, terms)
 
 voucherCurrencySymbol :: AuctionTerms -> VoucherCS
 voucherCurrencySymbol = VoucherCS . scriptCurrencySymbol . policy
@@ -111,7 +117,7 @@ escrowValidator :: AuctionTerms -> SerialisedScript
 escrowValidator terms =
   serialiseCompiledCode $
     $$(PlutusTx.compile [||wrapValidator . mkEscrowValidator||])
-      `PlutusTx.applyCode` PlutusTx.liftCode (standingBidAddress terms, feeEscrowAddress terms, terms)
+      `PlutusTx.unsafeApplyCode` PlutusTx.liftCode hydraPlcVersion (standingBidAddress terms, feeEscrowAddress terms, terms)
 
 {-# INLINEABLE escrowAddress #-}
 escrowAddress :: AuctionTerms -> EscrowAddress
@@ -124,7 +130,7 @@ standingBidValidator :: AuctionTerms -> SerialisedScript
 standingBidValidator terms =
   serialiseCompiledCode $
     $$(PlutusTx.compile [||wrapValidator . mkStandingBidValidator||])
-      `PlutusTx.applyCode` PlutusTx.liftCode terms
+      `PlutusTx.unsafeApplyCode` PlutusTx.liftCode hydraPlcVersion terms
 
 {-# INLINEABLE standingBidAddress #-}
 standingBidAddress :: AuctionTerms -> StandingBidAddress
@@ -137,7 +143,7 @@ feeEscrowValidator :: AuctionTerms -> SerialisedScript
 feeEscrowValidator terms =
   serialiseCompiledCode $
     $$(PlutusTx.compile [||wrapValidator . mkFeeEscrowValidator||])
-      `PlutusTx.applyCode` PlutusTx.liftCode terms
+      `PlutusTx.unsafeApplyCode` PlutusTx.liftCode hydraPlcVersion terms
 
 {-# INLINEABLE feeEscrowAddress #-}
 feeEscrowAddress :: AuctionTerms -> FeeEscrowAddress
@@ -151,7 +157,7 @@ depositValidator :: HasCallStack => AuctionTerms -> SerialisedScript
 depositValidator terms =
   serialiseCompiledCode $
     $$(PlutusTx.compile [||wrapValidator . mkDepositValidator||])
-      `PlutusTx.applyCode` PlutusTx.liftCode (standingBidAddress terms, escrowAddress terms, terms)
+      `PlutusTx.unsafeApplyCode` (PlutusTx.liftCode hydraPlcVersion (standingBidAddress terms, escrowAddress terms, terms))
 
 {-# INLINEABLE depositAddress #-}
 depositAddress :: AuctionTerms -> DepositAddress

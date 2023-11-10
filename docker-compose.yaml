@@ -2,7 +2,7 @@ version: "3.9"
 
 services:
   hydra-node-1:
-    image: hydra-node:latest
+    image: ${HYDRA_IMAGE}
     profiles:
       - hydra-node
       - delegate-server
@@ -36,7 +36,7 @@ services:
         ipv4_address: 172.16.238.10
 
   hydra-node-2:
-    image: hydra-node:latest
+    image: ${HYDRA_IMAGE}
     profiles:
       - hydra-node
       - delegate-server
@@ -70,7 +70,7 @@ services:
         ipv4_address: 172.16.238.20
 
   hydra-node-3:
-    image: hydra-node:latest
+    image: ${HYDRA_IMAGE}
     profiles:
       - hydra-node
       - delegate-server

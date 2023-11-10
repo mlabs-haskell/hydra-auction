@@ -62,6 +62,7 @@ import Hydra.Cardano.Api (
   NetworkId (Testnet),
   NetworkMagic (NetworkMagic),
   SlotNo (..),
+  SocketPath,
   SubmitResult (..),
   TxValidityLowerBound,
   TxValidityUpperBound,
@@ -76,7 +77,6 @@ import Hydra.Cardano.Api (
   pattern TxValidityNoUpperBound,
   pattern TxValidityUpperBound,
  )
-import Hydra.Cluster.Faucet (Marked (..))
 import Hydra.Logging (Tracer)
 import HydraNode (EndToEndLog (FromCardanoNode, FromFaucet))
 
@@ -116,6 +116,7 @@ import HydraAuctionUtils.Tx.Common (
   transferAdaTxParams,
   utxoLovelaceValue,
  )
+import HydraAuctionUtils.Types.Natural ()
 
 {- | Execution context holding the current tracer,
  as well as the running node.
@@ -160,28 +161,39 @@ instance MonadNetworkId L1Runner where
 instance MonadBlockchainParams L1Runner where
   queryBlockchainParams :: L1Runner BlockchainParams
   queryBlockchainParams = do
-    MkBlockchainParams
-      <$> runQuery queryProtocolParameters
-      <*> runQuery querySystemStart
+    protocolParams <- runQuery queryProtocolParameters
+    MkBlockchainParams protocolParams
+      <$> runQuery querySystemStart
       <*> runQuery queryEraHistory
       <*> runQuery queryStakePools
     where
       runQuery f = runWithNetworkParams f QueryTip
 
-  convertValidityBound (Interval l u) = (,) <$> lowerBoundToValidityBound l <*> upperBoundToValidityBound u
+  convertValidityBound (Interval l u) =
+    (,) <$> lowerBoundToValidityBound l <*> upperBoundToValidityBound u
     where
-      closureToInteger :: Bool -> Integer
-      closureToInteger = toInteger . fromEnum . not
+      -- FIXME: document slot hack
+      mapSlot f (SlotNo n) = SlotNo (f n)
 
       lowerBoundToValidityBound :: LowerBound POSIXTime -> L1Runner TxValidityLowerBound
       lowerBoundToValidityBound (LowerBound NegInf _) = pure TxValidityNoLowerBound
-      lowerBoundToValidityBound (LowerBound (Finite n) c) = TxValidityLowerBound <$> toSlotNo (POSIXTime $ getPOSIXTime n + closureToInteger c)
+      lowerBoundToValidityBound (LowerBound (Finite n) _) =
+        TxValidityLowerBound . mapSlot inc <$> toSlotNo n
       lowerBoundToValidityBound (LowerBound PosInf _) = error "Unable to create posinf lower bound"
+
+      inc 0 = 0
+      inc 1 = 1
+      inc n = n + 1
 
       upperBoundToValidityBound :: UpperBound POSIXTime -> L1Runner TxValidityUpperBound
       upperBoundToValidityBound (UpperBound NegInf _) = error "Unable to create neginf upper bound"
-      upperBoundToValidityBound (UpperBound (Finite n) c) = TxValidityUpperBound <$> toSlotNo (POSIXTime $ getPOSIXTime n - closureToInteger c)
+      upperBoundToValidityBound (UpperBound (Finite n) _) =
+        TxValidityUpperBound . mapSlot dec <$> toSlotNo n
       upperBoundToValidityBound (UpperBound PosInf _) = pure TxValidityNoUpperBound
+
+      dec 0 = 0
+      dec 1 = 1
+      dec n = n - 1
 
   queryCurrentSlot :: L1Runner SlotNo
   queryCurrentSlot = do
@@ -198,7 +210,7 @@ instance MonadBlockchainParams L1Runner where
 
 runWithNetworkParams ::
   (MonadReader ExecutionContext m, MonadIO m) =>
-  (NetworkId -> FilePath -> d -> IO b) ->
+  (NetworkId -> SocketPath -> d -> IO b) ->
   d ->
   m b
 runWithNetworkParams call arg = do
@@ -305,7 +317,7 @@ initWallet ::
   Actor ->
   m ()
 initWallet amount actor = do
-  void $ withActor Faucet $ transferAda actor Normal amount
+  void $ withActor Faucet $ transferAda actor amount
 
 feeSpent :: WithActorT L1Runner Lovelace
 feeSpent = do
@@ -323,9 +335,8 @@ queryAdaWithoutFees = do
 
 seedHydraNodes :: L1Runner ()
 seedHydraNodes = withActor Faucet $ do
-  mapM_ (autoSubmitTx <=< initActorTxParams Fuel) [Oscar, Rupert, Patricia]
-  mapM_ (autoSubmitTx <=< initActorTxParams Normal) [Oscar, Rupert]
-  void $ autoSubmitAndAwaitTx =<< initActorTxParams Normal Patricia
+  mapM_ (autoSubmitTx <=< initActorTxParams) [Oscar, Rupert]
+  void $ autoSubmitAndAwaitTx =<< initActorTxParams Patricia
   where
-    initActorTxParams mark actor =
-      transferAdaTxParams actor mark 50_000_000
+    initActorTxParams actor =
+      transferAdaTxParams actor 50_000_000

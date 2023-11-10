@@ -34,11 +34,8 @@ import Hydra.Cardano.Api (
   pattern ShelleyAddressInEra,
   pattern TxMintValueNone,
   pattern TxOut,
-  pattern TxOutDatumHash,
   pattern TxOutDatumNone,
  )
-import Hydra.Chain.Direct.Util (markerDatumHash)
-import Hydra.Cluster.Faucet (Marked (..))
 
 -- Hydra auction imports
 import HydraAuctionUtils.Fixture (Actor)
@@ -57,13 +54,13 @@ import HydraAuctionUtils.Tx.AutoCreateTx (
   autoSubmitAndAwaitTx,
  )
 import HydraAuctionUtils.Tx.Build (minLovelace)
-import HydraAuctionUtils.Tx.Utxo (filterAdaOnlyUtxo, filterNonFuelUtxo)
+import HydraAuctionUtils.Tx.Utxo (filterAdaOnlyUtxo)
 
 actorAdaOnlyUtxo ::
   forall m.
   (MonadHasActor m, MonadCardanoClient m, MonadIO m) =>
   m UTxO
-actorAdaOnlyUtxo = filterNonFuelUtxo . filterAdaOnlyUtxo <$> actorTipUtxo
+actorAdaOnlyUtxo = filterAdaOnlyUtxo <$> actorTipUtxo
 
 -- Simplest possible coin-selection algorithm
 selectAdaUtxo ::
@@ -135,10 +132,9 @@ transferAdaTxParams ::
   forall m.
   (MonadFail m, MonadTrace m, MonadHasActor m, MonadCardanoClient m, MonadIO m) =>
   Actor ->
-  Marked ->
   Lovelace ->
   m AutoCreateParams
-transferAdaTxParams actorTo marked amount = do
+transferAdaTxParams actorTo amount = do
   moneyUtxo <- fromJust <$> selectAdaUtxo amount
   (fromAddress, _, fromSk) <- addressAndKeys
   (toAddress, _, _) <- addressAndKeysForActor actorTo
@@ -160,20 +156,15 @@ transferAdaTxParams actorTo marked amount = do
       TxOut
         (ShelleyAddressInEra toAddress)
         (lovelaceToValue amount)
-        theOutputDatum
+        TxOutDatumNone
         ReferenceScriptNone
-
-    theOutputDatum = case marked of
-      Fuel -> TxOutDatumHash markerDatumHash
-      Normal -> TxOutDatumNone
 
 transferAda ::
   forall m.
   (MonadFail m, MonadTrace m, MonadHasActor m, MonadCardanoClient m, MonadIO m) =>
   Actor ->
-  Marked ->
   Lovelace ->
   m Tx
-transferAda actorTo marked amount = do
-  params <- transferAdaTxParams actorTo marked amount
+transferAda actorTo amount = do
+  params <- transferAdaTxParams actorTo amount
   autoSubmitAndAwaitTx params

@@ -16,6 +16,7 @@ import HydraAuctionUtils.Prelude
 
 import Data.ByteString.Lazy qualified as LBS
 import Data.Foldable (Foldable (toList))
+import Data.Map qualified as Map
 import Data.Maybe (catMaybes)
 
 -- Cardano imports
@@ -38,7 +39,7 @@ import Hydra.Cardano.Api (
   ShelleyAddr,
   SigningKey,
   Tx,
-  TxBody,
+  TxBody (..),
   TxBodyContent,
   TxBodyErrorAutoBalance,
   TxIn,
@@ -48,18 +49,36 @@ import Hydra.Cardano.Api (
   WitCtxTxIn,
   Witness,
   balancedTxBody,
-  bundleProtocolParams,
+  -- bundleProtocolParams,
   evaluateTransactionExecutionUnits,
   getVerificationKey,
   makeShelleyKeyWitness,
   makeSignedTransaction,
   makeTransactionBodyAutoBalance,
   toLedgerEpochInfo,
+  txAuxScripts,
+  txCertificates,
+  txExtraKeyWits,
   txFee,
+  txGovernanceActions,
+  txIns,
+  txInsCollateral,
+  txInsReference,
+  txMetadata,
+  txMintValue,
+  txOuts,
+  txProtocolParams,
+  txReturnCollateral,
+  txScriptValidity,
+  txTotalCollateral,
+  txUpdateProposal,
+  txValidityRange,
+  txVotes,
+  txWithdrawals,
   verificationKeyHash,
   withWitness,
-  pattern BabbageEra,
   pattern BuildTxWith,
+  pattern LedgerProtocolParameters,
   pattern ShelleyAddressInEra,
   pattern TxAuxScriptsNone,
   pattern TxBody,
@@ -130,7 +149,6 @@ autoCreateTx ::
 -- FIXME: more docs on usage
 autoCreateTx (AutoCreateParams {..}) = do
   (lowerBound, upperBound) <- convertValidityBound validityBound
-
   MkBlockchainParams {protocolParameters} <- queryBlockchainParams
   body <-
     either (\x -> fail $ "Autobalance error: " <> show x) return
@@ -139,7 +157,7 @@ autoCreateTx (AutoCreateParams {..}) = do
         (preBody protocolParameters lowerBound upperBound)
         changeAddress
   let tx = makeSignedTransactionWithKeys allSigningKeys body
-  recordStats tx body
+  -- recordStats tx body
   return tx
   where
     allSignedUtxos = foldMap snd signedUtxos
@@ -162,27 +180,33 @@ autoCreateTx (AutoCreateParams {..}) = do
     --        Signing witness, Utxo, zeroed feez
     preBody protocolParameters lowerBound upperBound =
       TxBodyContent
-        ((withWitness <$> txInsToSign) <> witnessedTxIns)
-        (TxInsCollateral [txInCollateral])
-        (TxInsReference (toList $ UTxO.inputSet referenceUtxo))
-        outs
-        TxTotalCollateralNone
-        TxReturnCollateralNone
-        (TxFeeExplicit 0)
-        (lowerBound, upperBound)
-        TxMetadataNone
-        TxAuxScriptsNone
-        -- Adding all keys here, cuz other way `txSignedBy` does not see those
-        -- signatures
-        ( TxExtraKeyWitnesses $
-            fmap (verificationKeyHash . getVerificationKey) allSigningKeys
-        )
-        (BuildTxWith $ Just protocolParameters)
-        TxWithdrawalsNone
-        TxCertificatesNone
-        TxUpdateProposalNone
-        toMint
-        TxScriptValidityNone
+        { txIns = (withWitness <$> txInsToSign) <> witnessedTxIns
+        , txInsCollateral = TxInsCollateral [txInCollateral]
+        , txInsReference = TxInsReference (toList $ UTxO.inputSet referenceUtxo)
+        , txOuts = outs
+        , txTotalCollateral = TxTotalCollateralNone
+        , txReturnCollateral = TxReturnCollateralNone
+        , txFee = TxFeeExplicit 0
+        , txValidityRange = (lowerBound, upperBound)
+        , txMetadata = TxMetadataNone
+        , txAuxScripts = TxAuxScriptsNone
+        , -- Adding all keys here, cuz other way `txSignedBy` does not see those
+          -- signatures
+          txExtraKeyWits =
+            ( TxExtraKeyWitnesses $
+                fmap (verificationKeyHash . getVerificationKey) allSigningKeys
+            )
+        , txProtocolParams =
+            BuildTxWith $ Just $ LedgerProtocolParameters protocolParameters
+        , txWithdrawals = TxWithdrawalsNone
+        , txCertificates = TxCertificatesNone
+        , txUpdateProposal = TxUpdateProposalNone
+        , txMintValue = toMint
+        , txScriptValidity = TxScriptValidityNone
+        , txGovernanceActions = undefined
+        , txVotes = undefined
+        }
+
     recordStats :: Tx -> TxBody -> m ()
     recordStats tx body = do
       let TxBody content = body
@@ -200,13 +224,13 @@ autoCreateTx (AutoCreateParams {..}) = do
         evaluateTx = do
           MkBlockchainParams {protocolParameters, systemStart, eraHistory} <-
             queryBlockchainParams
-          return $
-            evaluateTransactionExecutionUnits
-              systemStart
-              (toLedgerEpochInfo eraHistory)
-              (bundleProtocolParams BabbageEra protocolParameters)
-              (UTxO.toApi (allSignedUtxos <> allWitnessedUtxos <> referenceUtxo))
-              body
+          return $ error "TODO"
+        -- evaluateTransactionExecutionUnits
+        --   systemStart
+        --   (toLedgerEpochInfo eraHistory)
+        --   protocolParameters
+        --   (UTxO.toApi (allSignedUtxos <> allWitnessedUtxos <> referenceUtxo))
+        --   body
         traceStats = do
           let txSize = fromIntegral $ LBS.length $ serialize tx
           logMsg $ "Tx size % of max: " <> show (txSize `percentOf` maxTxSize)
@@ -222,7 +246,9 @@ autoCreateTx (AutoCreateParams {..}) = do
                 "Memory % of max: "
                   <> show (executionMemory units `percentOf` maxMem)
             Left evalError ->
-              logMsg $ "Tx evaluation failed: " <> show evalError
+              error "TODO"
+
+-- logMsg $ "Tx evaluation failed: " <> show evalError
 
 makeSignedTransactionWithKeys ::
   [SigningKey PaymentKey] ->
@@ -251,8 +277,10 @@ callBodyAutoBalance
         <$> makeTransactionBodyAutoBalance
           systemStart
           (toLedgerEpochInfo eraHistory)
-          protocolParameters
+          (LedgerProtocolParameters protocolParameters)
           stakePools
+          Map.empty -- Stake credentials
+          Map.empty -- Some other DRep stuff
           (UTxO.toApi utxo)
           preBody
           (ShelleyAddressInEra changeAddress)

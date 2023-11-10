@@ -16,7 +16,6 @@ import Prettyprinter (Doc, Pretty (pretty), indent, line)
 -- Hydra imports
 
 import Hydra.Cardano.Api (Lovelace)
-import Hydra.Cluster.Faucet (Marked (..))
 
 -- Hydra auction imports
 
@@ -46,9 +45,6 @@ instance Pretty CLIError where
 extraInfo :: forall ann. Doc ann -> Doc ann
 extraInfo = (line <>) . indent 2
 
--- FIXME: upstream
-deriving stock instance Show Marked
-
 -- | In fact this is REPL command
 data CliAction
   = ShowAddress
@@ -57,7 +53,7 @@ data CliAction
   | ShowScriptInfo
   | Seed
   | Prepare Actor
-  | TransferAda Actor Marked Lovelace
+  | TransferAda Actor Lovelace
   | MintTestNFT
   | PerAuction AuctionName PerAuctionCliAction
   deriving stock (Show)
