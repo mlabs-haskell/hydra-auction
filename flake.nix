@@ -43,7 +43,7 @@
         inherit myProject;
 
         packages =
-          { default = myPackages.hydra-auction; } //
+          { default = myPackages.hydra-auction-plutus; } //
           myPackages //
           prefixAttrs "docker-" myImages;
 

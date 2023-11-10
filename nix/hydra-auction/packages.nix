@@ -38,6 +38,9 @@ let
 in
 rec {
 
+  hydra-auction-plutus =
+    nativePkgs.hydra-auction-plutus.components.library;
+
   # tests = {
   #   hydra-auction-plutus =
   #     wrapTest nativePkgs.hydra-auction-plutus.components.tests.tests;
