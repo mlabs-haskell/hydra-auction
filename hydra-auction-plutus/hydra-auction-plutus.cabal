@@ -84,7 +84,12 @@ library
   import:          common-config
   hs-source-dirs:  src
   exposed-modules:
-    Auction
+    Auction.Onchain.AuctionEscrow
+    Auction.Onchain.BidderDeposit
+    Auction.Onchain.FeeEscrow
+    Auction.Onchain.StandingBid
+    Auction.Onchain.VoucherToken
+    Auction.Terms
 
   build-depends:
     , aeson
