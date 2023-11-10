@@ -54,7 +54,7 @@ import EndToEnd.Utils (
 testSuite :: TestTree
 testSuite =
   testGroup
-    "Ledger - Auction"
+    "ledger-auction"
     [ testCase "bidder-buys" bidderBuysTest
     , testCase "seller-reclaims" sellerReclaimsTest
     , testCase "unauthorised-bidder" unauthorisedBidderTest

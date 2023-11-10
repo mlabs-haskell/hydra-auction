@@ -16,7 +16,7 @@ module HydraAuction.OnChain.Common (
 import PlutusTx.Prelude
 
 -- Plutus imports
-import PlutusLedgerApi.V1.Interval (Interval (..), contains, from, to)
+import PlutusLedgerApi.V1.Interval (Interval (..), contains, from)
 import PlutusLedgerApi.V1.Time (POSIXTime (..))
 import PlutusLedgerApi.V2.Contexts (TxInfo (..))
 

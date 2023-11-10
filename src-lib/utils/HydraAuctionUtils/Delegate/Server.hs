@@ -41,7 +41,8 @@ queueHydraEvents delegateEventQueue = forever $ do
           writeTQueue delegateEventQueue $
             HydraEvent event
     Nothing ->
-      liftIO $ putStrLn "Not recieved Hydra events for waiting time"
+      return ()
+      -- liftIO $ putStrLn "Not recieved Hydra events for waiting time"
 
 {- | create a delegate runner that will listen for incoming events
      and output outgoing events accordingly
@@ -102,9 +103,9 @@ runDelegateLogicSteps
         StateT (DelegateState delegateProtocol) HydraRunner ()
       performStep step event = do
         -- FIXME: use logging
-        liftIO $ putStrLn $ "Delegate logic event: " <> show event
+        -- liftIO $ putStrLn $ "Delegate logic event: " <> show event
         response <- step event
-        liftIO $ putStrLn $ "Delegate logic response: " <> show response
+        -- liftIO $ putStrLn $ "Delegate logic response: " <> show response
         putInToClientsQueue response
       processQueueWith queue step =
         flushAndTraverseNewElements queue $ performStep step

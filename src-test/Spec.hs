@@ -15,6 +15,7 @@ import EndToEnd.CLI qualified as CLI
 import EndToEnd.Ledger.Auction qualified as Ledger.Auction
 import EndToEnd.Ledger.BidDeposit qualified as Ledger.BidDeposit
 import EndToEnd.Ledger.L2 qualified as LedgerL2
+import EndToEnd.Troubleshooting.L2 qualified as LedgerL2Troubleshooting
 import Unit.Common qualified as UnitCommon
 
 main :: IO ()
@@ -25,10 +26,11 @@ main = do
 testSuite :: TestTree
 testSuite =
   testGroup
-    "hydra-auction"
+    "main"
     [ Ledger.Auction.testSuite
     , Ledger.BidDeposit.testSuite
     , LedgerL2.testSuite
     , UnitCommon.testSuite
     , CLI.testSuite
+    , LedgerL2Troubleshooting.testSuite
     ]

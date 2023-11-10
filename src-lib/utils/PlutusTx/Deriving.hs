@@ -74,17 +74,17 @@ deriveEq name = do
 
 -- Helpers
 
-mkEq :: Name -> [TyVarBndr] -> [Con] -> Q [Dec]
+mkEq :: Name -> [TyVarBndr w] -> [Con] -> Q [Dec]
 mkEq name tyVars constructors = do
   let namePreds = mkCtxVar <$> tyVars
   let instanceType = mkInstanceType name (fst <$> namePreds)
   method <- mkEqMethod constructors
   pure [InstanceD Nothing (snd <$> namePreds) instanceType method]
 
-mkCtxVar :: TyVarBndr -> (Name, Type)
+mkCtxVar :: TyVarBndr w -> (Name, Type)
 mkCtxVar = \case
-  PlainTV name -> (name, go name)
-  KindedTV name _ -> (name, go name)
+  PlainTV name _ -> (name, go name)
+  KindedTV name _ _ -> (name, go name)
   where
     go :: Name -> Type
     go = AppT (ConT ''PTx.Eq) . VarT
@@ -128,8 +128,8 @@ mkConstructorMatch = \case
     go name count = do
       namesLeft <- replicateM count (newName "x")
       namesRight <- replicateM count (newName "y")
-      let leftPat = ConP name . fmap VarP $ namesLeft
-      let rightPat = ConP name . fmap VarP $ namesRight
+      let leftPat = ConP name mempty . fmap VarP $ namesLeft
+      let rightPat = ConP name mempty . fmap VarP $ namesRight
       let bod = NormalB $ case zip namesLeft namesRight of
             [] -> ConE 'PTx.True
             (lName, rName) : names ->

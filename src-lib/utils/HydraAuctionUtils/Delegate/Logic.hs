@@ -21,7 +21,7 @@ import HydraAuctionUtils.Tx.AutoCreateTx (makeSignedTransactionWithKeys)
 import Hydra.API.ClientInput (ClientInput (..))
 import Hydra.API.HTTPServer (
   DraftCommitTxRequest (..),
-  ScriptInfo (..),
+  -- ScriptInfo (..),
   TxOutWithWitness (..),
  )
 import Hydra.API.ServerOutput (ServerOutput (..))
@@ -47,13 +47,13 @@ import HydraAuctionUtils.Hydra.Runner (HydraRunner)
 import HydraAuctionUtils.Monads (addressAndKeysForActor, submitAndAwaitTx)
 import HydraAuctionUtils.Monads.Actors (
   MonadHasActor (askActor),
-  actorTipUtxo,
+  -- actorTipUtxo,
   addressAndKeys,
   withActor,
  )
 import HydraAuctionUtils.Tx.Common (
   createMinAdaUtxo,
-  queryOrCreateSingleMinAdaUtxo,
+  -- queryOrCreateSingleMinAdaUtxo,
  )
 import HydraAuctionUtils.Tx.Utxo (
   filterAdaOnlyUtxo,
@@ -279,7 +279,7 @@ delegateEventStepCommon event = case event of
         _ -> abort RequiredHydraRequestFailed
       ignoreStop = do
         -- FIXME: use logs
-        liftIO $ putStrLn "Abort/Close failed"
+        -- liftIO $ putStrLn "Abort/Close failed"
         return []
   where
     updateStateWithStandingBidOrAbort utxo = do
@@ -320,7 +320,7 @@ delegateEventStepCommon event = case event of
       let
         body' = getTxBody tx'
         tx = makeSignedTransactionWithKeys [sk1, sk2] body'
-      runL1RunnerInComposite $ submitAndAwaitTx tx
+      _ <- runL1RunnerInComposite $ submitAndAwaitTx tx
       return $ Right ()
     getDelegateParty = do
       delegateActor <- askActor
@@ -339,7 +339,7 @@ abort reason = do
   state <- get
   if wasStopped state
     then do
-      putStrLn "Ignoring abort: state is already stopped"
+      -- putStrLn "Ignoring abort: state is already stopped"
       return []
     else do
       let command = if wasOpened state then Close else Abort

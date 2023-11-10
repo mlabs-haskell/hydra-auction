@@ -42,7 +42,7 @@ import HydraAuctionUtils.Types.Natural (intToNatural)
 testSuite :: TestTree
 testSuite =
   testGroup
-    "Unit-Common"
+    "unit-common"
     [ testCase "current-auction-stage" testCurrentAuctionStage
     , testCase "seconds-left-interval" testSecondsLeftInterval
     ]

@@ -24,7 +24,7 @@ import Hydra.Cardano.Api (
   makeShelleyKeyWitness,
   makeSignedTransaction,
   toPlutusKeyHash,
-  txIns,
+  -- txIns,
   verificationKeyHash,
  )
 import Hydra.Chain (HeadId)
@@ -91,7 +91,7 @@ import HydraAuctionUtils.Monads.Actors (
   MonadHasActor (askActor),
   addressAndKeys,
  )
-import HydraAuctionUtils.Tx.AutoCreateTx (makeSignedTransactionWithKeys)
+-- import HydraAuctionUtils.Tx.AutoCreateTx (makeSignedTransactionWithKeys)
 import HydraAuctionUtils.Types.Natural (intToNatural)
 import HydraAuctionUtils.WebSockets.Protocol (
   MonadHasClient (..),
@@ -208,8 +208,9 @@ instance DelegateLogic DelegateProtocol where
       result <- trySome $ runL1RunnerInComposite $ distributeFee terms
       case result of
         Left _ ->
-          liftIO $
-            putStrLn "Cannot distribute fee, probably no bids placed"
+          error "Cannot distribute fee, probably no bids placed"
+          -- liftIO $
+          --   putStrLn "Cannot distribute fee, probably no bids placed"
         Right _ -> return ()
       return $ Right ()
     AuctionStageStarted {} -> return $ Right ()

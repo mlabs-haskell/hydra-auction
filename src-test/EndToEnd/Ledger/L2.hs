@@ -20,9 +20,7 @@ import HydraAuction.Delegate.Interface (
   InitializedState (..),
   ResponseReason (..),
  )
-import HydraAuction.Tx.Escrow (
-  bidderBuys,
- )
+import HydraAuction.Tx.Escrow (bidderBuys)
 import HydraAuction.Tx.StandingBid (newBid, sellerSignatureForActor)
 import HydraAuction.Tx.TermsConfig (AuctionTermsConfig (..))
 import HydraAuction.Types (AuctionTerms (..))
@@ -36,7 +34,7 @@ import HydraAuctionUtils.Monads (waitUntil)
 import HydraAuctionUtils.WebSockets.Client (AwaitedOutput (..))
 
 -- Hydra auction test imports
-import EndToEnd.HydraUtils (
+import EndToEnd.Utils.Emulator (
   EmulatorDelegate (..),
   runCompositeForAllDelegates,
   runCompositeForDelegate,
@@ -49,13 +47,16 @@ import EndToEnd.Ledger.L1Steps (
   createTermsWithTestNFT,
  )
 import EndToEnd.Ledger.L2Steps
-import EndToEnd.Utils (assertNFTNumEquals, mkAssertionOfIO)
+import EndToEnd.Utils (
+  assertNFTNumEquals,
+  mkAssertionOfIO,
+ )
 import EndToEnd.Utils qualified as Utils
 
 testSuite :: TestTree
 testSuite =
   testGroup
-    "Ledger-L2"
+    "ledger-l2"
     [ testCase "bidder-buys" bidderBuysTest
     , testCase "multiple-utxos-to-commit" multipleUtxosToCommitTest
     , testCase "early-abort" earlyAbort
@@ -80,7 +81,7 @@ bidderBuysTest = mkAssertionOfIO $ do
     actors@[seller, bidder1, bidder2] <- return [Alice, Bob, Carol]
 
     runL1InEmulator $ mapM_ (initWallet 200_000_000) actors
-    liftIO $ putStrLn "Actors initialized"
+    -- liftIO $ putStrLn "Actors initialized"
 
     -- Init hydra
 

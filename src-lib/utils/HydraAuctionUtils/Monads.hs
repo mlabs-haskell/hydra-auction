@@ -12,7 +12,7 @@ module HydraAuctionUtils.Monads (
   MonadCardanoClient,
   TxStat (..),
   askL1Timeout,
-  logMsg,
+  -- logMsg,
   submitAndAwaitTx,
   fromPlutusAddressInMonad,
   addressAndKeysForActor,
@@ -28,8 +28,13 @@ import HydraAuctionUtils.Prelude
 -- Haskell imports
 
 import Data.Set (Set)
-import Data.Time.Clock (diffUTCTime, getCurrentTime, nominalDiffTimeToSeconds)
+import Data.Time.Clock (
+  -- diffUTCTime,
+  -- getCurrentTime,
+  -- nominalDiffTimeToSeconds
+ )
 import Data.Time.Clock.POSIX qualified as POSIXTime
+import GHC.Word (Word64)
 
 -- Cardano imports
 
@@ -41,13 +46,13 @@ import Hydra.Cardano.Api (
   CardanoMode,
   EraHistory,
   LedgerEra,
-  LedgerProtocolParameters,
+  -- LedgerProtocolParameters,
   Lovelace,
   NetworkId (..),
   NetworkMagic (..),
   PaymentKey,
   PoolId,
-  ProtocolParameters,
+  -- ProtocolParameters,
   ShelleyAddr,
   SigningKey,
   SlotNo (..),
@@ -58,8 +63,8 @@ import Hydra.Cardano.Api (
   TxValidityUpperBound,
   VerificationKey,
   fromPlutusAddress,
-  getTxId,
-  txBody,
+  -- getTxId,
+  -- txBody,
  )
 import Hydra.Chain.Direct.TimeHandle (
   TimeHandle (..),
@@ -141,8 +146,8 @@ instance {-# OVERLAPPABLE #-} (MonadTrace m, MonadTrans t, Monad (t m)) => Monad
   stringToMessage = stringToMessage @m
   traceMessage = lift . traceMessage
 
-logMsg :: forall m. MonadTrace m => String -> m ()
-logMsg = traceMessage . (stringToMessage @m)
+-- logMsg :: forall m. MonadTrace m => String -> m ()
+-- logMsg = traceMessage . (stringToMessage @m)
 
 -- MonadSubmitTx
 
@@ -162,32 +167,32 @@ submitAndAwaitTx ::
   Tx ->
   m (Either SubmitingError ())
 submitAndAwaitTx tx = do
-  before <- liftIO getCurrentTime
-  logMsg $ "Submiting tx with id: " <> show (getTxId $ txBody tx)
-  logMsg " (it might take time if slots on L1 are sloppy)"
+  -- before <- liftIO getCurrentTime
+  -- logMsg $ "Submiting tx with id: " <> show (getTxId $ txBody tx)
+  -- logMsg " (it might take time if slots on L1 are sloppy)"
   result <- submitTx tx
   case result of
     Right () -> do
-      logMsg "Submited"
+      -- logMsg "Submited"
       awaitTx tx
-      after <- liftIO getCurrentTime
-      let passedSecs = nominalDiffTimeToSeconds (diffUTCTime after before)
-      logMsg $
-        "Tx appeard on blockchain in " <> show passedSecs <> " secs"
+      -- after <- liftIO getCurrentTime
+      -- let passedSecs = nominalDiffTimeToSeconds (diffUTCTime after before)
+      -- logMsg $
+      --   "Tx appeard on blockchain in " <> show passedSecs <> " secs"
       return $ Right ()
     -- FIXME: should be handled in CLI
-    Left submitL1Error -> do
-      liftIO $ case submitL1Error of
-        Timeout ->
-          putStrLn
-            "Tx submit timeout. Maybe its validity range got ended."
-        InvalidatedTxIn ->
-          putStrLn $
-            "Tx inputs are not longer valid, another transaction changed them.\n"
-              <> "You may try to submit it again."
-        TooLate -> putStrLn "Tx validity range is ended"
-        NotExpected message ->
-          putStrLn $ "Unknown submitting error: " <> show message
+    Left _submitL1Error -> do
+      -- liftIO $ case submitL1Error of
+      --   Timeout ->
+      --     putStrLn
+      --       "Tx submit timeout. Maybe its validity range got ended."
+      --   InvalidatedTxIn ->
+      --     putStrLn $
+      --       "Tx inputs are not longer valid, another transaction changed them.\n"
+      --         <> "You may try to submit it again."
+      --   TooLate -> putStrLn "Tx validity range is ended"
+      --   NotExpected message ->
+      --     putStrLn $ "Unknown submitting error: " <> show message
       return result
 
 instance {-# OVERLAPPABLE #-} (MonadSubmitTx m, MonadTrans t, Monad (t m)) => MonadSubmitTx (t m) where
@@ -229,7 +234,7 @@ instance
   convertValidityBound = lift . convertValidityBound
   recordTxStat = lift . recordTxStat
 
-queryTimeHandle :: MonadBlockchainParams m => m _
+queryTimeHandle :: MonadBlockchainParams m => m TimeHandle
 queryTimeHandle = do
   MkBlockchainParams {systemStart, eraHistory} <- queryBlockchainParams
   currentTipSlot <- queryCurrentSlot
@@ -242,9 +247,9 @@ toSlotNo ptime = do
     slotFromUTCTime timeHandle $
       posixTimeToUTC ptime
 
-slottyNormalize :: MonadBlockchainParams m => _ -> POSIXTime -> m POSIXTime
+slottyNormalize :: MonadBlockchainParams m => Word64 -> POSIXTime -> m POSIXTime
 slottyNormalize n ptime = do
-  let mapSlot f (SlotNo n) = SlotNo (f n)
+  let mapSlot f (SlotNo n') = SlotNo (f n')
 
   slotNo <- toSlotNo ptime
   timeHandle <- queryTimeHandle

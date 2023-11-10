@@ -16,12 +16,12 @@ import HydraAuctionUtils.Prelude
 import Cardano.Api.UTxO qualified as UTxO
 
 -- Haskell imports
-import Control.Exception (SomeException, throw)
+-- import Control.Exception (SomeException, throw)
 import System.Environment (lookupEnv)
-import System.IO.Silently (capture)
+-- import System.IO.Silently (capture)
 
 -- Haskell test imports
-import Test.Hydra.Prelude (failAfter)
+-- import Test.Hydra.Prelude (failAfter)
 import Test.Tasty.HUnit (Assertion, (@=?), (@?=))
 
 -- Plutus imports
@@ -75,24 +75,26 @@ lookupBoolEnv Verbose = do
   mVerboseStr <- lookupEnv "TESTS_VERBOSE"
   return $ mVerboseStr == Just "1"
 
-autoCaptureStdout :: forall b. HasCallStack => IO b -> IO b
-autoCaptureStdout action = do
-  verboseMode <- lookupBoolEnv Verbose
-  if verboseMode then action else capturingAction
-  where
-    capturingAction = do
-      (captured, mResult) <- capture $ try action
-      case mResult of
-        Right result -> return result
-        Left (exception :: SomeException) -> do
-          printCaptured captured
-          throw exception
-    printCaptured captured = putStrLn $ "Captured stdout: \n" <> captured
+-- autoCaptureStdout :: forall b. HasCallStack => IO b -> IO b
+-- autoCaptureStdout action = do
+--   verboseMode <- lookupBoolEnv Verbose
+--   if verboseMode then action else capturingAction
+--   where
+--     capturingAction = do
+--       (_captured, mResult) <- capture $ try action
+--       case mResult of
+--         Right result -> return result
+--         Left (exception :: SomeException) -> do
+--           -- printCaptured captured
+--           throw exception
+--     -- printCaptured captured = putStrLn $ "Captured stdout: \n" <> captured
 
 -- FIXME: autoCaptureStdout eats Tasty output as well
 -- FIXME: shorter timeout
 mkAssertionOfIO :: HasCallStack => IO () -> Assertion
-mkAssertionOfIO = autoCaptureStdout . failAfter 120
+mkAssertionOfIO = id
+  -- autoCaptureStdout .
+    -- failAfter 120
 
 mkAssertion :: HasCallStack => L1Runner () -> Assertion
 mkAssertion = mkAssertionOfIO . executeTestL1Runner

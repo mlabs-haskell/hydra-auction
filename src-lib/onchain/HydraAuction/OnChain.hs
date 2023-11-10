@@ -25,7 +25,7 @@ import GHC.Stack (HasCallStack)
 
 -- Plutus imports
 
-import PlutusCore.Version (plcVersion100)
+import PlutusCore.Version (Version, plcVersion100)
 import PlutusLedgerApi.Common (SerialisedScript, serialiseCompiledCode)
 import PlutusLedgerApi.V1.Address (Address)
 import PlutusLedgerApi.V1.Value (AssetClass (..))
@@ -91,7 +91,7 @@ getScriptByAddress terms = enumInversion addressByScript
 -- State Tokens
 
 -- Should match version used by Hydra and available on chain
-hydraPlcVersion :: _
+hydraPlcVersion :: Version
 hydraPlcVersion = plcVersion100
 
 policy :: AuctionTerms -> SerialisedScript

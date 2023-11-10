@@ -38,7 +38,7 @@ import HydraAuction.Types (
 import HydraAuctionUtils.L1.Runner (L1Runner)
 import HydraAuctionUtils.Monads (
   fromPlutusAddressInMonad,
-  logMsg,
+  -- logMsg,
  )
 import HydraAuctionUtils.Monads.Actors (
   WithActorT,
@@ -56,7 +56,7 @@ import HydraAuctionUtils.Tx.Common (selectAdaUtxo)
 
 distributeFee :: AuctionTerms -> WithActorT L1Runner ()
 distributeFee terms = do
-  logMsg "Distributing fees to delegates"
+  -- logMsg "Distributing fees to delegates"
 
   (actorAddress, _, actorSk) <- addressAndKeys
 

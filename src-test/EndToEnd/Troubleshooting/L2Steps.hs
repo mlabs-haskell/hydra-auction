@@ -1,4 +1,4 @@
-module EndToEnd.Ledger.L2Steps (
+module EndToEnd.Troubleshooting.L2Steps (
   checkResponsesForBidTerms,
   delegateStepOnExpectedHydraEvent,
   emulateDelegatesStart,

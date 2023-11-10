@@ -6,7 +6,7 @@ import PlutusTx.Prelude ((*), (+))
 
 -- Haskell test imports
 import Test.Tasty (TestTree, testGroup)
-import Test.Tasty.HUnit (Assertion, assert, testCase)
+import Test.Tasty.HUnit (Assertion, assertBool, testCase)
 
 -- TODO
 
@@ -39,7 +39,11 @@ import HydraAuctionUtils.L1.Runner (
   L1Runner,
   withActor,
  )
-import HydraAuctionUtils.Monads (slottyNormalize, toSlotNo, waitUntil)
+import HydraAuctionUtils.Monads (
+  slottyNormalize,
+  -- toSlotNo,
+  waitUntil
+ )
 import HydraAuctionUtils.Tx.Build (minLovelace)
 
 -- Hydra auction test imports
@@ -64,7 +68,7 @@ import EndToEnd.Utils (
 testSuite :: TestTree
 testSuite =
   testGroup
-    "Ledger - BidDeposit"
+    "ledger-bid-deposit"
     [ testCase "test-slots" testSlots
     , testCase "losing-bidder" losingBidderClaimDepositTest
     , testCase "losing-bidder-double-claim" losingBidderDoubleClaimTest
@@ -95,18 +99,22 @@ testSlots = mkAssertion $ do
 
   let
     posixForTick i = POSIXTime $ startTime + tick * i
-    (from, to) = (posixForTick 2, posixForTick 6)
-    exampleInterval = rightExclusiveInterval from to
+    (from1, to1) = (posixForTick 2, posixForTick 6)
+    exampleInterval = rightExclusiveInterval from1 to1
 
-  from' <- slottyNormalize 0 from
-  from'' <- slottyNormalize 1 from
-  to' <- slottyNormalize 0 to
+  from2 <- slottyNormalize 0 from1
+  from3 <- slottyNormalize 1 from1
+  to2 <- slottyNormalize 0 to1
 
-  let translated = rightExclusiveInterval from' to'
-  let translatedFixed = rightExclusiveInterval from'' to'
+  let translated = rightExclusiveInterval from2 to2
+  let translatedFixed = rightExclusiveInterval from3 to2
 
-  liftIO $ assert $ not $ exampleInterval `contains` translated
-  liftIO $ assert $ exampleInterval `contains` translatedFixed
+  liftIO
+    $ assertBool "example interval shouldn't contain translated interval"
+    $ not $ exampleInterval `contains` translated
+  liftIO
+    $ assertBool "example interval shouldn't contain fixed translated interval"
+    $ exampleInterval `contains` translatedFixed
   where
     slotTime = 100
     tick = slotTime `div` 4

@@ -35,7 +35,7 @@ import Hydra.API.HTTPServer (
   TxOutWithWitness (..),
  )
 import Hydra.Cardano.Api (
-  CtxTx,
+  -- CtxTx,
   CtxUTxO,
   Key (..),
   Lovelace (..),
@@ -52,7 +52,7 @@ import Hydra.Cardano.Api (
   toScriptData,
   txExtraKeyWits,
   txIns,
-  txOutScriptData,
+  -- txOutScriptData,
   txOuts,
   verificationKeyHash,
   pattern ReferenceScriptNone,
@@ -99,7 +99,7 @@ import HydraAuction.Types (
  )
 import HydraAuctionUtils.Fixture (Actor (..), actorFromPkh, getActorPubKeyHash, keysFor)
 import HydraAuctionUtils.Hydra.Monad (MonadHydra (..))
-import HydraAuctionUtils.Hydra.Runner (runL1RunnerInComposite)
+-- import HydraAuctionUtils.Hydra.Runner (runL1RunnerInComposite)
 import HydraAuctionUtils.L1.Runner (L1Runner)
 import HydraAuctionUtils.Monads (
   MonadCardanoClient,
@@ -107,7 +107,7 @@ import HydraAuctionUtils.Monads (
   MonadQueryUtxo (..),
   MonadTrace,
   addressAndKeysForActor,
-  logMsg,
+  -- logMsg,
   submitAndAwaitTx,
  )
 import HydraAuctionUtils.Tx.AutoCreateTx (
@@ -120,7 +120,10 @@ import HydraAuctionUtils.Tx.Build (
   mkInlineDatum,
   mkInlinedDatumScriptWitness,
  )
-import HydraAuctionUtils.Tx.Common (actorAdaOnlyUtxo, createMinAdaUtxo, selectAdaUtxo)
+import HydraAuctionUtils.Tx.Common (
+  createMinAdaUtxo,
+  selectAdaUtxo,
+ )
 import HydraAuctionUtils.Types.Natural (Natural, naturalToInt)
 
 queryStandingBidDatum ::
@@ -196,7 +199,7 @@ createNewBidTx ::
   m Tx
 createNewBidTx terms actor standingBidSingleUtxo submitterMoneyUtxo bidDatum = do
   -- Actor is not neccesary bidder, on L2 it may be commiter
-  logMsg "Creating new bid transaction"
+  -- logMsg "Creating new bid transaction"
 
   (submitterAddress, _, submitterSk) <- addressAndKeysForActor actor
 
@@ -319,7 +322,7 @@ moveToHydraTx _ terms (standingBidTxIn, standingBidTxOut) = do
 
 cleanupTx :: AuctionTerms -> WithActorT L1Runner ()
 cleanupTx terms = do
-  logMsg "Doing standing bid cleanup"
+  -- logMsg "Doing standing bid cleanup"
 
   (actorAddress, _, actorSk) <- addressAndKeys
 

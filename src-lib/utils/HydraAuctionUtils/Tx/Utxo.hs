@@ -14,7 +14,7 @@ import PlutusTx.Prelude (emptyByteString)
 
 -- Haskell imports
 import Data.List (sort)
-import Data.Map qualified as Map
+-- import Data.Map qualified as Map
 
 -- Plutus imports
 
@@ -35,7 +35,7 @@ import Hydra.Cardano.Api (
   CtxUTxO,
   TxOut,
   UTxO,
-  UTxO' (UTxO),
+  -- UTxO' (UTxO),
   getScriptData,
   toPlutusData,
   toPlutusTxOut,

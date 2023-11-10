@@ -11,7 +11,7 @@ import HydraAuctionUtils.Prelude
 -- Haskell imports
 
 import Control.Monad.TimeMachine (MonadTime (getCurrentTime))
-import Data.Time (UTCTime, picosecondsToDiffTime)
+import Data.Time (UTCTime)
 import Data.Time.Clock.POSIX (posixSecondsToUTCTime)
 import Data.Time.Clock.POSIX qualified as POSIXTime
 

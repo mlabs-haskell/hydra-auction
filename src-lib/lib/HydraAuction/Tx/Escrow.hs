@@ -72,7 +72,7 @@ import HydraAuctionUtils.Monads (
   MonadQueryUtxo (queryUtxo),
   UtxoQuery (ByTxIns),
   fromPlutusAddressInMonad,
-  logMsg,
+  -- logMsg,
  )
 import HydraAuctionUtils.Monads.Actors (
   WithActorT,
@@ -96,7 +96,7 @@ import HydraAuctionUtils.Types.Natural (naturalToInt)
 
 announceAuction :: HasCallStack => AuctionTerms -> WithActorT L1Runner ()
 announceAuction terms = do
-  logMsg "Doing announce auction"
+  -- logMsg "Doing announce auction"
 
   escrowAddress <- scriptAddress Escrow terms
 
@@ -141,7 +141,7 @@ announceAuction terms = do
 
 startBidding :: HasCallStack => AuctionTerms -> WithActorT L1Runner ()
 startBidding terms = do
-  logMsg "Doing start bidding"
+  -- logMsg "Doing start bidding"
 
   let escrowScript = scriptPlutusScript Escrow terms
 
@@ -257,7 +257,7 @@ bidderBuys terms = do
         where
           script = scriptPlutusScript Escrow terms
 
-  logMsg "Doing Bidder Buy"
+  -- logMsg "Doing Bidder Buy"
 
   (bidderAddress, bidderVk, bidderSk) <- addressAndKeys
 
@@ -331,7 +331,7 @@ sellerReclaims terms = do
         where
           value = lovelaceToValue $ Lovelace $ calculateTotalFee terms
 
-  logMsg "Doing Seller reclaims"
+  -- logMsg "Doing Seller reclaims"
 
   (sellerAddress, _, sellerSk) <- addressAndKeys
 
