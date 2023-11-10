@@ -17,11 +17,11 @@ import Test.Tasty.HUnit (assertBool, assertEqual)
 
 -- Hydra imports
 
+import Hydra.API.ClientInput (ClientInput (..))
 import Hydra.API.ServerOutput (ServerOutput (..))
 import Hydra.Chain (HeadId)
 
 -- HydraAuction imports
-
 import HydraAuction.Delegate (
   DelegateEvent (..),
   delegateEventStep,
@@ -56,6 +56,7 @@ import HydraAuctionUtils.Fixture (Actor, keysFor)
 import HydraAuctionUtils.Hydra.Interface (HydraEvent, HydraEventKind (..))
 import HydraAuctionUtils.Hydra.Monad (
   AwaitedHydraEvent,
+  MonadHydra (..),
   waitForHydraEvent,
   waitForHydraEvent',
  )
@@ -212,6 +213,9 @@ emulateClosing headId terms = do
       delegateStepOnExpectedHydraEvent
         (SpecificKind ReadyToFanoutKind)
         []
+
+  runCompositeForDelegate Main $ lift $ sendCommand Fanout
+
   _ <-
     runCompositeForAllDelegates $
       delegateStepOnExpectedHydraEvent
