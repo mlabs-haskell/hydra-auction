@@ -51,7 +51,10 @@ import HydraAuction.Types (
   standingBid,
   standingBidState,
  )
-import HydraAuctionUtils.Composite.Runner (CompositeRunner, runL1RunnerInComposite)
+import HydraAuctionUtils.Composite.Runner (
+  CompositeRunner,
+  -- runL1RunnerInComposite,
+ )
 import HydraAuctionUtils.Fixture (Actor, keysFor)
 import HydraAuctionUtils.Hydra.Interface (HydraEvent, HydraEventKind (..))
 import HydraAuctionUtils.Hydra.Monad (

@@ -3,11 +3,11 @@ module EndToEnd.Troubleshooting.L2 (testSuite) where
 -- Prelude import
 import HydraAuctionUtils.Prelude
 
-import HydraAuctionUtils.Prelude (threadDelay)
+-- import HydraAuctionUtils.Prelude (threadDelay)
 
 -- Haskell imports
 
-import Data.Map qualified as Map
+-- import Data.Map qualified as Map
 
 -- Haskell test imports
 import Test.Tasty (TestTree, testGroup)
@@ -15,33 +15,37 @@ import Test.Tasty.HUnit (Assertion, testCase)
 
 -- Hydra auction imports
 
-import HydraAuction.Delegate.Interface (
-  AbortReason (..),
-  DelegateResponse (..),
-  DelegateState (..),
-  InitializedState (..),
-  ResponseReason (..),
- )
-import HydraAuction.Tx.Escrow (
-  bidderBuys,
- )
+-- import HydraAuction.Delegate.Interface (
+--   AbortReason (..),
+--   DelegateResponse (..),
+--   DelegateState (..),
+--   InitializedState (..),
+--   ResponseReason (..),
+--  )
+-- import HydraAuction.Tx.Escrow (
+--   bidderBuys,
+--  )
 import HydraAuction.Tx.StandingBid (newBid, sellerSignatureForActor)
 import HydraAuction.Tx.TermsConfig (AuctionTermsConfig (..))
 import HydraAuction.Types (AuctionTerms (..))
-import HydraAuctionUtils.Delegate.Logic (abort)
-import HydraAuctionUtils.Fixture (Actor (..), ActorKind (..), actorsByKind)
+-- import HydraAuctionUtils.Delegate.Logic (abort)
+import HydraAuctionUtils.Fixture (
+  Actor (..),
+  -- ActorKind (..),
+  -- actorsByKind,
+ )
 import HydraAuctionUtils.L1.Runner (
   initWallet,
   withActor,
  )
 import HydraAuctionUtils.Monads (waitUntil)
-import HydraAuctionUtils.WebSockets.Client (AwaitedOutput (..))
+-- import HydraAuctionUtils.WebSockets.Client (AwaitedOutput (..))
 
 -- Hydra auction test imports
 import EndToEnd.HydraUtils (
-  EmulatorDelegate (..),
-  runCompositeForAllDelegates,
-  runCompositeForDelegate,
+  -- EmulatorDelegate (..),
+  -- runCompositeForAllDelegates,
+  -- runCompositeForDelegate,
   runEmulatorInTest,
   runL1InEmulator,
  )
@@ -51,7 +55,10 @@ import EndToEnd.Ledger.L1Steps (
   createTermsWithTestNFT,
  )
 import EndToEnd.Ledger.L2Steps
-import EndToEnd.Utils (assertNFTNumEquals, mkAssertionOfIO)
+import EndToEnd.Utils (
+  -- assertNFTNumEquals,
+  mkAssertionOfIO,
+ )
 import EndToEnd.Utils qualified as Utils
 
 testSuite :: TestTree
@@ -76,7 +83,7 @@ bidderBuysTest :: HasCallStack => Assertion
 bidderBuysTest = mkAssertionOfIO $ do
   runEmulatorInTest $ do
     -- Prepare Frontend CLI actors
-    actors@[seller, bidder1, bidder2] <- return [Alice, Bob, Carol]
+    actors@[seller, bidder1, _bidder2] <- return [Alice, Bob, Carol]
 
     runL1InEmulator $ mapM_ (initWallet 200_000_000) actors
     -- liftIO $ putStrLn "Actors initialized"

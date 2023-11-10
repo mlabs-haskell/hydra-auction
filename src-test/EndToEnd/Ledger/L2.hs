@@ -20,9 +20,7 @@ import HydraAuction.Delegate.Interface (
   InitializedState (..),
   ResponseReason (..),
  )
-import HydraAuction.Tx.Escrow (
-  bidderBuys,
- )
+import HydraAuction.Tx.Escrow (bidderBuys)
 import HydraAuction.Tx.StandingBid (newBid, sellerSignatureForActor)
 import HydraAuction.Tx.TermsConfig (AuctionTermsConfig (..))
 import HydraAuction.Types (AuctionTerms (..))
@@ -49,7 +47,10 @@ import EndToEnd.Ledger.L1Steps (
   createTermsWithTestNFT,
  )
 import EndToEnd.Ledger.L2Steps
-import EndToEnd.Utils (assertNFTNumEquals, mkAssertionOfIO)
+import EndToEnd.Utils (
+  assertNFTNumEquals,
+  mkAssertionOfIO,
+ )
 import EndToEnd.Utils qualified as Utils
 
 testSuite :: TestTree
