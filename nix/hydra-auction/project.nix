@@ -29,9 +29,30 @@ let
   };
 
   hsPkgs = pkgs.haskell-nix.project {
-    src = pkgs.haskell-nix.haskellLib.cleanGit {
+    src = pkgs.haskell-nix.haskellLib.cleanSourceWith {
       name = "hydra-auction";
       src = ./../..;
+      filter = path: type:
+        # Blacklist of paths which do not affect the haskell build. The smaller
+        # the resulting list of files is, the less likely we have redundant
+        # rebuilds.
+        builtins.all (x: baseNameOf path != x) [
+          ".envrc"
+          ".direnv"
+          "flake.nix"
+          "flake.lock"
+          "nix"
+          ".github"
+          "demo"
+          "docs"
+          "sample-node-config"
+          "spec"
+          "testnets"
+          "dist"
+          "dist-newstyle"
+          "node-state"
+          "auction-state"
+        ];
     };
     projectFileName = "cabal.project";
     compiler-nix-name = compiler;
@@ -39,14 +60,14 @@ let
     inputMap = { "https://input-output-hk.github.io/cardano-haskell-packages" = CHaP; };
 
     modules = [
-      # Strip debugging symbols from exes (smaller closures)
-      {
-        packages.hydra-auction.dontStrip = false;
-      }
-      # Avoid plutus-tx errors in haddock (see also cabal.project)
-      {
-        packages.hydra-auction.setupHaddockFlags = [ "--ghc-options='-fplugin-opt PlutusTx.Plugin:defer-errors'" ];
-      }
+      # # Strip debugging symbols from exes (smaller closures)
+      # {
+      #   packages.hydra-auction.dontStrip = false;
+      # }
+      # # Avoid plutus-tx errors in haddock (see also cabal.project)
+      # {
+      #   packages.hydra-plutus-auction.setupHaddockFlags = [ "--ghc-options='-fplugin-opt PlutusTx.Plugin:defer-errors'" ];
+      # }
       # Fix compliation of strict-containers (see also cabal.project)
       {
         packages.strict-containers.ghcOptions = [ "-Wno-noncanonical-monad-instances" ];

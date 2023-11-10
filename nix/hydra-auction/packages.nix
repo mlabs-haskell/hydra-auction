@@ -37,14 +37,10 @@ let
     '';
 in
 rec {
-  hydra-auction = myComponents.exes.hydra-auction;
 
-  hydra-auction-delegate = myComponents.exes.hydra-auction-delegate;
-  
-  hydra-auction-platform = myComponents.exes.hydra-auction-platform;
-
-  tests = {
-    hydra-auction = wrapTest myComponents.tests.hydra-auction-test;
-  };
+  # tests = {
+  #   hydra-auction-plutus =
+  #     wrapTest nativePkgs.hydra-auction-plutus.components.tests.tests;
+  # };
 
 }

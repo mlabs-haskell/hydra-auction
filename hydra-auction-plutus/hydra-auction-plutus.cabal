@@ -1,0 +1,112 @@
+cabal-version: 3.0
+name:          hydra-auction-plutus
+version:       0.1.0
+synopsis:      Hydra Auction Plutus Contracts
+homepage:      https://github.com/mlabs-haskell/hydra-auction
+author:        MLabs
+maintainer:    info@mlabs.city
+license:       Apache-2.0
+license-files:
+  LICENSE
+  NOTICE
+
+source-repository head
+  type:     git
+  location: https://github.com/mlabs-haskell/hydra-auction
+
+flag dev
+  description:
+    Defer errors from the PlutusTx plugin, which break HLS and Haddock. Also disable -Werror.
+
+  default:     True
+  manual:      False
+
+common common-config
+  default-language:   Haskell2010
+
+  -- Options from MLabs styleguide
+  default-extensions:
+    NoImplicitPrelude
+    BangPatterns
+    BinaryLiterals
+    ConstraintKinds
+    DataKinds
+    DeriveAnyClass
+    DeriveFunctor
+    DeriveGeneric
+    DeriveTraversable
+    DerivingStrategies
+    DerivingVia
+    DuplicateRecordFields
+    EmptyCase
+    FlexibleContexts
+    FlexibleInstances
+    FunctionalDependencies
+    GADTs
+    GeneralizedNewtypeDeriving
+    HexFloatLiterals
+    ImportQualifiedPost
+    InstanceSigs
+    KindSignatures
+    LambdaCase
+    MultiParamTypeClasses
+    NamedFieldPuns
+    NumericUnderscores
+    OverloadedStrings
+    PatternSynonyms
+    QuantifiedConstraints
+    RankNTypes
+    ScopedTypeVariables
+    StandaloneDeriving
+    StrictData
+    TemplateHaskell
+    TupleSections
+    TypeApplications
+    TypeFamilies
+    TypeFamilyDependencies
+    TypeOperators
+    TypeSynonymInstances
+    UndecidableInstances
+
+  ghc-options:
+    -Wall -Wcompat -Wincomplete-record-updates
+    -Wincomplete-uni-patterns -Wredundant-constraints
+    -Wmissing-export-lists -Wmissing-deriving-strategies
+    -Wno-redundant-constraints
+
+  if !flag(dev)
+    ghc-options: -Werror
+
+  if flag(dev)
+    default-extensions: PartialTypeSignatures
+
+library
+  import:          common-config
+  hs-source-dirs:  src
+  exposed-modules:
+    Auction
+
+  build-depends:
+    , aeson
+    , base
+    , base16-bytestring
+    , lens
+    , lens-aeson
+    , mtl
+    , plutus-core
+    , plutus-ledger-api
+    , plutus-tx
+    , plutus-tx-plugin
+    , record-dot-preprocessor
+    , record-hasfield
+    , transformers
+
+  ghc-options:
+    -fplugin-opt PlutusTx.Plugin:target-version=1.0.0 -fobject-code
+    -fno-ignore-interface-pragmas -fno-omit-interface-pragmas
+    -fno-specialize -fno-unbox-small-strict-fields
+    -fno-unbox-strict-fields
+
+  if flag(dev)
+    ghc-options: -fplugin-opt PlutusTx.Plugin:defer-errors
+
