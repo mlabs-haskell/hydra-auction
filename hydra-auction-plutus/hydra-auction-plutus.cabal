@@ -78,6 +78,8 @@ common common-config
     ghc-options: -Werror
 
   if flag(dev)
+    ghc-options:
+      -Wno-missing-export-lists
     default-extensions: PartialTypeSignatures
 
 library
