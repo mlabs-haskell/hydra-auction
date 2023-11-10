@@ -45,9 +45,7 @@
         packages =
           { default = myPackages.hydra-auction; } //
           myPackages //
-          prefixAttrs "docker-" myImages // {
-            spec = import ./spec { inherit pkgs; };
-          };
+          prefixAttrs "docker-" myImages;
 
         devShells = (import ./nix/hydra-auction/shell.nix {
           inherit (inputs) cardano-node hydra;
@@ -60,11 +58,6 @@
           }).default;
         };
 
-        # Build selected derivations in CI for caching
-        hydraJobs = {
-          packages = { inherit (packages) hydra-auction; };
-          devShells = { inherit (devShells) default ci; };
-        };
       });
 
   nixConfig = {
