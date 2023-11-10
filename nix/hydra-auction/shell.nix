@@ -99,47 +99,7 @@ let
     '';
   };
 
-  # A "cabal-only" shell which does not use haskell.nix
-  cabalShell = pkgs.mkShell {
-    name = "hydra-auction-cabal-shell";
-
-    buildInputs = libs ++ [
-      pkgs.haskell-nix.compiler.${compiler}
-      pkgs.cabal-install
-      pkgs.pkgconfig
-    ] ++ buildInputs ++ devInputs;
-
-    # Ensure that libz.so and other libraries are available to TH splices.
-    LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath libs;
-
-    # Force a UTF-8 locale because many Haskell programs and tests
-    # assume this.
-    LANG = "en_US.UTF-8";
-
-    # Make the shell suitable for the stack nix integration
-    # <nixpkgs/pkgs/development/haskell-modules/generic-stack-builder.nix>
-    GIT_SSL_CAINFO = "${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt";
-    STACK_IN_NIX_SHELL = "true";
-  };
-
-  # A shell which does provide the hydra-auction executables.
-  exeShell = pkgs.mkShell {
-    name = "hydra-auction-exe-shell";
-
-    buildInputs = [
-      hsPkgs.hydra-auction.components.exes.hydra-auction
-      hsPkgs.hydra-auction.components.exes.hydra-auction-delegate
-      hsPkgs.hydra-auction.components.exes.hydra-auction-platform
-    ] ++ pkgs.lib.optionals (!pkgs.stdenv.isDarwin) [
-      cardano-node.packages.${system}.cardano-node
-      cardano-node.packages.${system}.cardano-cli
-      hydra.packages.${system}.hydra-node
-    ];
-  };
-
 in
 {
   default = haskellNixShell;
-  cabalOnly = cabalShell;
-  exes = exeShell;
 }
