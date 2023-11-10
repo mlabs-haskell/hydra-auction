@@ -1,9 +1,0 @@
-services:
-    cardano-node-testnet:
-        image: ${CARDANO_IMAGE}
-        volumes:
-          - ./testnet/db:/data/db
-          - ./testnet:/ipc
-        environment:
-          - NETWORK=preprod
-          - CARDANO_NODE_SOCKET_PATH=/ipc/node.socket # used by cardano-cli
