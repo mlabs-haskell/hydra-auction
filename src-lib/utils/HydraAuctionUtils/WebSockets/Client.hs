@@ -57,7 +57,7 @@ waitForMatchingOutputH ::
 waitForMatchingOutputH client awaitedSpec = do
   -- FIXME: log awaiting and getting
   mOutput <- receiveOutputH client
-  -- putStrLn $ "Seen output while awaiting: " <> show mOutput
+  putStrLn $ "Seen output while awaiting: " <> show mOutput
   case mOutput of
     Just output
       | matchingPredicate output ->

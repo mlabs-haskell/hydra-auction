@@ -150,7 +150,7 @@ instance MonadHydra HydraRunner where
   sendCommand :: HydraCommand -> HydraRunner ()
   sendCommand command = do
     MkHydraExecutionContext {node} <- ask
-    traceMessage $ SendCommand command
+    -- traceMessage $ SendCommand command
     liftIO $ sendInputH node command
 
   createCommitTx request = do
@@ -168,8 +168,10 @@ instance MonadHydra HydraRunner where
         timeout timeoutMicroseconds $
           waitForMatchingOutputH node awaitedSpec
     case mResult of
-      Just result -> traceMessage $ AwaitedHydraEvent result
-      Nothing -> return ()
+      Just result ->
+        traceMessage $ AwaitedHydraEvent result
+      Nothing ->
+        return ()
     return mResult
     where
       timeoutMicroseconds =
