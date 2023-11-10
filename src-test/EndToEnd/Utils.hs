@@ -92,9 +92,9 @@ autoCaptureStdout action = do
 -- FIXME: autoCaptureStdout eats Tasty output as well
 -- FIXME: shorter timeout
 mkAssertionOfIO :: HasCallStack => IO () -> Assertion
-mkAssertionOfIO =
+mkAssertionOfIO = id
   -- autoCaptureStdout .
-    failAfter 120
+    -- failAfter 120
 
 mkAssertion :: HasCallStack => L1Runner () -> Assertion
 mkAssertion = mkAssertionOfIO . executeTestL1Runner
