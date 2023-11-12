@@ -79,6 +79,7 @@ common common-config
 
   if flag(dev)
     ghc-options:
+      -Wno-unused-imports
       -Wno-missing-export-lists
     default-extensions: PartialTypeSignatures
 
