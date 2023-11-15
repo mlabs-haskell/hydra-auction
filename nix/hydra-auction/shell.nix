@@ -51,7 +51,7 @@ let
 
   devInputs = if withoutDevTools then [ ] else [
     # Essenetial for a good IDE
-    # haskell-language-server
+    pkgs.haskellPackages.haskell-language-server
     # Automagically format .hs and .cabal files
     pkgs.haskellPackages.fourmolu
     pkgs.haskellPackages.cabal-fmt
