@@ -1,4 +1,4 @@
-module Auction.Offchain.Terms (
+module Auction.Offchain.Types.AuctionTerms (
   AuctionTerms (..),
   validateAuctionTerms,
 ) where

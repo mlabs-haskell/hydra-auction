@@ -90,7 +90,7 @@ library
     Auction.Onchain.FeeEscrow
     Auction.Onchain.StandingBid
     Auction.Onchain.VoucherToken
-    Auction.Onchain.Terms
+    Auction.Onchain.Types.AuctionTerms
 
   build-depends:
     , aeson

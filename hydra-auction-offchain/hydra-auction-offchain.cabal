@@ -86,7 +86,7 @@ library
   hs-source-dirs:  src
   exposed-modules:
     Auction.Offchain.Lib.Crypto
-    Auction.Offchain.Terms
+    Auction.Offchain.Types.AuctionTerms
 
   build-depends:
     , aeson
