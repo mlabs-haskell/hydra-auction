@@ -12,12 +12,12 @@ import GHC.Generics (Generic)
 
 import Cardano.Api.Shelley (
   AssetId (..),
-  Key (verificationKeyHash),
   Lovelace (..),
  )
 
 import HydraAuctionOffchain.Lib.Crypto (
   Hash,
+  Key (verificationKeyHash),
   PaymentKey,
   VerificationKey,
  )
