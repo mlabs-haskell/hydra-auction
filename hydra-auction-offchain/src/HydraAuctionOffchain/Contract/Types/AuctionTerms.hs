@@ -1,4 +1,4 @@
-module Auction.Offchain.Types.AuctionTerms (
+module HydraAuctionOffchain.Contract.Types.AuctionTerms (
   AuctionTerms (..),
   validateAuctionTerms,
 ) where
@@ -16,7 +16,7 @@ import Cardano.Api.Shelley (
   Lovelace (..),
  )
 
-import Auction.Offchain.Lib.Crypto (
+import HydraAuctionOffchain.Lib.Crypto (
   Hash,
   PaymentKey,
   VerificationKey,

@@ -1,4 +1,4 @@
-module Auction.Offchain.Lib.Crypto (
+module HydraAuctionOffchain.Lib.Crypto (
   Address (..),
   Hash (..),
   Key (..),

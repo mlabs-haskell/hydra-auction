@@ -85,8 +85,8 @@ library
   import:          common-config
   hs-source-dirs:  src
   exposed-modules:
-    Auction.Offchain.Lib.Crypto
-    Auction.Offchain.Types.AuctionTerms
+    HydraAuctionOffchain.Lib.Crypto
+    HydraAuctionOffchain.Contract.Types.AuctionTerms
 
   build-depends:
     , aeson
