@@ -38,8 +38,11 @@ let
 in
 rec {
 
-  hydra-auction-plutus =
-    nativePkgs.hydra-auction-plutus.components.library;
+  hydra-auction-offchain =
+    nativePkgs.hydra-auction-offchain.components.library;
+
+  hydra-auction-onchain =
+    nativePkgs.hydra-auction-onchain.components.library;
 
   # tests = {
   #   hydra-auction-plutus =

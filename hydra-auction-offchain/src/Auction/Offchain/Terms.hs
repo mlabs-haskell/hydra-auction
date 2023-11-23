@@ -1,56 +1,55 @@
-module Auction.Terms where
+module Auction.Offchain.Terms where
 
--- Prelude imports
-import PlutusTx.Prelude
-import Prelude qualified as Haskell
+import Prelude
 
--- Haskell
+import Data.Time.Clock (UTCTime)
 import GHC.Generics (Generic)
 
--- Plutus imports
-import PlutusLedgerApi.V1.Crypto (PubKeyHash)
-import PlutusLedgerApi.V1.Time (POSIXTime (..))
-import PlutusLedgerApi.V1.Value (AssetClass, CurrencySymbol)
-import PlutusLedgerApi.V2.Contexts (TxOutRef)
-import PlutusTx qualified
+import Cardano.Api.Shelley (
+  AssetId (..),
+  Hash (..),
+  Key (..),
+  Lovelace (..),
+  PaymentKey,
+ )
 
 data AuctionTerms = AuctionTerms
-  { at'AuctionLot :: AssetClass
+  { at'AuctionLot :: AssetId
   -- ^ NFT being sold in the auction.
-  , at'SellerPKH :: PubKeyHash
+  , at'SellerPKH :: Hash PaymentKey
   -- ^ Seller's pubkey hash, which will receive
   -- the proceeds of the auction (minus fees)
   -- if the auction lot is purchased,
   -- or reclaim the auction lot if it isn't.
-  , at'SellerVK :: BuiltinByteString
+  , at'SellerVK :: VerificationKey PaymentKey
   -- ^ Seller's verification key, used to control
   -- which bidders receive authorization to participate in the auction.
-  , at'Delegates :: [PubKeyHash]
+  , at'Delegates :: [Hash PaymentKey]
   -- ^ Group of delegates authorized to run the L2 bidding process.
-  , at'BiddingStart :: POSIXTime
+  , at'BiddingStart :: UTCTime
   -- ^ Start time of the bidding period.
-  , at'BiddingEnd :: POSIXTime
+  , at'BiddingEnd :: UTCTime
   -- ^ End time of the bidding period.
-  , at'PurchaseDeadline :: POSIXTime
+  , at'PurchaseDeadline :: UTCTime
   -- ^ Time by which the winning bidder can buy the auction lot.
   -- At and after this time, the winning bidder forfeits its bidder deposit
   -- if the auction lot has not been purchased.
-  , at'Cleanup :: POSIXTime
+  , at'Cleanup :: UTCTime
   -- ^ Time at and after  which the remaining utxos in the auction
   -- can be unconditionally cleaned up, returning all tokens
   -- in those utxos to their original owners before the auction.
-  , at'AuctionFeePerDelegate :: Integer
+  , at'AuctionFeePerDelegate :: Lovelace
   -- ^ Fee portion that each delegate will receieve from
   -- the proceeds of the auction, whether the auction lot
   -- is purchased by a bidder or reclaimed by the seller.
-  , at'StartingBid :: Integer
+  , at'StartingBid :: Lovelace
   -- ^ Bids cannot be lower than this number.
-  , at'MinBidIncrement :: Integer
+  , at'MinBidIncrement :: Lovelace
   -- ^ New bids can only supersede the standing bid if they exceed it
   -- by this increment.
-  , at'MinDepositAmount :: Integer
+  , at'MinDepositAmount :: Lovelace
   -- ^ Minimal amount of ADA that the seller requests
   -- each bidder to place as a bidder deposit for the auction.
   -- This is only enforced off-chain at the seller's discretion.
   }
-  deriving stock (Generic, Haskell.Eq, Haskell.Show)
+  deriving stock (Generic, Eq, Show)
