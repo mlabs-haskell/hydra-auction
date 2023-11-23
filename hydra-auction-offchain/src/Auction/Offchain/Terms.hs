@@ -1,14 +1,18 @@
 module Auction.Offchain.Terms (
   AuctionTerms (..),
+  validateAuctionTerms,
 ) where
 
 import Prelude
 
+import Data.Foldable (fold)
 import Data.Time.Clock (UTCTime)
+import Data.Validation
 import GHC.Generics (Generic)
 
 import Cardano.Api.Shelley (
   AssetId (..),
+  Key (verificationKeyHash),
   Lovelace (..),
  )
 
@@ -58,3 +62,53 @@ data AuctionTerms = AuctionTerms
   -- This is only enforced off-chain at the seller's discretion.
   }
   deriving stock (Generic, Eq, Show)
+
+-- -------------------------------------------------------------------------
+-- Validation
+-- -------------------------------------------------------------------------
+
+data AuctionTermsValidationError
+  = NonPositiveAuctionLotValueError
+  | SellerVkPkhMismatchError
+  | BiddingStartNotBeforeBiddingEndError
+  | BiddingEndNotBeforePurchaseDeadlineError
+  | PurchaseDeadlineNotBeforeCleanupError
+  | NonPositiveMinBidIncrementError
+  | InvalidStartingBidError
+  | InvalidAuctionFeePerDelegateError
+  | NoDelegatesError
+  deriving stock (Generic, Eq, Show)
+
+validateAuctionTerms ::
+  AuctionTerms ->
+  Validation [AuctionTermsValidationError] ()
+validateAuctionTerms aTerms@AuctionTerms {..} =
+  fold
+    [ True --
+        `err` NonPositiveAuctionLotValueError
+    , (at'SellerPKH == verificationKeyHash at'SellerVK)
+        `err` SellerVkPkhMismatchError
+    , (at'BiddingStart < at'BiddingEnd)
+        `err` BiddingStartNotBeforeBiddingEndError
+    , (at'PurchaseDeadline < at'Cleanup)
+        `err` PurchaseDeadlineNotBeforeCleanupError
+    , (at'MinBidIncrement > Lovelace 0)
+        `err` NonPositiveMinBidIncrementError
+    , (at'StartingBid > totalAuctionFees aTerms)
+        `err` InvalidStartingBidError
+    , (at'AuctionFeePerDelegate > minAuctionFee)
+        `err` InvalidAuctionFeePerDelegateError
+    , (length at'Delegates > 0)
+        `err` NoDelegatesError
+    ]
+  where
+    err x e = if x then Success () else Failure [e]
+
+minAuctionFee :: Lovelace
+minAuctionFee = Lovelace 2_500_00
+
+totalAuctionFees :: AuctionTerms -> Lovelace
+totalAuctionFees AuctionTerms {..}
+  | Lovelace x <- at'AuctionFeePerDelegate =
+      Lovelace $
+        x * fromIntegral (length at'Delegates)
