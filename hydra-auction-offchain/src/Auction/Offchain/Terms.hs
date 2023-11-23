@@ -1,4 +1,6 @@
-module Auction.Offchain.Terms where
+module Auction.Offchain.Terms (
+  AuctionTerms (..),
+) where
 
 import Prelude
 
@@ -7,10 +9,13 @@ import GHC.Generics (Generic)
 
 import Cardano.Api.Shelley (
   AssetId (..),
-  Hash (..),
-  Key (..),
   Lovelace (..),
+ )
+
+import Auction.Offchain.Lib.Crypto (
+  Hash,
   PaymentKey,
+  VerificationKey,
  )
 
 data AuctionTerms = AuctionTerms
