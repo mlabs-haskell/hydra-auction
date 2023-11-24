@@ -25,12 +25,12 @@ import HydraAuctionOffchain.Lib.Crypto (
 data AuctionTerms = AuctionTerms
   { at'AuctionLot :: AssetId
   -- ^ NFT being sold in the auction.
-  , at'SellerPKH :: Hash PaymentKey
+  , at'SellerPkh :: Hash PaymentKey
   -- ^ Seller's pubkey hash, which will receive
   -- the proceeds of the auction (minus fees)
   -- if the auction lot is purchased,
   -- or reclaim the auction lot if it isn't.
-  , at'SellerVK :: VerificationKey PaymentKey
+  , at'SellerVk :: VerificationKey PaymentKey
   -- ^ Seller's verification key, used to control
   -- which bidders receive authorization to participate in the auction.
   , at'Delegates :: [Hash PaymentKey]
@@ -61,14 +61,15 @@ data AuctionTerms = AuctionTerms
   -- each bidder to place as a bidder deposit for the auction.
   -- This is only enforced off-chain at the seller's discretion.
   }
-  deriving stock (Generic, Eq, Show)
+  deriving stock (Eq, Generic, Show)
 
 -- -------------------------------------------------------------------------
 -- Validation
 -- -------------------------------------------------------------------------
 
 data AuctionTermsValidationError
-  = NonPositiveAuctionLotValueError
+  = AuctionLotNonZeroAda
+  | NonPositiveAuctionLotValueError
   | SellerVkPkhMismatchError
   | BiddingStartNotBeforeBiddingEndError
   | BiddingEndNotBeforePurchaseDeadlineError
@@ -77,16 +78,22 @@ data AuctionTermsValidationError
   | InvalidStartingBidError
   | InvalidAuctionFeePerDelegateError
   | NoDelegatesError
-  deriving stock (Generic, Eq, Show)
+  deriving stock (Eq, Generic, Show)
 
 validateAuctionTerms ::
   AuctionTerms ->
   Validation [AuctionTermsValidationError] ()
 validateAuctionTerms aTerms@AuctionTerms {..} =
   fold
-    [ True --
+    [ -- Will be relevant when auction lot becomes a `Value`
+      -- (selectLovelace at'AuctionLot == 0)
+      True
+        `err` AuctionLotNonZeroAda
+    , -- Will be relevant when auction lot becomes a `Value`
+      -- (filter (\(a,q) -> q < 0) (valueToList at'AuctionLot) == [])
+      True
         `err` NonPositiveAuctionLotValueError
-    , (at'SellerPKH == verificationKeyHash at'SellerVK)
+    , (at'SellerPkh == verificationKeyHash at'SellerVk)
         `err` SellerVkPkhMismatchError
     , (at'BiddingStart < at'BiddingEnd)
         `err` BiddingStartNotBeforeBiddingEndError

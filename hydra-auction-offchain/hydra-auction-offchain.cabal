@@ -87,6 +87,7 @@ library
   exposed-modules:
     HydraAuctionOffchain.Lib.Crypto
     HydraAuctionOffchain.Contract.Types.AuctionTerms
+    HydraAuctionOffchain.Contract.Types.BidderInfo
     HydraAuctionOffchain.Contract.Types.DelegateInfo
 
   build-depends:

@@ -19,8 +19,15 @@ data DelegateInfo = DelegateInfo
   { di'GroupName :: Text
   , di'GroupURL :: Text
   , di'Delegates :: [Hash PaymentKey]
+  -- ^ The payment vkey hashes of the individual delegates in this group.
+  -- These payment vkey hashes also indicate where the delegates
+  -- should receive payment for their services.
   }
   deriving stock (Eq, Generic, Show)
+
+-- -------------------------------------------------------------------------
+-- Validation
+-- -------------------------------------------------------------------------
 
 data DelegateInfoValidationError
   = NoDelegatesInDelegateInfoError
