@@ -1,13 +1,13 @@
 module HydraAuctionOffchain.Contract.Types.BidTerms (
   BidTerms (..),
-  BidTermsValidationError (..),
+  BidTerms'Error (..),
   validateBidTerms,
 ) where
 
 import Prelude
 
 import Data.Foldable (fold)
-import Data.Validation (Validation (..), validation)
+import Data.Validation (Validation)
 import GHC.Generics (Generic)
 
 import Cardano.Api.Shelley (
@@ -24,12 +24,13 @@ import HydraAuctionOffchain.Lib.Crypto (
   serialiseLovelace,
   verifySignature,
  )
+import HydraAuctionOffchain.Lib.Validation (err, errWith)
 
 import Cardano.Crypto.Hash (ByteString)
 import HydraAuctionOffchain.Contract.Types.AuctionTerms (AuctionTerms (..))
 import HydraAuctionOffchain.Contract.Types.BidderInfo (
   BidderInfo (..),
-  BidderInfoValidationError,
+  BidderInfo'Error,
   validateBidderInfo,
  )
 
@@ -54,36 +55,33 @@ data BidTerms = BidTerms
 -- Validation
 -- -------------------------------------------------------------------------
 
-data BidTermsValidationError
-  = InvalidBidderInfoBidTermsError BidderInfoValidationError
-  | InvalidBidderSignatureBidTermsError
-  | InvalidSellerSignatureBidTermsError
+data BidTerms'Error
+  = BidTerms'Error'BidderInfo BidderInfo'Error
+  | BidTerms'Error'InvalidBidderSignature
+  | BidTerms'Error'InvalidSellerSignature
   deriving stock (Eq, Generic, Show)
 
 validateBidTerms ::
   AuctionTerms ->
   PolicyId ->
   BidTerms ->
-  Validation [BidTermsValidationError] ()
+  Validation [BidTerms'Error] ()
 validateBidTerms AuctionTerms {..} auctionId BidTerms {..}
   | BidderInfo {..} <- bt'Bidder =
       fold
         [ validateBidderInfo bt'Bidder
-            `errEmbed` InvalidBidderInfoBidTermsError
+            `errWith` BidTerms'Error'BidderInfo
         , verifySignature
             at'SellerVk
             (sellerSignatureMessage auctionId bi'BidderVk)
             bt'SellerSignature
-            `err` InvalidSellerSignatureBidTermsError
+            `err` BidTerms'Error'InvalidSellerSignature
         , verifySignature
             bi'BidderVk
             (bidderSignatureMessage auctionId bt'BidPrice bi'BidderPkh)
             bt'BidderSignature
-            `err` InvalidBidderSignatureBidTermsError
+            `err` BidTerms'Error'InvalidBidderSignature
         ]
-  where
-    err x e = if x then Success () else Failure [e]
-    errEmbed v e = validation (Failure . fmap e) Success v
 
 bidderSignatureMessage ::
   PolicyId ->

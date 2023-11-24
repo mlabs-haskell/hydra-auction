@@ -86,6 +86,8 @@ library
   hs-source-dirs:  src
   exposed-modules:
     HydraAuctionOffchain.Lib.Crypto
+    HydraAuctionOffchain.Lib.Validation
+    HydraAuctionOffchain.Contract.Types.AuctionState
     HydraAuctionOffchain.Contract.Types.AuctionTerms
     HydraAuctionOffchain.Contract.Types.BidderInfo
     HydraAuctionOffchain.Contract.Types.BidTerms

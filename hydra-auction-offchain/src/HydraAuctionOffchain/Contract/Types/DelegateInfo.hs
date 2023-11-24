@@ -1,6 +1,6 @@
 module HydraAuctionOffchain.Contract.Types.DelegateInfo (
   DelegateInfo (..),
-  DelegateInfoValidationError (..),
+  DelegateInfo'Error (..),
   validateDelegateInfo,
 ) where
 
@@ -8,13 +8,14 @@ import Prelude
 
 import Data.Foldable (fold)
 import Data.Text (Text)
-import Data.Validation (Validation (..))
+import Data.Validation (Validation)
 import GHC.Generics (Generic)
 
 import HydraAuctionOffchain.Lib.Crypto (
   Hash,
   PaymentKey,
  )
+import HydraAuctionOffchain.Lib.Validation (err)
 
 data DelegateInfo = DelegateInfo
   { di'GroupName :: Text
@@ -30,17 +31,15 @@ data DelegateInfo = DelegateInfo
 -- Validation
 -- -------------------------------------------------------------------------
 
-data DelegateInfoValidationError
-  = NoDelegatesInDelegateInfoError
+data DelegateInfo'Error
+  = DelegateInfo'Error'NoDelegates
   deriving stock (Eq, Generic, Show)
 
 validateDelegateInfo ::
   DelegateInfo ->
-  Validation [DelegateInfoValidationError] ()
+  Validation [DelegateInfo'Error] ()
 validateDelegateInfo DelegateInfo {..} =
   fold
     [ (length di'Delegates > 0)
-        `err` NoDelegatesInDelegateInfoError
+        `err` DelegateInfo'Error'NoDelegates
     ]
-  where
-    err x e = if x then Success () else Failure [e]

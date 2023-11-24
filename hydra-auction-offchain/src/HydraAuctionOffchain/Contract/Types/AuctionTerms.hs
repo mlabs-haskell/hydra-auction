@@ -1,6 +1,7 @@
 module HydraAuctionOffchain.Contract.Types.AuctionTerms (
   AuctionTerms (..),
-  AuctionTermsValidationError (..),
+  AuctionTerms'Error (..),
+  totalAuctionFees,
   validateAuctionTerms,
 ) where
 
@@ -8,7 +9,7 @@ import Prelude
 
 import Data.Foldable (fold)
 import Data.Time.Clock (UTCTime)
-import Data.Validation (Validation (..))
+import Data.Validation (Validation)
 import GHC.Generics (Generic)
 
 import Cardano.Api.Shelley (
@@ -22,6 +23,7 @@ import HydraAuctionOffchain.Lib.Crypto (
   PaymentKey,
   VerificationKey,
  )
+import HydraAuctionOffchain.Lib.Validation (err)
 
 data AuctionTerms = AuctionTerms
   { at'AuctionLot :: AssetId
@@ -68,49 +70,47 @@ data AuctionTerms = AuctionTerms
 -- Validation
 -- -------------------------------------------------------------------------
 
-data AuctionTermsValidationError
-  = AuctionLotNonZeroAda
-  | NonPositiveAuctionLotValueError
-  | SellerVkPkhMismatchError
-  | BiddingStartNotBeforeBiddingEndError
-  | BiddingEndNotBeforePurchaseDeadlineError
-  | PurchaseDeadlineNotBeforeCleanupError
-  | NonPositiveMinBidIncrementError
-  | InvalidStartingBidError
-  | InvalidAuctionFeePerDelegateError
-  | NoDelegatesError
+data AuctionTerms'Error
+  = AuctionTerms'Error'AuctionLotNonZeroAda
+  | AuctionTerms'Error'NonPositiveAuctionLotValue
+  | AuctionTerms'Error'SellerVkPkhMismatch
+  | AuctionTerms'Error'BiddingStartNotBeforeBiddingEnd
+  | AuctionTerms'Error'BiddingEndNotBeforePurchaseDeadline
+  | AuctionTerms'Error'PurchaseDeadlineNotBeforeCleanup
+  | AuctionTerms'Error'NonPositiveMinBidIncrement
+  | AuctionTerms'Error'InvalidStartingBid
+  | AuctionTerms'Error'InvalidAuctionFeePerDelegate
+  | AuctionTerms'Error'NoDelegates
   deriving stock (Eq, Generic, Show)
 
 validateAuctionTerms ::
   AuctionTerms ->
-  Validation [AuctionTermsValidationError] ()
+  Validation [AuctionTerms'Error] ()
 validateAuctionTerms aTerms@AuctionTerms {..} =
   fold
     [ -- Will be relevant when auction lot becomes a `Value`
       -- (selectLovelace at'AuctionLot == 0)
       True
-        `err` AuctionLotNonZeroAda
+        `err` AuctionTerms'Error'AuctionLotNonZeroAda
     , -- Will be relevant when auction lot becomes a `Value`
       -- (filter (\(a,q) -> q < 0) (valueToList at'AuctionLot) == [])
       True
-        `err` NonPositiveAuctionLotValueError
+        `err` AuctionTerms'Error'NonPositiveAuctionLotValue
     , (at'SellerPkh == verificationKeyHash at'SellerVk)
-        `err` SellerVkPkhMismatchError
+        `err` AuctionTerms'Error'SellerVkPkhMismatch
     , (at'BiddingStart < at'BiddingEnd)
-        `err` BiddingStartNotBeforeBiddingEndError
+        `err` AuctionTerms'Error'BiddingStartNotBeforeBiddingEnd
     , (at'PurchaseDeadline < at'Cleanup)
-        `err` PurchaseDeadlineNotBeforeCleanupError
+        `err` AuctionTerms'Error'PurchaseDeadlineNotBeforeCleanup
     , (at'MinBidIncrement > Lovelace 0)
-        `err` NonPositiveMinBidIncrementError
+        `err` AuctionTerms'Error'NonPositiveMinBidIncrement
     , (at'StartingBid > totalAuctionFees aTerms)
-        `err` InvalidStartingBidError
+        `err` AuctionTerms'Error'InvalidStartingBid
     , (at'AuctionFeePerDelegate > minAuctionFee)
-        `err` InvalidAuctionFeePerDelegateError
+        `err` AuctionTerms'Error'InvalidAuctionFeePerDelegate
     , (length at'Delegates > 0)
-        `err` NoDelegatesError
+        `err` AuctionTerms'Error'NoDelegates
     ]
-  where
-    err x e = if x then Success () else Failure [e]
 
 minAuctionFee :: Lovelace
 minAuctionFee = Lovelace 2_500_00
