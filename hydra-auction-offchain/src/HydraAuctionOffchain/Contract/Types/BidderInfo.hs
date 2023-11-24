@@ -1,12 +1,13 @@
 module HydraAuctionOffchain.Contract.Types.BidderInfo (
   BidderInfo (..),
+  BidderInfoValidationError (..),
   validateBidderInfo,
 ) where
 
 import Prelude
 
 import Data.Foldable (fold)
-import Data.Validation
+import Data.Validation (Validation (..))
 import GHC.Generics (Generic)
 
 import HydraAuctionOffchain.Lib.Crypto (

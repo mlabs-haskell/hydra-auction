@@ -5,8 +5,10 @@ module HydraAuctionOffchain.Lib.Crypto (
   NetworkId,
   PaymentKey,
   SigningKey (..),
+  Signature,
   VerificationKey (..),
   pubKeyHashToAddress,
+  serialiseLovelace,
   signMessage,
   toPlutusKeyHash,
   verifySignature,
@@ -14,7 +16,8 @@ module HydraAuctionOffchain.Lib.Crypto (
 
 import Prelude
 
-import Data.ByteString qualified as BS
+import Data.ByteString (ByteString)
+import Data.ByteString.Char8 qualified as BSC8
 
 import Cardano.Ledger.Alonzo.TxInfo qualified as Ledger
 import PlutusLedgerApi.V2 qualified as Plutus
@@ -23,6 +26,7 @@ import Cardano.Api.Shelley (
   Address (..),
   Hash (..),
   Key (..),
+  Lovelace (..),
   NetworkId,
   PaymentCredential (..),
   PaymentKey,
@@ -48,6 +52,8 @@ import Cardano.Ledger.Keys (
 -- Calculate a hash of the verification key.
 -- verificationKeyHash :: VerificationKey PaymentKey -> Hash PaymentKey
 
+type Signature = SignedDSIGN StandardCrypto ByteString
+
 -- | Convert a cardano-api 'Hash' into a plutus 'PubKeyHash'
 toPlutusKeyHash :: Hash PaymentKey -> Plutus.PubKeyHash
 toPlutusKeyHash (PaymentKeyHash vkh) =
@@ -62,8 +68,8 @@ pubKeyHashToAddress nw pkh =
 -- | Sign an arbitrary bytestring message
 signMessage ::
   SigningKey PaymentKey ->
-  BS.ByteString ->
-  SignedDSIGN StandardCrypto BS.ByteString
+  ByteString ->
+  Signature
 signMessage (PaymentSigningKey sk) = signedDSIGN @StandardCrypto sk
 
 -- | Verify a signature for an arbitrary bytestring message.
@@ -78,7 +84,10 @@ signMessage (PaymentSigningKey sk) = signedDSIGN @StandardCrypto sk
 -- mismatched signatures.
 verifySignature ::
   VerificationKey PaymentKey ->
-  BS.ByteString ->
-  SignedDSIGN StandardCrypto BS.ByteString ->
+  ByteString ->
+  Signature ->
   Bool
 verifySignature (PaymentVerificationKey vk) = verifySignedDSIGN vk
+
+serialiseLovelace :: Lovelace -> ByteString
+serialiseLovelace (Lovelace n) = BSC8.pack (show n)

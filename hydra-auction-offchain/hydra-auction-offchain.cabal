@@ -88,6 +88,7 @@ library
     HydraAuctionOffchain.Lib.Crypto
     HydraAuctionOffchain.Contract.Types.AuctionTerms
     HydraAuctionOffchain.Contract.Types.BidderInfo
+    HydraAuctionOffchain.Contract.Types.BidTerms
     HydraAuctionOffchain.Contract.Types.DelegateInfo
 
   build-depends:

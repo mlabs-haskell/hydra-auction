@@ -1,5 +1,6 @@
 module HydraAuctionOffchain.Contract.Types.AuctionTerms (
   AuctionTerms (..),
+  AuctionTermsValidationError (..),
   validateAuctionTerms,
 ) where
 
@@ -7,7 +8,7 @@ import Prelude
 
 import Data.Foldable (fold)
 import Data.Time.Clock (UTCTime)
-import Data.Validation
+import Data.Validation (Validation (..))
 import GHC.Generics (Generic)
 
 import Cardano.Api.Shelley (
