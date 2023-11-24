@@ -32,7 +32,7 @@ flowchart
   subgraph RIGHT[ ]
     direction TB
     auctionTerms[[Auction terms]]
-    delegateMetadata[Delegate metadata validator]  
+    delegateMetadata[Delegate metadata validator]
     delegateMetadataMP{{Delegate metadata MP}}
 
     auctionEscrow[Auction escrow validator]
@@ -65,13 +65,13 @@ flowchart
 
   subgraph LEFT[ ]
     direction TB
-    sellerPKH[[Seller PKH]]
+    sellerPkh[[Seller Pkh]]
     personalOracleValidator[Personal oracle validator]
     personalOracleMP{{Personal oracle MP}}
     
-    sellerPKH -.-> auctionTerms
-    sellerPKH -.-> personalOracleMP
-    sellerPKH -.-> personalOracleValidator
+    sellerPkh -.-> auctionTerms
+    sellerPkh -.-> personalOracleMP
+    sellerPkh -.-> personalOracleValidator
   end
 
   classDef default font-size:90%, overflow:visible;
@@ -79,7 +79,7 @@ flowchart
   style RIGHT fill:#0000,stroke-width:0px;
 ```
 
-The auction metadata validator, 
+The auction metadata validator,
 delegate metadata validator,
 and delegate metadata minting policy
 are all unparametrized.
@@ -125,7 +125,6 @@ sending it to the delegate metadata validator.
 
 ```mermaid
 flowchart LR
-  
   tx --> output1([Delegate metadata])
   mint{{Delegate metadata MP}} -- Mint Delegate Metadata --> tx
 
@@ -184,7 +183,7 @@ and all of the auction's validator addresses.
 
 ```haskell
 data AuctionInfo = AuctionInfo
-  { ai'AuctionID     :: CurrencySymbol  
+  { ai'AuctionId     :: CurrencySymbol
   -- ^ The auction is uniquely identified by
   -- the currency symbol of its state tokens.
   , ai'AuctionTerms  :: AuctionTerms
@@ -229,8 +228,8 @@ newtype StandingBidState = StandingBidState
 ```
 
 The auction escrow and standing bid state can change
-over the lifecycle of the auction 
-and they are uniquely identified 
+over the lifecycle of the auction
+and they are uniquely identified
 by the non-fungible auction state tokens that their utxos hold —
 all other utxos under the auction escrow and standing bid
 addresses must be ignored as illegitimate.
@@ -245,7 +244,7 @@ if and where bids can be placed in the auction:
 then bids cannot be placed.
 - If it's at the the standing bid address on L1,
 then bids can be placed on L1.
-- Otherwise, it's in a hydra head on L1 
+- Otherwise, it's in a hydra head on L1
 and at the standing bid address on L2,
 so bids should be placed on L2 via requests sent to the delegates.
 
@@ -258,12 +257,12 @@ which are fixed when it is announced.
 data AuctionTerms = AuctionTerms
   { at'AuctionLot :: AssetClass
   -- ^ NFT being sold in the auction.
-  , at'SellerPKH :: PubKeyHash
+  , at'SellerPkh :: PubKeyHash
   -- ^ Seller's pubkey hash, which will receive
   -- the proceeds of the auction (minus fees)
   -- if the auction lot is purchased,
   -- or reclaim the auction lot if it isn't.
-  , at'SellerVK  :: BuiltinByteString
+  , at'SellerVk  :: BuiltinByteString
   -- ^ Seller's verification key, used to control
   -- which bidders receive authorization to participate in the auction.
   , at'Delegates :: [PubKeyHash]
@@ -303,7 +302,7 @@ to be valid if the following conditions hold:
 ```haskell
 validAuctionTerms :: AuctionTerms -> Bool
 validAuctionTerms auTerms@AuctionTerms {..} =
-  at'SellerPKH == hashVKey at'SellerVK &&
+  at'SellerPkh == hashVKey at'SellerVk &&
   -- The seller pubkey hash corresponds to the seller verification key.
   -- Note: this check only becomes possible on-chain in Plutus V3.
   -- https://github.com/input-output-hk/plutus/pull/5431
@@ -346,20 +345,20 @@ identifying the bidder in the bid deposit's utxo datum.
 
 ```haskell
 data BidderInfo = BidderInfo
-  { bi'BidderPKH :: PubKeyHash
+  { bi'BidderPkh :: PubKeyHash
   -- ^ Bidder's pubkey hash, which can spend this bidder deposit
-  -- to buy the auction lot if a bid placed by bi'BidderVK wins
+  -- to buy the auction lot if a bid placed by bi'BidderVk wins
   -- or reclaim this bid deposit if someone else's bid wins.
-  , bi'BidderVK :: PubKeyHash
+  , bi'BidderVk :: PubKeyHash
   -- ^ Bidder's verification, which can authorize bids that allow
-  -- the seller at'SellerPKH to claim this bidder deposit
-  -- if the bid placed by bi'BidderVK won but the auction lot
+  -- the seller at'SellerPkh to claim this bidder deposit
+  -- if the bid placed by bi'BidderVk won but the auction lot
   -- wasn't purchased by the deadline.
   }
 
 validBidderInfo :: BidderInfo -> Bool
 validBidderInfo BidderInfo {..} =
-  bi'BidderPKH == hashVKey bi'BidderVK
+  bi'BidderPkh == hashVKey bi'BidderVk
   -- The bidder pubkey hash corresponds to the bidder verification key.
   -- Note: this check only becomes possible on-chain in Plutus V3.
   -- https://github.com/input-output-hk/plutus/pull/5431
@@ -381,15 +380,15 @@ to consider allowing those bidders to participate.
 In a private auction, the seller controls
 who is allowed to place bids in the auction.
 To authorize a bidder to participate in the auction,
-the seller signs a serialized tuple `(auctionID, bidderVK)`
+the seller signs a serialized tuple `(auctionId, bidderVk)`
 describing the bidder (via verification key)
 and the auction (via currency symbol) that the bidder can
 participate in.
 This signature can be verified
-via the seller's verification key (`at'SellerVK`),
+via the seller's verification key (`at'SellerVk`),
 which is included in the auction terms.
 Once issued, a bidder-auction signature cannot be revoked by the seller
-— the bidder is free to continue using it to play new bids in the auction. 
+— the bidder is free to continue using it to play new bids in the auction.
 
 The seller should authorize bidders with sufficient deposits
 to participate in the auction,
@@ -400,7 +399,7 @@ To inform bidders that they have authorization,
 the seller can publish bidder-auction authorization signatures
 via a personal oracle.
 To publish a new list of bidder-auction authorization signatures
-`[(signature, auctionID, bidderVK)]`,
+`[(signature, auctionId, bidderVk)]`,
 the seller mints a new personal oracle token
 and places it under his personal oracle validator
 into a utxo containing the list in the datum.
@@ -415,7 +414,7 @@ the seller's personal oracle token.
 Overall, this is a completely optional mechanism for the seller to
 communicate authorization to bidders for auction participation.
 In princple, the auction app could just as easily generate
-a QR code that the seller could share on Discord, Twitter, 
+a QR code that the seller could share on Discord, Twitter,
 WhatsApp, etc.
 
 ### Bid terms and authorization by bidder
@@ -430,17 +429,17 @@ and that the bidder authorized the bid.
 data BidTerms = BidTerms
   { bt'Bidder :: BidderInfo
   -- ^ Bidder that submitted the bid.
-  , bt'BidPrice :: Natural
+  , bt'BidPrice :: Integer
   -- ^ Price that the bidder bid to buy the auction lot.
   , bt'BidderSignature :: BuiltinByteString
-  -- ^ Bidder's signature (via bi'BidderVK . bt'Bidder) of the
-  -- (ai'AuctionID, bt'BidPrice, bt'BidderPKH) tuple,
+  -- ^ Bidder's signature (via bi'BidderVk . bt'Bidder) of the
+  -- (ai'AuctionId, bt'BidPrice, bi'BidderPkh) tuple,
   -- authorizing a bid at that price to be placed in the auction
-  -- and bt'BidderPKH to buy the auction lot if the bid wins.
+  -- and bi'BidderPkh to buy the auction lot if the bid wins.
   , bt'SellerSignature :: BuiltinByteString
-  -- ^ Seller's signature (via at'SellerVK) of the
-  -- (ai'AuctionID, bt'BidderVK) tuple,
-  -- authorizing the bidder bt'BidderVK to place bids in the auction.
+  -- ^ Seller's signature (via at'SellerVk) of the
+  -- (ai'AuctionId, bi'BidderVk) tuple,
+  -- authorizing the bidder bi'BidderVk to place bids in the auction.
   }
 ```
 
@@ -448,16 +447,16 @@ Bid terms can be verified on-chain or off-chain as follows:
 
 ```haskell
 validBidTerms :: AuctionTerms -> CurrencySymbol -> BidTerms -> Bool
-validBidTerms AuctionTerms {..} auctionID BidTerms {..}
+validBidTerms AuctionTerms {..} auctionId BidTerms {..}
   | BidderInfo {..} <- bt'Bidder =
   validBidderInfo bt'Bidder &&
   -- The bidder pubkey hash corresponds to the bidder verification key.
-  verifyEd25519Signature at'SellerVK
-    (sellerSignatureMessage auctionID bi'BidderVK)
+  verifyEd25519Signature at'SellerVk
+    (sellerSignatureMessage auctionId bi'BidderVk)
     bt'SellerSignature &&
   -- The seller authorized the bidder to participate
-  verifyEd25519Signature bi'BidderVK
-    (bidderSignatureMessage auctionID bt'BidPrice bi'bidderPKH)
+  verifyEd25519Signature bi'BidderVk
+    (bidderSignatureMessage auctionId bt'BidPrice bi'bidderPkh)
     bt'BidderSignature
   -- The bidder authorized the bid
 
@@ -466,18 +465,18 @@ bidderSignatureMessage
   -> Integer
   -> PubKeyHash
   -> BuiltinByteString
-bidderSignatureMessage auctionID bidPrice bidderPKH =
-  toByteString auctionID <>
+bidderSignatureMessage auctionId bidPrice bidderPkh =
+  toByteString auctionId <>
   toByteString bidPrice <>
-  toByteString bidderPKH
+  toByteString bidderPkh
 
 sellerSignatureMessage
   :: CurrencySymbol
   -> BuiltinByteString
   -> BuiltinByteString
-sellerSignatureMessage auctionID bidderVK =
-  toByteString auctionID <>
-  bidderVK
+sellerSignatureMessage auctionId bidderVk =
+  toByteString auctionId <>
+  bidderVk
 ```
 
 ## Minting policies
@@ -544,7 +543,7 @@ Under the `BurnAuction` redeemer, we enforce that:
 
 - There are three tokens burned.
 They have the minting policy's own currency symbol
-and the token names 
+and the token names
 `auctionTN` (auction state token),
 `auctionMetadataTN` (auction metadata token),
 and `standingBidTN` (standing bid token).
@@ -665,7 +664,7 @@ Its `StandingBidState` datum is `StandingBidState Nothing`.
 - The transaction validity interval starts
 at the bidding start time
 and ends before the bidding end time.
-- The transaction is signed by the seller `at'SellerPKH`.
+- The transaction is signed by the seller `at'SellerPkh`.
 - No tokens are minted or burned.
 
 ```mermaid
@@ -759,10 +758,11 @@ validBuyer
   -> StandingBidState
   -> PubKeyHash
   -> Bool
-validBuyer auTerms@AuctionTerms{..} auctionID StandingBidState{..} buyer
-  | Just bidTerms@BidTerms{..} <- standingBidState =
-      buyer == bt'BidderPKH &&
-      validBidTerms auTerms auctionID bidTerms
+validBuyer auTerms@AuctionTerms{..} auctionId StandingBidState{..} buyer
+  | Just bidTerms@BidTerms{..} <- standingBidState
+  , BidderInfo {..} <- bt'Bidder =
+      buyer == bi'BidderPkh &&
+      validBidTerms auTerms auctionId bidTerms
   | otherwise = False
 
 validPaymentToSeller
@@ -872,12 +872,12 @@ validNewBid
   -> StandingBidState
   -> StandingBidState
   -> Bool
-validNewBid auTerms@AuctionTerms {..} auctionID old new =
+validNewBid auTerms@AuctionTerms {..} auctionId old new =
   case standingBidState new of
     Nothing ->
       False
     Just newTerms ->
-      validNewTerms auTerms auctionID newTerms &&
+      validNewTerms auTerms auctionId newTerms &&
       case standingBidState old of
         Nothing ->
           validStartingBid auTerms newTerms
