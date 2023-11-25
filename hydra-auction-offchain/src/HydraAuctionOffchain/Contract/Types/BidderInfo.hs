@@ -4,11 +4,10 @@ module HydraAuctionOffchain.Contract.Types.BidderInfo (
   validateBidderInfo,
 ) where
 
+import GHC.Generics (Generic)
 import Prelude
 
-import Data.Foldable (fold)
 import Data.Validation (Validation)
-import GHC.Generics (Generic)
 
 import HydraAuctionOffchain.Lib.Crypto (
   Hash,
@@ -17,6 +16,10 @@ import HydraAuctionOffchain.Lib.Crypto (
   VerificationKey,
  )
 import HydraAuctionOffchain.Lib.Validation (err)
+
+import HydraAuctionOffchain.Contract.Types.BidderInfoError (
+  BidderInfo'Error (..),
+ )
 
 data BidderInfo = BidderInfo
   { bi'BidderPkh :: Hash PaymentKey
@@ -35,15 +38,12 @@ data BidderInfo = BidderInfo
 -- Validation
 -- -------------------------------------------------------------------------
 
-data BidderInfo'Error
-  = BidderInfo'Error'BidderVkPkhMismatch
-  deriving stock (Eq, Generic, Show)
-
 validateBidderInfo ::
   BidderInfo ->
   Validation [BidderInfo'Error] ()
 validateBidderInfo BidderInfo {..} =
-  fold
-    [ (bi'BidderPkh == verificationKeyHash bi'BidderVk)
-        `err` BidderInfo'Error'BidderVkPkhMismatch
-    ]
+  --
+  -- (BI01) The bidder's hashed payment verification key corresponds
+  -- to the bidder's payment verification key.
+  (bi'BidderPkh == verificationKeyHash bi'BidderVk)
+    `err` BidderInfo'Error'BidderVkPkhMismatch

@@ -5,12 +5,11 @@ module HydraAuctionOffchain.Contract.Types.AuctionTerms (
   validateAuctionTerms,
 ) where
 
+import GHC.Generics (Generic)
 import Prelude
 
-import Data.Foldable (fold)
 import Data.Time.Clock (UTCTime)
 import Data.Validation (Validation)
-import GHC.Generics (Generic)
 
 import Cardano.Api.Shelley (
   AssetId (..),
@@ -24,6 +23,10 @@ import HydraAuctionOffchain.Lib.Crypto (
   VerificationKey,
  )
 import HydraAuctionOffchain.Lib.Validation (err)
+
+import HydraAuctionOffchain.Contract.Types.AuctionTermsError (
+  AuctionTerms'Error (..),
+ )
 
 data AuctionTerms = AuctionTerms
   { at'AuctionLot :: AssetId
@@ -70,49 +73,49 @@ data AuctionTerms = AuctionTerms
 -- Validation
 -- -------------------------------------------------------------------------
 
-data AuctionTerms'Error
-  = AuctionTerms'Error'AuctionLotNonZeroAda
-  | AuctionTerms'Error'NonPositiveAuctionLotValue
-  | AuctionTerms'Error'SellerVkPkhMismatch
-  | AuctionTerms'Error'BiddingStartNotBeforeBiddingEnd
-  | AuctionTerms'Error'BiddingEndNotBeforePurchaseDeadline
-  | AuctionTerms'Error'PurchaseDeadlineNotBeforeCleanup
-  | AuctionTerms'Error'NonPositiveMinBidIncrement
-  | AuctionTerms'Error'InvalidStartingBid
-  | AuctionTerms'Error'InvalidAuctionFeePerDelegate
-  | AuctionTerms'Error'NoDelegates
-  deriving stock (Eq, Generic, Show)
-
 validateAuctionTerms ::
   AuctionTerms ->
   Validation [AuctionTerms'Error] ()
 validateAuctionTerms aTerms@AuctionTerms {..} =
-  fold
-    [ -- Will be relevant when auction lot becomes a `Value`
-      -- (selectLovelace at'AuctionLot == 0)
-      True
-        `err` AuctionTerms'Error'AuctionLotNonZeroAda
-    , -- Will be relevant when auction lot becomes a `Value`
-      -- (filter (\(a,q) -> q < 0) (valueToList at'AuctionLot) == [])
-      True
-        `err` AuctionTerms'Error'NonPositiveAuctionLotValue
-    , (at'SellerPkh == verificationKeyHash at'SellerVk)
-        `err` AuctionTerms'Error'SellerVkPkhMismatch
-    , (at'BiddingStart < at'BiddingEnd)
-        `err` AuctionTerms'Error'BiddingStartNotBeforeBiddingEnd
-    , (at'BiddingEnd < at'PurchaseDeadline)
-        `err` AuctionTerms'Error'BiddingEndNotBeforePurchaseDeadline
-    , (at'PurchaseDeadline < at'Cleanup)
-        `err` AuctionTerms'Error'PurchaseDeadlineNotBeforeCleanup
-    , (at'MinBidIncrement > Lovelace 0)
-        `err` AuctionTerms'Error'NonPositiveMinBidIncrement
-    , (at'StartingBid > totalAuctionFees aTerms)
-        `err` AuctionTerms'Error'InvalidStartingBid
-    , (at'AuctionFeePerDelegate > minAuctionFee)
-        `err` AuctionTerms'Error'InvalidAuctionFeePerDelegate
-    , (length at'Delegates > 0)
-        `err` AuctionTerms'Error'NoDelegates
-    ]
+  --
+  -- (AT01) The seller pubkey hash corresponds to the seller verification key.
+  -- Note: this check only becomes possible on-chain in Plutus V3.
+  -- https://github.com/input-output-hk/plutus/pull/5431
+  (at'SellerPkh == verificationKeyHash at'SellerVk)
+    `err` AuctionTerms'Error'SellerVkPkhMismatch
+    --
+    -- (AT02) Bidding ends after it the bidding start time.
+    <> (at'BiddingStart < at'BiddingEnd)
+    `err` AuctionTerms'Error'BiddingStartNotBeforeBiddingEnd
+    --
+    -- (AT03) The purchase deadline occurs after bidding ends.
+    <> (at'BiddingEnd < at'PurchaseDeadline)
+    `err` AuctionTerms'Error'BiddingEndNotBeforePurchaseDeadline
+    --
+    -- (AT04) Cleanup happens after the purchase deadline,
+    -- so that the seller can claim the winning bidder's deposit
+    -- if the auction lot is not sold
+    <> (at'PurchaseDeadline < at'Cleanup)
+    `err` AuctionTerms'Error'PurchaseDeadlineNotBeforeCleanup
+    --
+    -- (AT05) New bids must be larger than the standing bid.
+    <> (at'MinBidIncrement > Lovelace 0)
+    `err` AuctionTerms'Error'NonPositiveMinBidIncrement
+    --
+    -- (AT06) The auction fee for each delegate must contain
+    -- the min 2 ADA for the utxos that will be sent to the delegates
+    -- during fee distribution.
+    <> (at'StartingBid > totalAuctionFees aTerms)
+    `err` AuctionTerms'Error'InvalidStartingBid
+    --
+    -- (AT07) The auction fees for all delegates must be covered by
+    -- the starting bid.
+    <> (at'AuctionFeePerDelegate > minAuctionFee)
+    `err` AuctionTerms'Error'InvalidAuctionFeePerDelegate
+    --
+    -- (AT08) There must be at least one delegate.
+    <> (length at'Delegates > 0)
+    `err` AuctionTerms'Error'NoDelegates
 
 minAuctionFee :: Lovelace
 minAuctionFee = Lovelace 2_500_00

@@ -4,11 +4,10 @@ module HydraAuctionOffchain.Contract.Types.BidTerms (
   validateBidTerms,
 ) where
 
+import GHC.Generics (Generic)
 import Prelude
 
-import Data.Foldable (fold)
 import Data.Validation (Validation)
-import GHC.Generics (Generic)
 
 import Cardano.Api.Shelley (
   Lovelace (..),
@@ -30,8 +29,11 @@ import Cardano.Crypto.Hash (ByteString)
 import HydraAuctionOffchain.Contract.Types.AuctionTerms (AuctionTerms (..))
 import HydraAuctionOffchain.Contract.Types.BidderInfo (
   BidderInfo (..),
-  BidderInfo'Error,
   validateBidderInfo,
+ )
+
+import HydraAuctionOffchain.Contract.Types.BidTermsError (
+  BidTerms'Error (..),
  )
 
 data BidTerms = BidTerms
@@ -55,12 +57,6 @@ data BidTerms = BidTerms
 -- Validation
 -- -------------------------------------------------------------------------
 
-data BidTerms'Error
-  = BidTerms'Error'BidderInfo BidderInfo'Error
-  | BidTerms'Error'InvalidBidderSignature
-  | BidTerms'Error'InvalidSellerSignature
-  deriving stock (Eq, Generic, Show)
-
 validateBidTerms ::
   AuctionTerms ->
   PolicyId ->
@@ -68,20 +64,26 @@ validateBidTerms ::
   Validation [BidTerms'Error] ()
 validateBidTerms AuctionTerms {..} auctionId BidTerms {..}
   | BidderInfo {..} <- bt'Bidder =
-      fold
-        [ validateBidderInfo bt'Bidder
-            `errWith` BidTerms'Error'BidderInfo
-        , verifySignature
-            at'SellerVk
-            (sellerSignatureMessage auctionId bi'BidderVk)
-            bt'SellerSignature
-            `err` BidTerms'Error'InvalidSellerSignature
-        , verifySignature
-            bi'BidderVk
-            (bidderSignatureMessage auctionId bt'BidPrice bi'BidderPkh)
-            bt'BidderSignature
-            `err` BidTerms'Error'InvalidBidderSignature
-        ]
+      --
+      -- (BT01) The bidder's info is correct.
+      validateBidderInfo bt'Bidder
+        `errWith` BidTerms'Error'BidderInfo
+        --
+        -- (BT02) The seller authorized the bidder
+        -- to participate in the auction.
+        <> verifySignature
+          at'SellerVk
+          (sellerSignatureMessage auctionId bi'BidderVk)
+          bt'SellerSignature
+        `err` BidTerms'Error'InvalidSellerSignature
+        --
+        -- (BT03) The bidder authorized the bid
+        -- to be submitted in the auction.
+        <> verifySignature
+          bi'BidderVk
+          (bidderSignatureMessage auctionId bt'BidPrice bi'BidderPkh)
+          bt'BidderSignature
+        `err` BidTerms'Error'InvalidBidderSignature
 
 bidderSignatureMessage ::
   PolicyId ->
