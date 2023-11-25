@@ -100,6 +100,8 @@ validateAuctionTerms aTerms@AuctionTerms {..} =
         `err` AuctionTerms'Error'SellerVkPkhMismatch
     , (at'BiddingStart < at'BiddingEnd)
         `err` AuctionTerms'Error'BiddingStartNotBeforeBiddingEnd
+    , (at'BiddingEnd < at'PurchaseDeadline)
+        `err` AuctionTerms'Error'BiddingEndNotBeforePurchaseDeadline
     , (at'PurchaseDeadline < at'Cleanup)
         `err` AuctionTerms'Error'PurchaseDeadlineNotBeforeCleanup
     , (at'MinBidIncrement > Lovelace 0)
