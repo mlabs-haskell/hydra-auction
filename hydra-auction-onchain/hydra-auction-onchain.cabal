@@ -85,6 +85,9 @@ library
   import:          common-config
   hs-source-dirs:  src
   exposed-modules:
+    HydraAuctionOnchain.Lib.Error
+    HydraAuctionOnchain.Types.AuctionTerms
+    HydraAuctionOnchain.Types.AuctionTermsError
 
   build-depends:
     -- , aeson
@@ -113,8 +116,10 @@ library
     , plutus-tx-plugin
     -- , record-dot-preprocessor
     -- , record-hasfield
-    -- , transformers
+    , template-haskell
+    , text
     -- , time
+    -- , transformers
     -- , validation
 
   ghc-options:
