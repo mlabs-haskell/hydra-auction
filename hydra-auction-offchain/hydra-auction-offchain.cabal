@@ -16,7 +16,7 @@ source-repository head
 
 flag dev
   description:
-    Defer errors from the PlutusTx plugin, which break HLS and Haddock. Also disable -Werror.
+    Disable -Werror.
 
   default:     True
   manual:      False
@@ -94,43 +94,25 @@ library
     HydraAuctionOffchain.Contract.Types.DelegateInfo
 
   build-depends:
-    , aeson
+    -- , aeson
     , base
-    , base16-bytestring
     , bytestring
     , cardano-api             >=8.20.0 && <8.21
-    , cardano-binary          >=1.7.0  && <1.8
+    -- , cardano-binary          >=1.7.0  && <1.8
     , cardano-crypto-class    >=2.1.1  && <2.2
-    , cardano-ledger-allegra  >=1.2.1  && <1.3
+    -- , cardano-ledger-allegra  >=1.2.1  && <1.3
     , cardano-ledger-alonzo   >=1.4    && <1.5
-    , cardano-ledger-api      >=1.5    && <1.6
-    , cardano-ledger-babbage  >=1.4.2  && <1.5
-    , cardano-ledger-binary   >=1.1.1  && <1.2
-    , cardano-ledger-byron    >=1.0.0  && <1.1
+    -- , cardano-ledger-api      >=1.5    && <1.6
+    -- , cardano-ledger-babbage  >=1.4.2  && <1.5
+    -- , cardano-ledger-binary   >=1.1.1  && <1.2
+    -- , cardano-ledger-byron    >=1.0.0  && <1.1
     , cardano-ledger-core     >=1.6    && <1.7
-    , cardano-ledger-mary     >=1.3.1  && <1.4
-    , cardano-ledger-shelley  >=1.6    && <1.7
-    , containers
-    , lens
-    , lens-aeson
-    , mtl
-    , plutus-core
+    -- , cardano-ledger-mary     >=1.3.1  && <1.4
+    -- , cardano-ledger-shelley  >=1.6    && <1.7
+    -- , containers
     , plutus-ledger-api
-    , plutus-tx
-    , plutus-tx-plugin
-    , record-dot-preprocessor
-    , record-hasfield
     , text
-    , transformers
     , time
     , validation
 
   ghc-options:
-    -fplugin-opt PlutusTx.Plugin:target-version=1.0.0 -fobject-code
-    -fno-ignore-interface-pragmas -fno-omit-interface-pragmas
-    -fno-specialize -fno-unbox-small-strict-fields
-    -fno-unbox-strict-fields
-
-  if flag(dev)
-    ghc-options: -fplugin-opt PlutusTx.Plugin:defer-errors
-
