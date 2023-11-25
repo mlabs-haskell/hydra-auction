@@ -2,16 +2,16 @@ module HydraAuctionOffchain.Contract.Types.AuctionState (
   AuctionEscrowState (..),
   StandingBidState (..),
   Buyer'Error (..),
+  NewBid'Error (..),
   sellerPayout,
   validateBuyer,
   validateNewBid,
 ) where
 
+import GHC.Generics (Generic)
 import Prelude
 
-import Data.Foldable (fold)
 import Data.Validation (Validation (..))
-import GHC.Generics (Generic)
 
 import HydraAuctionOffchain.Lib.Validation (err, errWith)
 
@@ -21,7 +21,6 @@ import HydraAuctionOffchain.Contract.Types.AuctionTerms (
  )
 import HydraAuctionOffchain.Contract.Types.BidTerms (
   BidTerms (..),
-  BidTerms'Error,
   validateBidTerms,
  )
 import HydraAuctionOffchain.Contract.Types.BidderInfo (BidderInfo (..))
@@ -34,6 +33,11 @@ import Cardano.Api.Shelley (
 import HydraAuctionOffchain.Lib.Crypto (
   Hash,
   PaymentKey,
+ )
+
+import HydraAuctionOffchain.Contract.Types.AuctionStateError (
+  Buyer'Error (..),
+  NewBid'Error (..),
  )
 
 data AuctionEscrowState
@@ -50,13 +54,6 @@ newtype StandingBidState = StandingBidState
 -- New bid validation
 -- -------------------------------------------------------------------------
 
-data NewBid'Error
-  = NewBid'Error'EmptyNewBid
-  | NewBid'Error'InvalidNewBidTerms BidTerms'Error
-  | NewBid'Error'InvalidStartingBid
-  | NewBid'Error'InvalidBidIncrement
-  deriving stock (Eq, Generic, Show)
-
 validateNewBid ::
   AuctionTerms ->
   PolicyId ->
@@ -65,12 +62,13 @@ validateNewBid ::
   Validation [NewBid'Error] ()
 validateNewBid auTerms auctionId oldBidState StandingBidState {..}
   | Just newTerms <- standingBidState =
-      fold
-        [ validateNewBidTerms auTerms auctionId newTerms
-        , validateCompareBids auTerms oldBidState newTerms
-        ]
+      validateNewBidTerms auTerms auctionId newTerms
+        <> validateCompareBids auTerms oldBidState newTerms
   | otherwise =
-      Failure [NewBid'Error'EmptyNewBid]
+      --
+      -- (NB01) The new bid state should not be empty.
+      False
+        `err` NewBid'Error'EmptyNewBid
 
 validateNewBidTerms ::
   AuctionTerms ->
@@ -78,6 +76,8 @@ validateNewBidTerms ::
   BidTerms ->
   Validation [NewBid'Error] ()
 validateNewBidTerms auTerms auctionId newTerms =
+  --
+  -- (NB02) The new bid terms are valid.
   validateBidTerms auTerms auctionId newTerms
     `errWith` NewBid'Error'InvalidNewBidTerms
 
@@ -92,32 +92,32 @@ validateCompareBids auTerms StandingBidState {..} newTerms
   | otherwise =
       validateStartingBid auTerms newTerms
 
-validateStartingBid ::
-  AuctionTerms ->
-  BidTerms ->
-  Validation [NewBid'Error] ()
-validateStartingBid AuctionTerms {..} BidTerms {..} =
-  (at'StartingBid <= bt'BidPrice)
-    `err` NewBid'Error'InvalidStartingBid
-
 validateBidIncrement ::
   AuctionTerms ->
   BidTerms ->
   BidTerms ->
   Validation [NewBid'Error] ()
 validateBidIncrement AuctionTerms {..} oldTerms newTerms =
+  --
+  -- (NB03) The difference between the old and new bid price is
+  -- no smaller than the auction's minimum bid increment.
   (bt'BidPrice oldTerms + at'MinBidIncrement <= bt'BidPrice newTerms)
     `err` NewBid'Error'InvalidBidIncrement
+
+validateStartingBid ::
+  AuctionTerms ->
+  BidTerms ->
+  Validation [NewBid'Error] ()
+validateStartingBid AuctionTerms {..} BidTerms {..} =
+  --
+  -- (NB04) The first bid's price is
+  -- no smaller than the auction's starting price.
+  (at'StartingBid <= bt'BidPrice)
+    `err` NewBid'Error'InvalidStartingBid
 
 -- -------------------------------------------------------------------------
 -- Buyer validation
 -- -------------------------------------------------------------------------
-
-data Buyer'Error
-  = Buyer'Error'EmptyStandingBid
-  | Buyer'Error'BuyerVkPkhMismatch
-  | Buyer'Error'InvalidBidTerms BidTerms'Error
-  deriving stock (Eq, Generic, Show)
 
 validateBuyer ::
   AuctionTerms ->
@@ -128,13 +128,20 @@ validateBuyer ::
 validateBuyer auTerms auctionId StandingBidState {..} buyer
   | Just bidTerms@BidTerms {..} <- standingBidState
   , BidderInfo {..} <- bt'Bidder =
-      fold
-        [ (buyer == bi'BidderPkh)
-            `err` Buyer'Error'BuyerVkPkhMismatch
-        , validateBidTerms auTerms auctionId bidTerms
-            `errWith` Buyer'Error'InvalidBidTerms
-        ]
-  | otherwise = Failure [Buyer'Error'EmptyStandingBid]
+      --
+      -- (BU01) The buyer's hashed payment verification key corresponds
+      -- to the bidder's payment verification key.
+      (buyer == bi'BidderPkh)
+        `err` Buyer'Error'BuyerVkPkhMismatch
+        --
+        -- (BU02) The bid terms are valid.
+        <> validateBidTerms auTerms auctionId bidTerms
+        `errWith` Buyer'Error'InvalidBidTerms
+  | otherwise =
+      --
+      -- (BU03) Can only buy when standing bid state is non-empty.
+      False
+        `err` Buyer'Error'EmptyStandingBid
 
 -- -------------------------------------------------------------------------
 -- Seller payout
