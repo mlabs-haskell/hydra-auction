@@ -1,0 +1,53 @@
+module HydraAuctionOnchain.Types.BidderInfo (
+  BidderInfo (..),
+  BidderInfo'Error (..),
+  validBidderInfo,
+) where
+
+import PlutusTx.Prelude
+
+import PlutusLedgerApi.V1 (PubKeyHash)
+import PlutusTx qualified
+
+-- import HydraAuctionOnchain.Lib.Error (eCode, err)
+
+import HydraAuctionOnchain.Types.BidderInfoError (BidderInfo'Error (..))
+
+data BidderInfo = BidderInfo
+  { bi'BidderPkh :: PubKeyHash
+  -- ^ Bidder's pubkey hash, which can spend this bidder deposit
+  -- to buy the auction lot if a bid placed by bi'BidderVk wins
+  -- or reclaim this bid deposit if someone else's bid wins.
+  , bi'BidderVk :: BuiltinByteString
+  -- ^ Bidder's verification, which can authorize bids that allow
+  -- the seller at'SellerPkh to claim this bidder deposit
+  -- if the bid placed by bi'BidderVk won but the auction lot
+  -- wasn't purchased by the deadline.
+  }
+
+-- -------------------------------------------------------------------------
+-- Validation
+-- -------------------------------------------------------------------------
+
+{-# INLINEABLE validBidderInfo #-}
+validBidderInfo ::
+  BidderInfo ->
+  Bool
+validBidderInfo _ =
+  --
+  -- (BI01) The bidder's hashed payment verification key corresponds
+  -- to the bidder's payment verification key.
+  -- (bi'BidderPkh == PubKeyHash (blake2b_224 bi'BidderVk))
+  --   `err` $(eCode BidderInfo'Error'BidderVkPkhMismatch)
+  True
+
+-- -------------------------------------------------------------------------
+-- Plutus instances
+-- -------------------------------------------------------------------------
+PlutusTx.unstableMakeIsData ''BidderInfo
+
+instance Eq BidderInfo where
+  (BidderInfo x1 x2)
+    == (BidderInfo y1 y2) =
+      x1 == y1
+        && x2 == y2

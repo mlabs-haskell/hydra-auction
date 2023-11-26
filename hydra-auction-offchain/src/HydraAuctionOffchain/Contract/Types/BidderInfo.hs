@@ -45,5 +45,7 @@ validateBidderInfo BidderInfo {..} =
   --
   -- (BI01) The bidder's hashed payment verification key corresponds
   -- to the bidder's payment verification key.
+  -- Note: this check only becomes possible on-chain in Plutus V3.
+  -- https://github.com/input-output-hk/plutus/pull/5431
   (bi'BidderPkh == verificationKeyHash bi'BidderVk)
     `err` BidderInfo'Error'BidderVkPkhMismatch
