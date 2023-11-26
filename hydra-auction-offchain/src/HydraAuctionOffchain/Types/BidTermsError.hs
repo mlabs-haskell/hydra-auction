@@ -1,11 +1,11 @@
-module HydraAuctionOffchain.Contract.Types.BidTermsError (
+module HydraAuctionOffchain.Types.BidTermsError (
   BidTerms'Error (..),
 ) where
 
 import GHC.Generics (Generic)
 import Prelude
 
-import HydraAuctionOffchain.Contract.Types.BidderInfo (
+import HydraAuctionOffchain.Types.BidderInfo (
   BidderInfo'Error,
  )
 

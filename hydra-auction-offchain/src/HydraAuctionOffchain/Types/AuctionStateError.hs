@@ -1,4 +1,4 @@
-module HydraAuctionOffchain.Contract.Types.AuctionStateError (
+module HydraAuctionOffchain.Types.AuctionStateError (
   Buyer'Error (..),
   NewBid'Error (..),
 ) where
@@ -6,7 +6,7 @@ module HydraAuctionOffchain.Contract.Types.AuctionStateError (
 import GHC.Generics (Generic)
 import Prelude
 
-import HydraAuctionOffchain.Contract.Types.BidTerms (
+import HydraAuctionOffchain.Types.BidTerms (
   BidTerms'Error,
  )
 

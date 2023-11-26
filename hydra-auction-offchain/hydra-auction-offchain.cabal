@@ -87,16 +87,16 @@ library
   exposed-modules:
     HydraAuctionOffchain.Lib.Crypto
     HydraAuctionOffchain.Lib.Validation
-    HydraAuctionOffchain.Contract.Types.AuctionState
-    HydraAuctionOffchain.Contract.Types.AuctionStateError
-    HydraAuctionOffchain.Contract.Types.AuctionTerms
-    HydraAuctionOffchain.Contract.Types.AuctionTermsError
-    HydraAuctionOffchain.Contract.Types.BidderInfo
-    HydraAuctionOffchain.Contract.Types.BidderInfoError
-    HydraAuctionOffchain.Contract.Types.BidTerms
-    HydraAuctionOffchain.Contract.Types.BidTermsError
-    HydraAuctionOffchain.Contract.Types.DelegateInfo
-    HydraAuctionOffchain.Contract.Types.DelegateInfoError
+    HydraAuctionOffchain.Types.AuctionState
+    HydraAuctionOffchain.Types.AuctionStateError
+    HydraAuctionOffchain.Types.AuctionTerms
+    HydraAuctionOffchain.Types.AuctionTermsError
+    HydraAuctionOffchain.Types.BidderInfo
+    HydraAuctionOffchain.Types.BidderInfoError
+    HydraAuctionOffchain.Types.BidTerms
+    HydraAuctionOffchain.Types.BidTermsError
+    HydraAuctionOffchain.Types.DelegateInfo
+    HydraAuctionOffchain.Types.DelegateInfoError
 
   build-depends:
     -- , aeson

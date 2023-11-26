@@ -1,4 +1,4 @@
-module HydraAuctionOffchain.Contract.Types.AuctionTermsError (
+module HydraAuctionOffchain.Types.AuctionTermsError (
   AuctionTerms'Error (..),
 ) where
 

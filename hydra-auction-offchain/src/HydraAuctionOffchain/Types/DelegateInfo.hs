@@ -1,4 +1,4 @@
-module HydraAuctionOffchain.Contract.Types.DelegateInfo (
+module HydraAuctionOffchain.Types.DelegateInfo (
   DelegateInfo (..),
   DelegateInfo'Error (..),
   validateDelegateInfo,
@@ -16,7 +16,7 @@ import HydraAuctionOffchain.Lib.Crypto (
  )
 import HydraAuctionOffchain.Lib.Validation (err)
 
-import HydraAuctionOffchain.Contract.Types.DelegateInfoError (
+import HydraAuctionOffchain.Types.DelegateInfoError (
   DelegateInfo'Error (..),
  )
 

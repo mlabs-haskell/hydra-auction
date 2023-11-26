@@ -1,4 +1,4 @@
-module HydraAuctionOffchain.Contract.Types.BidTerms (
+module HydraAuctionOffchain.Types.BidTerms (
   BidTerms (..),
   BidTerms'Error (..),
   validateBidTerms,
@@ -26,13 +26,13 @@ import HydraAuctionOffchain.Lib.Crypto (
 import HydraAuctionOffchain.Lib.Validation (err, errWith)
 
 import Cardano.Crypto.Hash (ByteString)
-import HydraAuctionOffchain.Contract.Types.AuctionTerms (AuctionTerms (..))
-import HydraAuctionOffchain.Contract.Types.BidderInfo (
+import HydraAuctionOffchain.Types.AuctionTerms (AuctionTerms (..))
+import HydraAuctionOffchain.Types.BidderInfo (
   BidderInfo (..),
   validateBidderInfo,
  )
 
-import HydraAuctionOffchain.Contract.Types.BidTermsError (
+import HydraAuctionOffchain.Types.BidTermsError (
   BidTerms'Error (..),
  )
 

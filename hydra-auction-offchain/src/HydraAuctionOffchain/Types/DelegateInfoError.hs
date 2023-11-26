@@ -1,4 +1,4 @@
-module HydraAuctionOffchain.Contract.Types.DelegateInfoError (
+module HydraAuctionOffchain.Types.DelegateInfoError (
   DelegateInfo'Error (..),
 ) where
 

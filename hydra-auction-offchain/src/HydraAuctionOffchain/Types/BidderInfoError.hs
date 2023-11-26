@@ -1,4 +1,4 @@
-module HydraAuctionOffchain.Contract.Types.BidderInfoError (
+module HydraAuctionOffchain.Types.BidderInfoError (
   BidderInfo'Error (..),
 ) where
 

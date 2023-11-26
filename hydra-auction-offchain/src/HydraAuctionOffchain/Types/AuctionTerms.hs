@@ -1,4 +1,4 @@
-module HydraAuctionOffchain.Contract.Types.AuctionTerms (
+module HydraAuctionOffchain.Types.AuctionTerms (
   AuctionTerms (..),
   AuctionTerms'Error (..),
   totalAuctionFees,
@@ -24,7 +24,7 @@ import HydraAuctionOffchain.Lib.Crypto (
  )
 import HydraAuctionOffchain.Lib.Validation (err)
 
-import HydraAuctionOffchain.Contract.Types.AuctionTermsError (
+import HydraAuctionOffchain.Types.AuctionTermsError (
   AuctionTerms'Error (..),
  )
 

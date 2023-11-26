@@ -1,4 +1,4 @@
-module HydraAuctionOffchain.Contract.Types.AuctionState (
+module HydraAuctionOffchain.Types.AuctionState (
   AuctionEscrowState (..),
   StandingBidState (..),
   Buyer'Error (..),
@@ -15,15 +15,15 @@ import Data.Validation (Validation (..))
 
 import HydraAuctionOffchain.Lib.Validation (err, errWith)
 
-import HydraAuctionOffchain.Contract.Types.AuctionTerms (
+import HydraAuctionOffchain.Types.AuctionTerms (
   AuctionTerms (..),
   totalAuctionFees,
  )
-import HydraAuctionOffchain.Contract.Types.BidTerms (
+import HydraAuctionOffchain.Types.BidTerms (
   BidTerms (..),
   validateBidTerms,
  )
-import HydraAuctionOffchain.Contract.Types.BidderInfo (BidderInfo (..))
+import HydraAuctionOffchain.Types.BidderInfo (BidderInfo (..))
 
 import Cardano.Api.Shelley (
   Lovelace (..),
@@ -35,7 +35,7 @@ import HydraAuctionOffchain.Lib.Crypto (
   PaymentKey,
  )
 
-import HydraAuctionOffchain.Contract.Types.AuctionStateError (
+import HydraAuctionOffchain.Types.AuctionStateError (
   Buyer'Error (..),
   NewBid'Error (..),
  )

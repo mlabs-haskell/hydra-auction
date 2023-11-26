@@ -1,4 +1,4 @@
-module HydraAuctionOffchain.Contract.Types.BidderInfo (
+module HydraAuctionOffchain.Types.BidderInfo (
   BidderInfo (..),
   BidderInfo'Error (..),
   validateBidderInfo,
@@ -17,7 +17,7 @@ import HydraAuctionOffchain.Lib.Crypto (
  )
 import HydraAuctionOffchain.Lib.Validation (err)
 
-import HydraAuctionOffchain.Contract.Types.BidderInfoError (
+import HydraAuctionOffchain.Types.BidderInfoError (
   BidderInfo'Error (..),
  )
 
