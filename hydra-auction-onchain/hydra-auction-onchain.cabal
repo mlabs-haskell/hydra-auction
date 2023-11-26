@@ -86,6 +86,7 @@ library
   hs-source-dirs:  src
   exposed-modules:
     HydraAuctionOnchain.Lib.Error
+    HydraAuctionOnchain.Lib.Serialise
     HydraAuctionOnchain.Types.AuctionTerms
     HydraAuctionOnchain.Types.AuctionTermsError
     HydraAuctionOnchain.Types.BidderInfo

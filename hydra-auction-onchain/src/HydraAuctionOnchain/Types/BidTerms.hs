@@ -8,9 +8,9 @@ import PlutusTx.Prelude
 
 import PlutusLedgerApi.V1 (CurrencySymbol, PubKeyHash)
 import PlutusTx qualified
-import PlutusTx.Builtins qualified as Builtins
 
 import HydraAuctionOnchain.Lib.Error (eCode, err)
+import HydraAuctionOnchain.Lib.Serialise (serialise)
 
 import HydraAuctionOnchain.Types.AuctionTerms (AuctionTerms (..))
 import HydraAuctionOnchain.Types.BidTermsError (BidTerms'Error (..))
@@ -84,10 +84,6 @@ sellerSignatureMessage ::
 sellerSignatureMessage auctionId bidderVk =
   serialise auctionId
     <> serialise bidderVk
-
-{-# INLINEABLE serialise #-}
-serialise :: PlutusTx.ToData a => a -> BuiltinByteString
-serialise = Builtins.serialiseData . PlutusTx.toBuiltinData
 
 -- -------------------------------------------------------------------------
 -- Plutus instances
