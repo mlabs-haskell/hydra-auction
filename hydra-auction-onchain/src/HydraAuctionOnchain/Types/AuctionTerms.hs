@@ -1,6 +1,6 @@
 module HydraAuctionOnchain.Types.AuctionTerms (
   AuctionTerms (..),
-  validAuctionTerms,
+  validateAuctionTerms,
 ) where
 
 import PlutusTx.Prelude
@@ -59,11 +59,11 @@ data AuctionTerms = AuctionTerms
 -- Validation
 -- -------------------------------------------------------------------------
 
-{-# INLINEABLE validAuctionTerms #-}
-validAuctionTerms ::
+{-# INLINEABLE validateAuctionTerms #-}
+validateAuctionTerms ::
   AuctionTerms ->
   Bool
-validAuctionTerms aTerms@AuctionTerms {..} =
+validateAuctionTerms aTerms@AuctionTerms {..} =
   --
   -- (AT01) The seller pubkey hash corresponds to the seller verification key.
   -- Note: this check only becomes possible on-chain in Plutus V3.

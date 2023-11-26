@@ -1,7 +1,7 @@
 module HydraAuctionOnchain.Types.BidTerms (
   BidTerms (..),
   BidTerms'Error (..),
-  validBidTerms,
+  validateBidTerms,
 ) where
 
 import PlutusTx.Prelude
@@ -36,18 +36,18 @@ data BidTerms = BidTerms
 -- Validation
 -- -------------------------------------------------------------------------
 
-{-# INLINEABLE validBidTerms #-}
-validBidTerms ::
+{-# INLINEABLE validateBidTerms #-}
+validateBidTerms ::
   AuctionTerms ->
   CurrencySymbol ->
   BidTerms ->
   Bool
-validBidTerms AuctionTerms {..} auctionId BidTerms {..}
+validateBidTerms AuctionTerms {..} auctionId BidTerms {..}
   | BidderInfo {..} <- bt'Bidder =
       --
       -- (BT01) The bidder's info is correct.
       -- This check is redundant on-chain until PlutusV3.
-      -- validBidderInfo bt'Bidder &&
+      -- validateBidderInfo bt'Bidder &&
       --
       -- (BT02) The seller authorized the bidder
       -- to participate in the auction.

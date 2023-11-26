@@ -1,7 +1,7 @@
 module HydraAuctionOnchain.Types.DelegateInfo (
   DelegateInfo (..),
   DelegateInfo'Error (..),
-  validDelegateInfo,
+  validateDelegateInfo,
 ) where
 
 import PlutusTx.Prelude
@@ -26,11 +26,11 @@ data DelegateInfo = DelegateInfo
 -- Validation
 -- -------------------------------------------------------------------------
 
-{-# INLINEABLE validDelegateInfo #-}
-validDelegateInfo ::
+{-# INLINEABLE validateDelegateInfo #-}
+validateDelegateInfo ::
   DelegateInfo ->
   Bool
-validDelegateInfo DelegateInfo {..} =
+validateDelegateInfo DelegateInfo {..} =
   --
   -- (DI01) There must be at least one delegate.
   (length di'Delegates > 0)

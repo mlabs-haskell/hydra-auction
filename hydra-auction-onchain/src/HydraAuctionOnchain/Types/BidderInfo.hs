@@ -1,7 +1,7 @@
 module HydraAuctionOnchain.Types.BidderInfo (
   BidderInfo (..),
   BidderInfo'Error (..),
-  validBidderInfo,
+  validateBidderInfo,
 ) where
 
 import PlutusTx.Prelude
@@ -29,11 +29,11 @@ data BidderInfo = BidderInfo
 -- Validation
 -- -------------------------------------------------------------------------
 
-{-# INLINEABLE validBidderInfo #-}
-validBidderInfo ::
+{-# INLINEABLE validateBidderInfo #-}
+validateBidderInfo ::
   BidderInfo ->
   Bool
-validBidderInfo _ =
+validateBidderInfo _ =
   --
   -- (BI01) The bidder's hashed payment verification key corresponds
   -- to the bidder's payment verification key.
