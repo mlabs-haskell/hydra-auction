@@ -90,6 +90,8 @@ library
     HydraAuctionOnchain.Types.AuctionTermsError
     HydraAuctionOnchain.Types.BidderInfo
     HydraAuctionOnchain.Types.BidderInfoError
+    HydraAuctionOnchain.Types.BidTerms
+    HydraAuctionOnchain.Types.BidTermsError
     HydraAuctionOnchain.Types.DelegateInfo
     HydraAuctionOnchain.Types.DelegateInfoError
 
