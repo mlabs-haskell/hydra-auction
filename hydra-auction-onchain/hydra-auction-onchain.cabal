@@ -89,6 +89,8 @@ library
     HydraAuctionOnchain.Lib.Serialise
     HydraAuctionOnchain.Types.AuctionTerms
     HydraAuctionOnchain.Types.AuctionTermsError
+    HydraAuctionOnchain.Types.AuctionState
+    HydraAuctionOnchain.Types.AuctionStateError
     HydraAuctionOnchain.Types.BidderInfo
     HydraAuctionOnchain.Types.BidderInfoError
     HydraAuctionOnchain.Types.BidTerms

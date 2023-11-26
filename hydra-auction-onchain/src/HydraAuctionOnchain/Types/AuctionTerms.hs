@@ -1,5 +1,7 @@
 module HydraAuctionOnchain.Types.AuctionTerms (
   AuctionTerms (..),
+  minAuctionFee,
+  totalAuctionFees,
   validateAuctionTerms,
 ) where
 
