@@ -88,6 +88,8 @@ library
     HydraAuctionOnchain.Lib.Error
     HydraAuctionOnchain.Types.AuctionTerms
     HydraAuctionOnchain.Types.AuctionTermsError
+    HydraAuctionOnchain.Types.DelegateInfo
+    HydraAuctionOnchain.Types.DelegateInfoError
 
   build-depends:
     -- , aeson
