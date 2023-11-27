@@ -38,6 +38,9 @@ let
 in
 rec {
 
+  hydra-auction-error =
+    nativePkgs.hydra-auction-error.components.library;
+
   hydra-auction-offchain =
     nativePkgs.hydra-auction-offchain.components.library;
 

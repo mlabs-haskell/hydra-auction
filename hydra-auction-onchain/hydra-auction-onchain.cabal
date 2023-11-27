@@ -85,18 +85,13 @@ library
   import:          common-config
   hs-source-dirs:  src
   exposed-modules:
-    HydraAuctionOnchain.Lib.Error
-    HydraAuctionOnchain.Lib.Serialise
-    HydraAuctionOnchain.Types.AuctionTerms
-    HydraAuctionOnchain.Types.AuctionTermsError
-    HydraAuctionOnchain.Types.AuctionState
-    HydraAuctionOnchain.Types.AuctionStateError
-    HydraAuctionOnchain.Types.BidderInfo
-    HydraAuctionOnchain.Types.BidderInfoError
-    HydraAuctionOnchain.Types.BidTerms
-    HydraAuctionOnchain.Types.BidTermsError
-    HydraAuctionOnchain.Types.DelegateInfo
-    HydraAuctionOnchain.Types.DelegateInfoError
+    HydraAuction.Onchain.Lib.Error
+    HydraAuction.Onchain.Lib.Serialise
+    HydraAuction.Onchain.Types.AuctionTerms
+    HydraAuction.Onchain.Types.AuctionState
+    HydraAuction.Onchain.Types.BidderInfo
+    HydraAuction.Onchain.Types.BidTerms
+    HydraAuction.Onchain.Types.DelegateInfo
 
   build-depends:
     -- , aeson
@@ -120,6 +115,7 @@ library
     -- , lens-aeson
     -- , mtl
     -- , plutus-core
+    , hydra-auction-error
     , plutus-ledger-api
     , plutus-tx
     , plutus-tx-plugin

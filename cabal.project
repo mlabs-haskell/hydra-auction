@@ -16,6 +16,7 @@ index-state:
   , cardano-haskell-packages 2023-09-14T16:16:59Z
 
 packages:
+  hydra-auction-error
   hydra-auction-offchain
   hydra-auction-onchain
 
