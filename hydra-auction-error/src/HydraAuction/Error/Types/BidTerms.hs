@@ -9,7 +9,7 @@ import HydraAuction.Error (ToErrorCode (..))
 import HydraAuction.Error.Types.BidderInfo (BidderInfo'Error (..))
 
 data BidTerms'Error
-  = BidTerms'Error'BidderInfo [BidderInfo'Error]
+  = BidTerms'Error'BidderInfo ![BidderInfo'Error]
   | BidTerms'Error'InvalidBidderSignature
   | BidTerms'Error'InvalidSellerSignature
   deriving stock (Eq, Generic, Show)

@@ -35,16 +35,16 @@ import HydraAuction.Offchain.Types.BidderInfo (
  )
 
 data BidTerms = BidTerms
-  { bt'Bidder :: BidderInfo
+  { bt'Bidder :: !BidderInfo
   -- ^ Bidder that submitted the bid.
-  , bt'BidPrice :: Lovelace
+  , bt'BidPrice :: !Lovelace
   -- ^ Price that the bidder bid to buy the auction lot.
-  , bt'BidderSignature :: Signature
+  , bt'BidderSignature :: !Signature
   -- ^ Bidder's signature (via bi'BidderVk . bt'Bidder) of the
   -- (ai'AuctionId, bt'BidPrice, bi'BidderPkh) tuple,
   -- authorizing a bid at that price to be placed in the auction
   -- and bi'BidderPkh to buy the auction lot if the bid wins.
-  , bt'SellerSignature :: Signature
+  , bt'SellerSignature :: !Signature
   -- ^ Seller's signature (via at'SellerVk) of the
   -- (ai'AuctionId, bi'BidderVk) tuple,
   -- authorizing the bidder bi'BidderVk to place bids in the auction.

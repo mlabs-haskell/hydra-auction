@@ -21,11 +21,11 @@ import HydraAuction.Offchain.Lib.Crypto (
 import HydraAuction.Offchain.Lib.Validation (err)
 
 data BidderInfo = BidderInfo
-  { bi'BidderPkh :: Hash PaymentKey
+  { bi'BidderPkh :: !(Hash PaymentKey)
   -- ^ Bidder's pubkey hash, which can spend this bidder deposit
   -- to buy the auction lot if a bid placed by bi'BidderVk wins
   -- or reclaim this bid deposit if someone else's bid wins.
-  , bi'BidderVk :: VerificationKey PaymentKey
+  , bi'BidderVk :: !(VerificationKey PaymentKey)
   -- ^ Bidder's verification, which can authorize bids that allow
   -- the seller at'SellerPkh to claim this bidder deposit
   -- if the bid placed by bi'BidderVk won but the auction lot

@@ -13,11 +13,11 @@ import PlutusTx qualified
 import HydraAuction.Error.Types.BidderInfo (BidderInfo'Error (..))
 
 data BidderInfo = BidderInfo
-  { bi'BidderPkh :: PubKeyHash
+  { bi'BidderPkh :: !PubKeyHash
   -- ^ Bidder's pubkey hash, which can spend this bidder deposit
   -- to buy the auction lot if a bid placed by bi'BidderVk wins
   -- or reclaim this bid deposit if someone else's bid wins.
-  , bi'BidderVk :: BuiltinByteString
+  , bi'BidderVk :: !BuiltinByteString
   -- ^ Bidder's verification, which can authorize bids that allow
   -- the seller at'SellerPkh to claim this bidder deposit
   -- if the bid placed by bi'BidderVk won but the auction lot

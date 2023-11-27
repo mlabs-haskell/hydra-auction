@@ -12,7 +12,7 @@ import HydraAuction.Error.Types.BidTerms (BidTerms'Error (..))
 data Buyer'Error
   = Buyer'Error'EmptyStandingBid
   | Buyer'Error'BuyerVkPkhMismatch
-  | Buyer'Error'InvalidBidTerms [BidTerms'Error]
+  | Buyer'Error'InvalidBidTerms ![BidTerms'Error]
   deriving stock (Eq, Generic, Show)
 
 instance ToErrorCode Buyer'Error where
@@ -26,7 +26,7 @@ instance ToErrorCode Buyer'Error where
 
 data NewBid'Error
   = NewBid'Error'EmptyNewBid
-  | NewBid'Error'InvalidNewBidTerms [BidTerms'Error]
+  | NewBid'Error'InvalidNewBidTerms ![BidTerms'Error]
   | NewBid'Error'InvalidStartingBid
   | NewBid'Error'InvalidBidIncrement
   deriving stock (Eq, Generic, Show)

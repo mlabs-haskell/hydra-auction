@@ -20,9 +20,9 @@ import HydraAuction.Offchain.Lib.Crypto (
 import HydraAuction.Offchain.Lib.Validation (err)
 
 data DelegateInfo = DelegateInfo
-  { di'GroupName :: Text
-  , di'GroupURL :: Text
-  , di'Delegates :: [Hash PaymentKey]
+  { di'GroupName :: !Text
+  , di'GroupURL :: !Text
+  , di'Delegates :: ![Hash PaymentKey]
   -- ^ The payment vkey hashes of the individual delegates in this group.
   -- These payment vkey hashes also indicate where the delegates
   -- should receive payment for their services.
