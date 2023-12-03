@@ -6,6 +6,8 @@ module HydraAuction.Offchain.Types.AuctionState (
   sellerPayout,
   validateBuyer,
   validateNewBid,
+  fromPlutusAuctionEscrowState,
+  fromPlutusStandingBidState,
   toPlutusAuctionEscrowState,
   toPlutusStandingBidState,
 ) where
@@ -14,6 +16,7 @@ import GHC.Generics (Generic)
 import Prelude
 
 import Data.Functor ((<&>))
+import Data.Traversable (for)
 import Data.Validation (Validation (..))
 
 import Cardano.Api.Shelley (
@@ -39,6 +42,7 @@ import HydraAuction.Offchain.Types.AuctionTerms (
  )
 import HydraAuction.Offchain.Types.BidTerms (
   BidTerms (..),
+  fromPlutusBidTerms,
   toPlutusBidTerms,
   validateBidTerms,
  )
@@ -173,3 +177,20 @@ toPlutusStandingBidState StandingBidState {..} =
     { O.standingBidState =
         standingBidState <&> toPlutusBidTerms
     }
+
+-- -------------------------------------------------------------------------
+-- Conversion from onchain
+-- -------------------------------------------------------------------------
+fromPlutusAuctionEscrowState :: O.AuctionEscrowState -> AuctionEscrowState
+fromPlutusAuctionEscrowState O.AuctionAnnounced = AuctionAnnounced
+fromPlutusAuctionEscrowState O.BiddingStarted = BiddingStarted
+fromPlutusAuctionEscrowState O.AuctionConcluded = AuctionConcluded
+
+fromPlutusStandingBidState :: O.StandingBidState -> Maybe StandingBidState
+fromPlutusStandingBidState O.StandingBidState {..} = do
+  m'standingBidState <-
+    standingBidState `for` fromPlutusBidTerms
+  pure $
+    StandingBidState
+      { standingBidState = m'standingBidState
+      }

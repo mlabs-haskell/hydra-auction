@@ -3,6 +3,7 @@ module HydraAuction.Offchain.Types.DelegateInfo (
   DelegateInfo'Error (..),
   validateDelegateInfo,
   toPlutusDelegateInfo,
+  fromPlutusDelegateInfo,
 ) where
 
 import GHC.Generics (Generic)
@@ -11,12 +12,15 @@ import Prelude
 import Data.Function ((&))
 import Data.Functor ((<&>))
 import Data.Text (Text)
+import Data.Traversable (for)
 import Data.Validation (Validation)
 
 import HydraAuction.Error.Types.DelegateInfo (
   DelegateInfo'Error (..),
  )
 import HydraAuction.Offchain.Lib.Codec.Onchain (
+  fromPlutusTextUtf8,
+  fromPlutusVKeyHash,
   toPlutusTextUtf8,
   toPlutusVKeyHash,
  )
@@ -65,3 +69,24 @@ toPlutusDelegateInfo DelegateInfo {..} =
       O.di'Delegates =
         di'Delegates <&> toPlutusVKeyHash
     }
+
+-- -------------------------------------------------------------------------
+-- Conversion from onchain
+-- -------------------------------------------------------------------------
+fromPlutusDelegateInfo :: O.DelegateInfo -> Maybe DelegateInfo
+fromPlutusDelegateInfo O.DelegateInfo {..} = do
+  m'di'GroupName <-
+    di'GroupName & fromPlutusTextUtf8
+  --
+  m'di'GroupURL <-
+    di'GroupURL & fromPlutusTextUtf8
+  --
+  m'di'Delegates <-
+    di'Delegates `for` fromPlutusVKeyHash
+  --
+  pure $
+    DelegateInfo
+      { di'GroupName = m'di'GroupName
+      , di'GroupURL = m'di'GroupURL
+      , di'Delegates = m'di'Delegates
+      }

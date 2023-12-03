@@ -3,6 +3,7 @@ module HydraAuction.Offchain.Types.BidderInfo (
   BidderInfo'Error (..),
   validateBidderInfo,
   toPlutusBidderInfo,
+  fromPlutusBidderInfo,
 ) where
 
 import GHC.Generics (Generic)
@@ -15,6 +16,8 @@ import HydraAuction.Error.Types.BidderInfo (
   BidderInfo'Error (..),
  )
 import HydraAuction.Offchain.Lib.Codec.Onchain (
+  fromPlutusVKey,
+  fromPlutusVKeyHash,
   toPlutusVKey,
   toPlutusVKeyHash,
  )
@@ -68,3 +71,20 @@ toPlutusBidderInfo BidderInfo {..} =
       O.bi'BidderVk =
         bi'BidderVk & toPlutusVKey
     }
+
+-- -------------------------------------------------------------------------
+-- Conversion from onchain
+-- -------------------------------------------------------------------------
+fromPlutusBidderInfo :: O.BidderInfo -> Maybe BidderInfo
+fromPlutusBidderInfo O.BidderInfo {..} = do
+  m'bi'BidderPkh <-
+    bi'BidderPkh & fromPlutusVKeyHash
+  --
+  m'bi'BidderVk <-
+    bi'BidderVk & fromPlutusVKey
+  --
+  pure $
+    BidderInfo
+      { bi'BidderPkh = m'bi'BidderPkh
+      , bi'BidderVk = m'bi'BidderVk
+      }

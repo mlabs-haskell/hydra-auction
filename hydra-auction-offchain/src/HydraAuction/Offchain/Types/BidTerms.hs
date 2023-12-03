@@ -2,6 +2,7 @@ module HydraAuction.Offchain.Types.BidTerms (
   BidTerms (..),
   BidTerms'Error (..),
   validateBidTerms,
+  fromPlutusBidTerms,
   toPlutusBidTerms,
 ) where
 
@@ -22,6 +23,8 @@ import HydraAuction.Error.Types.BidTerms (
   BidTerms'Error (..),
  )
 import HydraAuction.Offchain.Lib.Codec.Onchain (
+  fromPlutusLovelace,
+  fromPlutusSignature,
   toPlutusLovelace,
   toPlutusSignature,
  )
@@ -37,6 +40,7 @@ import HydraAuction.Offchain.Lib.Validation (err, errWith)
 import HydraAuction.Offchain.Types.AuctionTerms (AuctionTerms (..))
 import HydraAuction.Offchain.Types.BidderInfo (
   BidderInfo (..),
+  fromPlutusBidderInfo,
   toPlutusBidderInfo,
   validateBidderInfo,
  )
@@ -128,3 +132,28 @@ toPlutusBidTerms BidTerms {..} =
       O.bt'SellerSignature =
         bt'SellerSignature & toPlutusSignature
     }
+
+-- -------------------------------------------------------------------------
+-- Conversion from onchain
+-- -------------------------------------------------------------------------
+fromPlutusBidTerms :: O.BidTerms -> Maybe BidTerms
+fromPlutusBidTerms O.BidTerms {..} = do
+  m'bt'Bidder <-
+    bt'Bidder & fromPlutusBidderInfo
+  --
+  let m'bt'BidPrice =
+        bt'BidPrice & fromPlutusLovelace
+  --
+  m'bt'BidderSignature <-
+    bt'BidderSignature & fromPlutusSignature
+  --
+  m'bt'SellerSignature <-
+    bt'SellerSignature & fromPlutusSignature
+  --
+  pure $
+    BidTerms
+      { bt'Bidder = m'bt'Bidder
+      , bt'BidPrice = m'bt'BidPrice
+      , bt'BidderSignature = m'bt'BidderSignature
+      , bt'SellerSignature = m'bt'SellerSignature
+      }

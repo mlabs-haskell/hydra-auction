@@ -4,6 +4,7 @@ module HydraAuction.Offchain.Types.AuctionTerms (
   totalAuctionFees,
   validateAuctionTerms,
   toPlutusAuctionTerms,
+  fromPlutusAuctionTerms,
 ) where
 
 import GHC.Generics (Generic)
@@ -11,6 +12,7 @@ import Prelude
 
 import Data.Function ((&))
 import Data.Functor ((<&>))
+import Data.Traversable (for)
 import Data.Validation (Validation)
 
 import Cardano.Api.Shelley (
@@ -22,6 +24,11 @@ import HydraAuction.Error.Types.AuctionTerms (
   AuctionTerms'Error (..),
  )
 import HydraAuction.Offchain.Lib.Codec.Onchain (
+  fromPlutusAssetId,
+  fromPlutusLovelace,
+  fromPlutusUTCTimeMilli,
+  fromPlutusVKey,
+  fromPlutusVKeyHash,
   toPlutusAssetId,
   toPlutusLovelace,
   toPlutusUTCTimeMilli,
@@ -179,3 +186,60 @@ toPlutusAuctionTerms AuctionTerms {..} =
       O.at'MinDepositAmount =
         at'MinDepositAmount & toPlutusLovelace
     }
+
+-- -------------------------------------------------------------------------
+-- Conversion from onchain
+-- -------------------------------------------------------------------------
+fromPlutusAuctionTerms :: O.AuctionTerms -> Maybe AuctionTerms
+fromPlutusAuctionTerms O.AuctionTerms {..} = do
+  m'at'AuctionLot <-
+    at'AuctionLot & fromPlutusAssetId
+  --
+  m'at'SellerPkh <-
+    at'SellerPkh & fromPlutusVKeyHash
+  --
+  m'at'SellerVk <-
+    at'SellerVk & fromPlutusVKey
+  --
+  m'at'Delegates <-
+    at'Delegates `for` fromPlutusVKeyHash
+  --
+  let m'at'BiddingStart =
+        at'BiddingStart & fromPlutusUTCTimeMilli
+  --
+  let m'at'BiddingEnd =
+        at'BiddingEnd & fromPlutusUTCTimeMilli
+  --
+  let m'at'PurchaseDeadline =
+        at'PurchaseDeadline & fromPlutusUTCTimeMilli
+  --
+  let m'at'Cleanup =
+        at'Cleanup & fromPlutusUTCTimeMilli
+  --
+  let m'at'AuctionFeePerDelegate =
+        at'AuctionFeePerDelegate & fromPlutusLovelace
+  --
+  let m'at'StartingBid =
+        at'StartingBid & fromPlutusLovelace
+  --
+  let m'at'MinBidIncrement =
+        at'MinBidIncrement & fromPlutusLovelace
+  --
+  let m'at'MinDepositAmount =
+        at'MinDepositAmount & fromPlutusLovelace
+  --
+  pure $
+    AuctionTerms
+      { at'AuctionLot = m'at'AuctionLot
+      , at'SellerPkh = m'at'SellerPkh
+      , at'SellerVk = m'at'SellerVk
+      , at'Delegates = m'at'Delegates
+      , at'BiddingStart = m'at'BiddingStart
+      , at'BiddingEnd = m'at'BiddingEnd
+      , at'PurchaseDeadline = m'at'PurchaseDeadline
+      , at'Cleanup = m'at'Cleanup
+      , at'AuctionFeePerDelegate = m'at'AuctionFeePerDelegate
+      , at'StartingBid = m'at'StartingBid
+      , at'MinBidIncrement = m'at'MinBidIncrement
+      , at'MinDepositAmount = m'at'MinDepositAmount
+      }
