@@ -87,6 +87,7 @@ library
   exposed-modules:
     HydraAuction.Offchain.Lib.Codec.Onchain
     HydraAuction.Offchain.Lib.Crypto
+    HydraAuction.Offchain.Lib.Time
     HydraAuction.Offchain.Lib.Validation
     HydraAuction.Offchain.Types.AuctionState
     HydraAuction.Offchain.Types.AuctionTerms

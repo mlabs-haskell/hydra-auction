@@ -4,6 +4,7 @@ module HydraAuction.Offchain.Lib.Codec.Onchain (
   toPlutusAssetName,
   toPlutusLovelace,
   toPlutusPolicyId,
+  toPlutusUTCTimeMilli,
   toPlutusValue,
   toPlutusVKey,
   toPlutusVKeyHash,
@@ -12,6 +13,7 @@ module HydraAuction.Offchain.Lib.Codec.Onchain (
   fromPlutusAssetName,
   fromPlutusLovelace,
   fromPlutusPolicyId,
+  fromPlutusUTCTimeMilli,
   fromPlutusValue,
   fromPlutusVKey,
   fromPlutusVKeyHash,
@@ -22,22 +24,41 @@ import Prelude
 import Data.ByteString qualified as BS
 import Data.ByteString.Short qualified as Short
 
-import Cardano.Crypto.Hash qualified as Cardano.Crypto
-
 import Cardano.Api.Shelley qualified as Cardano.Api
 
-import PlutusLedgerApi.V1.Crypto qualified as Plutus
-
--- import PlutusLedgerApi.V1.Time qualified as Plutus
-import PlutusLedgerApi.V1.Value qualified as Plutus
-import PlutusTx.Prelude qualified as Plutus
+import Cardano.Crypto.Hash qualified as Cardano.Crypto
 
 import Cardano.Ledger.Alonzo.TxInfo qualified as Alonzo.TxInfo
-import Cardano.Ledger.Mary.Value qualified as Mary
-
 import Cardano.Ledger.Crypto (StandardCrypto)
 import Cardano.Ledger.Hashes qualified as Ledger
 import Cardano.Ledger.Keys qualified as Ledger
+import Cardano.Ledger.Mary.Value qualified as Mary
+
+import PlutusLedgerApi.V1.Crypto qualified as Plutus
+import PlutusLedgerApi.V1.Time qualified as Plutus
+import PlutusLedgerApi.V1.Value qualified as Plutus
+import PlutusTx.Prelude qualified as Plutus
+
+import HydraAuction.Offchain.Lib.Time qualified as AuctionTime
+
+-- -------------------------------------------------------------------------
+-- Time
+-- -------------------------------------------------------------------------
+toPlutusUTCTimeMilli ::
+  AuctionTime.UTCTimeMilli ->
+  Plutus.POSIXTime
+toPlutusUTCTimeMilli =
+  Plutus.POSIXTime
+    . AuctionTime.posixTimeMilliToInteger
+    . AuctionTime.utcTimeMilliToPOSIXMilli
+
+fromPlutusUTCTimeMilli ::
+  Plutus.POSIXTime ->
+  AuctionTime.UTCTimeMilli
+fromPlutusUTCTimeMilli =
+  AuctionTime.posixMilliToUTCMilli
+    . AuctionTime.integerToPOSIXTimeMilli
+    . Plutus.getPOSIXTime
 
 -- -------------------------------------------------------------------------
 -- Verification Keys
