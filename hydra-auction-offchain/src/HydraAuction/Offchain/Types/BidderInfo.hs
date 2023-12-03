@@ -2,15 +2,21 @@ module HydraAuction.Offchain.Types.BidderInfo (
   BidderInfo (..),
   BidderInfo'Error (..),
   validateBidderInfo,
+  toPlutusBidderInfo,
 ) where
 
 import GHC.Generics (Generic)
 import Prelude
 
+import Data.Function ((&))
 import Data.Validation (Validation)
 
 import HydraAuction.Error.Types.BidderInfo (
   BidderInfo'Error (..),
+ )
+import HydraAuction.Offchain.Lib.Codec.Onchain (
+  toPlutusVKey,
+  toPlutusVKeyHash,
  )
 import HydraAuction.Offchain.Lib.Crypto (
   Hash,
@@ -19,6 +25,8 @@ import HydraAuction.Offchain.Lib.Crypto (
   VerificationKey,
  )
 import HydraAuction.Offchain.Lib.Validation (err)
+
+import HydraAuction.Onchain.Types.BidderInfo qualified as O
 
 data BidderInfo = BidderInfo
   { bi'BidderPkh :: !(Hash PaymentKey)
@@ -36,7 +44,6 @@ data BidderInfo = BidderInfo
 -- -------------------------------------------------------------------------
 -- Validation
 -- -------------------------------------------------------------------------
-
 validateBidderInfo ::
   BidderInfo ->
   Validation [BidderInfo'Error] ()
@@ -48,3 +55,16 @@ validateBidderInfo BidderInfo {..} =
   -- https://github.com/input-output-hk/plutus/pull/5431
   (bi'BidderPkh == verificationKeyHash bi'BidderVk)
     `err` BidderInfo'Error'BidderVkPkhMismatch
+
+-- -------------------------------------------------------------------------
+-- Conversion to onchain
+-- -------------------------------------------------------------------------
+toPlutusBidderInfo :: BidderInfo -> O.BidderInfo
+toPlutusBidderInfo BidderInfo {..} =
+  O.BidderInfo
+    { O.bi'BidderPkh =
+        bi'BidderPkh & toPlutusVKeyHash
+    , --
+      O.bi'BidderVk =
+        bi'BidderVk & toPlutusVKey
+    }

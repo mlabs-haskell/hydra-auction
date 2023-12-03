@@ -2,8 +2,11 @@ module HydraAuction.Offchain.Lib.Codec.Onchain (
   -- Offchain -> Onchain
   toPlutusAssetId,
   toPlutusAssetName,
+  toPlutusBytestring,
   toPlutusLovelace,
   toPlutusPolicyId,
+  toPlutusSignature,
+  toPlutusTextUtf8,
   toPlutusUTCTimeMilli,
   toPlutusValue,
   toPlutusVKey,
@@ -11,8 +14,11 @@ module HydraAuction.Offchain.Lib.Codec.Onchain (
   -- Onchain -> Offchain
   fromPlutusAssetId,
   fromPlutusAssetName,
+  fromPlutusBytestring,
   fromPlutusLovelace,
   fromPlutusPolicyId,
+  fromPlutusSignature,
+  fromPlutusTextUtf8,
   fromPlutusUTCTimeMilli,
   fromPlutusValue,
   fromPlutusVKey,
@@ -23,9 +29,12 @@ import Prelude
 
 import Data.ByteString qualified as BS
 import Data.ByteString.Short qualified as Short
+import Data.Text qualified as Text
+import Data.Text.Encoding qualified as Text.Encoding
 
 import Cardano.Api.Shelley qualified as Cardano.Api
 
+import Cardano.Crypto.DSIGN qualified as DSIGN
 import Cardano.Crypto.Hash qualified as Cardano.Crypto
 
 import Cardano.Ledger.Alonzo.TxInfo qualified as Alonzo.TxInfo
@@ -59,6 +68,29 @@ fromPlutusUTCTimeMilli =
   AuctionTime.posixMilliToUTCMilli
     . AuctionTime.integerToPOSIXTimeMilli
     . Plutus.getPOSIXTime
+
+-- -------------------------------------------------------------------------
+-- Signature
+-- -------------------------------------------------------------------------
+-- PlutusCore.Crypto.Ed25519.verifyEd25519Signature_V2
+-- deserializes its bytestring signature argument
+-- with DSIGN.rawDeserialiseSigDSIGN.
+-- Although PlutusTx.Builtins.verifyEd25519Signature
+-- uses PlutusCore.Crypto.Ed25519.verifyEd25519Signature_V1
+-- instead, the hope is that they serialize the signature
+-- in the same way...
+toPlutusSignature ::
+  Ledger.SignedDSIGN StandardCrypto BS.ByteString ->
+  Plutus.BuiltinByteString
+toPlutusSignature (DSIGN.SignedDSIGN sig) =
+  Plutus.toBuiltin $ DSIGN.rawSerialiseSigDSIGN sig
+
+fromPlutusSignature ::
+  Plutus.BuiltinByteString ->
+  Maybe (Ledger.SignedDSIGN StandardCrypto BS.ByteString)
+fromPlutusSignature bbs =
+  DSIGN.SignedDSIGN
+    <$> DSIGN.rawDeserialiseSigDSIGN (Plutus.fromBuiltin bbs)
 
 -- -------------------------------------------------------------------------
 -- Verification Keys
@@ -182,3 +214,24 @@ toPlutusLovelace (Cardano.Api.Lovelace n) = n
 
 fromPlutusLovelace :: Integer -> Cardano.Api.Lovelace
 fromPlutusLovelace = Cardano.Api.Lovelace
+
+-- -------------------------------------------------------------------------
+-- Text
+-- -------------------------------------------------------------------------
+toPlutusTextUtf8 :: Text.Text -> Plutus.BuiltinByteString
+toPlutusTextUtf8 = Plutus.toBuiltin . Text.Encoding.encodeUtf8
+
+fromPlutusTextUtf8 :: Plutus.BuiltinByteString -> Maybe Text.Text
+fromPlutusTextUtf8 =
+  either (const Nothing) Just
+    . Text.Encoding.decodeUtf8'
+    . Plutus.fromBuiltin
+
+-- -------------------------------------------------------------------------
+-- Bytestring
+-- -------------------------------------------------------------------------
+toPlutusBytestring :: BS.ByteString -> Plutus.BuiltinByteString
+toPlutusBytestring = Plutus.toBuiltin
+
+fromPlutusBytestring :: Plutus.BuiltinByteString -> BS.ByteString
+fromPlutusBytestring = Plutus.fromBuiltin

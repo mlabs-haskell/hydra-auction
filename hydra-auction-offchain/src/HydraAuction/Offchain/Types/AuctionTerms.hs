@@ -3,12 +3,14 @@ module HydraAuction.Offchain.Types.AuctionTerms (
   AuctionTerms'Error (..),
   totalAuctionFees,
   validateAuctionTerms,
+  toPlutusAuctionTerms,
 ) where
 
 import GHC.Generics (Generic)
 import Prelude
 
-import Data.Time.Clock (UTCTime)
+import Data.Function ((&))
+import Data.Functor ((<&>))
 import Data.Validation (Validation)
 
 import Cardano.Api.Shelley (
@@ -19,13 +21,23 @@ import Cardano.Api.Shelley (
 import HydraAuction.Error.Types.AuctionTerms (
   AuctionTerms'Error (..),
  )
+import HydraAuction.Offchain.Lib.Codec.Onchain (
+  toPlutusAssetId,
+  toPlutusLovelace,
+  toPlutusUTCTimeMilli,
+  toPlutusVKey,
+  toPlutusVKeyHash,
+ )
 import HydraAuction.Offchain.Lib.Crypto (
   Hash,
   Key (verificationKeyHash),
   PaymentKey,
   VerificationKey,
  )
+import HydraAuction.Offchain.Lib.Time (UTCTimeMilli)
 import HydraAuction.Offchain.Lib.Validation (err)
+
+import HydraAuction.Onchain.Types.AuctionTerms qualified as O
 
 data AuctionTerms = AuctionTerms
   { at'AuctionLot :: !AssetId
@@ -40,15 +52,15 @@ data AuctionTerms = AuctionTerms
   -- which bidders receive authorization to participate in the auction.
   , at'Delegates :: ![Hash PaymentKey]
   -- ^ Group of delegates authorized to run the L2 bidding process.
-  , at'BiddingStart :: !UTCTime
+  , at'BiddingStart :: !UTCTimeMilli
   -- ^ Start time of the bidding period.
-  , at'BiddingEnd :: !UTCTime
+  , at'BiddingEnd :: !UTCTimeMilli
   -- ^ End time of the bidding period.
-  , at'PurchaseDeadline :: !UTCTime
+  , at'PurchaseDeadline :: !UTCTimeMilli
   -- ^ Time by which the winning bidder can buy the auction lot.
   -- At and after this time, the winning bidder forfeits its bidder deposit
   -- if the auction lot has not been purchased.
-  , at'Cleanup :: !UTCTime
+  , at'Cleanup :: !UTCTimeMilli
   -- ^ Time at and after  which the remaining utxos in the auction
   -- can be unconditionally cleaned up, returning all tokens
   -- in those utxos to their original owners before the auction.
@@ -124,3 +136,46 @@ totalAuctionFees AuctionTerms {..}
   | Lovelace x <- at'AuctionFeePerDelegate =
       Lovelace $
         x * fromIntegral (length at'Delegates)
+
+-- -------------------------------------------------------------------------
+-- Conversion to onchain
+-- -------------------------------------------------------------------------
+toPlutusAuctionTerms :: AuctionTerms -> O.AuctionTerms
+toPlutusAuctionTerms AuctionTerms {..} =
+  O.AuctionTerms
+    { O.at'AuctionLot =
+        at'AuctionLot & toPlutusAssetId
+    , --
+      O.at'SellerPkh =
+        at'SellerPkh & toPlutusVKeyHash
+    , --
+      O.at'SellerVk =
+        at'SellerVk & toPlutusVKey
+    , --
+      O.at'Delegates =
+        at'Delegates <&> toPlutusVKeyHash
+    , --
+      O.at'BiddingStart =
+        at'BiddingStart & toPlutusUTCTimeMilli
+    , --
+      O.at'BiddingEnd =
+        at'BiddingEnd & toPlutusUTCTimeMilli
+    , --
+      O.at'PurchaseDeadline =
+        at'PurchaseDeadline & toPlutusUTCTimeMilli
+    , --
+      O.at'Cleanup =
+        at'Cleanup & toPlutusUTCTimeMilli
+    , --
+      O.at'AuctionFeePerDelegate =
+        at'AuctionFeePerDelegate & toPlutusLovelace
+    , --
+      O.at'StartingBid =
+        at'StartingBid & toPlutusLovelace
+    , --
+      O.at'MinBidIncrement =
+        at'MinBidIncrement & toPlutusLovelace
+    , --
+      O.at'MinDepositAmount =
+        at'MinDepositAmount & toPlutusLovelace
+    }

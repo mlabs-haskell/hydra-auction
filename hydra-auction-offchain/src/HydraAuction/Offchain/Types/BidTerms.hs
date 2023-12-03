@@ -2,11 +2,13 @@ module HydraAuction.Offchain.Types.BidTerms (
   BidTerms (..),
   BidTerms'Error (..),
   validateBidTerms,
+  toPlutusBidTerms,
 ) where
 
 import GHC.Generics (Generic)
 import Prelude
 
+import Data.Function ((&))
 import Data.Validation (Validation)
 
 import Cardano.Api.Shelley (
@@ -18,6 +20,10 @@ import Cardano.Crypto.Hash (ByteString)
 
 import HydraAuction.Error.Types.BidTerms (
   BidTerms'Error (..),
+ )
+import HydraAuction.Offchain.Lib.Codec.Onchain (
+  toPlutusLovelace,
+  toPlutusSignature,
  )
 import HydraAuction.Offchain.Lib.Crypto (
   Hash,
@@ -31,8 +37,11 @@ import HydraAuction.Offchain.Lib.Validation (err, errWith)
 import HydraAuction.Offchain.Types.AuctionTerms (AuctionTerms (..))
 import HydraAuction.Offchain.Types.BidderInfo (
   BidderInfo (..),
+  toPlutusBidderInfo,
   validateBidderInfo,
  )
+
+import HydraAuction.Onchain.Types.BidTerms qualified as O
 
 data BidTerms = BidTerms
   { bt'Bidder :: !BidderInfo
@@ -100,3 +109,22 @@ sellerSignatureMessage ::
 sellerSignatureMessage auctionId bidderVk =
   serialiseToRawBytes auctionId
     <> serialiseToRawBytes bidderVk
+
+-- -------------------------------------------------------------------------
+-- Conversion to onchain
+-- -------------------------------------------------------------------------
+toPlutusBidTerms :: BidTerms -> O.BidTerms
+toPlutusBidTerms BidTerms {..} =
+  O.BidTerms
+    { O.bt'Bidder =
+        bt'Bidder & toPlutusBidderInfo
+    , --
+      O.bt'BidPrice =
+        bt'BidPrice & toPlutusLovelace
+    , --
+      O.bt'BidderSignature =
+        bt'BidderSignature & toPlutusSignature
+    , --
+      O.bt'SellerSignature =
+        bt'SellerSignature & toPlutusSignature
+    }

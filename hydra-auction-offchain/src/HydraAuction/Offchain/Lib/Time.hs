@@ -38,7 +38,7 @@ import Data.Time.Clock.POSIX (
 type POSIXTimeMilli = NominalDiffMilliSeconds
 
 newtype NominalDiffMilliSeconds = NominalDiffMilliSeconds Milli
-  deriving stock (Eq, Generic, Ord)
+  deriving stock (Eq, Generic, Ord, Show)
 
 -- | Get the integer number of milliseconds in a POSIX time.
 posixTimeMilliToInteger :: POSIXTimeMilli -> Integer
@@ -81,7 +81,7 @@ picoToMilli x = (x', r)
 -- UTC
 -- -------------------------------------------------------------------------
 data UTCTimeMilli = UTCTimeMilli !Day !NominalDiffMilliSeconds
-  deriving stock (Eq, Generic, Ord)
+  deriving stock (Eq, Generic, Ord, Show)
 
 -- | Restrict a UTCTime to millisecond resolution.
 restrictUTCTimeMilli :: UTCTime -> UTCTimeMilli
