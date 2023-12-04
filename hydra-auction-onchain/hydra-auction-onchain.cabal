@@ -93,14 +93,17 @@ library
   exposed-modules:
     HydraAuction.Onchain.Lib.Error
     HydraAuction.Onchain.Lib.PlutusScript
+    HydraAuction.Onchain.Lib.ScriptContext
     HydraAuction.Onchain.Lib.Serialise
-    HydraAuction.Onchain.Validators.AuctionMetadata
+    HydraAuction.Onchain.MintingPolicies.Auction
+    HydraAuction.Onchain.MintingPolicies.AuctionRedeemer
     HydraAuction.Onchain.Types.AuctionInfo
     HydraAuction.Onchain.Types.AuctionState
     HydraAuction.Onchain.Types.AuctionTerms
     HydraAuction.Onchain.Types.BidderInfo
     HydraAuction.Onchain.Types.BidTerms
     HydraAuction.Onchain.Types.DelegateInfo
+    HydraAuction.Onchain.Validators.AuctionMetadata
 
   build-depends:
     -- , aeson
@@ -123,7 +126,7 @@ library
     -- , lens
     -- , lens-aeson
     -- , mtl
-    -- , plutus-core
+    , plutus-core
     , hydra-auction-error
     , plutus-ledger-api
     , plutus-tx

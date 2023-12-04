@@ -2,6 +2,7 @@ module HydraAuction.Onchain.Validators.AuctionMetadata (
   validator,
   compiledValidator,
   validatorScript,
+  validatorHash,
   datum,
   redeemer,
 ) where
@@ -64,13 +65,13 @@ validator ::
   ScriptContext ->
   Bool
 validator () RemoveAuction context =
-  exactlyOneOwnScriptInput
+  ownInputIsOnlyInputFromOwnScript
     && ownInputHoldsAuctionMetadataToken
-    && exactlyBurnedAuctionTokens
+    && auctionTokensAreBurnedExactly
   where
     TxInfo {..} = scriptContextTxInfo context
     --
-    exactlyOneOwnScriptInput =
+    ownInputIsOnlyInputFromOwnScript =
       (length ownScriptInputs == 1)
         `err` $(eCode AuctionMetadata'Error'TooManyOwnScriptInputs)
     --
@@ -78,7 +79,7 @@ validator () RemoveAuction context =
       (valueOf ownValue ai'AuctionId auctionMetadataTN == 1)
         `err` ""
     --
-    exactlyBurnedAuctionTokens =
+    auctionTokensAreBurnedExactly =
       (txInfoMint == expectedMint)
         `err` $(eCode AuctionMetadata'Error'AuctionTokensNotBurnedExactly)
     --
