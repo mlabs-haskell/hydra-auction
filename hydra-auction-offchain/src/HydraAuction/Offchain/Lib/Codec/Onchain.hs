@@ -1,5 +1,6 @@
 module HydraAuction.Offchain.Lib.Codec.Onchain (
   -- Offchain -> Onchain
+  toPlutusAddress,
   toPlutusAssetId,
   toPlutusAssetName,
   toPlutusBytestring,
@@ -12,6 +13,7 @@ module HydraAuction.Offchain.Lib.Codec.Onchain (
   toPlutusVKey,
   toPlutusVKeyHash,
   -- Onchain -> Offchain
+  fromPlutusAddress,
   fromPlutusAssetId,
   fromPlutusAssetName,
   fromPlutusBytestring,
@@ -29,6 +31,7 @@ import Prelude
 
 import Data.ByteString qualified as BS
 import Data.ByteString.Short qualified as Short
+import Data.Maybe qualified as Maybe
 import Data.Text qualified as Text
 import Data.Text.Encoding qualified as Text.Encoding
 
@@ -37,13 +40,19 @@ import Cardano.Api.Shelley qualified as Cardano.Api
 import Cardano.Crypto.DSIGN qualified as DSIGN
 import Cardano.Crypto.Hash qualified as Cardano.Crypto
 
+import Cardano.Ledger.Address qualified as Ledger
 import Cardano.Ledger.Alonzo.TxInfo qualified as Alonzo.TxInfo
+import Cardano.Ledger.BaseTypes qualified as Ledger
+import Cardano.Ledger.Credential qualified as Ledger
 import Cardano.Ledger.Crypto (StandardCrypto)
 import Cardano.Ledger.Hashes qualified as Ledger
 import Cardano.Ledger.Keys qualified as Ledger
 import Cardano.Ledger.Mary.Value qualified as Mary
 
+import PlutusLedgerApi.V1.Address qualified as Plutus
+import PlutusLedgerApi.V1.Credential qualified as Plutus
 import PlutusLedgerApi.V1.Crypto qualified as Plutus
+import PlutusLedgerApi.V1.Scripts qualified as Plutus
 import PlutusLedgerApi.V1.Time qualified as Plutus
 import PlutusLedgerApi.V1.Value qualified as Plutus
 import PlutusTx.Prelude qualified as Plutus
@@ -130,6 +139,73 @@ transKeyHashInverse ::
   Maybe (Ledger.KeyHash 'Ledger.Payment StandardCrypto)
 transKeyHashInverse (Plutus.PubKeyHash bbs) =
   Ledger.KeyHash <$> Cardano.Crypto.hashFromBytes (Plutus.fromBuiltin bbs)
+
+-- -------------------------------------------------------------------------
+-- Shelley-based addresses (i.e. non-Byron)
+-- -------------------------------------------------------------------------
+toPlutusAddress ::
+  Cardano.Api.IsShelleyBasedEra era =>
+  Cardano.Api.AddressInEra era ->
+  Plutus.Address
+toPlutusAddress =
+  Maybe.fromMaybe (error "Impossible Byron address here")
+    . Alonzo.TxInfo.transAddr
+    . Cardano.Api.toShelleyAddr
+
+fromPlutusAddress ::
+  Cardano.Api.IsShelleyBasedEra era =>
+  Cardano.Api.NetworkId ->
+  Plutus.Address ->
+  Maybe (Cardano.Api.AddressInEra era)
+fromPlutusAddress net =
+  fmap Cardano.Api.fromShelleyAddrIsSbe
+    . transAddrInverse (Cardano.Api.toShelleyNetwork net)
+
+transAddrInverse ::
+  Ledger.Network ->
+  Plutus.Address ->
+  Maybe (Ledger.Addr StandardCrypto)
+transAddrInverse net (Plutus.Address credential stakeRef) = do
+  lCredential <- transCredInverse credential
+  lStakeRef <- transStakeReferenceInverse stakeRef
+  pure $ Ledger.Addr net lCredential lStakeRef
+
+-- This is the inverse of Alonzo.TxInfo.transCredInverse,
+-- except when the Plutus.PubKeyHash or Plutus.ScriptHash bytestring
+-- cannot be decoded as valid hashes.
+transCredInverse ::
+  Plutus.Credential ->
+  Maybe (Ledger.Credential kr StandardCrypto)
+transCredInverse (Plutus.PubKeyCredential (Plutus.PubKeyHash bbs)) =
+  Ledger.KeyHashObj . Ledger.KeyHash
+    <$> Cardano.Crypto.hashFromBytes (Plutus.fromBuiltin bbs)
+transCredInverse (Plutus.ScriptCredential (Plutus.ScriptHash bbs)) =
+  Ledger.ScriptHashObj . Ledger.ScriptHash
+    <$> Cardano.Crypto.hashFromBytes (Plutus.fromBuiltin bbs)
+
+-- This is the inverse of Alonzo.TxInfo.transStakeReference,
+-- except when there are deserialization errors from Plutus.
+transStakeReferenceInverse ::
+  Maybe Plutus.StakingCredential ->
+  Maybe (Ledger.StakeReference StandardCrypto)
+transStakeReferenceInverse =
+  Maybe.maybe (Just Ledger.StakeRefNull) transStakeReferenceInverse'
+
+-- This helper function isolates the errors that can occur
+-- when deserializing a Plutus.StakingCredential from Plutus.
+transStakeReferenceInverse' ::
+  Plutus.StakingCredential ->
+  Maybe (Ledger.StakeReference StandardCrypto)
+transStakeReferenceInverse' (Plutus.StakingHash credential) =
+  Ledger.StakeRefBase
+    <$> transCredInverse credential
+transStakeReferenceInverse' (Plutus.StakingPtr pSlot pTxIx pCertIx) = do
+  lTxIx <- Ledger.txIxFromIntegral @Integer $ fromInteger pTxIx
+  lCertIx <- Ledger.certIxFromIntegral @Integer $ fromInteger pCertIx
+  let lSlot = fromIntegral pSlot
+  pure $
+    Ledger.StakeRefPtr $
+      Ledger.Ptr (Ledger.SlotNo lSlot) lTxIx lCertIx
 
 -- -------------------------------------------------------------------------
 -- Values
