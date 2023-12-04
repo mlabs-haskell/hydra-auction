@@ -4,6 +4,7 @@ module HydraAuction.Onchain.Lib.PlutusScript (
   wrapValidator,
   wrapMintingPolicy,
   scriptValidatorHash,
+  scriptValidatorHash',
 ) where
 
 import Prelude
@@ -14,7 +15,10 @@ import Cardano.Api (
   hashScript,
   pattern PlutusScript,
  )
-import Cardano.Api.Shelley (PlutusScript (PlutusScriptSerialised))
+import Cardano.Api.Shelley (
+  PlutusScript (PlutusScriptSerialised),
+  PlutusScriptVersion (PlutusScriptV2),
+ )
 import PlutusLedgerApi.Common (SerialisedScript)
 import PlutusLedgerApi.V2 (ScriptHash (..))
 import PlutusTx (BuiltinData, UnsafeFromData (..))
@@ -57,6 +61,12 @@ wrapMintingPolicy f r c =
 {-# INLINEABLE wrapMintingPolicy #-}
 
 -- * Similar utilities as plutus-ledger
+
+-- | Use PlutusScriptV2 for all scripts.
+scriptValidatorHash' ::
+  SerialisedScript ->
+  ScriptHash
+scriptValidatorHash' = scriptValidatorHash PlutusScriptV2
 
 -- | Compute the on-chain 'ScriptHash' for a given serialised plutus script. Use
 -- this to refer to another validator script.
