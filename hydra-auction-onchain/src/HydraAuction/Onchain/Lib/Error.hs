@@ -1,6 +1,7 @@
 module HydraAuction.Onchain.Lib.Error (
   ToErrorCode (..),
   err,
+  errMaybe,
   eCode,
 ) where
 
@@ -15,6 +16,10 @@ import HydraAuction.Error (ToErrorCode (..))
 {-# INLINEABLE err #-}
 err :: Plutus.Bool -> Plutus.BuiltinString -> Plutus.Bool
 err x e = Plutus.traceIfFalse e x
+
+{-# INLINEABLE errMaybe #-}
+errMaybe :: Plutus.Maybe a -> Plutus.BuiltinString -> a
+errMaybe mx e = Plutus.fromMaybe (Plutus.traceError e) mx
 
 -- | Get the string literal from given error 'e'. Use this with template haskell
 -- splices, e.g. $(eCode MyError)
