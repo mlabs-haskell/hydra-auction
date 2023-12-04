@@ -1,11 +1,18 @@
 module HydraAuction.Onchain.Validators.AuctionMetadata (
   validator,
+  compiledValidator,
+  validatorScript,
+  datum,
+  redeemer,
 ) where
 
 import PlutusTx.Prelude
 
+import PlutusLedgerApi.Common (SerialisedScript, serialiseCompiledCode)
 import PlutusLedgerApi.V1.Scripts (
   Datum (..),
+  Redeemer (..),
+  ScriptHash,
  )
 import PlutusLedgerApi.V1.Value (
   Value (..),
@@ -28,6 +35,11 @@ import HydraAuction.Error.Onchain.Validators.AuctionMetadata (
   AuctionMetadata'Error (..),
  )
 import HydraAuction.Onchain.Lib.Error (eCode, err, errMaybe)
+import HydraAuction.Onchain.Lib.PlutusScript (
+  ValidatorType,
+  scriptValidatorHash',
+  wrapValidator,
+ )
 import HydraAuction.Onchain.Types.AuctionInfo (
   AuctionInfo (..),
   auctionMetadataTN,
@@ -40,14 +52,18 @@ data AuctionMetadata'Redeemer
 
 PlutusTx.unstableMakeIsData ''AuctionMetadata'Redeemer
 
+type DatumType = ()
+type RedeemerType = AuctionMetadata'Redeemer
+
 -- -------------------------------------------------------------------------
 -- Validator
 -- -------------------------------------------------------------------------
 validator ::
-  AuctionMetadata'Redeemer ->
+  DatumType ->
+  RedeemerType ->
   ScriptContext ->
   Bool
-validator RemoveAuction context =
+validator () RemoveAuction context =
   exactlyOneOwnScriptInput
     && ownInputHoldsAuctionMetadataToken
     && exactlyBurnedAuctionTokens
@@ -93,3 +109,24 @@ validator RemoveAuction context =
             , (auctionMetadataTN, -1)
             , (standingBidTN, -1)
             ]
+
+-- -------------------------------------------------------------------------
+-- Script compilation
+-- -------------------------------------------------------------------------
+compiledValidator :: PlutusTx.CompiledCode ValidatorType
+compiledValidator =
+  $$(PlutusTx.compile [||wrap validator||])
+  where
+    wrap = wrapValidator @DatumType @RedeemerType
+
+validatorScript :: SerialisedScript
+validatorScript = serialiseCompiledCode compiledValidator
+
+validatorHash :: ScriptHash
+validatorHash = scriptValidatorHash' validatorScript
+
+datum :: DatumType -> Datum
+datum a = Datum (PlutusTx.toBuiltinData a)
+
+redeemer :: RedeemerType -> Redeemer
+redeemer a = Redeemer (PlutusTx.toBuiltinData a)
