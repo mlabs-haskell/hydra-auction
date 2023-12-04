@@ -92,6 +92,7 @@ library
   hs-source-dirs:  src
   exposed-modules:
     HydraAuction.Error
+    HydraAuction.Error.Types.AuctionInfo
     HydraAuction.Error.Types.AuctionState
     HydraAuction.Error.Types.AuctionTerms
     HydraAuction.Error.Types.BidderInfo
