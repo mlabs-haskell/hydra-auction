@@ -70,13 +70,19 @@ common common-config
     UndecidableInstances
 
   ghc-options:
-    -Wall -Wcompat -Wincomplete-record-updates
-    -Wincomplete-uni-patterns -Wredundant-constraints
-    -Wmissing-export-lists -Wmissing-deriving-strategies
+    -Wall
+    -Wcompat
+    -Wincomplete-record-updates
+    -Wincomplete-uni-patterns
+    -Wmissing-deriving-strategies
+    -Wmissing-export-lists
+    -Wredundant-constraints
+    --
     -Wno-redundant-constraints
 
   if !flag(dev)
-    ghc-options: -Werror
+    ghc-options:
+      -Werror
 
   if flag(dev)
     default-extensions: PartialTypeSignatures
@@ -128,11 +134,15 @@ library
     -- , validation
 
   ghc-options:
-    -fplugin-opt PlutusTx.Plugin:target-version=1.0.0 -fobject-code
-    -fno-ignore-interface-pragmas -fno-omit-interface-pragmas
-    -fno-specialize -fno-unbox-small-strict-fields
+    -fno-ignore-interface-pragmas
+    -fno-omit-interface-pragmas
+    -fno-specialize
+    -fno-unbox-small-strict-fields
     -fno-unbox-strict-fields
+    -fobject-code
+    -fplugin-opt PlutusTx.Plugin:target-version=1.0.0
 
   if flag(dev)
-    ghc-options: -fplugin-opt PlutusTx.Plugin:defer-errors
+    ghc-options:
+      -fplugin-opt PlutusTx.Plugin:defer-errors
 
