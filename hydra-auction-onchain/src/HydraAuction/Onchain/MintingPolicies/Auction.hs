@@ -37,7 +37,6 @@ import HydraAuction.Error.Onchain.MintingPolicies.Auction (
 import HydraAuction.Onchain.Lib.Error (eCode, err, errMaybe)
 import HydraAuction.Onchain.Lib.PlutusScript (
   MintingPolicyType,
-  scriptValidatorHash',
   wrapMintingPolicy,
  )
 import HydraAuction.Onchain.Lib.ScriptContext (scriptOutputsAt)
@@ -85,27 +84,45 @@ checkMint metadataValidator utxoNonce context =
     && auctionTermsValid
   where
     txInfo@TxInfo {..} = scriptContextTxInfo context
+    ownCS = ownCurrencySymbol context
     --
+    -- (AuctionMint01)
+    -- The utxo nonce parameter of the minting policy
+    -- should be a reference to a utxo input spent
+    -- by the transaction.
     utxoNonceIsSpent =
       isJust (findTxInByTxOutRef utxoNonce txInfo)
         `err` $(eCode AuctionMint'Error'MissingUtxoNonceInput)
     --
+    -- (AuctionMint02)
+    -- There should be an output with an auction info metadata record
+    -- that mentions an auction ID that matches
+    -- this minting policy's currency symbol.
     auctionMetadataOutputExistsAndMatchesOwnCS =
       (ownCS == ai'AuctionId)
         `err` $(eCode AuctionMint'Error'AuctionInfoMismatchedToken)
     --
+    -- (AuctionMint03)
+    -- The auction metadata output should contain
+    -- an auction metadata token with a currency symbol
+    -- matching this minting policy.
     auctionMetadataOutputContainsMetadataToken =
       (valueOf aiValue ownCS auctionMetadataTN == 1)
         `err` $(eCode AuctionMint'Error'MetadataOutputMissingToken)
     --
+    -- (AuctionMint04)
+    -- The auction metadata record should contain valid auction terms.
     auctionTermsValid =
       validateAuctionTerms ai'AuctionTerms
+        `err` $(eCode $ AuctionMint'Error'InvalidAuctionTerms [])
     --
+    -- (AuctionMint05)
+    -- The auction state, auction metadata, and standing bid tokens
+    -- of the auction should all be minted.
+    -- No other tokens should be minted or burned.
     auctionTokensAreMintedExactly =
       (txInfoMint == expectedMint)
         `err` $(eCode AuctionMint'Error'AuctionTokensNotMinted)
-    --
-    ownCS = ownCurrencySymbol context
     expectedMint =
       Value $
         AssocMap.singleton ownCS $
@@ -115,20 +132,32 @@ checkMint metadataValidator utxoNonce context =
             , (standingBidTN, 1)
             ]
     --
+    -- (AuctionMint06)
+    -- The auction metadata output's datum should be decodable
+    -- as an auction info metadata record.
     AuctionInfo {..} =
       PlutusTx.fromBuiltinData
         (getDatum aiDatum)
         `errMaybe` $(eCode AuctionMint'Error'FailedToDecodeMetadataDatum)
     (aiDatum, aiValue) =
       case scriptOutputsAt metadataValidator txInfo of
+        --
+        -- (AuctionMint07)
+        -- The auction metadata output should contain an inline datum.
         [(od, v)]
           | OutputDatum d <- od ->
               (d, v)
           | otherwise ->
               traceError $(eCode AuctionMint'Error'MetadataOutputMissingDatum)
         [] ->
+          --
+          -- (AuctionMint08)
+          -- There should be an auction metadata output.
           traceError $(eCode AuctionMint'Error'MissingMetadataOutput)
         _tooMany ->
+          --
+          -- (AuctionMint09)
+          -- There should only be one auction metadata output.
           traceError $(eCode AuctionMint'Error'TooManyMetadataOutputs)
 
 {-# INLINEABLE checkBurn #-}
@@ -139,12 +168,15 @@ checkBurn context =
   auctionTokensAreBurnedExactly
   where
     TxInfo {..} = scriptContextTxInfo context
+    ownCS = ownCurrencySymbol context
     --
+    -- (AuctionBurn01)
+    -- The auction state, auction metadata, and standing bid tokens
+    -- of the auction should all be burned.
+    -- No other tokens should be minted or burned.
     auctionTokensAreBurnedExactly =
       (txInfoMint == expectedMint)
         `err` $(eCode AuctionBurn'Error'AuctionTokensNotBurned)
-    --
-    ownCS = ownCurrencySymbol context
     expectedMint =
       Value $
         AssocMap.singleton ownCS $

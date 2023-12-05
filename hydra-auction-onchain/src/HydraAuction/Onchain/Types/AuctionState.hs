@@ -52,7 +52,8 @@ validateNewBid auTerms auctionId oldBidState StandingBidState {..}
         && validateCompareBids auTerms oldBidState newTerms
   | otherwise =
       --
-      -- (NB01) The new bid state should not be empty.
+      -- (NewBid01)
+      -- The new bid state should not be empty.
       False
         `err` $(eCode NewBid'Error'EmptyNewBid)
 
@@ -63,7 +64,8 @@ validateNewBidTerms ::
   Bool
 validateNewBidTerms =
   --
-  -- (NB02) The new bid terms are valid.
+  -- (NewBid02)
+  -- The new bid terms are valid.
   validateBidTerms
 
 validateCompareBids ::
@@ -84,7 +86,8 @@ validateBidIncrement ::
   Bool
 validateBidIncrement AuctionTerms {..} oldTerms newTerms =
   --
-  -- (NB03) The difference between the old and new bid price is
+  -- (NewBid03)
+  -- The difference between the old and new bid price is
   -- no smaller than the auction's minimum bid increment.
   (bt'BidPrice oldTerms + at'MinBidIncrement <= bt'BidPrice newTerms)
     `err` $(eCode NewBid'Error'InvalidBidIncrement)
@@ -95,7 +98,8 @@ validateStartingBid ::
   Bool
 validateStartingBid AuctionTerms {..} BidTerms {..} =
   --
-  -- (NB04) The first bid's price is
+  -- (NewBid04)
+  -- The first bid's price is
   -- no smaller than the auction's starting price.
   (at'StartingBid <= bt'BidPrice)
     `err` $(eCode NewBid'Error'InvalidStartingBid)
@@ -114,12 +118,14 @@ validateBuyer auTerms auctionId StandingBidState {..} buyer
   | Just bidTerms@BidTerms {..} <- standingBidState
   , BidderInfo {..} <- bt'Bidder =
       --
-      -- (BU01) The buyer's hashed payment verification key corresponds
+      -- (Buyer01)
+      -- The buyer's hashed payment verification key corresponds
       -- to the bidder's payment verification key.
       (buyer == bi'BidderPkh)
         `err` $(eCode Buyer'Error'BuyerVkPkhMismatch)
         --
-        -- (BU02) The bid terms are valid.
+        -- (Buyer02)
+        -- The bid terms are valid.
         && validateBidTerms auTerms auctionId bidTerms
   | otherwise =
       False `err` $(eCode Buyer'Error'EmptyStandingBid)

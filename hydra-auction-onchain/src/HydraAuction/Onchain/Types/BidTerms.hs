@@ -44,11 +44,13 @@ validateBidTerms ::
 validateBidTerms AuctionTerms {..} auctionId BidTerms {..}
   | BidderInfo {..} <- bt'Bidder =
       --
-      -- (BT01) The bidder's info is correct.
+      -- (BidTerms01)
+      -- The bidder's info is correct.
       -- This check is not possible on-chain until PlutusV3.
       -- validateBidderInfo bt'Bidder &&
       --
-      -- (BT02) The seller authorized the bidder
+      -- (BidTerms02)
+      -- The seller authorized the bidder
       -- to participate in the auction.
       verifyEd25519Signature
         at'SellerVk
@@ -56,7 +58,8 @@ validateBidTerms AuctionTerms {..} auctionId BidTerms {..}
         bt'SellerSignature
         `err` $(eCode BidTerms'Error'InvalidSellerSignature)
         --
-        -- (BT03) The bidder authorized the bid
+        -- (BidTerms03)
+        -- The bidder authorized the bid
         -- to be submitted in the auction.
         && verifyEd25519Signature
           bi'BidderVk

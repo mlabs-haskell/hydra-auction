@@ -14,4 +14,4 @@ data BidderInfo'Error
 instance ToErrorCode BidderInfo'Error where
   toErrorCode = \case
     BidderInfo'Error'BidderVkPkhMismatch ->
-      "BI01"
+      "BidderInfo01"

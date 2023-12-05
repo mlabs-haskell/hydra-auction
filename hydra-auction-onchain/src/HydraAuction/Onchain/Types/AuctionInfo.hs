@@ -60,6 +60,9 @@ validateAuctionInfo ::
   AuctionInfo ->
   Bool
 validateAuctionInfo AuctionInfo {..} =
+  --
+  -- (AuctionInfo01)
+  -- The auction terms in the metadata record should be valid.
   validateAuctionTerms ai'AuctionTerms
     `err` $(eCode $ AuctionInfo'Error'InvalidAuctionTerms [])
 

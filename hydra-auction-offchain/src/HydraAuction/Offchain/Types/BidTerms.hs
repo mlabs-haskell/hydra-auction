@@ -76,11 +76,13 @@ validateBidTerms ::
 validateBidTerms AuctionTerms {..} auctionId BidTerms {..}
   | BidderInfo {..} <- bt'Bidder =
       --
-      -- (BT01) The bidder's info is correct.
+      -- (BidTerms01)
+      -- The bidder's info is correct.
       validateBidderInfo bt'Bidder
         `errWith` BidTerms'Error'BidderInfo
         --
-        -- (BT02) The seller authorized the bidder
+        -- (BidTerms02)
+        -- The seller authorized the bidder
         -- to participate in the auction.
         <> verifySignature
           at'SellerVk
@@ -88,7 +90,8 @@ validateBidTerms AuctionTerms {..} auctionId BidTerms {..}
           bt'SellerSignature
         `err` BidTerms'Error'InvalidSellerSignature
         --
-        -- (BT03) The bidder authorized the bid
+        -- (BidTerms03)
+        -- The bidder authorized the bid
         -- to be submitted in the auction.
         <> verifySignature
           bi'BidderVk

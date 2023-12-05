@@ -96,42 +96,50 @@ validateAuctionTerms ::
   Validation [AuctionTerms'Error] ()
 validateAuctionTerms aTerms@AuctionTerms {..} =
   --
-  -- (AT01) The seller pubkey hash corresponds to the seller verification key.
+  -- (AuctionTerms01)
+  -- The seller pubkey hash corresponds to the seller verification key.
   -- Note: this check only becomes possible on-chain in Plutus V3.
   -- https://github.com/input-output-hk/plutus/pull/5431
   (at'SellerPkh == verificationKeyHash at'SellerVk)
     `err` AuctionTerms'Error'SellerVkPkhMismatch
     --
-    -- (AT02) Bidding ends after it the bidding start time.
+    -- (AuctionTerms02)
+    -- Bidding ends after it the bidding start time.
     <> (at'BiddingStart < at'BiddingEnd)
     `err` AuctionTerms'Error'BiddingStartNotBeforeBiddingEnd
     --
-    -- (AT03) The purchase deadline occurs after bidding ends.
+    -- (AuctionTerms03)
+    -- The purchase deadline occurs after bidding ends.
     <> (at'BiddingEnd < at'PurchaseDeadline)
     `err` AuctionTerms'Error'BiddingEndNotBeforePurchaseDeadline
     --
-    -- (AT04) Cleanup happens after the purchase deadline,
+    -- (AuctionTerms04)
+    -- Cleanup happens after the purchase deadline,
     -- so that the seller can claim the winning bidder's deposit
     -- if the auction lot is not sold
     <> (at'PurchaseDeadline < at'Cleanup)
     `err` AuctionTerms'Error'PurchaseDeadlineNotBeforeCleanup
     --
-    -- (AT05) New bids must be larger than the standing bid.
+    -- (AuctionTerms05)
+    -- New bids must be larger than the standing bid.
     <> (at'MinBidIncrement > Lovelace 0)
     `err` AuctionTerms'Error'NonPositiveMinBidIncrement
     --
-    -- (AT06) The auction fee for each delegate must contain
+    -- (AuctionTerms06)
+    -- The auction fee for each delegate must contain
     -- the min 2 ADA for the utxos that will be sent to the delegates
     -- during fee distribution.
     <> (at'StartingBid > totalAuctionFees aTerms)
     `err` AuctionTerms'Error'InvalidStartingBid
     --
-    -- (AT07) The auction fees for all delegates must be covered by
+    -- (AuctionTerms07)
+    -- The auction fees for all delegates must be covered by
     -- the starting bid.
     <> (at'AuctionFeePerDelegate > minAuctionFee)
     `err` AuctionTerms'Error'InvalidAuctionFeePerDelegate
     --
-    -- (AT08) There must be at least one delegate.
+    -- (AuctionTerms08)
+    -- There must be at least one delegate.
     <> (length at'Delegates > 0)
     `err` AuctionTerms'Error'NoDelegates
 

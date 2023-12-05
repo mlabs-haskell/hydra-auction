@@ -21,18 +21,18 @@ data AuctionTerms'Error
 instance ToErrorCode AuctionTerms'Error where
   toErrorCode = \case
     AuctionTerms'Error'SellerVkPkhMismatch ->
-      "AT01"
+      "AuctionTerms01"
     AuctionTerms'Error'BiddingStartNotBeforeBiddingEnd ->
-      "AT02"
+      "AuctionTerms02"
     AuctionTerms'Error'BiddingEndNotBeforePurchaseDeadline ->
-      "AT03"
+      "AuctionTerms03"
     AuctionTerms'Error'PurchaseDeadlineNotBeforeCleanup ->
-      "AT04"
+      "AuctionTerms04"
     AuctionTerms'Error'NonPositiveMinBidIncrement ->
-      "AT05"
+      "AuctionTerms05"
     AuctionTerms'Error'InvalidStartingBid ->
-      "AT06"
+      "AuctionTerms06"
     AuctionTerms'Error'InvalidAuctionFeePerDelegate ->
-      "AT07"
+      "AuctionTerms07"
     AuctionTerms'Error'NoDelegates ->
-      "AT08"
+      "AuctionTerms08"

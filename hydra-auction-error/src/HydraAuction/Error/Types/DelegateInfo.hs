@@ -14,4 +14,4 @@ data DelegateInfo'Error
 instance ToErrorCode DelegateInfo'Error where
   toErrorCode = \case
     DelegateInfo'Error'NoDelegates ->
-      "DI01"
+      "DelegateInfo01"

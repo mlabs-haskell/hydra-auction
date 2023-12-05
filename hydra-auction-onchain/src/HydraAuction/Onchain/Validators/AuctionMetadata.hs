@@ -71,18 +71,32 @@ validator () RemoveAuction context =
   where
     TxInfo {..} = scriptContextTxInfo context
     --
+    -- (AuctionMetadata01)
+    -- There should only be one input from the auction metadata validator.
     ownInputIsOnlyInputFromOwnScript =
       (length ownScriptInputs == 1)
         `err` $(eCode AuctionMetadata'Error'TooManyOwnScriptInputs)
     --
+    -- (AuctionMetadata02)
+    -- The validator's own input should hold one auction metadata token
+    -- with a currency symbol matching the auction ID
+    -- mentioned in the auction info metadata record.
     ownInputHoldsAuctionMetadataToken =
       (valueOf ownValue ai'AuctionId auctionMetadataTN == 1)
-        `err` ""
+        `err` $(eCode AuctionMetadata'Error'OwnInputMissingMetadataToken)
     --
+    -- (AuctionMetadata03)
+    -- The auction state, auction metadata, and standing bid tokens
+    -- of the auction should all be burned.
+    -- No other tokens should be minted or burned.
     auctionTokensAreBurnedExactly =
       (txInfoMint == expectedMint)
         `err` $(eCode AuctionMetadata'Error'AuctionTokensNotBurnedExactly)
     --
+    -- (AuctionMetadata04)
+    -- The validator's own input should exist.
+    -- Note that this should always hold for a validator being executed
+    -- with a Spending script purpose.
     ownInputTxOut =
       txInInfoResolved $
         findOwnInput context
@@ -97,9 +111,16 @@ validator () RemoveAuction context =
     AuctionInfo {ai'AuctionId} =
       case txOutDatum ownInputTxOut of
         OutputDatum d ->
+          --
+          -- (AuctionMetadata05)
+          -- The validator's own input's datum should be decodable
+          -- as an auction info metadta record.
           PlutusTx.fromBuiltinData (getDatum d)
             `errMaybe` $(eCode AuctionMetadata'Error'FailedToDecodeOwnDatum)
         _otherwise ->
+          --
+          -- (AuctionMetadata06)
+          -- The validator's own input should contain an inline datum.
           traceError $(eCode AuctionMetadata'Error'MissingOwnDatum)
     --
     expectedMint =

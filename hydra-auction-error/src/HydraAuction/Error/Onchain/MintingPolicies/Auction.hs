@@ -8,35 +8,40 @@ import Prelude
 
 import HydraAuction.Error (ToErrorCode (..))
 
+import HydraAuction.Error.Types.AuctionTerms (AuctionTerms'Error)
+
 data AuctionMint'Error
-  = AuctionMint'Error'AuctionTokensNotMinted
-  | AuctionMint'Error'MissingUtxoNonceInput
-  | AuctionMint'Error'MissingMetadataOutput
-  | AuctionMint'Error'TooManyMetadataOutputs
-  | AuctionMint'Error'MetadataOutputMissingDatum
-  | AuctionMint'Error'FailedToDecodeMetadataDatum
+  = AuctionMint'Error'MissingUtxoNonceInput
   | AuctionMint'Error'AuctionInfoMismatchedToken
   | AuctionMint'Error'MetadataOutputMissingToken
+  | AuctionMint'Error'InvalidAuctionTerms [AuctionTerms'Error]
+  | AuctionMint'Error'AuctionTokensNotMinted
+  | AuctionMint'Error'FailedToDecodeMetadataDatum
+  | AuctionMint'Error'MetadataOutputMissingDatum
+  | AuctionMint'Error'MissingMetadataOutput
+  | AuctionMint'Error'TooManyMetadataOutputs
   deriving stock (Eq, Generic, Show)
 
 instance ToErrorCode AuctionMint'Error where
   toErrorCode = \case
-    AuctionMint'Error'AuctionTokensNotMinted ->
-      "AuctionMint01"
     AuctionMint'Error'MissingUtxoNonceInput ->
+      "AuctionMint01"
+    AuctionMint'Error'AuctionInfoMismatchedToken ->
       "AuctionMint02"
-    AuctionMint'Error'MissingMetadataOutput ->
+    AuctionMint'Error'MetadataOutputMissingToken ->
       "AuctionMint03"
-    AuctionMint'Error'TooManyMetadataOutputs ->
+    AuctionMint'Error'InvalidAuctionTerms _ ->
       "AuctionMint04"
-    AuctionMint'Error'MetadataOutputMissingDatum ->
+    AuctionMint'Error'AuctionTokensNotMinted ->
       "AuctionMint05"
     AuctionMint'Error'FailedToDecodeMetadataDatum ->
       "AuctionMint06"
-    AuctionMint'Error'AuctionInfoMismatchedToken ->
+    AuctionMint'Error'MetadataOutputMissingDatum ->
       "AuctionMint07"
-    AuctionMint'Error'MetadataOutputMissingToken ->
+    AuctionMint'Error'MissingMetadataOutput ->
       "AuctionMint08"
+    AuctionMint'Error'TooManyMetadataOutputs ->
+      "AuctionMint09"
 
 data AuctionBurn'Error
   = AuctionBurn'Error'AuctionTokensNotBurned

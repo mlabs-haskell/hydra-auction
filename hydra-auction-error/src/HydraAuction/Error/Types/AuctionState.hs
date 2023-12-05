@@ -18,11 +18,11 @@ data Buyer'Error
 instance ToErrorCode Buyer'Error where
   toErrorCode = \case
     Buyer'Error'EmptyStandingBid ->
-      "BU01"
+      "Buyer01"
     Buyer'Error'BuyerVkPkhMismatch ->
-      "BU02"
+      "Buyer02"
     Buyer'Error'InvalidBidTerms _ ->
-      "BU03"
+      "Buyer03"
 
 data NewBid'Error
   = NewBid'Error'EmptyNewBid
@@ -34,10 +34,10 @@ data NewBid'Error
 instance ToErrorCode NewBid'Error where
   toErrorCode = \case
     NewBid'Error'EmptyNewBid ->
-      "NB01"
+      "NewBid01"
     NewBid'Error'InvalidNewBidTerms _ ->
-      "NB02"
+      "NewBid02"
     NewBid'Error'InvalidStartingBid ->
-      "NB03"
+      "NewBid03"
     NewBid'Error'InvalidBidIncrement ->
-      "NB04"
+      "NewBid04"

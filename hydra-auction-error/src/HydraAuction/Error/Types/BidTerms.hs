@@ -10,15 +10,15 @@ import HydraAuction.Error.Types.BidderInfo (BidderInfo'Error (..))
 
 data BidTerms'Error
   = BidTerms'Error'BidderInfo ![BidderInfo'Error]
-  | BidTerms'Error'InvalidBidderSignature
   | BidTerms'Error'InvalidSellerSignature
+  | BidTerms'Error'InvalidBidderSignature
   deriving stock (Eq, Generic, Show)
 
 instance ToErrorCode BidTerms'Error where
   toErrorCode = \case
     BidTerms'Error'BidderInfo _ ->
-      "BT01"
-    BidTerms'Error'InvalidBidderSignature ->
-      "BT02"
+      "BidTerms01"
     BidTerms'Error'InvalidSellerSignature ->
-      "BT03"
+      "BidTerms02"
+    BidTerms'Error'InvalidBidderSignature ->
+      "BidTerms03"
