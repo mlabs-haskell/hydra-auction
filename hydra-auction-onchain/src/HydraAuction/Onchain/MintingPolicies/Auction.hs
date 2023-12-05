@@ -46,7 +46,6 @@ import HydraAuction.Onchain.Types.Scripts (
 -- -------------------------------------------------------------------------
 -- Minting policy
 -- -------------------------------------------------------------------------
-{-# INLINEABLE mintingPolicy #-}
 mintingPolicy ::
   AuctionMetadata'ScriptHash ->
   TxOutRef ->
@@ -59,8 +58,9 @@ mintingPolicy v utxoNonce action context =
       checkMint v utxoNonce context
     BurnAuction ->
       checkBurn context
+--
+{-# INLINEABLE mintingPolicy #-}
 
-{-# INLINEABLE checkMint #-}
 checkMint ::
   AuctionMetadata'ScriptHash ->
   TxOutRef ->
@@ -149,8 +149,9 @@ checkMint AuctionMetadata'ScriptHash {..} utxoNonce context =
           -- (AuctionMint09)
           -- There should only be one auction metadata output.
           traceError $(eCode AuctionMint'Error'TooManyMetadataOutputs)
+--
+{-# INLINEABLE checkMint #-}
 
-{-# INLINEABLE checkBurn #-}
 checkBurn ::
   ScriptContext ->
   Bool
@@ -175,3 +176,5 @@ checkBurn context =
             , (auctionMetadataTN, -1)
             , (standingBidTN, -1)
             ]
+--
+{-# INLINEABLE checkBurn #-}

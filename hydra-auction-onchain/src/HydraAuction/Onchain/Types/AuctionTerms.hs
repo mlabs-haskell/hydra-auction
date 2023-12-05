@@ -60,7 +60,6 @@ data AuctionTerms = AuctionTerms
 -- Validation
 -- -------------------------------------------------------------------------
 
-{-# INLINEABLE validateAuctionTerms #-}
 validateAuctionTerms ::
   AuctionTerms ->
   Bool
@@ -112,15 +111,19 @@ validateAuctionTerms aTerms@AuctionTerms {..} =
     -- There must be at least one delegate.
     && (length at'Delegates > 0)
     `err` $(eCode AuctionTerms'Error'NoDelegates)
+--
+{-# INLINEABLE validateAuctionTerms #-}
 
-{-# INLINEABLE minAuctionFee #-}
 minAuctionFee :: Integer
 minAuctionFee = 2_500_00
+--
+{-# INLINEABLE minAuctionFee #-}
 
-{-# INLINEABLE totalAuctionFees #-}
 totalAuctionFees :: AuctionTerms -> Integer
 totalAuctionFees AuctionTerms {..} =
   at'AuctionFeePerDelegate * length at'Delegates
+--
+{-# INLINEABLE totalAuctionFees #-}
 
 -- -------------------------------------------------------------------------
 -- Plutus instances

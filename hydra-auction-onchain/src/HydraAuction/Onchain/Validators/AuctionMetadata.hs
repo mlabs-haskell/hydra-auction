@@ -92,3 +92,5 @@ validator AuctionInfo {..} RemoveAuction context =
             , (auctionMetadataTN, -1)
             , (standingBidTN, -1)
             ]
+--
+{-# INLINEABLE validator #-}

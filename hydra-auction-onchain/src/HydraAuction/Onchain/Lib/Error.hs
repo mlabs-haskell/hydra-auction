@@ -13,13 +13,15 @@ import Language.Haskell.TH (Exp (..), Lit (StringL), Q)
 
 import HydraAuction.Error (ToErrorCode (..))
 
-{-# INLINEABLE err #-}
 err :: Plutus.Bool -> Plutus.BuiltinString -> Plutus.Bool
 err x e = Plutus.traceIfFalse e x
+--
+{-# INLINEABLE err #-}
 
-{-# INLINEABLE errMaybe #-}
 errMaybe :: Plutus.Maybe a -> Plutus.BuiltinString -> a
 errMaybe mx e = Plutus.fromMaybe (Plutus.traceError e) mx
+--
+{-# INLINEABLE errMaybe #-}
 
 -- | Get the string literal from given error 'e'. Use this with template haskell
 -- splices, e.g. $(eCode MyError)

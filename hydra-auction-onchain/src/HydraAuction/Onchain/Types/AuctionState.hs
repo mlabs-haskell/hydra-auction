@@ -56,6 +56,8 @@ validateNewBid auTerms auctionId oldBidState StandingBidState {..}
       -- The new bid state should not be empty.
       False
         `err` $(eCode NewBid'Error'EmptyNewBid)
+--
+{-# INLINEABLE validateNewBid #-}
 
 validateNewBidTerms ::
   AuctionTerms ->
@@ -67,6 +69,8 @@ validateNewBidTerms =
   -- (NewBid02)
   -- The new bid terms are valid.
   validateBidTerms
+--
+{-# INLINEABLE validateNewBidTerms #-}
 
 validateCompareBids ::
   AuctionTerms ->
@@ -78,6 +82,8 @@ validateCompareBids auTerms StandingBidState {..} newTerms
       validateBidIncrement auTerms oldTerms newTerms
   | otherwise =
       validateStartingBid auTerms newTerms
+--
+{-# INLINEABLE validateCompareBids #-}
 
 validateBidIncrement ::
   AuctionTerms ->
@@ -91,6 +97,8 @@ validateBidIncrement AuctionTerms {..} oldTerms newTerms =
   -- no smaller than the auction's minimum bid increment.
   (bt'BidPrice oldTerms + at'MinBidIncrement <= bt'BidPrice newTerms)
     `err` $(eCode NewBid'Error'InvalidBidIncrement)
+--
+{-# INLINEABLE validateBidIncrement #-}
 
 validateStartingBid ::
   AuctionTerms ->
@@ -103,6 +111,8 @@ validateStartingBid AuctionTerms {..} BidTerms {..} =
   -- no smaller than the auction's starting price.
   (at'StartingBid <= bt'BidPrice)
     `err` $(eCode NewBid'Error'InvalidStartingBid)
+--
+{-# INLINEABLE validateStartingBid #-}
 
 -- -------------------------------------------------------------------------
 -- Buyer validation
@@ -129,6 +139,8 @@ validateBuyer auTerms auctionId StandingBidState {..} buyer
         && validateBidTerms auTerms auctionId bidTerms
   | otherwise =
       False `err` $(eCode Buyer'Error'EmptyStandingBid)
+--
+{-# INLINEABLE validateBuyer #-}
 
 -- -------------------------------------------------------------------------
 -- Seller payout
@@ -139,6 +151,8 @@ sellerPayout auTerms StandingBidState {..}
   | Just BidTerms {..} <- standingBidState =
       bt'BidPrice - totalAuctionFees auTerms
   | otherwise = 0
+--
+{-# INLINEABLE sellerPayout #-}
 
 -- -------------------------------------------------------------------------
 -- Plutus instances

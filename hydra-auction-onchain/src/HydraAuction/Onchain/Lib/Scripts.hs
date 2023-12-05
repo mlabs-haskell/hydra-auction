@@ -42,6 +42,7 @@ wrapValidator f d r c =
     datum = unsafeFromBuiltinData d
     redeemer = unsafeFromBuiltinData r
     context = unsafeFromBuiltinData c
+--
 {-# INLINEABLE wrapValidator #-}
 
 -- | Signature of an untyped minting policy script.
@@ -58,6 +59,7 @@ wrapMintingPolicy f r c =
   where
     redeemer = unsafeFromBuiltinData r
     context = unsafeFromBuiltinData c
+--
 {-# INLINEABLE wrapMintingPolicy #-}
 
 -- * Similar utilities as plutus-ledger

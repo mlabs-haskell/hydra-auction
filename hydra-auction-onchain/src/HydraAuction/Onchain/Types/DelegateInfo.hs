@@ -25,7 +25,6 @@ data DelegateInfo = DelegateInfo
 -- Validation
 -- -------------------------------------------------------------------------
 
-{-# INLINEABLE validateDelegateInfo #-}
 validateDelegateInfo ::
   DelegateInfo ->
   Bool
@@ -34,6 +33,8 @@ validateDelegateInfo DelegateInfo {..} =
   -- (DelegateInfo01) There must be at least one delegate.
   (length di'Delegates > 0)
     `err` $(eCode DelegateInfo'Error'NoDelegates)
+--
+{-# INLINEABLE validateDelegateInfo #-}
 
 -- -------------------------------------------------------------------------
 -- Plutus instances

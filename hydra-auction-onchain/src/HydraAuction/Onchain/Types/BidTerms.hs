@@ -35,7 +35,6 @@ data BidTerms = BidTerms
 -- Validation
 -- -------------------------------------------------------------------------
 
-{-# INLINEABLE validateBidTerms #-}
 validateBidTerms ::
   AuctionTerms ->
   CurrencySymbol ->
@@ -66,8 +65,9 @@ validateBidTerms AuctionTerms {..} auctionId BidTerms {..}
           (bidderSignatureMessage auctionId bt'BidPrice bi'BidderPkh)
           bt'BidderSignature
         `err` $(eCode BidTerms'Error'InvalidBidderSignature)
+--
+{-# INLINEABLE validateBidTerms #-}
 
-{-# INLINEABLE bidderSignatureMessage #-}
 bidderSignatureMessage ::
   CurrencySymbol ->
   Integer ->
@@ -77,8 +77,9 @@ bidderSignatureMessage auctionId bidPrice bidderPkh =
   serialise auctionId
     <> serialise bidderPkh
     <> serialise bidPrice
+--
+{-# INLINEABLE bidderSignatureMessage #-}
 
-{-# INLINEABLE sellerSignatureMessage #-}
 sellerSignatureMessage ::
   CurrencySymbol ->
   BuiltinByteString ->
@@ -86,6 +87,8 @@ sellerSignatureMessage ::
 sellerSignatureMessage auctionId bidderVk =
   serialise auctionId
     <> serialise bidderVk
+--
+{-# INLINEABLE sellerSignatureMessage #-}
 
 -- -------------------------------------------------------------------------
 -- Plutus instances

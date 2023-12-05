@@ -28,7 +28,6 @@ data BidderInfo = BidderInfo
 -- Validation
 -- -------------------------------------------------------------------------
 
-{-# INLINEABLE validateBidderInfo #-}
 validateBidderInfo ::
   BidderInfo ->
   Bool
@@ -40,6 +39,8 @@ validateBidderInfo _ =
   -- (bi'BidderPkh == PubKeyHash (blake2b_224 bi'BidderVk))
   --   `err` $(eCode BidderInfo'Error'BidderVkPkhMismatch)
   True
+--
+{-# INLINEABLE validateBidderInfo #-}
 
 -- -------------------------------------------------------------------------
 -- Plutus instances

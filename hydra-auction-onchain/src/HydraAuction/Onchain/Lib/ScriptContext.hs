@@ -36,6 +36,7 @@ scriptOutputsAt h p =
   let flt TxOut {txOutDatum = d, txOutAddress = Address (ScriptCredential s) _, txOutValue} | s == h = Just (d, txOutValue)
       flt _ = Nothing
    in mapMaybe flt (txInfoOutputs p)
+--
 {-# INLINEABLE scriptOutputsAt #-}
 
 -- | Get the total value locked by the given validator in this transaction.
@@ -43,4 +44,5 @@ valueLockedBy :: TxInfo -> ScriptHash -> Value
 valueLockedBy ptx h =
   let outputs = map snd (scriptOutputsAt h ptx)
    in mconcat outputs
+--
 {-# INLINEABLE valueLockedBy #-}

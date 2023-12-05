@@ -36,26 +36,28 @@ data AuctionInfo = AuctionInfo
 -- Auction state token names
 -- -------------------------------------------------------------------------
 
-{-# INLINEABLE auctionTN #-}
 -- Auction state token, identifying the true auction escrow.
 auctionTN :: TokenName
 auctionTN = "AUCTION"
+--
+{-# INLINEABLE auctionTN #-}
 
-{-# INLINEABLE auctionMetadataTN #-}
 -- Auction metadata token, identifying the true auction metadata.
 auctionMetadataTN :: TokenName
 auctionMetadataTN = "AUCTION_METADATA"
+--
+{-# INLINEABLE auctionMetadataTN #-}
 
-{-# INLINEABLE standingBidTN #-}
 -- Standing bid token, identifying the true standing bid.
 standingBidTN :: TokenName
 standingBidTN = "STANDING_BID"
+--
+{-# INLINEABLE standingBidTN #-}
 
 -- -------------------------------------------------------------------------
 -- Validation
 -- -------------------------------------------------------------------------
 
-{-# INLINEABLE validateAuctionInfo #-}
 validateAuctionInfo ::
   AuctionInfo ->
   Bool
@@ -65,6 +67,8 @@ validateAuctionInfo AuctionInfo {..} =
   -- The auction terms in the metadata record should be valid.
   validateAuctionTerms ai'AuctionTerms
     `err` $(eCode $ AuctionInfo'Error'InvalidAuctionTerms [])
+--
+{-# INLINEABLE validateAuctionInfo #-}
 
 -- -------------------------------------------------------------------------
 -- Plutus instances
