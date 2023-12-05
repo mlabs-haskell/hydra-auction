@@ -104,7 +104,7 @@ validator () RemoveAuction context =
     ownAddress = txOutAddress ownInputTxOut
     ownValue = txOutValue ownInputTxOut
     ownScriptInputs =
-      find
+      filter
         (\x -> ownAddress == txOutAddress (txInInfoResolved x))
         txInfoInputs
     --
