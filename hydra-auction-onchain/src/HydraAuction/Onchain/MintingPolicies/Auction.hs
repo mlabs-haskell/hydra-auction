@@ -1,17 +1,12 @@
 module HydraAuction.Onchain.MintingPolicies.Auction (
   AuctionMP'Redeemer (..),
   mintingPolicy,
-  unappliedMintingPolicy,
-  mintingPolicyScript,
 ) where
 
 import PlutusTx.Prelude
 
-import PlutusCore.Core (plcVersion100)
-import PlutusLedgerApi.Common (SerialisedScript, serialiseCompiledCode)
 import PlutusLedgerApi.V1.Scripts (
   Datum (..),
-  ScriptHash,
  )
 import PlutusLedgerApi.V1.Value (
   Value (..),
@@ -35,10 +30,6 @@ import HydraAuction.Error.Onchain.MintingPolicies.Auction (
   AuctionMint'Error (..),
  )
 import HydraAuction.Onchain.Lib.Error (eCode, err, errMaybe)
-import HydraAuction.Onchain.Lib.PlutusScript (
-  MintingPolicyType,
-  wrapMintingPolicy,
- )
 import HydraAuction.Onchain.Lib.ScriptContext (scriptOutputsAt)
 import HydraAuction.Onchain.Types.AuctionInfo (
   AuctionInfo (..),
@@ -47,36 +38,35 @@ import HydraAuction.Onchain.Types.AuctionInfo (
   standingBidTN,
  )
 import HydraAuction.Onchain.Types.AuctionTerms (validateAuctionTerms)
-
-import HydraAuction.Onchain.MintingPolicies.AuctionRedeemer (
+import HydraAuction.Onchain.Types.Scripts (
   AuctionMP'Redeemer (..),
+  AuctionMetadata'ScriptHash (..),
  )
-import HydraAuction.Onchain.Validators.AuctionMetadata qualified as AMetadata
 
 -- -------------------------------------------------------------------------
 -- Minting policy
 -- -------------------------------------------------------------------------
 {-# INLINEABLE mintingPolicy #-}
 mintingPolicy ::
-  ScriptHash ->
+  AuctionMetadata'ScriptHash ->
   TxOutRef ->
   AuctionMP'Redeemer ->
   ScriptContext ->
   Bool
-mintingPolicy metadataValidator utxoNonce action context =
+mintingPolicy v utxoNonce action context =
   case action of
     MintAuction ->
-      checkMint metadataValidator utxoNonce context
+      checkMint v utxoNonce context
     BurnAuction ->
       checkBurn context
 
 {-# INLINEABLE checkMint #-}
 checkMint ::
-  ScriptHash ->
+  AuctionMetadata'ScriptHash ->
   TxOutRef ->
   ScriptContext ->
   Bool
-checkMint metadataValidator utxoNonce context =
+checkMint AuctionMetadata'ScriptHash {..} utxoNonce context =
   utxoNonceIsSpent
     && auctionTokensAreMintedExactly
     && auctionMetadataOutputExistsAndMatchesOwnCS
@@ -140,7 +130,7 @@ checkMint metadataValidator utxoNonce context =
         (getDatum aiDatum)
         `errMaybe` $(eCode AuctionMint'Error'FailedToDecodeMetadataDatum)
     (aiDatum, aiValue) =
-      case scriptOutputsAt metadataValidator txInfo of
+      case scriptOutputsAt sh'AuctionMetadata txInfo of
         --
         -- (AuctionMint07)
         -- The auction metadata output should contain an inline datum.
@@ -185,21 +175,3 @@ checkBurn context =
             , (auctionMetadataTN, -1)
             , (standingBidTN, -1)
             ]
-
--- -------------------------------------------------------------------------
--- Script compilation
--- -------------------------------------------------------------------------
-
--- | Raw minting policy code where the 'TxOutRef' is still a parameter.
-unappliedMintingPolicy ::
-  PlutusTx.CompiledCode (TxOutRef -> MintingPolicyType)
-unappliedMintingPolicy =
-  $$(PlutusTx.compile [||\vMetadata ref -> wrapMintingPolicy (mintingPolicy vMetadata ref)||])
-    `PlutusTx.unsafeApplyCode` PlutusTx.liftCode plcVersion100 AMetadata.validatorHash
-
--- | Get the applied head minting policy script given a seed 'TxOutRef'.
-mintingPolicyScript :: TxOutRef -> SerialisedScript
-mintingPolicyScript txOutRef =
-  serialiseCompiledCode $
-    unappliedMintingPolicy
-      `PlutusTx.unsafeApplyCode` PlutusTx.liftCode plcVersion100 txOutRef

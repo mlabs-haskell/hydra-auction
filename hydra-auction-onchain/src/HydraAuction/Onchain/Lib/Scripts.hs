@@ -1,4 +1,4 @@
-module HydraAuction.Onchain.Lib.PlutusScript (
+module HydraAuction.Onchain.Lib.Scripts (
   ValidatorType,
   MintingPolicyType,
   wrapValidator,
