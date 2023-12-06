@@ -104,6 +104,7 @@ library
     HydraAuction.Onchain.Types.DelegateInfo
     HydraAuction.Onchain.Types.Scripts
     HydraAuction.Onchain.Validators.AuctionMetadata
+    HydraAuction.Onchain.Validators.FeeEscrow
 
   build-depends:
     -- , aeson

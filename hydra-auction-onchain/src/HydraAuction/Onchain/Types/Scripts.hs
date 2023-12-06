@@ -3,6 +3,8 @@ module HydraAuction.Onchain.Types.Scripts (
   AuctionMP'ScriptHash (..),
   AuctionMetadata'Redeemer (..),
   AuctionMetadata'ScriptHash (..),
+  FeeEscrow'Redeemer (..),
+  FeeEscrow'ScriptHash (..),
 ) where
 
 import PlutusLedgerApi.V1.Scripts (
@@ -33,4 +35,16 @@ PlutusTx.unstableMakeIsData ''AuctionMetadata'Redeemer
 
 newtype AuctionMetadata'ScriptHash = AuctionMetadata'ScriptHash
   { sh'AuctionMetadata :: ScriptHash
+  }
+
+-- -------------------------------------------------------------------------
+-- Fee escrow validator
+-- -------------------------------------------------------------------------
+data FeeEscrow'Redeemer
+  = DistributeFees
+
+PlutusTx.unstableMakeIsData ''FeeEscrow'Redeemer
+
+newtype FeeEscrow'ScriptHash = FeeEscrow'ScriptHash
+  { sh'FeeEscrow :: ScriptHash
   }
