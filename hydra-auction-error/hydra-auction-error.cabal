@@ -95,6 +95,7 @@ library
     HydraAuction.Error.Onchain.MintingPolicies.Auction
     HydraAuction.Error.Onchain.Validators.AuctionMetadata
     HydraAuction.Error.Onchain.Validators.FeeEscrow
+    HydraAuction.Error.Onchain.Validators.StandingBid
     HydraAuction.Error.Types.AuctionInfo
     HydraAuction.Error.Types.AuctionState
     HydraAuction.Error.Types.AuctionTerms

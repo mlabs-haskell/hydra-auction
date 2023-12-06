@@ -105,6 +105,7 @@ library
     HydraAuction.Onchain.Types.Scripts
     HydraAuction.Onchain.Validators.AuctionMetadata
     HydraAuction.Onchain.Validators.FeeEscrow
+    HydraAuction.Onchain.Validators.StandingBid
 
   build-depends:
     -- , aeson

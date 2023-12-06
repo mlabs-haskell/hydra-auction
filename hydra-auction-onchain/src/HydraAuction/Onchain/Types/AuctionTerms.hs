@@ -3,12 +3,24 @@ module HydraAuction.Onchain.Types.AuctionTerms (
   minAuctionFee,
   totalAuctionFees,
   validateAuctionTerms,
+  biddingPeriod,
+  purchasePeriod,
+  penaltyPeriod,
+  cleanupPeriod,
+  postBiddingPeriod,
+  postPurchasePeriod,
 ) where
 
 import PlutusTx.Prelude
 
 import PlutusLedgerApi.V1.Crypto (PubKeyHash)
-import PlutusLedgerApi.V1.Time (POSIXTime (..))
+import PlutusLedgerApi.V1.Interval (
+  Extended (..),
+  Interval (..),
+  LowerBound (..),
+  UpperBound (..),
+ )
+import PlutusLedgerApi.V1.Time (POSIXTime (..), POSIXTimeRange)
 import PlutusLedgerApi.V1.Value (AssetClass)
 import PlutusTx qualified
 
@@ -124,6 +136,67 @@ totalAuctionFees AuctionTerms {..} =
   at'AuctionFeePerDelegate * length at'Delegates
 --
 {-# INLINEABLE totalAuctionFees #-}
+
+-- -------------------------------------------------------------------------
+-- Auction lifecycle
+-- -------------------------------------------------------------------------
+
+biddingPeriod :: AuctionTerms -> POSIXTimeRange
+biddingPeriod AuctionTerms {..} =
+  intervalFiniteClosedOpen at'BiddingStart at'BiddingEnd
+--
+{-# INLINEABLE biddingPeriod #-}
+
+purchasePeriod :: AuctionTerms -> POSIXTimeRange
+purchasePeriod AuctionTerms {..} =
+  intervalFiniteClosedOpen at'BiddingEnd at'PurchaseDeadline
+--
+{-# INLINEABLE purchasePeriod #-}
+
+penaltyPeriod :: AuctionTerms -> POSIXTimeRange
+penaltyPeriod AuctionTerms {..} =
+  intervalFiniteClosedOpen at'PurchaseDeadline at'Cleanup
+--
+{-# INLINEABLE penaltyPeriod #-}
+
+cleanupPeriod :: AuctionTerms -> POSIXTimeRange
+cleanupPeriod AuctionTerms {..} =
+  from' at'Cleanup
+--
+{-# INLINEABLE cleanupPeriod #-}
+
+postBiddingPeriod :: AuctionTerms -> POSIXTimeRange
+postBiddingPeriod AuctionTerms {..} =
+  from' at'BiddingEnd
+--
+{-# INLINEABLE postBiddingPeriod #-}
+
+postPurchasePeriod :: AuctionTerms -> POSIXTimeRange
+postPurchasePeriod AuctionTerms {..} =
+  from' at'PurchaseDeadline
+--
+{-# INLINEABLE postPurchasePeriod #-}
+
+intervalFiniteClosedOpen ::
+  POSIXTime ->
+  POSIXTime ->
+  POSIXTimeRange
+intervalFiniteClosedOpen a b =
+  Interval
+    (LowerBound (Finite a) True)
+    (UpperBound (Finite b) False)
+--
+{-# INLINEABLE intervalFiniteClosedOpen #-}
+
+from' ::
+  POSIXTime ->
+  POSIXTimeRange
+from' a =
+  Interval
+    (LowerBound (Finite a) True)
+    (UpperBound PosInf True)
+--
+{-# INLINEABLE from' #-}
 
 -- -------------------------------------------------------------------------
 -- Plutus instances

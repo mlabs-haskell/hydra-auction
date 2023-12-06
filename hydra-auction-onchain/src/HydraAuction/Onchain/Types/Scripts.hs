@@ -1,14 +1,23 @@
 module HydraAuction.Onchain.Types.Scripts (
   AuctionMP'Redeemer (..),
+  AuctionID (..),
   AuctionMP'ScriptHash (..),
+  --
   AuctionMetadata'Redeemer (..),
   AuctionMetadata'ScriptHash (..),
+  --
   FeeEscrow'Redeemer (..),
   FeeEscrow'ScriptHash (..),
+  --
+  StandingBid'Redeemer (..),
+  StandingBid'ScriptHash (..),
 ) where
 
 import PlutusLedgerApi.V1.Scripts (
   ScriptHash,
+ )
+import PlutusLedgerApi.V1.Value (
+  CurrencySymbol,
  )
 import PlutusTx qualified
 
@@ -20,6 +29,10 @@ data AuctionMP'Redeemer
   | BurnAuction
 
 PlutusTx.unstableMakeIsData ''AuctionMP'Redeemer
+
+newtype AuctionID = AuctionID
+  { auctionID :: CurrencySymbol
+  }
 
 newtype AuctionMP'ScriptHash = AuctionMP'ScriptHash
   { sh'AuctionMP :: ScriptHash
@@ -47,4 +60,18 @@ PlutusTx.unstableMakeIsData ''FeeEscrow'Redeemer
 
 newtype FeeEscrow'ScriptHash = FeeEscrow'ScriptHash
   { sh'FeeEscrow :: ScriptHash
+  }
+
+-- -------------------------------------------------------------------------
+-- Standing bid validator
+-- -------------------------------------------------------------------------
+data StandingBid'Redeemer
+  = NewBid
+  | MoveToHydra
+  | ConcludeAuction
+
+PlutusTx.unstableMakeIsData ''StandingBid'Redeemer
+
+newtype StandingBid'ScriptHash = StandingBid'ScriptHash
+  { sh'StandingBid :: ScriptHash
   }
