@@ -59,7 +59,6 @@ validateAuctionInfo ::
   Validation [AuctionInfo'Error] ()
 validateAuctionInfo AuctionInfo {..} =
   --
-  -- (AuctionInfo01)
   -- The auction terms in the metadata record should be valid.
   validateAuctionTerms ai'AuctionTerms
     `errWith` AuctionInfo'Error'InvalidAuctionTerms

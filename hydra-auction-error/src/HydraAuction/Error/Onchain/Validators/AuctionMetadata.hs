@@ -2,25 +2,29 @@ module HydraAuction.Error.Onchain.Validators.AuctionMetadata (
   AuctionMetadata'Error (..),
 ) where
 
-import GHC.Generics (Generic)
 import Prelude
 
-import HydraAuction.Error (ToErrorCode (..))
+import Data.Universe (Universe)
+import GHC.Generics (Generic)
+
+import HydraAuction.Error (ErrorCodePrefix (..))
 
 data AuctionMetadata'Error
   = AuctionMetadata'Error'MissingOwnInput
   | AuctionMetadata'Error'TooManyOwnScriptInputs
   | AuctionMetadata'Error'OwnInputMissingMetadataToken
   | AuctionMetadata'Error'AuctionTokensNotBurnedExactly
-  deriving stock (Eq, Generic, Show)
+  deriving stock (Bounded, Enum, Eq, Generic, Show)
 
-instance ToErrorCode AuctionMetadata'Error where
-  toErrorCode = \case
-    AuctionMetadata'Error'MissingOwnInput ->
-      "AuctionMetadata01"
-    AuctionMetadata'Error'TooManyOwnScriptInputs ->
-      "AuctionMetadata02"
-    AuctionMetadata'Error'OwnInputMissingMetadataToken ->
-      "AuctionMetadata03"
-    AuctionMetadata'Error'AuctionTokensNotBurnedExactly ->
-      "AuctionMetadata04"
+-- -------------------------------------------------------------------------
+-- Universe
+-- -------------------------------------------------------------------------
+
+instance Universe AuctionMetadata'Error
+
+-- -------------------------------------------------------------------------
+-- Error code prefix
+-- -------------------------------------------------------------------------
+
+instance ErrorCodePrefix AuctionMetadata'Error where
+  errorCodePrefix = const "AUMD"

@@ -48,7 +48,6 @@ validator AuctionInfo {..} RemoveAuction context =
   where
     TxInfo {..} = scriptContextTxInfo context
     --
-    -- (AuctionMetadata01)
     -- The validator's own input should exist.
     -- Note that this should always hold for a validator being executed
     -- with a Spending script purpose.
@@ -59,7 +58,6 @@ validator AuctionInfo {..} RemoveAuction context =
     ownAddress = txOutAddress ownInputTxOut
     ownValue = txOutValue ownInputTxOut
     --
-    -- (AuctionMetadata02)
     -- There should only be one input from the auction metadata validator.
     ownInputIsOnlyInputFromOwnScript =
       (length ownScriptInputs == 1)
@@ -69,7 +67,6 @@ validator AuctionInfo {..} RemoveAuction context =
         (\x -> ownAddress == txOutAddress (txInInfoResolved x))
         txInfoInputs
     --
-    -- (AuctionMetadata03)
     -- The validator's own input should hold one auction metadata token
     -- with a currency symbol matching the auction ID
     -- mentioned in the auction info metadata record.
@@ -77,7 +74,6 @@ validator AuctionInfo {..} RemoveAuction context =
       (valueOf ownValue ai'AuctionId auctionMetadataTN == 1)
         `err` $(eCode AuctionMetadata'Error'OwnInputMissingMetadataToken)
     --
-    -- (AuctionMetadata04)
     -- The auction state, auction metadata, and standing bid tokens
     -- of the auction should all be burned.
     -- No other tokens should be minted or burned.

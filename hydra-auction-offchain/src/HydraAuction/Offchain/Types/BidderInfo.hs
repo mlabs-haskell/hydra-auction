@@ -52,7 +52,6 @@ validateBidderInfo ::
   Validation [BidderInfo'Error] ()
 validateBidderInfo BidderInfo {..} =
   --
-  -- (BidderInfo01)
   -- The bidder's hashed payment verification key corresponds
   -- to the bidder's payment verification key.
   -- Note: this check only becomes possible on-chain in Plutus V3.

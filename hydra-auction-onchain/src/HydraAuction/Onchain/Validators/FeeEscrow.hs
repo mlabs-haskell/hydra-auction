@@ -39,7 +39,6 @@ validator AuctionTerms {..} DistributeFees context =
   where
     txInfo@TxInfo {..} = scriptContextTxInfo context
     --
-    -- (FeeEscrow01)
     -- The validator's own input should exist.
     -- Note that this should always hold for a validator being executed
     -- with a Spending script purpose.
@@ -49,7 +48,6 @@ validator AuctionTerms {..} DistributeFees context =
           `errMaybe` $(eCode FeeEscrow'Error'MissingOwnInput)
     ownAddress = txOutAddress ownInputTxOut
     --
-    -- (FeeEscrow02)
     -- There should only be one input from the fee escrow validator.
     ownInputIsOnlyInputFromOwnScript =
       (length ownScriptInputs == 1)
@@ -59,13 +57,11 @@ validator AuctionTerms {..} DistributeFees context =
         (\x -> ownAddress == txOutAddress (txInInfoResolved x))
         txInfoInputs
     --
-    -- (FeeEscrow03)
     -- No tokens are minted or burned.
     noTokensMintedOrBurned =
       (txInfoMint == mempty)
         `err` $(eCode FeeEscrow'Error'UnexpectedMintOrBurn)
     --
-    -- (FeeEscrow04)
     -- Each delegate receives at least at'AuctionFeePerDelegate ADA.
     allDelegatesReceivedSufficientAda =
       all delegateReceivedSufficientAda at'Delegates

@@ -76,7 +76,6 @@ validateNewBid auTerms auctionId oldBidState StandingBidState {..}
         <> validateCompareBids auTerms oldBidState newTerms
   | otherwise =
       --
-      -- (NewBid01)
       -- The new bid state should not be empty.
       False
         `err` NewBid'Error'EmptyNewBid
@@ -88,7 +87,6 @@ validateNewBidTerms ::
   Validation [NewBid'Error] ()
 validateNewBidTerms auTerms auctionId newTerms =
   --
-  -- (NewBid02)
   -- The new bid terms are valid.
   validateBidTerms auTerms auctionId newTerms
     `errWith` NewBid'Error'InvalidNewBidTerms
@@ -111,7 +109,6 @@ validateBidIncrement ::
   Validation [NewBid'Error] ()
 validateBidIncrement AuctionTerms {..} oldTerms newTerms =
   --
-  -- (NewBid03)
   -- The difference between the old and new bid price is
   -- no smaller than the auction's minimum bid increment.
   (bt'BidPrice oldTerms + at'MinBidIncrement <= bt'BidPrice newTerms)
@@ -123,7 +120,6 @@ validateStartingBid ::
   Validation [NewBid'Error] ()
 validateStartingBid AuctionTerms {..} BidTerms {..} =
   --
-  -- (NewBid04)
   -- The first bid's price is
   -- no smaller than the auction's starting price.
   (at'StartingBid <= bt'BidPrice)
@@ -143,19 +139,16 @@ validateBuyer auTerms auctionId StandingBidState {..} buyer
   | Just bidTerms@BidTerms {..} <- standingBidState
   , BidderInfo {..} <- bt'Bidder =
       --
-      -- (Buyer01)
       -- The buyer's hashed payment verification key corresponds
       -- to the bidder's payment verification key.
       (buyer == bi'BidderPkh)
         `err` Buyer'Error'BuyerVkPkhMismatch
         --
-        -- (Buyer02)
         -- The bid terms are valid.
         <> validateBidTerms auTerms auctionId bidTerms
         `errWith` Buyer'Error'InvalidBidTerms
   | otherwise =
       --
-      -- (Buyer03)
       -- Can only buy when standing bid state is non-empty.
       False
         `err` Buyer'Error'EmptyStandingBid

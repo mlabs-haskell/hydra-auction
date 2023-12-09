@@ -106,6 +106,8 @@ library
   build-depends:
     -- , aeson
     , base
+    , safe
     , text
+    , universe
 
   ghc-options:

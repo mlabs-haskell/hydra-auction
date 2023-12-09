@@ -33,7 +33,6 @@ validateBidderInfo ::
   Bool
 validateBidderInfo _ =
   --
-  -- (BidderInfo01)
   -- The bidder's hashed payment verification key corresponds
   -- to the bidder's payment verification key.
   -- (bi'BidderPkh == PubKeyHash (blake2b_224 bi'BidderVk))

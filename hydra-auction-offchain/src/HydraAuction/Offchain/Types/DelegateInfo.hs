@@ -50,7 +50,6 @@ validateDelegateInfo ::
   Validation [DelegateInfo'Error] ()
 validateDelegateInfo DelegateInfo {..} =
   --
-  -- (DelegateInfo01)
   -- There must be at least one delegate.
   (length di'Delegates > 0)
     `err` DelegateInfo'Error'NoDelegates

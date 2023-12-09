@@ -30,7 +30,7 @@ validateDelegateInfo ::
   Bool
 validateDelegateInfo DelegateInfo {..} =
   --
-  -- (DelegateInfo01) There must be at least one delegate.
+  -- There must be at least one delegate.
   (length di'Delegates > 0)
     `err` $(eCode DelegateInfo'Error'NoDelegates)
 --
