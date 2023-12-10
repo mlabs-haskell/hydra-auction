@@ -1,12 +1,18 @@
 module HydraAuction.Onchain.Lib.PlutusTx (
+  asDatum,
+  asRedeemer,
+  getSpentInputRedeemer,
   lovelaceValueOf,
   onlyOneInputFromAddress,
   parseInlineDatum,
+  parseRedemeer,
   scriptOutputsAtSh,
   valuePaidToScript,
   --
   findOwnInputWithStateToken,
+  findInputWithStateToken,
   findInputWithStateTokenAtSh,
+  findTxOutWithStateToken,
   findTxOutWithStateTokenAtAddr,
   findTxOutWithStateTokenAtSh,
   --
@@ -15,6 +21,7 @@ module HydraAuction.Onchain.Lib.PlutusTx (
   txOutHasStateToken,
   txOutIsAtAddr,
   txOutIsAtSh,
+  txOutRefSpentWithRedeemer,
 ) where
 
 import PlutusTx.Prelude
@@ -30,8 +37,10 @@ import PlutusLedgerApi.V2 (
   CurrencySymbol,
   Datum (..),
   OutputDatum (..),
+  Redeemer (..),
   ScriptContext (..),
   ScriptHash,
+  ScriptPurpose (..),
   TokenName,
   TxInInfo (..),
   TxInfo (..),
@@ -44,10 +53,30 @@ import PlutusLedgerApi.V2.Contexts (
   findOwnInput,
  )
 import PlutusTx qualified
+import PlutusTx.AssocMap qualified as AssocMap
 
 -- -------------------------------------------------------------------------
 -- Basic utilities
 -- -------------------------------------------------------------------------
+
+asDatum :: PlutusTx.ToData a => a -> Datum
+asDatum = Datum . PlutusTx.toBuiltinData
+--
+{-# INLINEABLE asDatum #-}
+
+asRedeemer :: PlutusTx.ToData a => a -> Redeemer
+asRedeemer = Redeemer . PlutusTx.toBuiltinData
+--
+{-# INLINEABLE asRedeemer #-}
+
+-- | Get the redeemer with which an input is being spent.
+getSpentInputRedeemer :: TxInfo -> TxInInfo -> Maybe Redeemer
+getSpentInputRedeemer TxInfo {..} TxInInfo {..} =
+  AssocMap.lookup scriptPurpose txInfoRedeemers
+  where
+    scriptPurpose = Spending txInInfoOutRef
+--
+{-# INLINEABLE getSpentInputRedeemer #-}
 
 -- | There's only one input at the given address.
 onlyOneInputFromAddress ::
@@ -61,6 +90,12 @@ onlyOneInputFromAddress address inputs = length inputs' == 1
 --
 {-# INLINEABLE onlyOneInputFromAddress #-}
 
+lovelaceValueOf :: Value -> Integer
+lovelaceValueOf v =
+  valueOf v adaSymbol adaToken
+--
+{-# INLINEABLE lovelaceValueOf #-}
+
 -- | Try to parse a tx output datum, if it is inline.
 parseInlineDatum ::
   PlutusTx.FromData a =>
@@ -72,11 +107,13 @@ parseInlineDatum _ = Nothing
 --
 {-# INLINEABLE parseInlineDatum #-}
 
-lovelaceValueOf :: Value -> Integer
-lovelaceValueOf v =
-  valueOf v adaSymbol adaToken
+parseRedemeer ::
+  PlutusTx.FromData a =>
+  Redeemer ->
+  Maybe a
+parseRedemeer (Redeemer x) = PlutusTx.fromBuiltinData x
 --
-{-# INLINEABLE lovelaceValueOf #-}
+{-# INLINEABLE parseRedemeer #-}
 
 scriptOutputsAtSh :: TxInfo -> ScriptHash -> [TxOut]
 scriptOutputsAtSh TxInfo {..} sh =
@@ -108,6 +145,16 @@ findOwnInputWithStateToken cs tn context = do
 --
 {-# INLINEABLE findOwnInputWithStateToken #-}
 
+findInputWithStateToken ::
+  CurrencySymbol ->
+  TokenName ->
+  [TxInInfo] ->
+  Maybe TxInInfo
+findInputWithStateToken cs tn =
+  find (txOutHasStateToken cs tn . txInInfoResolved)
+--
+{-# INLINEABLE findInputWithStateToken #-}
+
 findInputWithStateTokenAtSh ::
   CurrencySymbol ->
   TokenName ->
@@ -118,6 +165,16 @@ findInputWithStateTokenAtSh cs tn sh =
   find (txOutHasStateTokenAtSh cs tn sh . txInInfoResolved)
 --
 {-# INLINEABLE findInputWithStateTokenAtSh #-}
+
+findTxOutWithStateToken ::
+  CurrencySymbol ->
+  TokenName ->
+  [TxOut] ->
+  Maybe TxOut
+findTxOutWithStateToken cs tn =
+  find (txOutHasStateToken cs tn)
+--
+{-# INLINEABLE findTxOutWithStateToken #-}
 
 -- | Find the tx output located at a given address
 -- and containing the given state token.
@@ -146,6 +203,10 @@ findTxOutWithStateTokenAtSh cs tn sh = do
   find (txOutHasStateTokenAtSh cs tn sh)
 --
 {-# INLINEABLE findTxOutWithStateTokenAtSh #-}
+
+-- -------------------------------------------------------------------------
+-- Predicates on tx outputs
+-- -------------------------------------------------------------------------
 
 txOutHasStateTokenAtAddr ::
   CurrencySymbol ->
@@ -187,3 +248,11 @@ txOutIsAtSh sh TxOut {..} =
   Just sh == toScriptHash txOutAddress
 --
 {-# INLINEABLE txOutIsAtSh #-}
+
+-- | Is the given tx output reference being spent
+-- in the transaction with the given redeemer?
+txOutRefSpentWithRedeemer :: TxInfo -> TxInInfo -> Redeemer -> Bool
+txOutRefSpentWithRedeemer txInfo x redeemer =
+  Just redeemer == getSpentInputRedeemer txInfo x
+--
+{-# INLINEABLE txOutRefSpentWithRedeemer #-}

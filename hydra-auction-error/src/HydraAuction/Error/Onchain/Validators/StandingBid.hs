@@ -26,7 +26,8 @@ data StandingBid'Error
     StandingBid'MH'Error'MissingDelegateSignatures
   | StandingBid'MH'Error'IncorrectValidityInterval
   | -- ConcludeAuction errors
-    StandingBid'CA'Error'MissingAuctionStateToken
+    StandingBid'CA'Error'AuctionIsNotConcluding
+  | StandingBid'CA'Error'InvalidAuctionTokenRedeemer
   deriving stock (Eq, Generic, Show)
 
 -- -------------------------------------------------------------------------

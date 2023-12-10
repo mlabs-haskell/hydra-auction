@@ -6,6 +6,7 @@ import PlutusTx.Prelude
 
 import PlutusLedgerApi.V1.Interval (contains)
 import PlutusLedgerApi.V2 (
+  PubKeyHash,
   ScriptContext (..),
   TxInInfo (..),
   TxInfo (..),
@@ -44,8 +45,8 @@ import HydraAuction.Onchain.Types.BidTerms (
   BidTerms (..),
   sellerPayout,
   validateBidTerms,
+  validateBuyer,
  )
-import HydraAuction.Onchain.Types.BidderInfo (BidderInfo (..))
 import HydraAuction.Onchain.Types.Scripts (
   AuctionEscrow'Redeemer (..),
   AuctionID (..),
@@ -95,13 +96,13 @@ validator sbsh fsh auctionID aTerms aState redeemer context =
     redeemerChecksPassed =
       case redeemer of
         StartBidding ->
-          checkStartBidding sbsh auctionID aTerms aState context ownInput
-        BidderBuys ->
-          checkBidderBuys sbsh fsh auctionID aTerms aState context ownInput
+          checkSB sbsh auctionID aTerms aState context ownInput
+        BidderBuys buyer ->
+          checkBB sbsh fsh auctionID aTerms aState context ownInput buyer
         SellerReclaims ->
-          checkSellerReclaims fsh auctionID aTerms aState context ownInput
+          checkSR fsh auctionID aTerms aState context ownInput
         CleanupAuction ->
-          checkCleanupAuction auctionID aTerms aState context ownInput
+          checkCA auctionID aTerms aState context ownInput
 --
 {-# INLINEABLE validator #-}
 
@@ -109,7 +110,7 @@ validator sbsh fsh auctionID aTerms aState redeemer context =
 -- Start the bidding process
 -- -------------------------------------------------------------------------
 
-checkStartBidding ::
+checkSB ::
   StandingBid'ScriptHash ->
   AuctionID ->
   AuctionTerms ->
@@ -117,7 +118,7 @@ checkStartBidding ::
   ScriptContext ->
   TxOut ->
   Bool
-checkStartBidding sbsh auctionID aTerms oldAState context ownInput =
+checkSB sbsh auctionID aTerms oldAState context ownInput =
   auctionStateTransitionIsValid
     && initialBidStateIsEmpty
     && validityIntervalIsCorrect
@@ -179,14 +180,15 @@ checkStartBidding sbsh auctionID aTerms oldAState context ownInput =
     standingBidOutput =
       findStandingBidTxOutAtSh auctionID sbsh txInfoOutputs
         `errMaybe` $(eCode AuctionEscrow'SB'Error'MissingStandingBidOutput)
+
 --
-{-# INLINEABLE checkStartBidding #-}
+{-# INLINEABLE checkSB #-}
 
 -- -------------------------------------------------------------------------
 -- Bidder buys auction lot
 -- -------------------------------------------------------------------------
 
-checkBidderBuys ::
+checkBB ::
   StandingBid'ScriptHash ->
   FeeEscrow'ScriptHash ->
   AuctionID ->
@@ -194,11 +196,13 @@ checkBidderBuys ::
   AuctionEscrowState ->
   ScriptContext ->
   TxOut ->
+  PubKeyHash ->
   Bool
-checkBidderBuys sbsh fsh auctionID aTerms oldAState context ownInput =
+checkBB sbsh fsh auctionID aTerms oldAState context ownInput buyer =
   auctionStateTransitionIsValid
     && auctionEscrowOutputContainsStandingBidToken
     && bidTermsAreValid
+    && buyerIsWinningBidder
     && auctionLotPaidToBuyer
     && paymentToSellerIsCorrect
     && paymentToFeeEscrowIsCorrect
@@ -227,9 +231,14 @@ checkBidderBuys sbsh fsh auctionID aTerms oldAState context ownInput =
       validateBidTerms aTerms aid bidTerms
         `err` $(eCode AuctionEscrow'BB'Error'BidTermsInvalid)
     --
+    -- The winning bidder is buying the auction lot.
+    buyerIsWinningBidder =
+      validateBuyer bidTerms buyer
+        `err` $(eCode AuctionEscrow'BB'Error'InvalidBuyer)
+    --
     -- The auction lot is paid to the winning bidder, who is buying it.
     auctionLotPaidToBuyer =
-      buyerClaimedAuctionLot aTerms bidTerms txInfo
+      (valuePaidTo txInfo buyer == auctionLotValue aTerms)
         `err` $(eCode AuctionEscrow'BB'Error'AuctionLotNotPaidToBuyer)
     --
     -- The seller receives the proceeds of the auction.
@@ -288,21 +297,15 @@ checkBidderBuys sbsh fsh auctionID aTerms oldAState context ownInput =
       txInInfoResolved $
         findStandingBidInputAtSh auctionID sbsh txInfoInputs
           `errMaybe` $(eCode AuctionEscrow'BB'Error'MissingStandingBidOutput)
---
-{-# INLINEABLE checkBidderBuys #-}
 
--- The auction lot is paid to the bidder of the bid terms.
-buyerClaimedAuctionLot :: AuctionTerms -> BidTerms -> TxInfo -> Bool
-buyerClaimedAuctionLot aTerms BidTerms {..} txInfo
-  | BidderInfo {..} <- bt'Bidder =
-      valuePaidTo txInfo bi'BidderPkh == auctionLotValue aTerms
-{-# INLINEABLE buyerClaimedAuctionLot #-}
+--
+{-# INLINEABLE checkBB #-}
 
 -- -------------------------------------------------------------------------
 -- Seller reclaims auction lot
 -- -------------------------------------------------------------------------
 
-checkSellerReclaims ::
+checkSR ::
   FeeEscrow'ScriptHash ->
   AuctionID ->
   AuctionTerms ->
@@ -310,7 +313,7 @@ checkSellerReclaims ::
   ScriptContext ->
   TxOut ->
   Bool
-checkSellerReclaims fsh auctionID aTerms oldAState context ownInput =
+checkSR fsh auctionID aTerms oldAState context ownInput =
   auctionStateTransitionIsValid
     && auctionEscrowOutputContainsStandingBidToken
     && auctionLotReturnedToSeller
@@ -368,7 +371,7 @@ checkSellerReclaims fsh auctionID aTerms oldAState context ownInput =
       findAuctionEscrowTxOutAtAddr auctionID ownAddress txInfoOutputs
         `errMaybe` $(eCode AuctionEscrow'SR'Error'MissingAuctionEscrowOutput)
 --
-{-# INLINEABLE checkSellerReclaims #-}
+{-# INLINEABLE checkSR #-}
 
 -- The auction lot is returned to the seller.
 sellerReclaimedAuctionLot :: AuctionTerms -> TxInfo -> Bool
@@ -381,14 +384,14 @@ sellerReclaimedAuctionLot aTerms@AuctionTerms {..} txInfo =
 -- Cleanup auction
 -- -------------------------------------------------------------------------
 
-checkCleanupAuction ::
+checkCA ::
   AuctionID ->
   AuctionTerms ->
   AuctionEscrowState ->
   ScriptContext ->
   TxOut ->
   Bool
-checkCleanupAuction auctionID aTerms aState context ownInput =
+checkCA auctionID aTerms aState context ownInput =
   auctionIsConcluded
     && auctionEscrowInputContainsStandingBidToken
     && auctionTokensAreBurnedExactly
@@ -419,4 +422,4 @@ checkCleanupAuction auctionID aTerms aState context ownInput =
       (cleanupPeriod aTerms `contains` txInfoValidRange)
         `err` $(eCode AuctionEscrow'CA'Error'IncorrectValidityInterval)
 --
-{-# INLINEABLE checkCleanupAuction #-}
+{-# INLINEABLE checkCA #-}

@@ -28,6 +28,7 @@ data AuctionEscrow'Error
     AuctionEscrow'BB'Error'InvalidAuctionStateTransition
   | AuctionEscrow'BB'Error'AuctionEscrowOutputMissingTokens
   | AuctionEscrow'BB'Error'BidTermsInvalid
+  | AuctionEscrow'BB'Error'InvalidBuyer
   | AuctionEscrow'BB'Error'AuctionLotNotPaidToBuyer
   | AuctionEscrow'BB'Error'SellerPaymentIncorrect
   | AuctionEscrow'BB'Error'PaymentToFeeEscrowIncorrect

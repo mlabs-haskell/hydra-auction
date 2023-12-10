@@ -42,8 +42,8 @@ mintingPolicy ::
   AuctionMP'Redeemer ->
   ScriptContext ->
   Bool
-mintingPolicy v utxoNonce action context =
-  case action of
+mintingPolicy v utxoNonce redeemer context =
+  case redeemer of
     MintAuction ->
       checkMint v utxoNonce context
     BurnAuction ->

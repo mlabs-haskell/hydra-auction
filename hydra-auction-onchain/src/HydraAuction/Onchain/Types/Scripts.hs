@@ -14,7 +14,9 @@ module HydraAuction.Onchain.Types.Scripts (
   --
   AuctionEscrow'Redeemer (..),
   AuctionEscrow'ScriptHash (..),
+  isConcluding,
   findAuctionEscrowOwnInput,
+  findAuctionEscrowTokenInput,
   findAuctionEscrowInputAtSh,
   findAuctionEscrowTxOutAtSh,
   findAuctionEscrowTxOutAtAddr,
@@ -22,6 +24,7 @@ module HydraAuction.Onchain.Types.Scripts (
   AuctionMetadata'Redeemer (..),
   AuctionMetadata'ScriptHash (..),
   findAuctionMetadataOwnInput,
+  findAuctionMetadataTokenInput,
   findAuctionMetadataInputAtSh,
   findAuctionMetadataTxOutAtSh,
   findAuctionMetadataTxOutAtAddr,
@@ -33,6 +36,7 @@ module HydraAuction.Onchain.Types.Scripts (
   StandingBid'Redeemer (..),
   StandingBid'ScriptHash (..),
   findStandingBidOwnInput,
+  findStandingBidTokenInput,
   findStandingBidInputAtSh,
   findStandingBidTxOutAtSh,
   findStandingBidTxOutAtAddr,
@@ -43,6 +47,7 @@ import PlutusTx.Prelude
 import PlutusLedgerApi.V2 (
   Address,
   CurrencySymbol,
+  PubKeyHash,
   ScriptContext,
   ScriptHash,
   TokenName,
@@ -55,6 +60,7 @@ import PlutusTx qualified
 import PlutusTx.AssocMap qualified as AssocMap
 
 import HydraAuction.Onchain.Lib.PlutusTx (
+  findInputWithStateToken,
   findInputWithStateTokenAtSh,
   findOwnInputWithStateToken,
   findTxOutWithStateTokenAtAddr,
@@ -144,11 +150,12 @@ hasStandingBidToken AuctionID {..} =
 --
 {-# INLINEABLE hasStandingBidToken #-}
 
+-- -------------------------------------------------------------------------
 -- Auction escrow validator
 -- -------------------------------------------------------------------------
 data AuctionEscrow'Redeemer
   = StartBidding
-  | BidderBuys
+  | BidderBuys !PubKeyHash
   | SellerReclaims
   | CleanupAuction
 
@@ -158,6 +165,13 @@ newtype AuctionEscrow'ScriptHash = AuctionEscrow'ScriptHash
   { sh'AuctionEscrow :: ScriptHash
   }
 
+isConcluding :: AuctionEscrow'Redeemer -> Bool
+isConcluding (BidderBuys _) = True
+isConcluding SellerReclaims = True
+isConcluding _ = False
+--
+{-# INLINEABLE isConcluding #-}
+
 findAuctionEscrowOwnInput ::
   AuctionID ->
   ScriptContext ->
@@ -166,6 +180,17 @@ findAuctionEscrowOwnInput AuctionID {..} =
   findOwnInputWithStateToken auctionID auctionTN
 --
 {-# INLINEABLE findAuctionEscrowOwnInput #-}
+
+findAuctionEscrowTokenInput ::
+  AuctionID ->
+  [TxInInfo] ->
+  Maybe TxInInfo
+findAuctionEscrowTokenInput AuctionID {..} =
+  findInputWithStateToken
+    auctionID
+    auctionTN
+--
+{-# INLINEABLE findAuctionEscrowTokenInput #-}
 
 findAuctionEscrowInputAtSh ::
   AuctionID ->
@@ -225,6 +250,17 @@ findAuctionMetadataOwnInput AuctionID {..} =
   findOwnInputWithStateToken auctionID auctionMetadataTN
 --
 {-# INLINEABLE findAuctionMetadataOwnInput #-}
+
+findAuctionMetadataTokenInput ::
+  AuctionID ->
+  [TxInInfo] ->
+  Maybe TxInInfo
+findAuctionMetadataTokenInput AuctionID {..} =
+  findInputWithStateToken
+    auctionID
+    auctionMetadataTN
+--
+{-# INLINEABLE findAuctionMetadataTokenInput #-}
 
 findAuctionMetadataInputAtSh ::
   AuctionID ->
@@ -302,6 +338,17 @@ findStandingBidOwnInput AuctionID {..} =
   findOwnInputWithStateToken auctionID standingBidTN
 --
 {-# INLINEABLE findStandingBidOwnInput #-}
+
+findStandingBidTokenInput ::
+  AuctionID ->
+  [TxInInfo] ->
+  Maybe TxInInfo
+findStandingBidTokenInput AuctionID {..} =
+  findInputWithStateToken
+    auctionID
+    standingBidTN
+--
+{-# INLINEABLE findStandingBidTokenInput #-}
 
 findStandingBidInputAtSh ::
   AuctionID ->

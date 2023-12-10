@@ -67,10 +67,6 @@ validator aTerms@AuctionTerms {..} DistributeFees context =
 --
 {-# INLINEABLE validator #-}
 
--- -------------------------------------------------------------------------
--- Predicates for payouts
--- -------------------------------------------------------------------------
-
 delegateReceivedSufficientAda :: AuctionTerms -> TxInfo -> PubKeyHash -> Bool
 delegateReceivedSufficientAda AuctionTerms {..} txInfo d =
   lovelaceValueOf (valuePaidTo txInfo d) > at'AuctionFeePerDelegate

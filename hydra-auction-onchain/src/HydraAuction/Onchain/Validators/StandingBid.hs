@@ -22,8 +22,10 @@ import HydraAuction.Error.Onchain.Validators.StandingBid (
  )
 import HydraAuction.Onchain.Lib.Error (eCode, err, errMaybe)
 import HydraAuction.Onchain.Lib.PlutusTx (
+  getSpentInputRedeemer,
   onlyOneInputFromAddress,
   parseInlineDatum,
+  parseRedemeer,
  )
 import HydraAuction.Onchain.Types.AuctionState (
   StandingBidState (..),
@@ -36,9 +38,10 @@ import HydraAuction.Onchain.Types.AuctionTerms (
 import HydraAuction.Onchain.Types.Scripts (
   AuctionID (..),
   StandingBid'Redeemer (..),
+  findAuctionEscrowTokenInput,
   findStandingBidOwnInput,
   findStandingBidTxOutAtAddr,
-  hasAuctionToken,
+  isConcluding,
  )
 
 -- -------------------------------------------------------------------------
@@ -79,32 +82,36 @@ validator auctionID aTerms standingBidState redeemer context =
     redeemerChecksPassed =
       case redeemer of
         NewBid ->
-          checkNewBid auctionID aTerms standingBidState context ownInput
+          checkNB auctionID aTerms standingBidState context ownInput
         MoveToHydra ->
-          checkMoveToHydra aTerms context
+          checkMH aTerms context
         ConcludeAuction ->
-          checkConcludeAuction auctionID context
+          checkCA auctionID context
 --
 {-# INLINEABLE validator #-}
 
-checkNewBid ::
+-- -------------------------------------------------------------------------
+-- New bid
+-- -------------------------------------------------------------------------
+checkNB ::
   AuctionID ->
   AuctionTerms ->
   StandingBidState ->
   ScriptContext ->
   TxOut ->
   Bool
-checkNewBid aid@AuctionID {..} aTerms oldBidState context ownInput =
+checkNB auctionID aTerms oldBidState context ownInput =
   bidStateTransitionIsValid
     && validityIntervalIsCorrect
   where
     TxInfo {..} = scriptContextTxInfo context
+    AuctionID aid = auctionID
     ownAddress = txOutAddress ownInput
     --
     -- The transition from the old bid state to the new bid state
     -- should be valid.
     bidStateTransitionIsValid =
-      validateNewBid aTerms auctionID oldBidState newBidState
+      validateNewBid aTerms aid oldBidState newBidState
         `err` $(eCode $ StandingBid'NB'Error'InvalidNewBidState [])
     --
     -- The transaction validity should end before the bidding end time.
@@ -123,17 +130,19 @@ checkNewBid aid@AuctionID {..} aTerms oldBidState context ownInput =
     -- There is an output at the standing bid validator
     -- containing the standing bid token.
     standingBidOutput =
-      findStandingBidTxOutAtAddr aid ownAddress txInfoOutputs
+      findStandingBidTxOutAtAddr auctionID ownAddress txInfoOutputs
         `errMaybe` $(eCode StandingBid'NB'Error'MissingStandingBidOutput)
-
 --
-{-# INLINEABLE checkNewBid #-}
+{-# INLINEABLE checkNB #-}
 
-checkMoveToHydra ::
+-- -------------------------------------------------------------------------
+-- Move to hydra
+-- -------------------------------------------------------------------------
+checkMH ::
   AuctionTerms ->
   ScriptContext ->
   Bool
-checkMoveToHydra aTerms@AuctionTerms {..} context =
+checkMH aTerms@AuctionTerms {..} context =
   txSignedByAllDelegates
     && validityIntervalIsCorrect
   where
@@ -149,23 +158,37 @@ checkMoveToHydra aTerms@AuctionTerms {..} context =
       (biddingPeriod aTerms `contains` txInfoValidRange)
         `err` $(eCode StandingBid'MH'Error'IncorrectValidityInterval)
 --
-{-# INLINEABLE checkMoveToHydra #-}
+{-# INLINEABLE checkMH #-}
 
-checkConcludeAuction ::
+-- -------------------------------------------------------------------------
+-- Conclude auction
+-- -------------------------------------------------------------------------
+checkCA ::
   AuctionID ->
   ScriptContext ->
   Bool
-checkConcludeAuction auctionID context =
-  auctionStateTokenIsSpent
+checkCA auctionID context =
+  auctionIsConcluding
   where
-    TxInfo {..} = scriptContextTxInfo context
+    txInfo@TxInfo {..} = scriptContextTxInfo context
     --
-    -- There should be an input with the auction state token.
+    -- There should be an input with the auction state token that is
+    -- being spent with the BidderBuys or SellerReclaims redeemer.
     -- Implicitly, this means that the auction is concluding
     -- with either the winning bidder buying the auction lot
     -- or the seller reclaiming it.
-    auctionStateTokenIsSpent =
-      any (hasAuctionToken auctionID . txInInfoResolved) txInfoInputs
-        `err` $(eCode StandingBid'CA'Error'MissingAuctionStateToken)
+    auctionIsConcluding =
+      isConcluding auctionRedeemer
+        `err` $(eCode StandingBid'CA'Error'AuctionIsNotConcluding)
+    --
+    -- There is an input that contains the auction token
+    -- and is being spent with an auction escrow redeemer.
+    auctionRedeemer =
+      mAuctionEscrowRedeemer
+        `errMaybe` $(eCode StandingBid'CA'Error'InvalidAuctionTokenRedeemer)
+    mAuctionEscrowRedeemer = do
+      txin <- findAuctionEscrowTokenInput auctionID txInfoInputs
+      r <- getSpentInputRedeemer txInfo txin
+      parseRedemeer r
 --
-{-# INLINEABLE checkConcludeAuction #-}
+{-# INLINEABLE checkCA #-}

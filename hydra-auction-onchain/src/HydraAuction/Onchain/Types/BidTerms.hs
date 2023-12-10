@@ -2,6 +2,7 @@ module HydraAuction.Onchain.Types.BidTerms (
   BidTerms (..),
   BidTerms'Error (..),
   validateBidTerms,
+  validateBuyer,
   sellerPayout,
 ) where
 
@@ -57,6 +58,17 @@ sellerPayout auTerms BidTerms {..} =
   bt'BidPrice - totalAuctionFees auTerms
 --
 {-# INLINEABLE sellerPayout #-}
+
+-- -------------------------------------------------------------------------
+-- Buyer
+-- -------------------------------------------------------------------------
+
+validateBuyer :: BidTerms -> PubKeyHash -> Bool
+validateBuyer BidTerms {..} buyer
+  | BidderInfo {..} <- bt'Bidder =
+      bi'BidderPkh == buyer
+--
+{-# INLINEABLE validateBuyer #-}
 
 -- -------------------------------------------------------------------------
 -- Validation
