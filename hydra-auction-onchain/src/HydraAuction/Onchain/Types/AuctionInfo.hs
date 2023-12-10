@@ -5,8 +5,10 @@ module HydraAuction.Onchain.Types.AuctionInfo (
 
 import PlutusTx.Prelude
 
-import PlutusLedgerApi.V1.Address (Address)
-import PlutusLedgerApi.V1.Value (CurrencySymbol)
+import PlutusLedgerApi.V2 (
+  Address,
+  CurrencySymbol,
+ )
 import PlutusTx qualified
 
 import HydraAuction.Error.Types.AuctionInfo (AuctionInfo'Error (..))

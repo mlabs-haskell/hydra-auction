@@ -7,7 +7,10 @@ module HydraAuction.Onchain.Types.BidTerms (
 
 import PlutusTx.Prelude
 
-import PlutusLedgerApi.V1 (CurrencySymbol, PubKeyHash)
+import PlutusLedgerApi.V2 (
+  CurrencySymbol,
+  PubKeyHash,
+ )
 import PlutusTx qualified
 
 import HydraAuction.Error.Types.BidTerms (BidTerms'Error (..))

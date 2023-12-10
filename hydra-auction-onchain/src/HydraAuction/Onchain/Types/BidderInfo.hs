@@ -6,7 +6,7 @@ module HydraAuction.Onchain.Types.BidderInfo (
 
 import PlutusTx.Prelude
 
-import PlutusLedgerApi.V1 (PubKeyHash)
+import PlutusLedgerApi.V2 (PubKeyHash)
 import PlutusTx qualified
 
 -- import HydraAuction.Onchain.Lib.Error (eCode, err)

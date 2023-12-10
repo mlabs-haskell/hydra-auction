@@ -17,16 +17,17 @@ module HydraAuction.Onchain.Types.AuctionTerms (
 
 import PlutusTx.Prelude
 
-import PlutusLedgerApi.V1.Crypto (PubKeyHash)
-import PlutusLedgerApi.V1.Interval (
+import PlutusLedgerApi.V1.Value (
+  AssetClass (..),
+ )
+import PlutusLedgerApi.V2 (
   Extended (..),
   Interval (..),
   LowerBound (..),
+  POSIXTime (..),
+  POSIXTimeRange,
+  PubKeyHash,
   UpperBound (..),
- )
-import PlutusLedgerApi.V1.Time (POSIXTime (..), POSIXTimeRange)
-import PlutusLedgerApi.V1.Value (
-  AssetClass (..),
   Value,
   singleton,
  )

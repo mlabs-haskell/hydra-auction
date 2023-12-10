@@ -20,7 +20,7 @@ import Data.ByteString (ByteString)
 import Data.ByteString.Char8 qualified as BSC8
 
 import Cardano.Ledger.Alonzo.TxInfo qualified as Ledger
-import PlutusLedgerApi.V2 qualified as Plutus
+import PlutusLedgerApi.V2 qualified as PV2
 
 import Cardano.Api.Shelley (
   Address (..),
@@ -55,7 +55,7 @@ import Cardano.Ledger.Keys (
 type Signature = SignedDSIGN StandardCrypto ByteString
 
 -- | Convert a cardano-api 'Hash' into a plutus 'PubKeyHash'
-toPlutusKeyHash :: Hash PaymentKey -> Plutus.PubKeyHash
+toPlutusKeyHash :: Hash PaymentKey -> PV2.PubKeyHash
 toPlutusKeyHash (PaymentKeyHash vkh) =
   Ledger.transKeyHash vkh
 

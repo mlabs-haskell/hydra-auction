@@ -4,12 +4,10 @@ module HydraAuction.Onchain.Validators.AuctionMetadata (
 
 import PlutusTx.Prelude
 
-import PlutusLedgerApi.V2.Contexts (
+import PlutusLedgerApi.V2 (
   ScriptContext (..),
   TxInInfo (..),
   TxInfo (..),
- )
-import PlutusLedgerApi.V2.Tx (
   TxOut (..),
  )
 

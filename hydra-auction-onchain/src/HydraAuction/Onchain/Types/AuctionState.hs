@@ -8,7 +8,7 @@ module HydraAuction.Onchain.Types.AuctionState (
 
 import PlutusTx.Prelude
 
-import PlutusLedgerApi.V1 (CurrencySymbol)
+import PlutusLedgerApi.V2 (CurrencySymbol)
 import PlutusTx qualified
 
 import HydraAuction.Onchain.Lib.Error (eCode, err)

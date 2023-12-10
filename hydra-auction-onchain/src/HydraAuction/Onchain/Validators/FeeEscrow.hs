@@ -4,16 +4,16 @@ module HydraAuction.Onchain.Validators.FeeEscrow (
 
 import PlutusTx.Prelude
 
-import PlutusLedgerApi.V1.Crypto (PubKeyHash)
-import PlutusLedgerApi.V2.Contexts (
+import PlutusLedgerApi.V2 (
+  PubKeyHash,
   ScriptContext (..),
   TxInInfo (..),
   TxInfo (..),
+  TxOut (..),
+ )
+import PlutusLedgerApi.V2.Contexts (
   findOwnInput,
   valuePaidTo,
- )
-import PlutusLedgerApi.V2.Tx (
-  TxOut (..),
  )
 
 import HydraAuction.Error.Onchain.Validators.FeeEscrow (

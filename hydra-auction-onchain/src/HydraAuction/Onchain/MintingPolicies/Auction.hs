@@ -5,10 +5,12 @@ module HydraAuction.Onchain.MintingPolicies.Auction (
 
 import PlutusTx.Prelude
 
-import PlutusLedgerApi.V2.Contexts (
+import PlutusLedgerApi.V2 (
   ScriptContext (..),
   TxInfo (..),
   TxOutRef (..),
+ )
+import PlutusLedgerApi.V2.Contexts (
   findTxInByTxOutRef,
   ownCurrencySymbol,
  )

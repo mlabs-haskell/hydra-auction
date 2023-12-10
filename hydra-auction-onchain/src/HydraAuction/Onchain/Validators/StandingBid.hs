@@ -7,14 +7,14 @@ import PlutusTx.Prelude
 import PlutusLedgerApi.V1.Interval (
   contains,
  )
-import PlutusLedgerApi.V2.Contexts (
+import PlutusLedgerApi.V2 (
   ScriptContext (..),
   TxInInfo (..),
   TxInfo (..),
-  txSignedBy,
- )
-import PlutusLedgerApi.V2.Tx (
   TxOut (..),
+ )
+import PlutusLedgerApi.V2.Contexts (
+  txSignedBy,
  )
 
 import HydraAuction.Error.Onchain.Validators.StandingBid (

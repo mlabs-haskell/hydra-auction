@@ -49,12 +49,15 @@ import Cardano.Ledger.Hashes qualified as Ledger
 import Cardano.Ledger.Keys qualified as Ledger
 import Cardano.Ledger.Mary.Value qualified as Mary
 
-import PlutusLedgerApi.V1.Address qualified as Plutus
-import PlutusLedgerApi.V1.Credential qualified as Plutus
-import PlutusLedgerApi.V1.Crypto qualified as Plutus
-import PlutusLedgerApi.V1.Scripts qualified as Plutus
-import PlutusLedgerApi.V1.Time qualified as Plutus
-import PlutusLedgerApi.V1.Value qualified as Plutus
+import PlutusLedgerApi.V1.Address qualified as PV1.Address
+import PlutusLedgerApi.V1.Credential qualified as PV1.Credential
+import PlutusLedgerApi.V1.Crypto qualified as PV1.Crypto
+import PlutusLedgerApi.V1.Scripts qualified as PV1.Scripts
+import PlutusLedgerApi.V1.Time qualified as PV1.Time
+import PlutusLedgerApi.V1.Value qualified as PV1.Value
+
+-- import PlutusLedgerApi.V2 qualified as PV2
+
 import PlutusTx.Prelude qualified as Plutus
 
 import HydraAuction.Offchain.Lib.Time qualified as AuctionTime
@@ -64,19 +67,19 @@ import HydraAuction.Offchain.Lib.Time qualified as AuctionTime
 -- -------------------------------------------------------------------------
 toPlutusUTCTimeMilli ::
   AuctionTime.UTCTimeMilli ->
-  Plutus.POSIXTime
+  PV1.Time.POSIXTime
 toPlutusUTCTimeMilli =
-  Plutus.POSIXTime
+  PV1.Time.POSIXTime
     . AuctionTime.posixTimeMilliToInteger
     . AuctionTime.utcTimeMilliToPOSIXMilli
 
 fromPlutusUTCTimeMilli ::
-  Plutus.POSIXTime ->
+  PV1.Time.POSIXTime ->
   AuctionTime.UTCTimeMilli
 fromPlutusUTCTimeMilli =
   AuctionTime.posixMilliToUTCMilli
     . AuctionTime.integerToPOSIXTimeMilli
-    . Plutus.getPOSIXTime
+    . PV1.Time.getPOSIXTime
 
 -- -------------------------------------------------------------------------
 -- Signature
@@ -123,11 +126,11 @@ fromPlutusVKey =
 -- -------------------------------------------------------------------------
 toPlutusVKeyHash ::
   Cardano.Api.Hash Cardano.Api.PaymentKey ->
-  Plutus.PubKeyHash
+  PV1.Crypto.PubKeyHash
 toPlutusVKeyHash (Cardano.Api.PaymentKeyHash kh) = Alonzo.TxInfo.transKeyHash kh
 
 fromPlutusVKeyHash ::
-  Plutus.PubKeyHash ->
+  PV1.Crypto.PubKeyHash ->
   Maybe (Cardano.Api.Hash Cardano.Api.PaymentKey)
 fromPlutusVKeyHash pkh = Cardano.Api.PaymentKeyHash <$> transKeyHashInverse pkh
 
@@ -135,9 +138,9 @@ fromPlutusVKeyHash pkh = Cardano.Api.PaymentKeyHash <$> transKeyHashInverse pkh
 -- except when the Plutus.PubKeyHash bytestring cannot be
 -- decoded as a valid key hash.
 transKeyHashInverse ::
-  Plutus.PubKeyHash ->
+  PV1.Crypto.PubKeyHash ->
   Maybe (Ledger.KeyHash 'Ledger.Payment StandardCrypto)
-transKeyHashInverse (Plutus.PubKeyHash bbs) =
+transKeyHashInverse (PV1.Crypto.PubKeyHash bbs) =
   Ledger.KeyHash <$> Cardano.Crypto.hashFromBytes (Plutus.fromBuiltin bbs)
 
 -- -------------------------------------------------------------------------
@@ -146,7 +149,7 @@ transKeyHashInverse (Plutus.PubKeyHash bbs) =
 toPlutusAddress ::
   Cardano.Api.IsShelleyBasedEra era =>
   Cardano.Api.AddressInEra era ->
-  Plutus.Address
+  PV1.Address.Address
 toPlutusAddress =
   Maybe.fromMaybe (error "Impossible Byron address here")
     . Alonzo.TxInfo.transAddr
@@ -155,7 +158,7 @@ toPlutusAddress =
 fromPlutusAddress ::
   Cardano.Api.IsShelleyBasedEra era =>
   Cardano.Api.NetworkId ->
-  Plutus.Address ->
+  PV1.Address.Address ->
   Maybe (Cardano.Api.AddressInEra era)
 fromPlutusAddress net =
   fmap Cardano.Api.fromShelleyAddrIsSbe
@@ -163,9 +166,9 @@ fromPlutusAddress net =
 
 transAddrInverse ::
   Ledger.Network ->
-  Plutus.Address ->
+  PV1.Address.Address ->
   Maybe (Ledger.Addr StandardCrypto)
-transAddrInverse net (Plutus.Address credential stakeRef) = do
+transAddrInverse net (PV1.Address.Address credential stakeRef) = do
   lCredential <- transCredInverse credential
   lStakeRef <- transStakeReferenceInverse stakeRef
   pure $ Ledger.Addr net lCredential lStakeRef
@@ -174,19 +177,21 @@ transAddrInverse net (Plutus.Address credential stakeRef) = do
 -- except when the Plutus.PubKeyHash or Plutus.ScriptHash bytestring
 -- cannot be decoded as valid hashes.
 transCredInverse ::
-  Plutus.Credential ->
+  PV1.Credential.Credential ->
   Maybe (Ledger.Credential kr StandardCrypto)
-transCredInverse (Plutus.PubKeyCredential (Plutus.PubKeyHash bbs)) =
-  Ledger.KeyHashObj . Ledger.KeyHash
-    <$> Cardano.Crypto.hashFromBytes (Plutus.fromBuiltin bbs)
-transCredInverse (Plutus.ScriptCredential (Plutus.ScriptHash bbs)) =
-  Ledger.ScriptHashObj . Ledger.ScriptHash
-    <$> Cardano.Crypto.hashFromBytes (Plutus.fromBuiltin bbs)
+transCredInverse
+  (PV1.Credential.PubKeyCredential (PV1.Crypto.PubKeyHash bbs)) =
+    Ledger.KeyHashObj . Ledger.KeyHash
+      <$> Cardano.Crypto.hashFromBytes (Plutus.fromBuiltin bbs)
+transCredInverse
+  (PV1.Credential.ScriptCredential (PV1.Scripts.ScriptHash bbs)) =
+    Ledger.ScriptHashObj . Ledger.ScriptHash
+      <$> Cardano.Crypto.hashFromBytes (Plutus.fromBuiltin bbs)
 
 -- This is the inverse of Alonzo.TxInfo.transStakeReference,
 -- except when there are deserialization errors from Plutus.
 transStakeReferenceInverse ::
-  Maybe Plutus.StakingCredential ->
+  Maybe PV1.Credential.StakingCredential ->
   Maybe (Ledger.StakeReference StandardCrypto)
 transStakeReferenceInverse =
   Maybe.maybe (Just Ledger.StakeRefNull) transStakeReferenceInverse'
@@ -194,12 +199,12 @@ transStakeReferenceInverse =
 -- This helper function isolates the errors that can occur
 -- when deserializing a Plutus.StakingCredential from Plutus.
 transStakeReferenceInverse' ::
-  Plutus.StakingCredential ->
+  PV1.Credential.StakingCredential ->
   Maybe (Ledger.StakeReference StandardCrypto)
-transStakeReferenceInverse' (Plutus.StakingHash credential) =
+transStakeReferenceInverse' (PV1.Credential.StakingHash credential) =
   Ledger.StakeRefBase
     <$> transCredInverse credential
-transStakeReferenceInverse' (Plutus.StakingPtr pSlot pTxIx pCertIx) = do
+transStakeReferenceInverse' (PV1.Credential.StakingPtr pSlot pTxIx pCertIx) = do
   lTxIx <- Ledger.txIxFromIntegral @Integer $ fromInteger pTxIx
   lCertIx <- Ledger.certIxFromIntegral @Integer $ fromInteger pCertIx
   let lSlot = fromIntegral pSlot
@@ -210,44 +215,44 @@ transStakeReferenceInverse' (Plutus.StakingPtr pSlot pTxIx pCertIx) = do
 -- -------------------------------------------------------------------------
 -- Values
 -- -------------------------------------------------------------------------
-toPlutusValue :: Cardano.Api.Value -> Plutus.Value
+toPlutusValue :: Cardano.Api.Value -> PV1.Value.Value
 toPlutusValue cValue = foldMap convert cValueList
   where
     cValueList = Cardano.Api.valueToList cValue
     convert (assetId, Cardano.Api.Quantity n) =
-      Plutus.assetClassValue (toPlutusAssetId assetId) n
+      PV1.Value.assetClassValue (toPlutusAssetId assetId) n
 
-fromPlutusValue :: Plutus.Value -> Maybe Cardano.Api.Value
+fromPlutusValue :: PV1.Value.Value -> Maybe Cardano.Api.Value
 fromPlutusValue pValue =
   Cardano.Api.valueFromList
-    <$> traverse convert (Plutus.flattenValue pValue)
+    <$> traverse convert (PV1.Value.flattenValue pValue)
   where
     convert (cs, tn, n) = do
-      ai <- fromPlutusAssetId $ Plutus.assetClass cs tn
+      ai <- fromPlutusAssetId $ PV1.Value.assetClass cs tn
       pure (ai, Cardano.Api.Quantity n)
 
-toPlutusAssetId :: Cardano.Api.AssetId -> Plutus.AssetClass
+toPlutusAssetId :: Cardano.Api.AssetId -> PV1.Value.AssetClass
 toPlutusAssetId Cardano.Api.AdaAssetId =
-  Plutus.AssetClass (Plutus.adaSymbol, Plutus.adaToken)
+  PV1.Value.AssetClass (PV1.Value.adaSymbol, PV1.Value.adaToken)
 toPlutusAssetId (Cardano.Api.AssetId p n) =
-  Plutus.AssetClass (toPlutusPolicyId p, toPlutusAssetName n)
+  PV1.Value.AssetClass (toPlutusPolicyId p, toPlutusAssetName n)
 
-fromPlutusAssetId :: Plutus.AssetClass -> Maybe Cardano.Api.AssetId
-fromPlutusAssetId (Plutus.AssetClass (cs, tn))
-  | cs == Plutus.adaSymbol && tn == Plutus.adaToken =
+fromPlutusAssetId :: PV1.Value.AssetClass -> Maybe Cardano.Api.AssetId
+fromPlutusAssetId (PV1.Value.AssetClass (cs, tn))
+  | cs == PV1.Value.adaSymbol && tn == PV1.Value.adaToken =
       pure Cardano.Api.AdaAssetId
   | otherwise =
       Cardano.Api.AssetId
         <$> fromPlutusPolicyId cs
         <*> pure (fromPlutusAssetName tn)
 
-toPlutusPolicyId :: Cardano.Api.PolicyId -> Plutus.CurrencySymbol
+toPlutusPolicyId :: Cardano.Api.PolicyId -> PV1.Value.CurrencySymbol
 toPlutusPolicyId (Cardano.Api.PolicyId sh) =
   Alonzo.TxInfo.transPolicyID $ Mary.PolicyID lsh
   where
     lsh = Cardano.Api.toShelleyScriptHash sh
 
-fromPlutusPolicyId :: Plutus.CurrencySymbol -> Maybe Cardano.Api.PolicyId
+fromPlutusPolicyId :: PV1.Value.CurrencySymbol -> Maybe Cardano.Api.PolicyId
 fromPlutusPolicyId p = do
   Mary.PolicyID lsh <- transPolicyIDInverse p
   pure $ Cardano.Api.PolicyId $ Cardano.Api.fromShelleyScriptHash lsh
@@ -256,24 +261,24 @@ fromPlutusPolicyId p = do
 -- except when the Plutus.CurrencySymbol bytestring cannot be
 -- decoded as a valid minting policy script hash.
 transPolicyIDInverse ::
-  Plutus.CurrencySymbol ->
+  PV1.Value.CurrencySymbol ->
   Maybe (Mary.PolicyID StandardCrypto)
-transPolicyIDInverse (Plutus.CurrencySymbol bbs) =
+transPolicyIDInverse (PV1.Value.CurrencySymbol bbs) =
   Mary.PolicyID . Ledger.ScriptHash
     <$> Cardano.Crypto.hashFromBytes (Plutus.fromBuiltin bbs)
 
-toPlutusAssetName :: Cardano.Api.AssetName -> Plutus.TokenName
+toPlutusAssetName :: Cardano.Api.AssetName -> PV1.Value.TokenName
 toPlutusAssetName (Cardano.Api.AssetName an) =
   Alonzo.TxInfo.transAssetName $ toMaryAssetName an
 
 -- The (fromMaryAssetName . toMaryAssetName) roundtrip is wasteful,
 -- but at least the compiler will complain
 -- if Cardano, Ledger, or Plutus types change internally.
-fromPlutusAssetName :: Plutus.TokenName -> Cardano.Api.AssetName
+fromPlutusAssetName :: PV1.Value.TokenName -> Cardano.Api.AssetName
 fromPlutusAssetName =
   Cardano.Api.AssetName . fromMaryAssetName . transAssetNameInverse
   where
-    transAssetNameInverse (Plutus.TokenName bbs) =
+    transAssetNameInverse (PV1.Value.TokenName bbs) =
       toMaryAssetName $ Plutus.fromBuiltin bbs
 
 toMaryAssetName :: BS.ByteString -> Mary.AssetName

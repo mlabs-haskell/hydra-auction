@@ -40,24 +40,16 @@ module HydraAuction.Onchain.Types.Scripts (
 
 import PlutusTx.Prelude
 
-import PlutusLedgerApi.V1.Address (
+import PlutusLedgerApi.V2 (
   Address,
- )
-import PlutusLedgerApi.V1.Scripts (
-  ScriptHash,
- )
-import PlutusLedgerApi.V1.Value (
   CurrencySymbol,
-  TokenName,
-  Value (..),
- )
-import PlutusLedgerApi.V2.Contexts (
   ScriptContext,
+  ScriptHash,
+  TokenName,
   TxInInfo,
   TxInfo,
- )
-import PlutusLedgerApi.V2.Tx (
   TxOut (..),
+  Value (..),
  )
 import PlutusTx qualified
 import PlutusTx.AssocMap qualified as AssocMap

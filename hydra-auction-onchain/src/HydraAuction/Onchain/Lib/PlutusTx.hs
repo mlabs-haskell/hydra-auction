@@ -20,30 +20,28 @@ module HydraAuction.Onchain.Lib.PlutusTx (
 import PlutusTx.Prelude
 
 import PlutusLedgerApi.V1.Address (
-  Address,
   toScriptHash,
  )
-import PlutusLedgerApi.V1.Scripts (
-  Datum (..),
-  ScriptHash,
- )
 import PlutusLedgerApi.V1.Value (
+  valueOf,
+ )
+import PlutusLedgerApi.V2 (
+  Address,
   CurrencySymbol,
+  Datum (..),
+  OutputDatum (..),
+  ScriptContext (..),
+  ScriptHash,
   TokenName,
+  TxInInfo (..),
+  TxInfo (..),
+  TxOut (..),
   Value,
   adaSymbol,
   adaToken,
-  valueOf,
  )
 import PlutusLedgerApi.V2.Contexts (
-  ScriptContext (..),
-  TxInInfo (..),
-  TxInfo (..),
   findOwnInput,
- )
-import PlutusLedgerApi.V2.Tx (
-  OutputDatum (..),
-  TxOut (..),
  )
 import PlutusTx qualified
 

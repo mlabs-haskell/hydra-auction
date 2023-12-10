@@ -6,7 +6,7 @@ module HydraAuction.Onchain.Types.DelegateInfo (
 
 import PlutusTx.Prelude
 
-import PlutusLedgerApi.V1 (PubKeyHash)
+import PlutusLedgerApi.V2 (PubKeyHash)
 import PlutusTx qualified
 
 import HydraAuction.Error.Types.DelegateInfo (DelegateInfo'Error (..))
