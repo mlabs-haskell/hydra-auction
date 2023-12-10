@@ -2,6 +2,7 @@ module HydraAuction.Onchain.Lib.Error (
   ErrorCode (..),
   err,
   errMaybe,
+  errMaybeFlip,
   eCode,
 ) where
 
@@ -17,6 +18,11 @@ err :: Plutus.Bool -> Plutus.BuiltinString -> Plutus.Bool
 err x e = Plutus.traceIfFalse e x
 --
 {-# INLINEABLE err #-}
+
+errMaybeFlip :: Plutus.BuiltinString -> Plutus.Maybe a -> a
+errMaybeFlip = Plutus.flip errMaybe
+--
+{-# INLINEABLE errMaybeFlip #-}
 
 errMaybe :: Plutus.Maybe a -> Plutus.BuiltinString -> a
 errMaybe mx e = Plutus.fromMaybe (Plutus.traceError e) mx

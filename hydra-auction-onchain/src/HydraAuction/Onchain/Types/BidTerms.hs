@@ -1,6 +1,7 @@
 module HydraAuction.Onchain.Types.BidTerms (
   BidTerms (..),
   BidTerms'Error (..),
+  bidderMadeBid,
   validateBidTerms,
   validateBuyer,
   sellerPayout,
@@ -48,6 +49,16 @@ instance Eq BidTerms where
         && x4 == y4
 
 PlutusTx.unstableMakeIsData ''BidTerms
+
+-- -------------------------------------------------------------------------
+-- Bidder
+-- -------------------------------------------------------------------------
+
+bidderMadeBid :: BidTerms -> BidderInfo -> Bool
+bidderMadeBid BidTerms {..} bInfo =
+  bi'BidderPkh bt'Bidder == bi'BidderPkh bInfo
+--
+{-# INLINEABLE bidderMadeBid #-}
 
 -- -------------------------------------------------------------------------
 -- Seller payout

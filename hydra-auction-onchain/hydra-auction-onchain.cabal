@@ -105,6 +105,7 @@ library
     HydraAuction.Onchain.Types.Scripts
     HydraAuction.Onchain.Validators.AuctionEscrow
     HydraAuction.Onchain.Validators.AuctionMetadata
+    HydraAuction.Onchain.Validators.BidderDeposit
     HydraAuction.Onchain.Validators.FeeEscrow
     HydraAuction.Onchain.Validators.StandingBid
 

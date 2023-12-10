@@ -4,6 +4,8 @@ module HydraAuction.Onchain.Types.AuctionState (
   validateAuctionEscrowTransitionToStartBidding,
   validateAuctionEscrowTransitionToAuctionConcluded,
   validateNewBid,
+  bidderLost,
+  bidderWon,
 ) where
 
 import PlutusTx.Prelude
@@ -22,7 +24,11 @@ import HydraAuction.Onchain.Types.AuctionTerms (
  )
 import HydraAuction.Onchain.Types.BidTerms (
   BidTerms (..),
+  bidderMadeBid,
   validateBidTerms,
+ )
+import HydraAuction.Onchain.Types.BidderInfo (
+  BidderInfo (..),
  )
 
 data AuctionEscrowState
@@ -54,6 +60,21 @@ instance Eq StandingBidState where
 
 PlutusTx.unstableMakeIsData ''AuctionEscrowState
 PlutusTx.unstableMakeIsData ''StandingBidState
+
+-- -------------------------------------------------------------------------
+-- Bidder predicates
+-- -------------------------------------------------------------------------
+
+bidderLost :: StandingBidState -> BidderInfo -> Bool
+bidderLost StandingBidState {..} x =
+  maybe True (`bidderMadeBid` x) standingBidState
+--
+{-# INLINEABLE bidderLost #-}
+
+bidderWon :: StandingBidState -> BidderInfo -> Bool
+bidderWon sbs x = not $ bidderLost sbs x
+--
+{-# INLINEABLE bidderWon #-}
 
 -- -------------------------------------------------------------------------
 -- Auction escrow state transition validation

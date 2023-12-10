@@ -22,6 +22,9 @@ module HydraAuction.Onchain.Lib.PlutusTx (
   txOutIsAtAddr,
   txOutIsAtSh,
   txOutRefSpentWithRedeemer,
+  --
+  partyConsents,
+  partyConsentsAda,
 ) where
 
 import PlutusTx.Prelude
@@ -37,6 +40,7 @@ import PlutusLedgerApi.V2 (
   CurrencySymbol,
   Datum (..),
   OutputDatum (..),
+  PubKeyHash,
   Redeemer (..),
   ScriptContext (..),
   ScriptHash,
@@ -51,6 +55,8 @@ import PlutusLedgerApi.V2 (
  )
 import PlutusLedgerApi.V2.Contexts (
   findOwnInput,
+  txSignedBy,
+  valuePaidTo,
  )
 import PlutusTx qualified
 import PlutusTx.AssocMap qualified as AssocMap
@@ -256,3 +262,32 @@ txOutRefSpentWithRedeemer txInfo x redeemer =
   Just redeemer == getSpentInputRedeemer txInfo x
 --
 {-# INLINEABLE txOutRefSpentWithRedeemer #-}
+
+-- -------------------------------------------------------------------------
+-- Generalized consent to transactions by parties
+-- -------------------------------------------------------------------------
+
+-- A party consents to a transaction either
+-- explicitly by signing the transaction or
+-- implicitly by receiving a certain value.
+partyConsents :: TxInfo -> PubKeyHash -> Value -> Bool
+partyConsents txInfo party val =
+  txSignedByParty || valPaidToParty
+  where
+    txSignedByParty =
+      txSignedBy txInfo party
+    valPaidToParty =
+      valuePaidTo txInfo party == val
+--
+{-# INLINEABLE partyConsents #-}
+
+partyConsentsAda :: TxInfo -> PubKeyHash -> Integer -> Bool
+partyConsentsAda txInfo party n =
+  txSignedByParty || adaPaidToParty
+  where
+    txSignedByParty =
+      txSignedBy txInfo party
+    adaPaidToParty =
+      lovelaceValueOf (valuePaidTo txInfo party) == n
+--
+{-# INLINEABLE partyConsentsAda #-}

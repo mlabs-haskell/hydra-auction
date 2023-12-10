@@ -14,6 +14,7 @@ module HydraAuction.Onchain.Types.Scripts (
   --
   AuctionEscrow'Redeemer (..),
   AuctionEscrow'ScriptHash (..),
+  getBuyer,
   isConcluding,
   findAuctionEscrowOwnInput,
   findAuctionEscrowTokenInput,
@@ -28,6 +29,8 @@ module HydraAuction.Onchain.Types.Scripts (
   findAuctionMetadataInputAtSh,
   findAuctionMetadataTxOutAtSh,
   findAuctionMetadataTxOutAtAddr,
+  --
+  BidderDeposit'Redeemer (..),
   --
   FeeEscrow'Redeemer (..),
   FeeEscrow'ScriptHash (..),
@@ -75,6 +78,11 @@ import HydraAuction.Onchain.Lib.PlutusTx (
 data AuctionMP'Redeemer
   = MintAuction
   | BurnAuction
+
+instance Eq AuctionMP'Redeemer where
+  MintAuction == MintAuction = True
+  BurnAuction == BurnAuction = True
+  _ == _ = False
 
 PlutusTx.unstableMakeIsData ''AuctionMP'Redeemer
 
@@ -159,11 +167,24 @@ data AuctionEscrow'Redeemer
   | SellerReclaims
   | CleanupAuction
 
+instance Eq AuctionEscrow'Redeemer where
+  StartBidding == StartBidding = True
+  (BidderBuys x) == (BidderBuys y) = x == y
+  SellerReclaims == SellerReclaims = True
+  CleanupAuction == CleanupAuction = True
+  _ == _ = False
+
 PlutusTx.unstableMakeIsData ''AuctionEscrow'Redeemer
 
 newtype AuctionEscrow'ScriptHash = AuctionEscrow'ScriptHash
   { sh'AuctionEscrow :: ScriptHash
   }
+
+getBuyer :: AuctionEscrow'Redeemer -> Maybe PubKeyHash
+getBuyer (BidderBuys x) = Just x
+getBuyer _ = Nothing
+--
+{-# INLINEABLE getBuyer #-}
 
 isConcluding :: AuctionEscrow'Redeemer -> Bool
 isConcluding (BidderBuys _) = True
@@ -236,6 +257,9 @@ findAuctionEscrowTxOutAtAddr AuctionID {..} =
 data AuctionMetadata'Redeemer
   = RemoveAuction
 
+instance Eq AuctionMetadata'Redeemer where
+  _ == _ = True
+
 PlutusTx.unstableMakeIsData ''AuctionMetadata'Redeemer
 
 newtype AuctionMetadata'ScriptHash = AuctionMetadata'ScriptHash
@@ -301,10 +325,33 @@ findAuctionMetadataTxOutAtAddr AuctionID {..} =
 {-# INLINEABLE findAuctionMetadataTxOutAtAddr #-}
 
 -- -------------------------------------------------------------------------
+-- Bidder deposit validator
+-- -------------------------------------------------------------------------
+data BidderDeposit'Redeemer
+  = DepositUsedByWinner
+  | DepositClaimedBySeller
+  | DepositReclaimedByLoser
+  | DepositReclaimedAuctionConcluded
+  | DepositCleanup
+
+instance Eq BidderDeposit'Redeemer where
+  DepositUsedByWinner == DepositUsedByWinner = True
+  DepositClaimedBySeller == DepositClaimedBySeller = True
+  DepositReclaimedByLoser == DepositReclaimedByLoser = True
+  DepositReclaimedAuctionConcluded == DepositReclaimedAuctionConcluded = True
+  DepositCleanup == DepositCleanup = True
+  _ == _ = False
+
+PlutusTx.unstableMakeIsData ''BidderDeposit'Redeemer
+
+-- -------------------------------------------------------------------------
 -- Fee escrow validator
 -- -------------------------------------------------------------------------
 data FeeEscrow'Redeemer
   = DistributeFees
+
+instance Eq FeeEscrow'Redeemer where
+  _ == _ = True
 
 PlutusTx.unstableMakeIsData ''FeeEscrow'Redeemer
 
@@ -323,6 +370,12 @@ data StandingBid'Redeemer
   = NewBid
   | MoveToHydra
   | ConcludeAuction
+
+instance Eq StandingBid'Redeemer where
+  NewBid == NewBid = True
+  MoveToHydra == MoveToHydra = True
+  ConcludeAuction == ConcludeAuction = True
+  _ == _ = True
 
 PlutusTx.unstableMakeIsData ''StandingBid'Redeemer
 

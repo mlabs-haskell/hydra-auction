@@ -36,6 +36,7 @@ import HydraAuction.Onchain.Types.AuctionTerms (
   biddingPeriod,
  )
 import HydraAuction.Onchain.Types.Scripts (
+  AuctionEscrow'Redeemer,
   AuctionID (..),
   StandingBid'Redeemer (..),
   findAuctionEscrowTokenInput,
@@ -183,6 +184,7 @@ checkCA auctionID context =
     --
     -- There is an input that contains the auction token
     -- and is being spent with an auction escrow redeemer.
+    auctionRedeemer :: AuctionEscrow'Redeemer
     auctionRedeemer =
       mAuctionEscrowRedeemer
         `errMaybe` $(eCode StandingBid'CA'Error'InvalidAuctionTokenRedeemer)
