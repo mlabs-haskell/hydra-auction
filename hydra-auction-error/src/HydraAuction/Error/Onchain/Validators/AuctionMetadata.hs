@@ -10,10 +10,9 @@ import GHC.Generics (Generic)
 import HydraAuction.Error (ErrorCodePrefix (..))
 
 data AuctionMetadata'Error
-  = AuctionMetadata'Error'MissingOwnInput
-  | AuctionMetadata'Error'TooManyOwnScriptInputs
-  | AuctionMetadata'Error'OwnInputMissingMetadataToken
+  = AuctionMetadata'Error'TooManyOwnScriptInputs
   | AuctionMetadata'Error'AuctionTokensNotBurnedExactly
+  | AuctionMetadata'Error'MissingMetadataInput
   deriving stock (Bounded, Enum, Eq, Generic, Show)
 
 -- -------------------------------------------------------------------------

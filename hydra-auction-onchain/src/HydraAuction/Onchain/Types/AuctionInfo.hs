@@ -1,15 +1,12 @@
 module HydraAuction.Onchain.Types.AuctionInfo (
   AuctionInfo (..),
-  auctionTN,
-  auctionMetadataTN,
-  standingBidTN,
   validateAuctionInfo,
 ) where
 
 import PlutusTx.Prelude
 
 import PlutusLedgerApi.V1.Address (Address)
-import PlutusLedgerApi.V1.Value (CurrencySymbol, TokenName)
+import PlutusLedgerApi.V1.Value (CurrencySymbol)
 import PlutusTx qualified
 
 import HydraAuction.Error.Types.AuctionInfo (AuctionInfo'Error (..))
@@ -31,28 +28,6 @@ data AuctionInfo = AuctionInfo
   , ai'FeeEscrow :: Address
   , ai'StandingBid :: Address
   }
-
--- -------------------------------------------------------------------------
--- Auction state token names
--- -------------------------------------------------------------------------
-
--- Auction state token, identifying the true auction escrow.
-auctionTN :: TokenName
-auctionTN = "AUCTION"
---
-{-# INLINEABLE auctionTN #-}
-
--- Auction metadata token, identifying the true auction metadata.
-auctionMetadataTN :: TokenName
-auctionMetadataTN = "AUCTION_METADATA"
---
-{-# INLINEABLE auctionMetadataTN #-}
-
--- Standing bid token, identifying the true standing bid.
-standingBidTN :: TokenName
-standingBidTN = "STANDING_BID"
---
-{-# INLINEABLE standingBidTN #-}
 
 -- -------------------------------------------------------------------------
 -- Validation

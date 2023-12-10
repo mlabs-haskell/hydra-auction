@@ -92,7 +92,7 @@ library
   hs-source-dirs:  src
   exposed-modules:
     HydraAuction.Onchain.Lib.Error
-    HydraAuction.Onchain.Lib.ScriptContext
+    HydraAuction.Onchain.Lib.PlutusTx
     HydraAuction.Onchain.Lib.Scripts
     HydraAuction.Onchain.Lib.Serialise
     HydraAuction.Onchain.MintingPolicies.Auction

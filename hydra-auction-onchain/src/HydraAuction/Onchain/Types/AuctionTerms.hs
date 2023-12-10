@@ -2,6 +2,7 @@ module HydraAuction.Onchain.Types.AuctionTerms (
   AuctionTerms (..),
   minAuctionFee,
   totalAuctionFees,
+  delegateReceivedSufficientAda,
   validateAuctionTerms,
   biddingPeriod,
   purchasePeriod,
@@ -21,11 +22,18 @@ import PlutusLedgerApi.V1.Interval (
   UpperBound (..),
  )
 import PlutusLedgerApi.V1.Time (POSIXTime (..), POSIXTimeRange)
-import PlutusLedgerApi.V1.Value (AssetClass)
+import PlutusLedgerApi.V1.Value (
+  AssetClass,
+ )
+import PlutusLedgerApi.V2.Contexts (
+  TxInfo,
+  valuePaidTo,
+ )
 import PlutusTx qualified
 
 import HydraAuction.Error.Types.AuctionTerms (AuctionTerms'Error (..))
 import HydraAuction.Onchain.Lib.Error (eCode, err)
+import HydraAuction.Onchain.Lib.PlutusTx (lovelaceValueOf)
 
 data AuctionTerms = AuctionTerms
   { at'AuctionLot :: !AssetClass
@@ -128,6 +136,12 @@ totalAuctionFees AuctionTerms {..} =
   at'AuctionFeePerDelegate * length at'Delegates
 --
 {-# INLINEABLE totalAuctionFees #-}
+
+delegateReceivedSufficientAda :: AuctionTerms -> TxInfo -> PubKeyHash -> Bool
+delegateReceivedSufficientAda AuctionTerms {..} txInfo d =
+  lovelaceValueOf (valuePaidTo txInfo d) > at'AuctionFeePerDelegate
+--
+{-# INLINEABLE delegateReceivedSufficientAda #-}
 
 -- -------------------------------------------------------------------------
 -- Auction lifecycle

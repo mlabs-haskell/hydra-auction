@@ -7,32 +7,23 @@ import PlutusTx.Prelude
 import PlutusLedgerApi.V1.Interval (
   contains,
  )
-import PlutusLedgerApi.V1.Scripts (
-  Datum (..),
- )
-import PlutusLedgerApi.V1.Value (
-  valueOf,
- )
 import PlutusLedgerApi.V2.Contexts (
   ScriptContext (..),
   TxInInfo (..),
   TxInfo (..),
-  findOwnInput,
   txSignedBy,
  )
 import PlutusLedgerApi.V2.Tx (
-  OutputDatum (..),
   TxOut (..),
  )
-import PlutusTx qualified
 
 import HydraAuction.Error.Onchain.Validators.StandingBid (
   StandingBid'Error (..),
  )
 import HydraAuction.Onchain.Lib.Error (eCode, err, errMaybe)
-import HydraAuction.Onchain.Types.AuctionInfo (
-  auctionTN,
-  standingBidTN,
+import HydraAuction.Onchain.Lib.PlutusTx (
+  onlyOneInputFromAddress,
+  parseInlineDatum,
  )
 import HydraAuction.Onchain.Types.AuctionState (
   StandingBidState (..),
@@ -45,6 +36,9 @@ import HydraAuction.Onchain.Types.AuctionTerms (
 import HydraAuction.Onchain.Types.Scripts (
   AuctionID (..),
   StandingBid'Redeemer (..),
+  findStandingBidOwnInput,
+  findStandingBidTxOutAtAddr,
+  hasAuctionToken,
  )
 
 -- -------------------------------------------------------------------------
@@ -66,26 +60,21 @@ validator auctionID aTerms standingBidState redeemer context =
     --
     -- There should only be one standing bid input.
     ownInputIsOnlyInputFromOwnScript =
-      (length ownScriptInputs == 1)
+      onlyOneInputFromAddress ownAddress txInfoInputs
         `err` $(eCode StandingBid'Error'TooManyOwnScriptInputs)
-    ownScriptInputs =
-      filter
-        (\x -> ownAddress == txOutAddress (txInInfoResolved x))
-        txInfoInputs
-    --
-    -- The standing bid input should exist.
-    -- Note that this should always hold for a validator being executed
-    -- with a Spending script purpose.
-    ownInput =
-      txInInfoResolved $
-        findOwnInput context
-          `errMaybe` $(eCode StandingBid'Error'MissingOwnInput)
-    ownAddress = txOutAddress ownInput
     --
     -- There should be no tokens minted or burned.
     noTokensAreMintedOrBurned =
       (txInfoMint == mempty)
         `err` $(eCode StandingBid'Error'UnexpectedTokensMintedBurned)
+    --
+    -- The validator's own input should exist and
+    -- it should contain a standing bid token.
+    ownInput =
+      txInInfoResolved $
+        findStandingBidOwnInput auctionID context
+          `errMaybe` $(eCode StandingBid'Error'MissingStandingBidInput)
+    ownAddress = txOutAddress ownInput
     --
     redeemerChecksPassed =
       case redeemer of
@@ -94,7 +83,7 @@ validator auctionID aTerms standingBidState redeemer context =
         MoveToHydra ->
           checkMoveToHydra aTerms context
         ConcludeAuction ->
-          checkConcludeAuction auctionID context ownInput
+          checkConcludeAuction auctionID context
 --
 {-# INLINEABLE validator #-}
 
@@ -105,18 +94,12 @@ checkNewBid ::
   ScriptContext ->
   TxOut ->
   Bool
-checkNewBid AuctionID {..} aTerms oldBidState context ownInput =
-  ownInputContainsStandingBidToken
-    && bidStateTransitionIsValid
+checkNewBid aid@AuctionID {..} aTerms oldBidState context ownInput =
+  bidStateTransitionIsValid
     && validityIntervalIsCorrect
   where
     TxInfo {..} = scriptContextTxInfo context
-    --
-    -- The standing bid input should contain the standing bid token.
-    ownInputContainsStandingBidToken =
-      (valueOf ownInputValue auctionID standingBidTN == 1)
-        `err` $(eCode StandingBid'NB'Error'OwnInputMissingToken)
-    ownInputValue = txOutValue ownInput
+    ownAddress = txOutAddress ownInput
     --
     -- The transition from the old bid state to the new bid state
     -- should be valid.
@@ -128,31 +111,20 @@ checkNewBid AuctionID {..} aTerms oldBidState context ownInput =
     validityIntervalIsCorrect =
       (biddingPeriod aTerms `contains` txInfoValidRange)
         `err` $(eCode StandingBid'NB'Error'IncorrectValidityInterval)
+
     --
-    -- The standing bid output's datum should be decodable
-    -- as a standing bid state.
+    -- The standing bid output contains a datum that can be
+    -- decoded as a standing bid state.
     newBidState :: StandingBidState
     newBidState =
-      PlutusTx.fromBuiltinData
-        (getDatum ownOutputDatum)
+      parseInlineDatum standingBidOutput
         `errMaybe` $(eCode StandingBid'NB'Error'FailedToDecodeNewBid)
     --
-    -- The standing bid output should contain an inline datum.
-    ownOutputDatum
-      | OutputDatum d <- txOutDatum ownOutput = d
-      | otherwise =
-          traceError $(eCode StandingBid'NB'Error'OwnOutputDatumNotInline)
-    --
-    -- The standing bid output should exist.
-    ownAddress = txOutAddress ownInput
-    ownOutput =
-      find
-        ( \TxOut {..} ->
-            ownAddress == txOutAddress
-              && (valueOf txOutValue auctionID standingBidTN == 1)
-        )
-        txInfoOutputs
-        `errMaybe` $(eCode StandingBid'NB'Error'MissingOwnOutput)
+    -- There is an output at the standing bid validator
+    -- containing the standing bid token.
+    standingBidOutput =
+      findStandingBidTxOutAtAddr aid ownAddress txInfoOutputs
+        `errMaybe` $(eCode StandingBid'NB'Error'MissingStandingBidOutput)
 
 --
 {-# INLINEABLE checkNewBid #-}
@@ -182,28 +154,18 @@ checkMoveToHydra aTerms@AuctionTerms {..} context =
 checkConcludeAuction ::
   AuctionID ->
   ScriptContext ->
-  TxOut ->
   Bool
-checkConcludeAuction AuctionID {..} context ownInput =
-  ownInputContainsStandingBidToken
-    && auctionStateTokenIsSpent
+checkConcludeAuction auctionID context =
+  auctionStateTokenIsSpent
   where
     TxInfo {..} = scriptContextTxInfo context
     --
-    -- The standing bid input should contain the standing bid token.
-    ownInputContainsStandingBidToken =
-      (valueOf ownInputValue auctionID standingBidTN == 1)
-        `err` $(eCode StandingBid'CA'Error'OwnInputMissingToken)
-    ownInputValue = txOutValue ownInput
-    --
-    -- There should be input with the auction state token.
+    -- There should be an input with the auction state token.
     -- Implicitly, this means that the auction is concluding
     -- with either the winning bidder buying the auction lot
     -- or the seller reclaiming it.
     auctionStateTokenIsSpent =
-      any hasAuctionStateToken txInfoInputs
+      any (hasAuctionToken auctionID . txInInfoResolved) txInfoInputs
         `err` $(eCode StandingBid'CA'Error'MissingAuctionStateToken)
-    hasAuctionStateToken x =
-      valueOf (txOutValue $ txInInfoResolved x) auctionID auctionTN == 1
 --
 {-# INLINEABLE checkConcludeAuction #-}
