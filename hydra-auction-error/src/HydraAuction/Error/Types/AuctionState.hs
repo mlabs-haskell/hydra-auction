@@ -1,5 +1,5 @@
 module HydraAuction.Error.Types.AuctionState (
-  Buyer'Error (..),
+  AuctionEscrowState'Error (..),
   NewBid'Error (..),
 ) where
 
@@ -11,11 +11,14 @@ import GHC.Generics (Generic)
 import HydraAuction.Error (ErrorCodePrefix (..))
 import HydraAuction.Error.Types.BidTerms (BidTerms'Error (..))
 
-data Buyer'Error
-  = Buyer'Error'EmptyStandingBid
-  | Buyer'Error'BuyerVkPkhMismatch
-  | Buyer'Error'InvalidBidTerms ![BidTerms'Error]
-  deriving stock (Eq, Generic, Show)
+data AuctionEscrowState'Error
+  = -- Transition to StartBidding
+    AuctionEscrowState'SB'Error'InvalidOldState
+  | AuctionEscrowState'SB'Error'InvalidNewState
+  | -- Transition to AuctionConcluded
+    AuctionEscrowState'AC'Error'InvalidOldState
+  | AuctionEscrowState'AC'Error'InvalidNewState
+  deriving stock (Bounded, Enum, Eq, Generic, Show)
 
 data NewBid'Error
   = NewBid'Error'EmptyNewBid
@@ -28,8 +31,7 @@ data NewBid'Error
 -- Universe
 -- -------------------------------------------------------------------------
 
-instance Universe Buyer'Error where
-  universe = universeGeneric
+instance Universe AuctionEscrowState'Error
 
 instance Universe NewBid'Error where
   universe = universeGeneric
@@ -38,8 +40,8 @@ instance Universe NewBid'Error where
 -- Error code prefix
 -- -------------------------------------------------------------------------
 
-instance ErrorCodePrefix Buyer'Error where
-  errorCodePrefix = const "BUYR"
+instance ErrorCodePrefix AuctionEscrowState'Error where
+  errorCodePrefix = const "AUST"
 
 instance ErrorCodePrefix NewBid'Error where
   errorCodePrefix = const "NEWB"

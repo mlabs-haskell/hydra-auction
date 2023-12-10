@@ -12,18 +12,28 @@ module HydraAuction.Onchain.Types.Scripts (
   hasAuctionMetadataToken,
   hasStandingBidToken,
   --
+  AuctionEscrow'Redeemer (..),
+  AuctionEscrow'ScriptHash (..),
+  findAuctionEscrowOwnInput,
+  findAuctionEscrowInputAtSh,
+  findAuctionEscrowTxOutAtSh,
+  findAuctionEscrowTxOutAtAddr,
+  --
   AuctionMetadata'Redeemer (..),
   AuctionMetadata'ScriptHash (..),
   findAuctionMetadataOwnInput,
+  findAuctionMetadataInputAtSh,
   findAuctionMetadataTxOutAtSh,
   findAuctionMetadataTxOutAtAddr,
   --
   FeeEscrow'Redeemer (..),
   FeeEscrow'ScriptHash (..),
+  valuePaidToFeeEscrow,
   --
   StandingBid'Redeemer (..),
   StandingBid'ScriptHash (..),
   findStandingBidOwnInput,
+  findStandingBidInputAtSh,
   findStandingBidTxOutAtSh,
   findStandingBidTxOutAtAddr,
 ) where
@@ -44,6 +54,7 @@ import PlutusLedgerApi.V1.Value (
 import PlutusLedgerApi.V2.Contexts (
   ScriptContext,
   TxInInfo,
+  TxInfo,
  )
 import PlutusLedgerApi.V2.Tx (
   TxOut (..),
@@ -52,10 +63,12 @@ import PlutusTx qualified
 import PlutusTx.AssocMap qualified as AssocMap
 
 import HydraAuction.Onchain.Lib.PlutusTx (
+  findInputWithStateTokenAtSh,
   findOwnInputWithStateToken,
   findTxOutWithStateTokenAtAddr,
   findTxOutWithStateTokenAtSh,
   txOutHasStateToken,
+  valuePaidToScript,
  )
 
 -- -------------------------------------------------------------------------
@@ -139,6 +152,67 @@ hasStandingBidToken AuctionID {..} =
 --
 {-# INLINEABLE hasStandingBidToken #-}
 
+-- Auction escrow validator
+-- -------------------------------------------------------------------------
+data AuctionEscrow'Redeemer
+  = StartBidding
+  | BidderBuys
+  | SellerReclaims
+  | CleanupAuction
+
+PlutusTx.unstableMakeIsData ''AuctionEscrow'Redeemer
+
+newtype AuctionEscrow'ScriptHash = AuctionEscrow'ScriptHash
+  { sh'AuctionEscrow :: ScriptHash
+  }
+
+findAuctionEscrowOwnInput ::
+  AuctionID ->
+  ScriptContext ->
+  Maybe TxInInfo
+findAuctionEscrowOwnInput AuctionID {..} =
+  findOwnInputWithStateToken auctionID auctionTN
+--
+{-# INLINEABLE findAuctionEscrowOwnInput #-}
+
+findAuctionEscrowInputAtSh ::
+  AuctionID ->
+  AuctionEscrow'ScriptHash ->
+  [TxInInfo] ->
+  Maybe TxInInfo
+findAuctionEscrowInputAtSh AuctionID {..} AuctionEscrow'ScriptHash {..} =
+  findInputWithStateTokenAtSh
+    auctionID
+    auctionTN
+    sh'AuctionEscrow
+--
+{-# INLINEABLE findAuctionEscrowInputAtSh #-}
+
+findAuctionEscrowTxOutAtSh ::
+  AuctionID ->
+  AuctionEscrow'ScriptHash ->
+  [TxOut] ->
+  Maybe TxOut
+findAuctionEscrowTxOutAtSh AuctionID {..} AuctionEscrow'ScriptHash {..} =
+  findTxOutWithStateTokenAtSh
+    auctionID
+    auctionTN
+    sh'AuctionEscrow
+--
+{-# INLINEABLE findAuctionEscrowTxOutAtSh #-}
+
+findAuctionEscrowTxOutAtAddr ::
+  AuctionID ->
+  Address ->
+  [TxOut] ->
+  Maybe TxOut
+findAuctionEscrowTxOutAtAddr AuctionID {..} =
+  findTxOutWithStateTokenAtAddr
+    auctionID
+    auctionTN
+--
+{-# INLINEABLE findAuctionEscrowTxOutAtAddr #-}
+
 -- -------------------------------------------------------------------------
 -- Auction metadata validator
 -- -------------------------------------------------------------------------
@@ -159,6 +233,19 @@ findAuctionMetadataOwnInput AuctionID {..} =
   findOwnInputWithStateToken auctionID auctionMetadataTN
 --
 {-# INLINEABLE findAuctionMetadataOwnInput #-}
+
+findAuctionMetadataInputAtSh ::
+  AuctionID ->
+  AuctionMetadata'ScriptHash ->
+  [TxInInfo] ->
+  Maybe TxInInfo
+findAuctionMetadataInputAtSh AuctionID {..} AuctionMetadata'ScriptHash {..} =
+  findInputWithStateTokenAtSh
+    auctionID
+    auctionMetadataTN
+    sh'AuctionMetadata
+--
+{-# INLINEABLE findAuctionMetadataInputAtSh #-}
 
 findAuctionMetadataTxOutAtSh ::
   AuctionID ->
@@ -197,6 +284,10 @@ newtype FeeEscrow'ScriptHash = FeeEscrow'ScriptHash
   { sh'FeeEscrow :: ScriptHash
   }
 
+valuePaidToFeeEscrow :: TxInfo -> FeeEscrow'ScriptHash -> Value
+valuePaidToFeeEscrow txInfo FeeEscrow'ScriptHash {..} =
+  valuePaidToScript txInfo sh'FeeEscrow
+
 -- -------------------------------------------------------------------------
 -- Standing bid validator
 -- -------------------------------------------------------------------------
@@ -219,6 +310,19 @@ findStandingBidOwnInput AuctionID {..} =
   findOwnInputWithStateToken auctionID standingBidTN
 --
 {-# INLINEABLE findStandingBidOwnInput #-}
+
+findStandingBidInputAtSh ::
+  AuctionID ->
+  StandingBid'ScriptHash ->
+  [TxInInfo] ->
+  Maybe TxInInfo
+findStandingBidInputAtSh AuctionID {..} StandingBid'ScriptHash {..} =
+  findInputWithStateTokenAtSh
+    auctionID
+    standingBidTN
+    sh'StandingBid
+--
+{-# INLINEABLE findStandingBidInputAtSh #-}
 
 findStandingBidTxOutAtSh ::
   AuctionID ->

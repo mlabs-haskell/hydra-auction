@@ -21,6 +21,15 @@ data DelegateInfo = DelegateInfo
   -- should receive payment for their services.
   }
 
+instance Eq DelegateInfo where
+  (DelegateInfo x1 x2 x3)
+    == (DelegateInfo y1 y2 y3) =
+      x1 == y1
+        && x2 == y2
+        && x3 == y3
+
+PlutusTx.unstableMakeIsData ''DelegateInfo
+
 -- -------------------------------------------------------------------------
 -- Validation
 -- -------------------------------------------------------------------------
@@ -35,15 +44,3 @@ validateDelegateInfo DelegateInfo {..} =
     `err` $(eCode DelegateInfo'Error'NoDelegates)
 --
 {-# INLINEABLE validateDelegateInfo #-}
-
--- -------------------------------------------------------------------------
--- Plutus instances
--- -------------------------------------------------------------------------
-PlutusTx.unstableMakeIsData ''DelegateInfo
-
-instance Eq DelegateInfo where
-  (DelegateInfo x1 x2 x3)
-    == (DelegateInfo y1 y2 y3) =
-      x1 == y1
-        && x2 == y2
-        && x3 == y3

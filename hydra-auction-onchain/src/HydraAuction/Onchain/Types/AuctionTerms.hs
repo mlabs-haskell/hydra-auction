@@ -1,9 +1,12 @@
 module HydraAuction.Onchain.Types.AuctionTerms (
   AuctionTerms (..),
+  --
+  validateAuctionTerms,
+  --
+  auctionLotValue,
   minAuctionFee,
   totalAuctionFees,
-  delegateReceivedSufficientAda,
-  validateAuctionTerms,
+  --
   biddingPeriod,
   purchasePeriod,
   penaltyPeriod,
@@ -23,17 +26,14 @@ import PlutusLedgerApi.V1.Interval (
  )
 import PlutusLedgerApi.V1.Time (POSIXTime (..), POSIXTimeRange)
 import PlutusLedgerApi.V1.Value (
-  AssetClass,
- )
-import PlutusLedgerApi.V2.Contexts (
-  TxInfo,
-  valuePaidTo,
+  AssetClass (..),
+  Value,
+  singleton,
  )
 import PlutusTx qualified
 
 import HydraAuction.Error.Types.AuctionTerms (AuctionTerms'Error (..))
 import HydraAuction.Onchain.Lib.Error (eCode, err)
-import HydraAuction.Onchain.Lib.PlutusTx (lovelaceValueOf)
 
 data AuctionTerms = AuctionTerms
   { at'AuctionLot :: !AssetClass
@@ -75,7 +75,24 @@ data AuctionTerms = AuctionTerms
   -- This is only enforced off-chain at the seller's discretion.
   }
 
---
+instance Eq AuctionTerms where
+  (AuctionTerms x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12)
+    == (AuctionTerms y1 y2 y3 y4 y5 y6 y7 y8 y9 y10 y11 y12) =
+      x1 == y1
+        && x2 == y2
+        && x3 == y3
+        && x4 == y4
+        && x5 == y5
+        && x6 == y6
+        && x7 == y7
+        && x8 == y8
+        && x9 == y9
+        && x10 == y10
+        && x11 == y11
+        && x12 == y12
+
+PlutusTx.unstableMakeIsData ''AuctionTerms
+
 -- -------------------------------------------------------------------------
 -- Validation
 -- -------------------------------------------------------------------------
@@ -126,6 +143,13 @@ validateAuctionTerms aTerms@AuctionTerms {..} =
 --
 {-# INLINEABLE validateAuctionTerms #-}
 
+auctionLotValue :: AuctionTerms -> Value
+auctionLotValue AuctionTerms {..} = singleton cs tn 1
+  where
+    AssetClass (cs, tn) = at'AuctionLot
+--
+{-# INLINEABLE auctionLotValue #-}
+
 minAuctionFee :: Integer
 minAuctionFee = 2_500_00
 --
@@ -136,12 +160,6 @@ totalAuctionFees AuctionTerms {..} =
   at'AuctionFeePerDelegate * length at'Delegates
 --
 {-# INLINEABLE totalAuctionFees #-}
-
-delegateReceivedSufficientAda :: AuctionTerms -> TxInfo -> PubKeyHash -> Bool
-delegateReceivedSufficientAda AuctionTerms {..} txInfo d =
-  lovelaceValueOf (valuePaidTo txInfo d) > at'AuctionFeePerDelegate
---
-{-# INLINEABLE delegateReceivedSufficientAda #-}
 
 -- -------------------------------------------------------------------------
 -- Auction lifecycle
@@ -203,24 +221,3 @@ from' a =
     (UpperBound PosInf True)
 --
 {-# INLINEABLE from' #-}
-
--- -------------------------------------------------------------------------
--- Plutus instances
--- -------------------------------------------------------------------------
-PlutusTx.unstableMakeIsData ''AuctionTerms
-
-instance Eq AuctionTerms where
-  (AuctionTerms x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12)
-    == (AuctionTerms y1 y2 y3 y4 y5 y6 y7 y8 y9 y10 y11 y12) =
-      x1 == y1
-        && x2 == y2
-        && x3 == y3
-        && x4 == y4
-        && x5 == y5
-        && x6 == y6
-        && x7 == y7
-        && x8 == y8
-        && x9 == y9
-        && x10 == y10
-        && x11 == y11
-        && x12 == y12

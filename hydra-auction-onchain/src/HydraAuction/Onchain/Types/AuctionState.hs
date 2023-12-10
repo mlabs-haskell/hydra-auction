@@ -1,31 +1,29 @@
 module HydraAuction.Onchain.Types.AuctionState (
   AuctionEscrowState (..),
   StandingBidState (..),
+  validateAuctionEscrowTransitionToStartBidding,
+  validateAuctionEscrowTransitionToAuctionConcluded,
   validateNewBid,
-  validateBuyer,
-  sellerPayout,
 ) where
 
 import PlutusTx.Prelude
 
-import PlutusLedgerApi.V1 (CurrencySymbol, PubKeyHash)
+import PlutusLedgerApi.V1 (CurrencySymbol)
 import PlutusTx qualified
 
 import HydraAuction.Onchain.Lib.Error (eCode, err)
 
 import HydraAuction.Error.Types.AuctionState (
-  Buyer'Error (..),
+  AuctionEscrowState'Error (..),
   NewBid'Error (..),
  )
 import HydraAuction.Onchain.Types.AuctionTerms (
   AuctionTerms (..),
-  totalAuctionFees,
  )
 import HydraAuction.Onchain.Types.BidTerms (
   BidTerms (..),
   validateBidTerms,
  )
-import HydraAuction.Onchain.Types.BidderInfo (BidderInfo (..))
 
 data AuctionEscrowState
   = AuctionAnnounced
@@ -36,8 +34,65 @@ newtype StandingBidState = StandingBidState
   { standingBidState :: Maybe BidTerms
   }
 
+instance Eq AuctionEscrowState where
+  AuctionAnnounced == AuctionAnnounced = True
+  AuctionAnnounced == BiddingStarted = False
+  AuctionAnnounced == AuctionConcluded = False
+  --
+  BiddingStarted == AuctionAnnounced = False
+  BiddingStarted == BiddingStarted = True
+  BiddingStarted == AuctionConcluded = False
+  --
+  AuctionConcluded == AuctionAnnounced = False
+  AuctionConcluded == BiddingStarted = False
+  AuctionConcluded == AuctionConcluded = True
+
+instance Eq StandingBidState where
+  (StandingBidState x1)
+    == (StandingBidState y1) =
+      x1 == y1
+
+PlutusTx.unstableMakeIsData ''AuctionEscrowState
+PlutusTx.unstableMakeIsData ''StandingBidState
+
 -- -------------------------------------------------------------------------
--- New bid validation
+-- Auction escrow state transition validation
+-- -------------------------------------------------------------------------
+
+validateAuctionEscrowTransitionToStartBidding ::
+  AuctionEscrowState ->
+  AuctionEscrowState ->
+  Bool
+validateAuctionEscrowTransitionToStartBidding oldState newState =
+  oldStateIsCorrect && newStateIsCorrect
+  where
+    oldStateIsCorrect =
+      (oldState == AuctionAnnounced)
+        `err` $(eCode AuctionEscrowState'SB'Error'InvalidOldState)
+    newStateIsCorrect =
+      (newState == BiddingStarted)
+        `err` $(eCode AuctionEscrowState'SB'Error'InvalidNewState)
+--
+{-# INLINEABLE validateAuctionEscrowTransitionToStartBidding #-}
+
+validateAuctionEscrowTransitionToAuctionConcluded ::
+  AuctionEscrowState ->
+  AuctionEscrowState ->
+  Bool
+validateAuctionEscrowTransitionToAuctionConcluded oldState newState =
+  oldStateIsCorrect && newStateIsCorrect
+  where
+    oldStateIsCorrect =
+      (oldState == BiddingStarted)
+        `err` $(eCode AuctionEscrowState'AC'Error'InvalidOldState)
+    newStateIsCorrect =
+      (newState == AuctionConcluded)
+        `err` $(eCode AuctionEscrowState'AC'Error'InvalidNewState)
+--
+{-# INLINEABLE validateAuctionEscrowTransitionToAuctionConcluded #-}
+
+-- -------------------------------------------------------------------------
+-- Standing bid state transition validation
 -- -------------------------------------------------------------------------
 
 validateNewBid ::
@@ -109,65 +164,3 @@ validateStartingBid AuctionTerms {..} BidTerms {..} =
     `err` $(eCode NewBid'Error'InvalidStartingBid)
 --
 {-# INLINEABLE validateStartingBid #-}
-
--- -------------------------------------------------------------------------
--- Buyer validation
--- -------------------------------------------------------------------------
-
-validateBuyer ::
-  AuctionTerms ->
-  CurrencySymbol ->
-  StandingBidState ->
-  PubKeyHash ->
-  Bool
-validateBuyer auTerms auctionId StandingBidState {..} buyer
-  | Just bidTerms@BidTerms {..} <- standingBidState
-  , BidderInfo {..} <- bt'Bidder =
-      --
-      -- The buyer's hashed payment verification key corresponds
-      -- to the bidder's payment verification key.
-      (buyer == bi'BidderPkh)
-        `err` $(eCode Buyer'Error'BuyerVkPkhMismatch)
-        --
-        -- The bid terms are valid.
-        && validateBidTerms auTerms auctionId bidTerms
-  | otherwise =
-      False `err` $(eCode Buyer'Error'EmptyStandingBid)
---
-{-# INLINEABLE validateBuyer #-}
-
--- -------------------------------------------------------------------------
--- Seller payout
--- -------------------------------------------------------------------------
-
-sellerPayout :: AuctionTerms -> StandingBidState -> Integer
-sellerPayout auTerms StandingBidState {..}
-  | Just BidTerms {..} <- standingBidState =
-      bt'BidPrice - totalAuctionFees auTerms
-  | otherwise = 0
---
-{-# INLINEABLE sellerPayout #-}
-
--- -------------------------------------------------------------------------
--- Plutus instances
--- -------------------------------------------------------------------------
-PlutusTx.unstableMakeIsData ''AuctionEscrowState
-PlutusTx.unstableMakeIsData ''StandingBidState
-
-instance Eq AuctionEscrowState where
-  AuctionAnnounced == AuctionAnnounced = True
-  AuctionAnnounced == BiddingStarted = False
-  AuctionAnnounced == AuctionConcluded = False
-  --
-  BiddingStarted == AuctionAnnounced = False
-  BiddingStarted == BiddingStarted = True
-  BiddingStarted == AuctionConcluded = False
-  --
-  AuctionConcluded == AuctionAnnounced = False
-  AuctionConcluded == BiddingStarted = False
-  AuctionConcluded == AuctionConcluded = True
-
-instance Eq StandingBidState where
-  (StandingBidState x1)
-    == (StandingBidState y1) =
-      x1 == y1

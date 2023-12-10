@@ -69,38 +69,38 @@ checkMint auctionMetadataSh utxoNonce context =
     -- by the transaction.
     utxoNonceIsSpent =
       isJust (findTxInByTxOutRef utxoNonce txInfo)
-        `err` $(eCode AuctionMP'Error'MI'MissingUtxoNonceInput)
+        `err` $(eCode AuctionMP'MI'Error'MissingUtxoNonceInput)
     --
     -- There should be an output with an auction info metadata record
     -- that mentions an auction ID that matches
     -- this minting policy's currency symbol.
     auctionMetadataOutputExistsAndMatchesOwnCS =
       (ownCS == ai'AuctionId)
-        `err` $(eCode AuctionMP'Error'MI'AuctionInfoMismatchedToken)
+        `err` $(eCode AuctionMP'MI'Error'AuctionInfoMismatchedToken)
     --
     -- The auction metadata record should contain valid auction terms.
     auctionTermsValid =
       validateAuctionTerms ai'AuctionTerms
-        `err` $(eCode $ AuctionMP'Error'MI'InvalidAuctionTerms [])
+        `err` $(eCode $ AuctionMP'MI'Error'InvalidAuctionTerms [])
     --
     -- The auction state, auction metadata, and standing bid tokens
     -- of the auction should all be minted.
     -- No other tokens should be minted or burned.
     auctionTokensAreMintedExactly =
       (txInfoMint == allAuctionTokensMinted auctionID)
-        `err` $(eCode AuctionMP'Error'MI'AuctionTokensNotMinted)
+        `err` $(eCode AuctionMP'MI'Error'AuctionTokensNotMinted)
     --
     -- The auction metadata output contains a datum that can be
     -- decoded as an auction info metadata record.
     AuctionInfo {..} =
       parseInlineDatum auctionMetadataOutput
-        `errMaybe` $(eCode AuctionMP'Error'MI'FailedToDecodeMetadataDatum)
+        `errMaybe` $(eCode AuctionMP'MI'Error'FailedToDecodeMetadataDatum)
     --
     -- There is an output at the auction metadata validator
     -- containing the auction metadata token.
     auctionMetadataOutput =
       findAuctionMetadataTxOutAtSh auctionID auctionMetadataSh txInfoOutputs
-        `errMaybe` $(eCode AuctionMP'Error'MI'MissingMetadataOutput)
+        `errMaybe` $(eCode AuctionMP'MI'Error'MissingMetadataOutput)
 --
 {-# INLINEABLE checkMint #-}
 
@@ -119,6 +119,6 @@ checkBurn context =
     -- No other tokens should be minted or burned.
     auctionTokensAreBurnedExactly =
       (txInfoMint == allAuctionTokensBurned auctionID)
-        `err` $(eCode AuctionMP'Error'BU'AuctionTokensNotBurned)
+        `err` $(eCode AuctionMP'BU'Error'AuctionTokensNotBurned)
 --
 {-# INLINEABLE checkBurn #-}

@@ -12,13 +12,13 @@ import HydraAuction.Error (ErrorCodePrefix (..))
 import HydraAuction.Error.Types.AuctionTerms (AuctionTerms'Error)
 
 data AuctionMP'Error
-  = AuctionMP'Error'MI'MissingUtxoNonceInput
-  | AuctionMP'Error'MI'AuctionInfoMismatchedToken
-  | AuctionMP'Error'MI'InvalidAuctionTerms [AuctionTerms'Error]
-  | AuctionMP'Error'MI'AuctionTokensNotMinted
-  | AuctionMP'Error'MI'FailedToDecodeMetadataDatum
-  | AuctionMP'Error'MI'MissingMetadataOutput
-  | AuctionMP'Error'BU'AuctionTokensNotBurned
+  = AuctionMP'MI'Error'MissingUtxoNonceInput
+  | AuctionMP'MI'Error'AuctionInfoMismatchedToken
+  | AuctionMP'MI'Error'InvalidAuctionTerms [AuctionTerms'Error]
+  | AuctionMP'MI'Error'AuctionTokensNotMinted
+  | AuctionMP'MI'Error'FailedToDecodeMetadataDatum
+  | AuctionMP'MI'Error'MissingMetadataOutput
+  | AuctionMP'BU'Error'AuctionTokensNotBurned
   deriving stock (Eq, Generic, Show)
 
 -- -------------------------------------------------------------------------

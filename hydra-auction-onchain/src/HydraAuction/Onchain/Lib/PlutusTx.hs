@@ -2,8 +2,11 @@ module HydraAuction.Onchain.Lib.PlutusTx (
   lovelaceValueOf,
   onlyOneInputFromAddress,
   parseInlineDatum,
+  scriptOutputsAtSh,
+  valuePaidToScript,
   --
   findOwnInputWithStateToken,
+  findInputWithStateTokenAtSh,
   findTxOutWithStateTokenAtAddr,
   findTxOutWithStateTokenAtSh,
   --
@@ -35,6 +38,7 @@ import PlutusLedgerApi.V1.Value (
 import PlutusLedgerApi.V2.Contexts (
   ScriptContext (..),
   TxInInfo (..),
+  TxInfo (..),
   findOwnInput,
  )
 import PlutusLedgerApi.V2.Tx (
@@ -73,6 +77,20 @@ parseInlineDatum _ = Nothing
 lovelaceValueOf :: Value -> Integer
 lovelaceValueOf v =
   valueOf v adaSymbol adaToken
+--
+{-# INLINEABLE lovelaceValueOf #-}
+
+scriptOutputsAtSh :: TxInfo -> ScriptHash -> [TxOut]
+scriptOutputsAtSh TxInfo {..} sh =
+  filter (txOutIsAtSh sh) txInfoOutputs
+--
+{-# INLINEABLE scriptOutputsAtSh #-}
+
+valuePaidToScript :: TxInfo -> ScriptHash -> Value
+valuePaidToScript txInfo sh =
+  foldMap txOutValue $ scriptOutputsAtSh txInfo sh
+--
+{-# INLINEABLE valuePaidToScript #-}
 
 -- -------------------------------------------------------------------------
 -- State token utilities
@@ -91,6 +109,17 @@ findOwnInputWithStateToken cs tn context = do
   if hasStateToken then Just ownInput else Nothing
 --
 {-# INLINEABLE findOwnInputWithStateToken #-}
+
+findInputWithStateTokenAtSh ::
+  CurrencySymbol ->
+  TokenName ->
+  ScriptHash ->
+  [TxInInfo] ->
+  Maybe TxInInfo
+findInputWithStateTokenAtSh cs tn sh =
+  find (txOutHasStateTokenAtSh cs tn sh . txInInfoResolved)
+--
+{-# INLINEABLE findInputWithStateTokenAtSh #-}
 
 -- | Find the tx output located at a given address
 -- and containing the given state token.

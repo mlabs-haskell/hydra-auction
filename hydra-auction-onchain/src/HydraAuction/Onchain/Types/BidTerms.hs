@@ -2,6 +2,7 @@ module HydraAuction.Onchain.Types.BidTerms (
   BidTerms (..),
   BidTerms'Error (..),
   validateBidTerms,
+  sellerPayout,
 ) where
 
 import PlutusTx.Prelude
@@ -12,7 +13,10 @@ import PlutusTx qualified
 import HydraAuction.Error.Types.BidTerms (BidTerms'Error (..))
 import HydraAuction.Onchain.Lib.Error (eCode, err)
 import HydraAuction.Onchain.Lib.Serialise (serialise)
-import HydraAuction.Onchain.Types.AuctionTerms (AuctionTerms (..))
+import HydraAuction.Onchain.Types.AuctionTerms (
+  AuctionTerms (..),
+  totalAuctionFees,
+ )
 import HydraAuction.Onchain.Types.BidderInfo (BidderInfo (..))
 
 data BidTerms = BidTerms
@@ -30,6 +34,26 @@ data BidTerms = BidTerms
   -- (ai'AuctionId, bi'BidderVk) tuple,
   -- authorizing the bidder bi'BidderVk to place bids in the auction.
   }
+
+instance Eq BidTerms where
+  (BidTerms x1 x2 x3 x4)
+    == (BidTerms y1 y2 y3 y4) =
+      x1 == y1
+        && x2 == y2
+        && x3 == y3
+        && x4 == y4
+
+PlutusTx.unstableMakeIsData ''BidTerms
+
+-- -------------------------------------------------------------------------
+-- Seller payout
+-- -------------------------------------------------------------------------
+
+sellerPayout :: AuctionTerms -> BidTerms -> Integer
+sellerPayout auTerms BidTerms {..} =
+  bt'BidPrice - totalAuctionFees auTerms
+--
+{-# INLINEABLE sellerPayout #-}
 
 -- -------------------------------------------------------------------------
 -- Validation
@@ -86,16 +110,3 @@ sellerSignatureMessage auctionId bidderVk =
     <> serialise bidderVk
 --
 {-# INLINEABLE sellerSignatureMessage #-}
-
--- -------------------------------------------------------------------------
--- Plutus instances
--- -------------------------------------------------------------------------
-PlutusTx.unstableMakeIsData ''BidTerms
-
-instance Eq BidTerms where
-  (BidTerms x1 x2 x3 x4)
-    == (BidTerms y1 y2 y3 y4) =
-      x1 == y1
-        && x2 == y2
-        && x3 == y3
-        && x4 == y4

@@ -1,10 +1,8 @@
 module HydraAuction.Offchain.Types.AuctionState (
   AuctionEscrowState (..),
   StandingBidState (..),
-  Buyer'Error (..),
   NewBid'Error (..),
   sellerPayout,
-  validateBuyer,
   validateNewBid,
   fromPlutusAuctionEscrowState,
   fromPlutusStandingBidState,
@@ -25,15 +23,10 @@ import Cardano.Api.Shelley (
  )
 
 import HydraAuction.Error.Types.AuctionState (
-  Buyer'Error (..),
   NewBid'Error (..),
  )
 import HydraAuction.Offchain.Lib.Codec.Onchain (
 
- )
-import HydraAuction.Offchain.Lib.Crypto (
-  Hash,
-  PaymentKey,
  )
 import HydraAuction.Offchain.Lib.Validation (err, errWith)
 import HydraAuction.Offchain.Types.AuctionTerms (
@@ -46,7 +39,6 @@ import HydraAuction.Offchain.Types.BidTerms (
   toPlutusBidTerms,
   validateBidTerms,
  )
-import HydraAuction.Offchain.Types.BidderInfo (BidderInfo (..))
 
 import HydraAuction.Onchain.Types.AuctionState qualified as O
 
@@ -124,34 +116,6 @@ validateStartingBid AuctionTerms {..} BidTerms {..} =
   -- no smaller than the auction's starting price.
   (at'StartingBid <= bt'BidPrice)
     `err` NewBid'Error'InvalidStartingBid
-
--- -------------------------------------------------------------------------
--- Buyer validation
--- -------------------------------------------------------------------------
-
-validateBuyer ::
-  AuctionTerms ->
-  PolicyId ->
-  StandingBidState ->
-  Hash PaymentKey ->
-  Validation [Buyer'Error] ()
-validateBuyer auTerms auctionId StandingBidState {..} buyer
-  | Just bidTerms@BidTerms {..} <- standingBidState
-  , BidderInfo {..} <- bt'Bidder =
-      --
-      -- The buyer's hashed payment verification key corresponds
-      -- to the bidder's payment verification key.
-      (buyer == bi'BidderPkh)
-        `err` Buyer'Error'BuyerVkPkhMismatch
-        --
-        -- The bid terms are valid.
-        <> validateBidTerms auTerms auctionId bidTerms
-        `errWith` Buyer'Error'InvalidBidTerms
-  | otherwise =
-      --
-      -- Can only buy when standing bid state is non-empty.
-      False
-        `err` Buyer'Error'EmptyStandingBid
 
 -- -------------------------------------------------------------------------
 -- Seller payout

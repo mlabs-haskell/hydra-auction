@@ -4,11 +4,13 @@ module HydraAuction.Onchain.Validators.FeeEscrow (
 
 import PlutusTx.Prelude
 
+import PlutusLedgerApi.V1.Crypto (PubKeyHash)
 import PlutusLedgerApi.V2.Contexts (
   ScriptContext (..),
   TxInInfo (..),
   TxInfo (..),
   findOwnInput,
+  valuePaidTo,
  )
 import PlutusLedgerApi.V2.Tx (
   TxOut (..),
@@ -19,11 +21,11 @@ import HydraAuction.Error.Onchain.Validators.FeeEscrow (
  )
 import HydraAuction.Onchain.Lib.Error (eCode, err, errMaybe)
 import HydraAuction.Onchain.Lib.PlutusTx (
+  lovelaceValueOf,
   onlyOneInputFromAddress,
  )
 import HydraAuction.Onchain.Types.AuctionTerms (
   AuctionTerms (..),
-  delegateReceivedSufficientAda,
  )
 import HydraAuction.Onchain.Types.Scripts (FeeEscrow'Redeemer (..))
 
@@ -64,3 +66,13 @@ validator aTerms@AuctionTerms {..} DistributeFees context =
     ownAddress = txOutAddress ownInput
 --
 {-# INLINEABLE validator #-}
+
+-- -------------------------------------------------------------------------
+-- Predicates for payouts
+-- -------------------------------------------------------------------------
+
+delegateReceivedSufficientAda :: AuctionTerms -> TxInfo -> PubKeyHash -> Bool
+delegateReceivedSufficientAda AuctionTerms {..} txInfo d =
+  lovelaceValueOf (valuePaidTo txInfo d) > at'AuctionFeePerDelegate
+--
+{-# INLINEABLE delegateReceivedSufficientAda #-}

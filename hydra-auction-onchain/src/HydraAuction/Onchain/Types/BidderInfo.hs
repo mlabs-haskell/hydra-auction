@@ -24,6 +24,14 @@ data BidderInfo = BidderInfo
   -- wasn't purchased by the deadline.
   }
 
+instance Eq BidderInfo where
+  (BidderInfo x1 x2)
+    == (BidderInfo y1 y2) =
+      x1 == y1
+        && x2 == y2
+
+PlutusTx.unstableMakeIsData ''BidderInfo
+
 -- -------------------------------------------------------------------------
 -- Validation
 -- -------------------------------------------------------------------------
@@ -40,14 +48,3 @@ validateBidderInfo _ =
   True
 --
 {-# INLINEABLE validateBidderInfo #-}
-
--- -------------------------------------------------------------------------
--- Plutus instances
--- -------------------------------------------------------------------------
-PlutusTx.unstableMakeIsData ''BidderInfo
-
-instance Eq BidderInfo where
-  (BidderInfo x1 x2)
-    == (BidderInfo y1 y2) =
-      x1 == y1
-        && x2 == y2
