@@ -14,19 +14,13 @@ data BidderDeposit'Error
     BidderDeposit'Error'TooManyOwnScriptInputs
   | BidderDeposit'Error'UnexpectedMintOrBurn
   | BidderDeposit'Error'MissingOwnInput
-  | -- DepositUsedByWinner errors
-    BidderDeposit'BW'Error'BidderIsNotBuyer
-  | BidderDeposit'BW'Error'RedeemerNotBidderBuys
-  | BidderDeposit'BW'Error'UndecodedAuctionRedeemer
-  | BidderDeposit'BW'Error'MissingAuctionEscrowInput
   | -- DepositClaimedBySeller errors
-    BidderDeposit'BS'Error'MismatchAuctionRedeemer
-  | BidderDeposit'BS'Error'BidderNotWinner
-  | BidderDeposit'BS'Error'NoSellerConsent
-  | BidderDeposit'BS'Error'UndecodedAuctionRedeemer
-  | BidderDeposit'BS'Error'MissingAuctionEscrowInput
-  | BidderDeposit'BS'Error'UndecodedBidState
-  | BidderDeposit'BS'Error'MissingStandingBidInput
+    BidderDeposit'CA'Error'AuctionNotConcluding
+  | BidderDeposit'CA'Error'BidderNotWinner
+  | BidderDeposit'CA'Error'UndecodedAuctionRedeemer
+  | BidderDeposit'CA'Error'MissingAuctionEscrowInput
+  | BidderDeposit'CA'Error'UndecodedBidState
+  | BidderDeposit'CA'Error'MissingStandingBidInput
   | -- DepositReclaimedByLoser errors
     BidderDeposit'BL'Error'BidderNotLoser
   | BidderDeposit'BL'Error'ValidityIntervalIncorrect

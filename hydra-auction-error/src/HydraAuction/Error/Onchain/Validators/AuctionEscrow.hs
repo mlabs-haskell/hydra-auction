@@ -15,11 +15,10 @@ data AuctionEscrow'Error
   | AuctionEscrow'Error'MissingAuctionEscrowInput
   | -- StartBidding errors
     AuctionEscrow'SB'Error'InvalidAuctionStateTransition
-  | AuctionEscrow'SB'Error'NewAuctionEscrowStateInvalid
   | AuctionEscrow'SB'Error'InitialBidStateInvalid
+  | AuctionEscrow'SB'Error'UnexpectedTokensMintedBurned
   | AuctionEscrow'SB'Error'IncorrectValidityInterval
   | AuctionEscrow'SB'Error'MissingSellerSignature
-  | AuctionEscrow'SB'Error'UnexpectedTokensMintedBurned
   | AuctionEscrow'SB'Error'UndecodedAuctionEscrowDatum
   | AuctionEscrow'SB'Error'MissingAuctionEscrowOutput
   | AuctionEscrow'SB'Error'UndecodedInitialBid
@@ -28,12 +27,12 @@ data AuctionEscrow'Error
     AuctionEscrow'BB'Error'InvalidAuctionStateTransition
   | AuctionEscrow'BB'Error'AuctionEscrowOutputMissingTokens
   | AuctionEscrow'BB'Error'BidTermsInvalid
-  | AuctionEscrow'BB'Error'InvalidBuyer
-  | AuctionEscrow'BB'Error'AuctionLotNotPaidToBuyer
+  | AuctionEscrow'BB'Error'AuctionLotNotPaidToBidder
   | AuctionEscrow'BB'Error'SellerPaymentIncorrect
   | AuctionEscrow'BB'Error'PaymentToFeeEscrowIncorrect
-  | AuctionEscrow'BB'Error'IncorrectValidityInterval
   | AuctionEscrow'BB'Error'UnexpectedTokensMintedBurned
+  | AuctionEscrow'BB'Error'IncorrectValidityInterval
+  | AuctionEscrow'BB'Error'NoBidderConsent
   | AuctionEscrow'BB'Error'UndecodedAuctionEscrowDatum
   | AuctionEscrow'BB'Error'MissingAuctionEscrowOutput
   | AuctionEscrow'BB'Error'EmptyStandingBid
@@ -44,8 +43,9 @@ data AuctionEscrow'Error
   | AuctionEscrow'SR'Error'AuctionEscrowOutputMissingTokens
   | AuctionEscrow'SR'Error'PaymentToSellerIncorrect
   | AuctionEscrow'SR'Error'PaymentToFeeEscrowIncorrect
-  | AuctionEscrow'SR'Error'IncorrectValidityInterval
   | AuctionEscrow'SR'Error'UnexpectedTokensMintedBurned
+  | AuctionEscrow'SR'Error'IncorrectValidityInterval
+  | AuctionEscrow'SR'Error'NoSellerConsent
   | AuctionEscrow'SR'Error'UndecodedAuctionEscrowDatum
   | AuctionEscrow'SR'Error'MissingAuctionEscrowOutput
   | -- ConcludeAuction errors
@@ -53,6 +53,7 @@ data AuctionEscrow'Error
   | AuctionEscrow'CA'Error'AuctionEscrowInputMissingTokens
   | AuctionEscrow'CA'Error'AuctionTokensNotBurnedExactly
   | AuctionEscrow'CA'Error'IncorrectValidityInterval
+  | AuctionEscrow'CA'Error'NoSellerConsent
   deriving stock (Bounded, Enum, Eq, Generic, Show)
 
 -- -------------------------------------------------------------------------

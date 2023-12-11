@@ -5,15 +5,11 @@ module HydraAuction.Onchain.Types.Redeemers (
   BidderDeposit'Redeemer (..),
   FeeEscrow'Redeemer (..),
   StandingBid'Redeemer (..),
-  getBuyer,
   isConcluding,
 ) where
 
 import PlutusTx.Prelude
 
-import PlutusLedgerApi.V2 (
-  PubKeyHash,
- )
 import PlutusTx qualified
 
 -- -------------------------------------------------------------------------
@@ -35,27 +31,21 @@ PlutusTx.unstableMakeIsData ''AuctionMp'Redeemer
 -- -------------------------------------------------------------------------
 data AuctionEscrow'Redeemer
   = StartBidding
-  | BidderBuys PubKeyHash
+  | BidderBuys
   | SellerReclaims
   | CleanupAuction
 
 instance Eq AuctionEscrow'Redeemer where
   StartBidding == StartBidding = True
-  (BidderBuys x) == (BidderBuys y) = x == y
+  BidderBuys == BidderBuys = True
   SellerReclaims == SellerReclaims = True
   CleanupAuction == CleanupAuction = True
   _ == _ = False
 
 PlutusTx.unstableMakeIsData ''AuctionEscrow'Redeemer
 
-getBuyer :: AuctionEscrow'Redeemer -> Maybe PubKeyHash
-getBuyer (BidderBuys x) = Just x
-getBuyer _ = Nothing
---
-{-# INLINEABLE getBuyer #-}
-
 isConcluding :: AuctionEscrow'Redeemer -> Bool
-isConcluding (BidderBuys _) = True
+isConcluding BidderBuys = True
 isConcluding SellerReclaims = True
 isConcluding _ = False
 --
@@ -76,15 +66,13 @@ PlutusTx.unstableMakeIsData ''AuctionMetadata'Redeemer
 -- Bidder deposit validator
 -- -------------------------------------------------------------------------
 data BidderDeposit'Redeemer
-  = DepositUsedByWinner
-  | DepositClaimedBySeller
+  = DepositUsedToConcludeAuction
   | DepositReclaimedByLoser
   | DepositReclaimedAuctionConcluded
   | DepositCleanup
 
 instance Eq BidderDeposit'Redeemer where
-  DepositUsedByWinner == DepositUsedByWinner = True
-  DepositClaimedBySeller == DepositClaimedBySeller = True
+  DepositUsedToConcludeAuction == DepositUsedToConcludeAuction = True
   DepositReclaimedByLoser == DepositReclaimedByLoser = True
   DepositReclaimedAuctionConcluded == DepositReclaimedAuctionConcluded = True
   DepositCleanup == DepositCleanup = True

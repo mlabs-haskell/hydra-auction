@@ -44,7 +44,7 @@ import HydraAuction.Onchain.Types.BidderInfo (
 import HydraAuction.Onchain.Types.Redeemers (
   AuctionEscrow'Redeemer (..),
   BidderDeposit'Redeemer (..),
-  getBuyer,
+  isConcluding,
  )
 import HydraAuction.Onchain.Types.Scripts (
   AuctionEscrow'ScriptHash,
@@ -95,10 +95,8 @@ validator aesh sbsh auctionId aTerms bInfo redeemer context =
     -- Branching checks based on the redeemer used.
     redeemerChecksPassed =
       case redeemer of
-        DepositUsedByWinner ->
-          checkBW aesh auctionId bInfo context
-        DepositClaimedBySeller ->
-          checkBS aesh sbsh auctionId aTerms bInfo context ownInput
+        DepositUsedToConcludeAuction ->
+          checkCA aesh sbsh auctionId bInfo context
         DepositReclaimedByLoser ->
           checkBL sbsh auctionId aTerms bInfo context ownInput
         DepositReclaimedAuctionConcluded ->
@@ -113,114 +111,58 @@ validator aesh sbsh auctionId aTerms bInfo redeemer context =
 -- -------------------------------------------------------------------------
 
 -- Deposit is used by the bidder who won the auction to buy the auction lot.
-checkBW ::
-  AuctionEscrow'ScriptHash ->
-  AuctionId ->
-  BidderInfo ->
-  ScriptContext ->
-  Bool
-checkBW aesh auctionId bInfo context =
-  bidderIsBuyingAuctionLot
-  where
-    txInfo@TxInfo {..} = scriptContextTxInfo context
-    BidderInfo {..} = bInfo
-    --
-    -- The bidder is buying the auction lot from the auction escrow.
-    bidderIsBuyingAuctionLot =
-      (bi'BidderPkh == buyer)
-        `err` $(eCode BidderDeposit'BW'Error'BidderIsNotBuyer)
-    --
-    -- The auction escrow input is being spent with
-    -- a BidderBuys redeemer.
-    buyer =
-      getBuyer aRedeemer
-        `errMaybe` $(eCode BidderDeposit'BW'Error'RedeemerNotBidderBuys)
-    --
-    -- The auction input's redeemer can be decoded
-    -- as an auction escrow redeemer.
-    aRedeemer :: AuctionEscrow'Redeemer
-    aRedeemer =
-      errMaybeFlip
-        $(eCode BidderDeposit'BW'Error'UndecodedAuctionRedeemer)
-        $ parseRedemeer =<< getSpentInputRedeemer txInfo auctionEscrowInput
-    --
-    -- There is an auction escrow input that contains
-    -- the auction token.
-    auctionEscrowInput =
-      findAuctionEscrowInputAtSh auctionId aesh txInfoInputs
-        `errMaybe` $(eCode BidderDeposit'BW'Error'MissingAuctionEscrowInput)
---
-{-# INLINEABLE checkBW #-}
-
--- -------------------------------------------------------------------------
--- Deposit claimed by seller
--- -------------------------------------------------------------------------
-
--- The winning bidder's deposit is claimed by the seller because
--- the winner did not purchase the auction lot within the purchase period.
-checkBS ::
+checkCA ::
   AuctionEscrow'ScriptHash ->
   StandingBid'ScriptHash ->
   AuctionId ->
-  AuctionTerms ->
   BidderInfo ->
   ScriptContext ->
-  TxOut ->
   Bool
-checkBS aesh sbsh auctionId aTerms bInfo context ownInput =
-  sellerIsReclaimingAuctionLot
+checkCA aesh sbsh auctionId bInfo context =
+  auctionIsConcluding
     && bidderWonTheAuction
-    && sellerConsents
   where
     txInfo@TxInfo {..} = scriptContextTxInfo context
-    AuctionTerms {..} = aTerms
-    lovelaceOwnInput = lovelaceValueOf $ txOutValue ownInput
     --
-    -- The seller is reclaiming the auction lot from the auction escrow.
-    sellerIsReclaimingAuctionLot =
-      (aRedeemer == SellerReclaims)
-        `err` $(eCode BidderDeposit'BS'Error'MismatchAuctionRedeemer)
+    -- The auction escrow input is being spent with
+    -- a BidderBuys redeemer.
+    auctionIsConcluding =
+      isConcluding aRedeemer
+        `err` $(eCode BidderDeposit'CA'Error'AuctionNotConcluding)
     --
     -- The bidder deposit's bidder won the auction.
     bidderWonTheAuction =
       bidderWon bidState bInfo
-        `err` $(eCode BidderDeposit'BS'Error'BidderNotWinner)
-    --
-    -- The seller consents to the transaction either
-    -- explicitly by signing it or
-    -- implicitly by receiving the bid deposit ADA.
-    sellerConsents =
-      partyConsentsAda txInfo at'SellerPkh lovelaceOwnInput
-        `err` $(eCode BidderDeposit'BS'Error'NoSellerConsent)
+        `err` $(eCode BidderDeposit'CA'Error'BidderNotWinner)
     --
     -- The auction input's redeemer can be decoded
     -- as an auction escrow redeemer.
     aRedeemer :: AuctionEscrow'Redeemer
     aRedeemer =
       errMaybeFlip
-        $(eCode BidderDeposit'BS'Error'UndecodedAuctionRedeemer)
+        $(eCode BidderDeposit'CA'Error'UndecodedAuctionRedeemer)
         $ parseRedemeer =<< getSpentInputRedeemer txInfo auctionEscrowInput
     --
     -- There is an auction escrow input that contains
     -- the auction token.
     auctionEscrowInput =
       findAuctionEscrowInputAtSh auctionId aesh txInfoInputs
-        `errMaybe` $(eCode BidderDeposit'BS'Error'MissingAuctionEscrowInput)
+        `errMaybe` $(eCode BidderDeposit'CA'Error'MissingAuctionEscrowInput)
     --
     -- The standing bid input contains a datum that can be decoded
     -- as a standing bid state.
     bidState =
       parseInlineDatum standingBidInput
-        `errMaybe` $(eCode BidderDeposit'BS'Error'UndecodedBidState)
+        `errMaybe` $(eCode BidderDeposit'CA'Error'UndecodedBidState)
     --
     -- There is a standing bid input that contains
     -- the standing bid token.
     standingBidInput =
       txInInfoResolved $
         findStandingBidInputAtSh auctionId sbsh txInfoInputs
-          `errMaybe` $(eCode BidderDeposit'BS'Error'MissingStandingBidInput)
+          `errMaybe` $(eCode BidderDeposit'CA'Error'MissingStandingBidInput)
 --
-{-# INLINEABLE checkBS #-}
+{-# INLINEABLE checkCA #-}
 
 -- -------------------------------------------------------------------------
 -- Deposit reclaimed by losing bidder

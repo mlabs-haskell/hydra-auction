@@ -5,8 +5,8 @@ module HydraAuction.Onchain.Validators.AuctionEscrow (
 import PlutusTx.Prelude
 
 import PlutusLedgerApi.V1.Interval (contains)
+import PlutusLedgerApi.V1.Value (geq)
 import PlutusLedgerApi.V2 (
-  PubKeyHash,
   ScriptContext (..),
   TxInInfo (..),
   TxInfo (..),
@@ -25,6 +25,7 @@ import HydraAuction.Onchain.Lib.PlutusTx (
   lovelaceValueOf,
   onlyOneInputFromAddress,
   parseInlineDatum,
+  partyConsentsAda,
  )
 import HydraAuction.Onchain.Types.AuctionState (
   AuctionEscrowState (..),
@@ -45,7 +46,9 @@ import HydraAuction.Onchain.Types.BidTerms (
   BidTerms (..),
   sellerPayout,
   validateBidTerms,
-  validateBuyer,
+ )
+import HydraAuction.Onchain.Types.BidderInfo (
+  BidderInfo (..),
  )
 import HydraAuction.Onchain.Types.Redeemers (
   AuctionEscrow'Redeemer (..),
@@ -101,8 +104,8 @@ validator sbsh fsh auctionId aTerms aState redeemer context =
       case redeemer of
         StartBidding ->
           checkSB sbsh auctionId aTerms aState context ownInput
-        BidderBuys buyer ->
-          checkBB sbsh fsh auctionId aTerms aState context ownInput buyer
+        BidderBuys ->
+          checkBB sbsh fsh auctionId aTerms aState context ownInput
         SellerReclaims ->
           checkSR fsh auctionId aTerms aState context ownInput
         CleanupAuction ->
@@ -125,9 +128,9 @@ checkSB ::
 checkSB sbsh auctionId aTerms oldAState context ownInput =
   auctionStateTransitionIsValid
     && initialBidStateIsEmpty
+    && noTokensAreMintedOrBurned
     && validityIntervalIsCorrect
     && txSignedBySeller
-    && noTokensAreMintedOrBurned
   where
     txInfo@TxInfo {..} = scriptContextTxInfo context
     AuctionTerms {..} = aTerms
@@ -144,6 +147,11 @@ checkSB sbsh auctionId aTerms oldAState context ownInput =
       (initialBidState == StandingBidState Nothing)
         `err` $(eCode AuctionEscrow'SB'Error'InitialBidStateInvalid)
     --
+    -- No tokens should be minted or burned.
+    noTokensAreMintedOrBurned =
+      (txInfoMint == mempty)
+        `err` $(eCode AuctionEscrow'SB'Error'UnexpectedTokensMintedBurned)
+    --
     -- This redeemer can only be used during the bidding period.
     validityIntervalIsCorrect =
       (biddingPeriod aTerms `contains` txInfoValidRange)
@@ -153,11 +161,6 @@ checkSB sbsh auctionId aTerms oldAState context ownInput =
     txSignedBySeller =
       txSignedBy txInfo at'SellerPkh
         `err` $(eCode AuctionEscrow'SB'Error'MissingSellerSignature)
-    --
-    -- No tokens should be minted or burned.
-    noTokensAreMintedOrBurned =
-      (txInfoMint == mempty)
-        `err` $(eCode AuctionEscrow'SB'Error'UnexpectedTokensMintedBurned)
     --
     -- The auction escrow output contains a datum that can be
     -- decoded as an auction escrow state.
@@ -200,23 +203,23 @@ checkBB ::
   AuctionEscrowState ->
   ScriptContext ->
   TxOut ->
-  PubKeyHash ->
   Bool
-checkBB sbsh fsh auctionId aTerms oldAState context ownInput buyer =
+checkBB sbsh fsh auctionId aTerms oldAState context ownInput =
   auctionStateTransitionIsValid
     && auctionEscrowOutputContainsStandingBidToken
     && bidTermsAreValid
-    && buyerIsWinningBidder
-    && auctionLotPaidToBuyer
+    && auctionLotPaidToBidder
     && paymentToSellerIsCorrect
     && paymentToFeeEscrowIsCorrect
-    && validityIntervalIsCorrect
     && noTokensAreMintedOrBurned
+    && validityIntervalIsCorrect
+    && bidderConsents
   where
     txInfo@TxInfo {..} = scriptContextTxInfo context
     AuctionTerms {..} = aTerms
     AuctionId aid = auctionId
     ownAddress = txOutAddress ownInput
+    lovelaceOwnInput = lovelaceValueOf $ txOutValue ownInput
     --
     -- The auction state should transition from StartBidding
     -- to AuctionConcluded.
@@ -235,39 +238,42 @@ checkBB sbsh fsh auctionId aTerms oldAState context ownInput buyer =
       validateBidTerms aTerms aid bidTerms
         `err` $(eCode AuctionEscrow'BB'Error'BidTermsInvalid)
     --
-    -- The winning bidder is buying the auction lot.
-    buyerIsWinningBidder =
-      validateBuyer bidTerms buyer
-        `err` $(eCode AuctionEscrow'BB'Error'InvalidBuyer)
-    --
     -- The auction lot is paid to the winning bidder, who is buying it.
-    auctionLotPaidToBuyer =
-      (valuePaidTo txInfo buyer == auctionLotValue aTerms)
-        `err` $(eCode AuctionEscrow'BB'Error'AuctionLotNotPaidToBuyer)
+    auctionLotPaidToBidder =
+      (paymentToBidder `geq` auctionLotValue aTerms)
+        `err` $(eCode AuctionEscrow'BB'Error'AuctionLotNotPaidToBidder)
+    paymentToBidder = valuePaidTo txInfo bi'BidderPkh
     --
     -- The seller receives the proceeds of the auction.
     paymentToSellerIsCorrect =
-      (paymentToSeller == sellerPayout aTerms bidTerms)
+      (paymentToSeller >= sellerPayout aTerms bidTerms)
         `err` $(eCode AuctionEscrow'BB'Error'SellerPaymentIncorrect)
     paymentToSeller =
       lovelaceValueOf $ valuePaidTo txInfo at'SellerPkh
     --
     -- The total auction fees are sent to the fee escrow validator.
     paymentToFeeEscrowIsCorrect =
-      (paymentToFeeEscrow == totalAuctionFees aTerms)
+      (paymentToFeeEscrow >= totalAuctionFees aTerms)
         `err` $(eCode AuctionEscrow'BB'Error'PaymentToFeeEscrowIncorrect)
     paymentToFeeEscrow =
       lovelaceValueOf $ valuePaidToFeeEscrow txInfo fsh
+    --
+    -- No tokens are minted or burned.
+    noTokensAreMintedOrBurned =
+      (txInfoMint == mempty)
+        `err` $(eCode AuctionEscrow'BB'Error'UnexpectedTokensMintedBurned)
     --
     -- This redeemer can only be used during the purchase period.
     validityIntervalIsCorrect =
       (purchasePeriod aTerms `contains` txInfoValidRange)
         `err` $(eCode AuctionEscrow'BB'Error'IncorrectValidityInterval)
     --
-    -- No tokens are minted or burned.
-    noTokensAreMintedOrBurned =
-      (txInfoMint == mempty)
-        `err` $(eCode AuctionEscrow'BB'Error'UnexpectedTokensMintedBurned)
+    -- The bidder deposit's bidder consents to the transcation either
+    -- explictly by signing the transaction or
+    -- implicitly by receiving the bid deposit ADA.
+    bidderConsents =
+      partyConsentsAda txInfo bi'BidderPkh lovelaceOwnInput
+        `err` $(eCode AuctionEscrow'BB'Error'NoBidderConsent)
     --
     -- The auction escrow output contains a datum that can be
     -- decoded as an auction escrow state.
@@ -283,10 +289,14 @@ checkBB sbsh fsh auctionId aTerms oldAState context ownInput buyer =
         `errMaybe` $(eCode AuctionEscrow'BB'Error'MissingAuctionEscrowOutput)
     --
     -- The standing bid contains bid terms.
+    --
+    -- The standing bid contains bid terms.
     bidTerms :: BidTerms
-    bidTerms =
+    bidTerms@BidTerms {..} =
       standingBidState bidState
         `errMaybe` $(eCode AuctionEscrow'BB'Error'EmptyStandingBid)
+    --
+    BidderInfo {..} = bt'Bidder
     --
     -- The standing bid input contains a datum that can be decoded
     -- as a standing bid state.
@@ -322,11 +332,14 @@ checkSR fsh auctionId aTerms oldAState context ownInput =
     && auctionEscrowOutputContainsStandingBidToken
     && auctionLotReturnedToSeller
     && paymentToFeeEscrowIsCorrect
-    && validityIntervalIsCorrect
     && noTokensAreMintedOrBurned
+    && validityIntervalIsCorrect
+    && sellerConsents
   where
     txInfo@TxInfo {..} = scriptContextTxInfo context
+    AuctionTerms {..} = aTerms
     ownAddress = txOutAddress ownInput
+    lovelaceOwnInput = lovelaceValueOf $ txOutValue ownInput
     --
     -- The auction state should transition from StartBidding
     -- to AuctionConcluded.
@@ -342,25 +355,33 @@ checkSR fsh auctionId aTerms oldAState context ownInput =
     --
     -- The auction lot is returned to the seller.
     auctionLotReturnedToSeller =
-      sellerReclaimedAuctionLot aTerms txInfo
+      (paymentToSeller `geq` auctionLotValue aTerms)
         `err` $(eCode AuctionEscrow'SR'Error'PaymentToSellerIncorrect)
+    paymentToSeller = valuePaidTo txInfo at'SellerPkh
     --
     -- The total auction fees are sent to the fee escrow validator.
     paymentToFeeEscrowIsCorrect =
-      (paymentToFeeEscrow == totalAuctionFees aTerms)
+      (paymentToFeeEscrow >= totalAuctionFees aTerms)
         `err` $(eCode AuctionEscrow'SR'Error'PaymentToFeeEscrowIncorrect)
     paymentToFeeEscrow =
       lovelaceValueOf $ valuePaidToFeeEscrow txInfo fsh
+    --
+    -- No tokens are minted or burned.
+    noTokensAreMintedOrBurned =
+      (txInfoMint == mempty)
+        `err` $(eCode AuctionEscrow'SR'Error'UnexpectedTokensMintedBurned)
     --
     -- This redeemer can only be used during the penalty period.
     validityIntervalIsCorrect =
       (penaltyPeriod aTerms `contains` txInfoValidRange)
         `err` $(eCode AuctionEscrow'SR'Error'IncorrectValidityInterval)
     --
-    -- No tokens are minted or burned.
-    noTokensAreMintedOrBurned =
-      (txInfoMint == mempty)
-        `err` $(eCode AuctionEscrow'SR'Error'UnexpectedTokensMintedBurned)
+    -- The seller consents to the transaction either
+    -- explicitly by signing it or
+    -- implicitly by receiving the bid deposit ADA.
+    sellerConsents =
+      partyConsentsAda txInfo at'SellerPkh lovelaceOwnInput
+        `err` $(eCode AuctionEscrow'SR'Error'NoSellerConsent)
     --
     -- The auction escrow output contains a datum that can be
     -- decoded as an auction escrow state.
@@ -376,13 +397,6 @@ checkSR fsh auctionId aTerms oldAState context ownInput =
         `errMaybe` $(eCode AuctionEscrow'SR'Error'MissingAuctionEscrowOutput)
 --
 {-# INLINEABLE checkSR #-}
-
--- The auction lot is returned to the seller.
-sellerReclaimedAuctionLot :: AuctionTerms -> TxInfo -> Bool
-sellerReclaimedAuctionLot aTerms@AuctionTerms {..} txInfo =
-  valuePaidTo txInfo at'SellerPkh == auctionLotValue aTerms
---
-{-# INLINEABLE sellerReclaimedAuctionLot #-}
 
 -- -------------------------------------------------------------------------
 -- Cleanup auction
@@ -400,8 +414,11 @@ checkCA auctionId aTerms aState context ownInput =
     && auctionEscrowInputContainsStandingBidToken
     && auctionTokensAreBurnedExactly
     && validityIntervalIsCorrect
+    && sellerConsents
   where
-    TxInfo {..} = scriptContextTxInfo context
+    txInfo@TxInfo {..} = scriptContextTxInfo context
+    AuctionTerms {..} = aTerms
+    lovelaceOwnInput = lovelaceValueOf $ txOutValue ownInput
     --
     -- The auction is concluded.
     auctionIsConcluded =
@@ -425,5 +442,12 @@ checkCA auctionId aTerms aState context ownInput =
     validityIntervalIsCorrect =
       (cleanupPeriod aTerms `contains` txInfoValidRange)
         `err` $(eCode AuctionEscrow'CA'Error'IncorrectValidityInterval)
+    --
+    -- The seller consents to the transaction either
+    -- explicitly by signing it or
+    -- implicitly by receiving the bid deposit ADA.
+    sellerConsents =
+      partyConsentsAda txInfo at'SellerPkh lovelaceOwnInput
+        `err` $(eCode AuctionEscrow'CA'Error'NoSellerConsent)
 --
 {-# INLINEABLE checkCA #-}
