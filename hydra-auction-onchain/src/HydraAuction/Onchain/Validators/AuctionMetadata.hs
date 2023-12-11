@@ -21,11 +21,15 @@ import HydraAuction.Onchain.Lib.PlutusTx (
 import HydraAuction.Onchain.Types.AuctionInfo (
   AuctionInfo (..),
  )
-import HydraAuction.Onchain.Types.Scripts (
-  AuctionID (..),
+import HydraAuction.Onchain.Types.Redeemers (
   AuctionMetadata'Redeemer (..),
-  allAuctionTokensBurned,
+ )
+import HydraAuction.Onchain.Types.Scripts (
   findAuctionMetadataOwnInput,
+ )
+import HydraAuction.Onchain.Types.Tokens (
+  AuctionID (..),
+  allAuctionTokensBurned,
  )
 
 -- -------------------------------------------------------------------------

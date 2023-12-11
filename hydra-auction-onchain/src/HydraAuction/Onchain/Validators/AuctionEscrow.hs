@@ -47,18 +47,22 @@ import HydraAuction.Onchain.Types.BidTerms (
   validateBidTerms,
   validateBuyer,
  )
-import HydraAuction.Onchain.Types.Scripts (
+import HydraAuction.Onchain.Types.Redeemers (
   AuctionEscrow'Redeemer (..),
-  AuctionID (..),
+ )
+import HydraAuction.Onchain.Types.Scripts (
   FeeEscrow'ScriptHash (..),
   StandingBid'ScriptHash (..),
-  allAuctionTokensBurned,
   findAuctionEscrowOwnInput,
   findAuctionEscrowTxOutAtAddr,
   findStandingBidInputAtSh,
   findStandingBidTxOutAtSh,
-  hasStandingBidToken,
   valuePaidToFeeEscrow,
+ )
+import HydraAuction.Onchain.Types.Tokens (
+  AuctionID (..),
+  allAuctionTokensBurned,
+  hasStandingBidToken,
  )
 
 -- -------------------------------------------------------------------------

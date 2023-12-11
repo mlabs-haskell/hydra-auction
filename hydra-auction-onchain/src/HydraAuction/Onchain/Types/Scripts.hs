@@ -1,28 +1,13 @@
 module HydraAuction.Onchain.Types.Scripts (
-  AuctionMP'Redeemer (..),
-  AuctionID (..),
   AuctionMP'ScriptHash (..),
   --
-  auctionTN,
-  auctionMetadataTN,
-  standingBidTN,
-  allAuctionTokensMinted,
-  allAuctionTokensBurned,
-  hasAuctionToken,
-  hasAuctionMetadataToken,
-  hasStandingBidToken,
-  --
-  AuctionEscrow'Redeemer (..),
   AuctionEscrow'ScriptHash (..),
-  getBuyer,
-  isConcluding,
   findAuctionEscrowOwnInput,
   findAuctionEscrowTokenInput,
   findAuctionEscrowInputAtSh,
   findAuctionEscrowTxOutAtSh,
   findAuctionEscrowTxOutAtAddr,
   --
-  AuctionMetadata'Redeemer (..),
   AuctionMetadata'ScriptHash (..),
   findAuctionMetadataOwnInput,
   findAuctionMetadataTokenInput,
@@ -30,13 +15,11 @@ module HydraAuction.Onchain.Types.Scripts (
   findAuctionMetadataTxOutAtSh,
   findAuctionMetadataTxOutAtAddr,
   --
-  BidderDeposit'Redeemer (..),
+  BidderDeposit'ScriptHash (..),
   --
-  FeeEscrow'Redeemer (..),
   FeeEscrow'ScriptHash (..),
   valuePaidToFeeEscrow,
   --
-  StandingBid'Redeemer (..),
   StandingBid'ScriptHash (..),
   findStandingBidOwnInput,
   findStandingBidTokenInput,
@@ -49,18 +32,13 @@ import PlutusTx.Prelude
 
 import PlutusLedgerApi.V2 (
   Address,
-  CurrencySymbol,
-  PubKeyHash,
   ScriptContext,
   ScriptHash,
-  TokenName,
   TxInInfo,
   TxInfo,
   TxOut (..),
   Value (..),
  )
-import PlutusTx qualified
-import PlutusTx.AssocMap qualified as AssocMap
 
 import HydraAuction.Onchain.Lib.PlutusTx (
   findInputWithStateToken,
@@ -68,130 +46,28 @@ import HydraAuction.Onchain.Lib.PlutusTx (
   findOwnInputWithStateToken,
   findTxOutWithStateTokenAtAddr,
   findTxOutWithStateTokenAtSh,
-  txOutHasStateToken,
   valuePaidToScript,
+ )
+import HydraAuction.Onchain.Types.Tokens (
+  AuctionID (..),
+  auctionMetadataTN,
+  auctionTN,
+  standingBidTN,
  )
 
 -- -------------------------------------------------------------------------
 -- Auction state token minting policy
 -- -------------------------------------------------------------------------
-data AuctionMP'Redeemer
-  = MintAuction
-  | BurnAuction
-
-instance Eq AuctionMP'Redeemer where
-  MintAuction == MintAuction = True
-  BurnAuction == BurnAuction = True
-  _ == _ = False
-
-PlutusTx.unstableMakeIsData ''AuctionMP'Redeemer
-
-newtype AuctionID = AuctionID
-  { auctionID :: CurrencySymbol
-  }
-
 newtype AuctionMP'ScriptHash = AuctionMP'ScriptHash
   { sh'AuctionMP :: ScriptHash
   }
 
 -- -------------------------------------------------------------------------
--- Auction state token names
--- -------------------------------------------------------------------------
-
--- Auction state token, identifying the true auction escrow.
-auctionTN :: TokenName
-auctionTN = "AUCTION"
---
-{-# INLINEABLE auctionTN #-}
-
--- Auction metadata token, identifying the true auction metadata.
-auctionMetadataTN :: TokenName
-auctionMetadataTN = "AUCTION_METADATA"
---
-{-# INLINEABLE auctionMetadataTN #-}
-
--- Standing bid token, identifying the true standing bid.
-standingBidTN :: TokenName
-standingBidTN = "STANDING_BID"
---
-{-# INLINEABLE standingBidTN #-}
-
-allAuctionTokensMinted :: AuctionID -> Value
-allAuctionTokensMinted AuctionID {..} =
-  Value $
-    AssocMap.singleton auctionID $
-      AssocMap.fromList
-        [ (auctionTN, 1)
-        , (auctionMetadataTN, 1)
-        , (standingBidTN, 1)
-        ]
---
-{-# INLINEABLE allAuctionTokensMinted #-}
-
-allAuctionTokensBurned :: AuctionID -> Value
-allAuctionTokensBurned AuctionID {..} =
-  Value $
-    AssocMap.singleton auctionID $
-      AssocMap.fromList
-        [ (auctionTN, -1)
-        , (auctionMetadataTN, -1)
-        , (standingBidTN, -1)
-        ]
---
-{-# INLINEABLE allAuctionTokensBurned #-}
-
-hasAuctionToken :: AuctionID -> TxOut -> Bool
-hasAuctionToken AuctionID {..} =
-  txOutHasStateToken auctionID auctionTN
---
-{-# INLINEABLE hasAuctionToken #-}
-
-hasAuctionMetadataToken :: AuctionID -> TxOut -> Bool
-hasAuctionMetadataToken AuctionID {..} =
-  txOutHasStateToken auctionID auctionMetadataTN
---
-{-# INLINEABLE hasAuctionMetadataToken #-}
-
-hasStandingBidToken :: AuctionID -> TxOut -> Bool
-hasStandingBidToken AuctionID {..} =
-  txOutHasStateToken auctionID standingBidTN
---
-{-# INLINEABLE hasStandingBidToken #-}
-
--- -------------------------------------------------------------------------
 -- Auction escrow validator
 -- -------------------------------------------------------------------------
-data AuctionEscrow'Redeemer
-  = StartBidding
-  | BidderBuys !PubKeyHash
-  | SellerReclaims
-  | CleanupAuction
-
-instance Eq AuctionEscrow'Redeemer where
-  StartBidding == StartBidding = True
-  (BidderBuys x) == (BidderBuys y) = x == y
-  SellerReclaims == SellerReclaims = True
-  CleanupAuction == CleanupAuction = True
-  _ == _ = False
-
-PlutusTx.unstableMakeIsData ''AuctionEscrow'Redeemer
-
 newtype AuctionEscrow'ScriptHash = AuctionEscrow'ScriptHash
   { sh'AuctionEscrow :: ScriptHash
   }
-
-getBuyer :: AuctionEscrow'Redeemer -> Maybe PubKeyHash
-getBuyer (BidderBuys x) = Just x
-getBuyer _ = Nothing
---
-{-# INLINEABLE getBuyer #-}
-
-isConcluding :: AuctionEscrow'Redeemer -> Bool
-isConcluding (BidderBuys _) = True
-isConcluding SellerReclaims = True
-isConcluding _ = False
---
-{-# INLINEABLE isConcluding #-}
 
 findAuctionEscrowOwnInput ::
   AuctionID ->
@@ -254,14 +130,6 @@ findAuctionEscrowTxOutAtAddr AuctionID {..} =
 -- -------------------------------------------------------------------------
 -- Auction metadata validator
 -- -------------------------------------------------------------------------
-data AuctionMetadata'Redeemer
-  = RemoveAuction
-
-instance Eq AuctionMetadata'Redeemer where
-  _ == _ = True
-
-PlutusTx.unstableMakeIsData ''AuctionMetadata'Redeemer
-
 newtype AuctionMetadata'ScriptHash = AuctionMetadata'ScriptHash
   { sh'AuctionMetadata :: ScriptHash
   }
@@ -327,34 +195,13 @@ findAuctionMetadataTxOutAtAddr AuctionID {..} =
 -- -------------------------------------------------------------------------
 -- Bidder deposit validator
 -- -------------------------------------------------------------------------
-data BidderDeposit'Redeemer
-  = DepositUsedByWinner
-  | DepositClaimedBySeller
-  | DepositReclaimedByLoser
-  | DepositReclaimedAuctionConcluded
-  | DepositCleanup
-
-instance Eq BidderDeposit'Redeemer where
-  DepositUsedByWinner == DepositUsedByWinner = True
-  DepositClaimedBySeller == DepositClaimedBySeller = True
-  DepositReclaimedByLoser == DepositReclaimedByLoser = True
-  DepositReclaimedAuctionConcluded == DepositReclaimedAuctionConcluded = True
-  DepositCleanup == DepositCleanup = True
-  _ == _ = False
-
-PlutusTx.unstableMakeIsData ''BidderDeposit'Redeemer
+newtype BidderDeposit'ScriptHash = BidderDeposit'ScriptHash
+  { sh'BidderDeposit :: ScriptHash
+  }
 
 -- -------------------------------------------------------------------------
 -- Fee escrow validator
 -- -------------------------------------------------------------------------
-data FeeEscrow'Redeemer
-  = DistributeFees
-
-instance Eq FeeEscrow'Redeemer where
-  _ == _ = True
-
-PlutusTx.unstableMakeIsData ''FeeEscrow'Redeemer
-
 newtype FeeEscrow'ScriptHash = FeeEscrow'ScriptHash
   { sh'FeeEscrow :: ScriptHash
   }
@@ -366,19 +213,6 @@ valuePaidToFeeEscrow txInfo FeeEscrow'ScriptHash {..} =
 -- -------------------------------------------------------------------------
 -- Standing bid validator
 -- -------------------------------------------------------------------------
-data StandingBid'Redeemer
-  = NewBid
-  | MoveToHydra
-  | ConcludeAuction
-
-instance Eq StandingBid'Redeemer where
-  NewBid == NewBid = True
-  MoveToHydra == MoveToHydra = True
-  ConcludeAuction == ConcludeAuction = True
-  _ == _ = True
-
-PlutusTx.unstableMakeIsData ''StandingBid'Redeemer
-
 newtype StandingBid'ScriptHash = StandingBid'ScriptHash
   { sh'StandingBid :: ScriptHash
   }

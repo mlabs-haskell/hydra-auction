@@ -35,14 +35,18 @@ import HydraAuction.Onchain.Types.AuctionTerms (
   AuctionTerms (..),
   biddingPeriod,
  )
-import HydraAuction.Onchain.Types.Scripts (
+import HydraAuction.Onchain.Types.Redeemers (
   AuctionEscrow'Redeemer,
-  AuctionID (..),
   StandingBid'Redeemer (..),
+  isConcluding,
+ )
+import HydraAuction.Onchain.Types.Scripts (
   findAuctionEscrowTokenInput,
   findStandingBidOwnInput,
   findStandingBidTxOutAtAddr,
-  isConcluding,
+ )
+import HydraAuction.Onchain.Types.Tokens (
+  AuctionID (..),
  )
 
 -- -------------------------------------------------------------------------

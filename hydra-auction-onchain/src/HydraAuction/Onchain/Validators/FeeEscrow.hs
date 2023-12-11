@@ -27,7 +27,9 @@ import HydraAuction.Onchain.Lib.PlutusTx (
 import HydraAuction.Onchain.Types.AuctionTerms (
   AuctionTerms (..),
  )
-import HydraAuction.Onchain.Types.Scripts (FeeEscrow'Redeemer (..))
+import HydraAuction.Onchain.Types.Redeemers (
+  FeeEscrow'Redeemer (..),
+ )
 
 validator ::
   AuctionTerms ->
