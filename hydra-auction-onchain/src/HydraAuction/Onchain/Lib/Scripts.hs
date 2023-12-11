@@ -1,10 +1,11 @@
 module HydraAuction.Onchain.Lib.Scripts (
+  StatelessValidatorType,
   ValidatorType,
   MintingPolicyType,
+  wrapStatelessValidator,
   wrapValidator,
   wrapMintingPolicy,
   scriptValidatorHash,
-  scriptValidatorHash',
 ) where
 
 import Prelude
@@ -17,7 +18,6 @@ import Cardano.Api (
  )
 import Cardano.Api.Shelley (
   PlutusScript (PlutusScriptSerialised),
-  PlutusScriptVersion (PlutusScriptV2),
  )
 import PlutusLedgerApi.V2 (
   ScriptHash (..),
@@ -31,9 +31,8 @@ import PlutusTx.Prelude (check, toBuiltin)
 -- | Signature of an untyped validator script.
 type ValidatorType = BuiltinData -> BuiltinData -> BuiltinData -> ()
 
--- | Wrap a typed validator to get the basic `ValidatorType` signature which can
--- be passed to `PlutusTx.compile`.
--- REVIEW: There might be better ways to name this than "wrap"
+-- | Wrap a typed validator to get the basic
+-- `ValidatorType` signature which can be passed to `PlutusTx.compile`.
 wrapValidator ::
   (UnsafeFromData datum, UnsafeFromData redeemer, UnsafeFromData context) =>
   (datum -> redeemer -> context -> Bool) ->
@@ -47,11 +46,31 @@ wrapValidator f d r c =
 --
 {-# INLINEABLE wrapValidator #-}
 
+-- | Signature of an untyped validator script without a datum.
+-- This the same as the untyped minting policy signature,
+-- but separated just in case.
+type StatelessValidatorType = BuiltinData -> BuiltinData -> ()
+
+-- | Wrap a typed stateless validator to get the basic
+-- `StatelessValidatorType` signature which can be passed to
+-- `PlutusTx.compile`.
+wrapStatelessValidator ::
+  (UnsafeFromData redeemer, UnsafeFromData context) =>
+  (redeemer -> context -> Bool) ->
+  StatelessValidatorType
+wrapStatelessValidator f r c =
+  check $ f redeemer context
+  where
+    redeemer = unsafeFromBuiltinData r
+    context = unsafeFromBuiltinData c
+--
+{-# INLINEABLE wrapStatelessValidator #-}
+
 -- | Signature of an untyped minting policy script.
 type MintingPolicyType = BuiltinData -> BuiltinData -> ()
 
--- | Wrap a typed minting policy to get the basic `MintingPolicyType` signature
--- which can be passed to `PlutusTx.compile`.
+-- | Wrap a typed minting policy to get the basic
+-- `MintingPolicyType` signature which can be passed to `PlutusTx.compile`.
 wrapMintingPolicy ::
   (UnsafeFromData redeemer, UnsafeFromData context) =>
   (redeemer -> context -> Bool) ->
@@ -66,14 +85,8 @@ wrapMintingPolicy f r c =
 
 -- * Similar utilities as plutus-ledger
 
--- | Use PlutusScriptV2 for all scripts.
-scriptValidatorHash' ::
-  SerialisedScript ->
-  ScriptHash
-scriptValidatorHash' = scriptValidatorHash PlutusScriptV2
-
--- | Compute the on-chain 'ScriptHash' for a given serialised plutus script. Use
--- this to refer to another validator script.
+-- | Compute the on-chain 'ScriptHash' for a given serialised plutus script.
+-- Use this to refer to another validator script.
 scriptValidatorHash ::
   PlutusScriptVersion lang ->
   SerialisedScript ->

@@ -39,6 +39,7 @@ import PlutusLedgerApi.V2 (
   TxOut (..),
   Value (..),
  )
+import PlutusTx qualified
 
 import HydraAuction.Onchain.Lib.PlutusTx (
   findInputWithStateToken,
@@ -62,12 +63,16 @@ newtype AuctionMp'ScriptHash = AuctionMp'ScriptHash
   { sh'AuctionMp :: ScriptHash
   }
 
+PlutusTx.makeLift ''AuctionMp'ScriptHash
+
 -- -------------------------------------------------------------------------
 -- Auction escrow validator
 -- -------------------------------------------------------------------------
 newtype AuctionEscrow'ScriptHash = AuctionEscrow'ScriptHash
   { sh'AuctionEscrow :: ScriptHash
   }
+
+PlutusTx.makeLift ''AuctionEscrow'ScriptHash
 
 findAuctionEscrowOwnInput ::
   AuctionId ->
@@ -134,6 +139,8 @@ newtype AuctionMetadata'ScriptHash = AuctionMetadata'ScriptHash
   { sh'AuctionMetadata :: ScriptHash
   }
 
+PlutusTx.makeLift ''AuctionMetadata'ScriptHash
+
 findAuctionMetadataOwnInput ::
   AuctionId ->
   ScriptContext ->
@@ -199,12 +206,16 @@ newtype BidderDeposit'ScriptHash = BidderDeposit'ScriptHash
   { sh'BidderDeposit :: ScriptHash
   }
 
+PlutusTx.makeLift ''BidderDeposit'ScriptHash
+
 -- -------------------------------------------------------------------------
 -- Fee escrow validator
 -- -------------------------------------------------------------------------
 newtype FeeEscrow'ScriptHash = FeeEscrow'ScriptHash
   { sh'FeeEscrow :: ScriptHash
   }
+
+PlutusTx.makeLift ''FeeEscrow'ScriptHash
 
 valuePaidToFeeEscrow :: TxInfo -> FeeEscrow'ScriptHash -> Value
 valuePaidToFeeEscrow txInfo FeeEscrow'ScriptHash {..} =
@@ -216,6 +227,8 @@ valuePaidToFeeEscrow txInfo FeeEscrow'ScriptHash {..} =
 newtype StandingBid'ScriptHash = StandingBid'ScriptHash
   { sh'StandingBid :: ScriptHash
   }
+
+PlutusTx.makeLift ''StandingBid'ScriptHash
 
 findStandingBidOwnInput ::
   AuctionId ->
