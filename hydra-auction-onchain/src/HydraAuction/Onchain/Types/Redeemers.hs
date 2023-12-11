@@ -35,7 +35,7 @@ PlutusTx.unstableMakeIsData ''AuctionMp'Redeemer
 -- -------------------------------------------------------------------------
 data AuctionEscrow'Redeemer
   = StartBidding
-  | BidderBuys !PubKeyHash
+  | BidderBuys PubKeyHash
   | SellerReclaims
   | CleanupAuction
 

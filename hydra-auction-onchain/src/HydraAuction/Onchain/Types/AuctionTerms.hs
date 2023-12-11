@@ -37,40 +37,40 @@ import HydraAuction.Error.Types.AuctionTerms (AuctionTerms'Error (..))
 import HydraAuction.Onchain.Lib.Error (eCode, err)
 
 data AuctionTerms = AuctionTerms
-  { at'AuctionLot :: !AssetClass
+  { at'AuctionLot :: AssetClass
   -- ^ NFT being sold in the auction.
-  , at'SellerPkh :: !PubKeyHash
+  , at'SellerPkh :: PubKeyHash
   -- ^ Seller's pubkey hash, which will receive
   -- the proceeds of the auction (minus fees)
   -- if the auction lot is purchased,
   -- or reclaim the auction lot if it isn't.
-  , at'SellerVk :: !BuiltinByteString
+  , at'SellerVk :: BuiltinByteString
   -- ^ Seller's verification key, used to control
   -- which bidders receive authorization to participate in the auction.
-  , at'Delegates :: ![PubKeyHash]
+  , at'Delegates :: [PubKeyHash]
   -- ^ Group of delegates authorized to run the L2 bidding process.
-  , at'BiddingStart :: !POSIXTime
+  , at'BiddingStart :: POSIXTime
   -- ^ Start time of the bidding period.
-  , at'BiddingEnd :: !POSIXTime
+  , at'BiddingEnd :: POSIXTime
   -- ^ End time of the bidding period.
-  , at'PurchaseDeadline :: !POSIXTime
+  , at'PurchaseDeadline :: POSIXTime
   -- ^ Time by which the winning bidder can buy the auction lot.
   -- At and after this time, the winning bidder forfeits its bidder deposit
   -- if the auction lot has not been purchased.
-  , at'Cleanup :: !POSIXTime
+  , at'Cleanup :: POSIXTime
   -- ^ Time at and after  which the remaining utxos in the auction
   -- can be unconditionally cleaned up, returning all tokens
   -- in those utxos to their original owners before the auction.
-  , at'AuctionFeePerDelegate :: !Integer
+  , at'AuctionFeePerDelegate :: Integer
   -- ^ Fee portion that each delegate will receieve from
   -- the proceeds of the auction, whether the auction lot
   -- is purchased by a bidder or reclaimed by the seller.
-  , at'StartingBid :: !Integer
+  , at'StartingBid :: Integer
   -- ^ Bids cannot be lower than this number.
-  , at'MinBidIncrement :: !Integer
+  , at'MinBidIncrement :: Integer
   -- ^ New bids can only supersede the standing bid if they exceed it
   -- by this increment.
-  , at'MinDepositAmount :: !Integer
+  , at'MinDepositAmount :: Integer
   -- ^ Minimal amount of ADA that the seller requests
   -- each bidder to place as a bidder deposit for the auction.
   -- This is only enforced off-chain at the seller's discretion.
