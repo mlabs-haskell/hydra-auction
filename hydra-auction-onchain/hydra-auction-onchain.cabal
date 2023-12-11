@@ -95,7 +95,7 @@ library
     HydraAuction.Onchain.Lib.PlutusTx
     HydraAuction.Onchain.Lib.Scripts
     HydraAuction.Onchain.Lib.Serialise
-    HydraAuction.Onchain.MintingPolicies.Auction
+    HydraAuction.Onchain.MintingPolicies.AuctionMp
     HydraAuction.Onchain.Types.AuctionInfo
     HydraAuction.Onchain.Types.AuctionState
     HydraAuction.Onchain.Types.AuctionTerms

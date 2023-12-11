@@ -46,20 +46,20 @@ import HydraAuction.Onchain.Types.Scripts (
   findStandingBidTxOutAtAddr,
  )
 import HydraAuction.Onchain.Types.Tokens (
-  AuctionID (..),
+  AuctionId (..),
  )
 
 -- -------------------------------------------------------------------------
 -- Validator
 -- -------------------------------------------------------------------------
 validator ::
-  AuctionID ->
+  AuctionId ->
   AuctionTerms ->
   StandingBidState ->
   StandingBid'Redeemer ->
   ScriptContext ->
   Bool
-validator auctionID aTerms standingBidState redeemer context =
+validator auctionId aTerms standingBidState redeemer context =
   ownInputIsOnlyInputFromOwnScript
     && noTokensAreMintedOrBurned
     && redeemerChecksPassed
@@ -80,18 +80,18 @@ validator auctionID aTerms standingBidState redeemer context =
     -- it should contain a standing bid token.
     ownInput =
       txInInfoResolved $
-        findStandingBidOwnInput auctionID context
+        findStandingBidOwnInput auctionId context
           `errMaybe` $(eCode StandingBid'Error'MissingStandingBidInput)
     ownAddress = txOutAddress ownInput
     --
     redeemerChecksPassed =
       case redeemer of
         NewBid ->
-          checkNB auctionID aTerms standingBidState context ownInput
+          checkNB auctionId aTerms standingBidState context ownInput
         MoveToHydra ->
           checkMH aTerms context
         ConcludeAuction ->
-          checkCA auctionID context
+          checkCA auctionId context
 --
 {-# INLINEABLE validator #-}
 
@@ -99,18 +99,18 @@ validator auctionID aTerms standingBidState redeemer context =
 -- New bid
 -- -------------------------------------------------------------------------
 checkNB ::
-  AuctionID ->
+  AuctionId ->
   AuctionTerms ->
   StandingBidState ->
   ScriptContext ->
   TxOut ->
   Bool
-checkNB auctionID aTerms oldBidState context ownInput =
+checkNB auctionId aTerms oldBidState context ownInput =
   bidStateTransitionIsValid
     && validityIntervalIsCorrect
   where
     TxInfo {..} = scriptContextTxInfo context
-    AuctionID aid = auctionID
+    AuctionId aid = auctionId
     ownAddress = txOutAddress ownInput
     --
     -- The transition from the old bid state to the new bid state
@@ -135,7 +135,7 @@ checkNB auctionID aTerms oldBidState context ownInput =
     -- There is an output at the standing bid validator
     -- containing the standing bid token.
     standingBidOutput =
-      findStandingBidTxOutAtAddr auctionID ownAddress txInfoOutputs
+      findStandingBidTxOutAtAddr auctionId ownAddress txInfoOutputs
         `errMaybe` $(eCode StandingBid'NB'Error'MissingStandingBidOutput)
 --
 {-# INLINEABLE checkNB #-}
@@ -169,10 +169,10 @@ checkMH aTerms@AuctionTerms {..} context =
 -- Conclude auction
 -- -------------------------------------------------------------------------
 checkCA ::
-  AuctionID ->
+  AuctionId ->
   ScriptContext ->
   Bool
-checkCA auctionID context =
+checkCA auctionId context =
   auctionIsConcluding
   where
     txInfo@TxInfo {..} = scriptContextTxInfo context
@@ -193,7 +193,7 @@ checkCA auctionID context =
       mAuctionEscrowRedeemer
         `errMaybe` $(eCode StandingBid'CA'Error'InvalidAuctionTokenRedeemer)
     mAuctionEscrowRedeemer = do
-      txin <- findAuctionEscrowTokenInput auctionID txInfoInputs
+      txin <- findAuctionEscrowTokenInput auctionId txInfoInputs
       r <- getSpentInputRedeemer txInfo txin
       parseRedemeer r
 --

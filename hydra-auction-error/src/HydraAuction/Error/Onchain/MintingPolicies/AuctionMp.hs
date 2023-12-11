@@ -1,5 +1,5 @@
-module HydraAuction.Error.Onchain.MintingPolicies.Auction (
-  AuctionMP'Error (..),
+module HydraAuction.Error.Onchain.MintingPolicies.AuctionMp (
+  AuctionMp'Error (..),
 ) where
 
 import Prelude
@@ -11,26 +11,26 @@ import HydraAuction.Error (ErrorCodePrefix (..))
 
 import HydraAuction.Error.Types.AuctionTerms (AuctionTerms'Error)
 
-data AuctionMP'Error
-  = AuctionMP'MI'Error'MissingUtxoNonceInput
-  | AuctionMP'MI'Error'AuctionInfoMismatchedToken
-  | AuctionMP'MI'Error'InvalidAuctionTerms [AuctionTerms'Error]
-  | AuctionMP'MI'Error'AuctionTokensNotMinted
-  | AuctionMP'MI'Error'FailedToDecodeMetadataDatum
-  | AuctionMP'MI'Error'MissingMetadataOutput
-  | AuctionMP'BU'Error'AuctionTokensNotBurned
+data AuctionMp'Error
+  = AuctionMp'MI'Error'MissingUtxoNonceInput
+  | AuctionMp'MI'Error'AuctionInfoMismatchedToken
+  | AuctionMp'MI'Error'InvalidAuctionTerms [AuctionTerms'Error]
+  | AuctionMp'MI'Error'AuctionTokensNotMinted
+  | AuctionMp'MI'Error'FailedToDecodeMetadataDatum
+  | AuctionMp'MI'Error'MissingMetadataOutput
+  | AuctionMp'BU'Error'AuctionTokensNotBurned
   deriving stock (Eq, Generic, Show)
 
 -- -------------------------------------------------------------------------
 -- Universe
 -- -------------------------------------------------------------------------
 
-instance Universe AuctionMP'Error where
+instance Universe AuctionMp'Error where
   universe = universeGeneric
 
 -- -------------------------------------------------------------------------
 -- Error code prefix
 -- -------------------------------------------------------------------------
 
-instance ErrorCodePrefix AuctionMP'Error where
+instance ErrorCodePrefix AuctionMp'Error where
   errorCodePrefix = const "AUMP"

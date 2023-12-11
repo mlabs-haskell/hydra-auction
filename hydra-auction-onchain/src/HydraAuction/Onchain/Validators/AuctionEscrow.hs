@@ -60,7 +60,7 @@ import HydraAuction.Onchain.Types.Scripts (
   valuePaidToFeeEscrow,
  )
 import HydraAuction.Onchain.Types.Tokens (
-  AuctionID (..),
+  AuctionId (..),
   allAuctionTokensBurned,
   hasStandingBidToken,
  )
@@ -71,13 +71,13 @@ import HydraAuction.Onchain.Types.Tokens (
 validator ::
   StandingBid'ScriptHash ->
   FeeEscrow'ScriptHash ->
-  AuctionID ->
+  AuctionId ->
   AuctionTerms ->
   AuctionEscrowState ->
   AuctionEscrow'Redeemer ->
   ScriptContext ->
   Bool
-validator sbsh fsh auctionID aTerms aState redeemer context =
+validator sbsh fsh auctionId aTerms aState redeemer context =
   ownInputIsOnlyInputFromOwnScript
     && redeemerChecksPassed
   where
@@ -92,7 +92,7 @@ validator sbsh fsh auctionID aTerms aState redeemer context =
     -- it should contain an auction token.
     ownInput =
       txInInfoResolved $
-        findAuctionEscrowOwnInput auctionID context
+        findAuctionEscrowOwnInput auctionId context
           `errMaybe` $(eCode AuctionEscrow'Error'MissingAuctionEscrowInput)
     ownAddress = txOutAddress ownInput
     --
@@ -100,13 +100,13 @@ validator sbsh fsh auctionID aTerms aState redeemer context =
     redeemerChecksPassed =
       case redeemer of
         StartBidding ->
-          checkSB sbsh auctionID aTerms aState context ownInput
+          checkSB sbsh auctionId aTerms aState context ownInput
         BidderBuys buyer ->
-          checkBB sbsh fsh auctionID aTerms aState context ownInput buyer
+          checkBB sbsh fsh auctionId aTerms aState context ownInput buyer
         SellerReclaims ->
-          checkSR fsh auctionID aTerms aState context ownInput
+          checkSR fsh auctionId aTerms aState context ownInput
         CleanupAuction ->
-          checkCA auctionID aTerms aState context ownInput
+          checkCA auctionId aTerms aState context ownInput
 --
 {-# INLINEABLE validator #-}
 
@@ -116,13 +116,13 @@ validator sbsh fsh auctionID aTerms aState redeemer context =
 
 checkSB ::
   StandingBid'ScriptHash ->
-  AuctionID ->
+  AuctionId ->
   AuctionTerms ->
   AuctionEscrowState ->
   ScriptContext ->
   TxOut ->
   Bool
-checkSB sbsh auctionID aTerms oldAState context ownInput =
+checkSB sbsh auctionId aTerms oldAState context ownInput =
   auctionStateTransitionIsValid
     && initialBidStateIsEmpty
     && validityIntervalIsCorrect
@@ -169,7 +169,7 @@ checkSB sbsh auctionID aTerms oldAState context ownInput =
     -- There is an output at the auction escrow validator
     -- containing the auction token.
     auctionEscrowOutput =
-      findAuctionEscrowTxOutAtAddr auctionID ownAddress txInfoOutputs
+      findAuctionEscrowTxOutAtAddr auctionId ownAddress txInfoOutputs
         `errMaybe` $(eCode AuctionEscrow'SB'Error'MissingAuctionEscrowOutput)
     --
     -- The standing bid output contains a datum that can be
@@ -182,7 +182,7 @@ checkSB sbsh auctionID aTerms oldAState context ownInput =
     -- There is an output at the standing bid validator
     -- containing the standing bid token.
     standingBidOutput =
-      findStandingBidTxOutAtSh auctionID sbsh txInfoOutputs
+      findStandingBidTxOutAtSh auctionId sbsh txInfoOutputs
         `errMaybe` $(eCode AuctionEscrow'SB'Error'MissingStandingBidOutput)
 
 --
@@ -195,14 +195,14 @@ checkSB sbsh auctionID aTerms oldAState context ownInput =
 checkBB ::
   StandingBid'ScriptHash ->
   FeeEscrow'ScriptHash ->
-  AuctionID ->
+  AuctionId ->
   AuctionTerms ->
   AuctionEscrowState ->
   ScriptContext ->
   TxOut ->
   PubKeyHash ->
   Bool
-checkBB sbsh fsh auctionID aTerms oldAState context ownInput buyer =
+checkBB sbsh fsh auctionId aTerms oldAState context ownInput buyer =
   auctionStateTransitionIsValid
     && auctionEscrowOutputContainsStandingBidToken
     && bidTermsAreValid
@@ -215,7 +215,7 @@ checkBB sbsh fsh auctionID aTerms oldAState context ownInput buyer =
   where
     txInfo@TxInfo {..} = scriptContextTxInfo context
     AuctionTerms {..} = aTerms
-    AuctionID aid = auctionID
+    AuctionId aid = auctionId
     ownAddress = txOutAddress ownInput
     --
     -- The auction state should transition from StartBidding
@@ -227,7 +227,7 @@ checkBB sbsh fsh auctionID aTerms oldAState context ownInput buyer =
     -- The auction escrow output contains the standing bid token
     -- in addition to the auction token.
     auctionEscrowOutputContainsStandingBidToken =
-      hasStandingBidToken auctionID auctionEscrowOutput
+      hasStandingBidToken auctionId auctionEscrowOutput
         `err` $(eCode AuctionEscrow'BB'Error'AuctionEscrowOutputMissingTokens)
     --
     -- The bid terms in the standing bid input are valid.
@@ -279,7 +279,7 @@ checkBB sbsh fsh auctionID aTerms oldAState context ownInput buyer =
     -- The auction escrow output exists and contains
     -- the auction token.
     auctionEscrowOutput =
-      findAuctionEscrowTxOutAtAddr auctionID ownAddress txInfoOutputs
+      findAuctionEscrowTxOutAtAddr auctionId ownAddress txInfoOutputs
         `errMaybe` $(eCode AuctionEscrow'BB'Error'MissingAuctionEscrowOutput)
     --
     -- The standing bid contains bid terms.
@@ -299,7 +299,7 @@ checkBB sbsh fsh auctionID aTerms oldAState context ownInput buyer =
     -- the standing bid token.
     standingBidInput =
       txInInfoResolved $
-        findStandingBidInputAtSh auctionID sbsh txInfoInputs
+        findStandingBidInputAtSh auctionId sbsh txInfoInputs
           `errMaybe` $(eCode AuctionEscrow'BB'Error'MissingStandingBidOutput)
 
 --
@@ -311,13 +311,13 @@ checkBB sbsh fsh auctionID aTerms oldAState context ownInput buyer =
 
 checkSR ::
   FeeEscrow'ScriptHash ->
-  AuctionID ->
+  AuctionId ->
   AuctionTerms ->
   AuctionEscrowState ->
   ScriptContext ->
   TxOut ->
   Bool
-checkSR fsh auctionID aTerms oldAState context ownInput =
+checkSR fsh auctionId aTerms oldAState context ownInput =
   auctionStateTransitionIsValid
     && auctionEscrowOutputContainsStandingBidToken
     && auctionLotReturnedToSeller
@@ -337,7 +337,7 @@ checkSR fsh auctionID aTerms oldAState context ownInput =
     -- The auction escrow output contains the standing bid token
     -- in addition to the auction token.
     auctionEscrowOutputContainsStandingBidToken =
-      hasStandingBidToken auctionID auctionEscrowOutput
+      hasStandingBidToken auctionId auctionEscrowOutput
         `err` $(eCode AuctionEscrow'SR'Error'AuctionEscrowOutputMissingTokens)
     --
     -- The auction lot is returned to the seller.
@@ -372,7 +372,7 @@ checkSR fsh auctionID aTerms oldAState context ownInput =
     -- There is an auction escrow output that contains
     -- the auction token.
     auctionEscrowOutput =
-      findAuctionEscrowTxOutAtAddr auctionID ownAddress txInfoOutputs
+      findAuctionEscrowTxOutAtAddr auctionId ownAddress txInfoOutputs
         `errMaybe` $(eCode AuctionEscrow'SR'Error'MissingAuctionEscrowOutput)
 --
 {-# INLINEABLE checkSR #-}
@@ -389,13 +389,13 @@ sellerReclaimedAuctionLot aTerms@AuctionTerms {..} txInfo =
 -- -------------------------------------------------------------------------
 
 checkCA ::
-  AuctionID ->
+  AuctionId ->
   AuctionTerms ->
   AuctionEscrowState ->
   ScriptContext ->
   TxOut ->
   Bool
-checkCA auctionID aTerms aState context ownInput =
+checkCA auctionId aTerms aState context ownInput =
   auctionIsConcluded
     && auctionEscrowInputContainsStandingBidToken
     && auctionTokensAreBurnedExactly
@@ -411,14 +411,14 @@ checkCA auctionID aTerms aState context ownInput =
     -- The auction escrow output contains the standing bid token
     -- in addition to the auction token.
     auctionEscrowInputContainsStandingBidToken =
-      hasStandingBidToken auctionID ownInput
+      hasStandingBidToken auctionId ownInput
         `err` $(eCode AuctionEscrow'CA'Error'AuctionEscrowInputMissingTokens)
     --
     -- The auction state, auction metadata, and standing bid tokens
     -- of the auction should all be burned.
     -- No other tokens should be minted or burned.
     auctionTokensAreBurnedExactly =
-      (txInfoMint == allAuctionTokensBurned auctionID)
+      (txInfoMint == allAuctionTokensBurned auctionId)
         `err` $(eCode AuctionEscrow'CA'Error'AuctionTokensNotBurnedExactly)
     --
     -- This redeemer can only be used during the cleanup period.

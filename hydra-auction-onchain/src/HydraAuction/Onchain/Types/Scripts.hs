@@ -1,5 +1,5 @@
 module HydraAuction.Onchain.Types.Scripts (
-  AuctionMP'ScriptHash (..),
+  AuctionMp'ScriptHash (..),
   --
   AuctionEscrow'ScriptHash (..),
   findAuctionEscrowOwnInput,
@@ -49,17 +49,17 @@ import HydraAuction.Onchain.Lib.PlutusTx (
   valuePaidToScript,
  )
 import HydraAuction.Onchain.Types.Tokens (
-  AuctionID (..),
-  auctionMetadataTN,
-  auctionTN,
-  standingBidTN,
+  AuctionId (..),
+  auctionMetadataTn,
+  auctionTn,
+  standingBidTn,
  )
 
 -- -------------------------------------------------------------------------
 -- Auction state token minting policy
 -- -------------------------------------------------------------------------
-newtype AuctionMP'ScriptHash = AuctionMP'ScriptHash
-  { sh'AuctionMP :: ScriptHash
+newtype AuctionMp'ScriptHash = AuctionMp'ScriptHash
+  { sh'AuctionMp :: ScriptHash
   }
 
 -- -------------------------------------------------------------------------
@@ -70,60 +70,60 @@ newtype AuctionEscrow'ScriptHash = AuctionEscrow'ScriptHash
   }
 
 findAuctionEscrowOwnInput ::
-  AuctionID ->
+  AuctionId ->
   ScriptContext ->
   Maybe TxInInfo
-findAuctionEscrowOwnInput AuctionID {..} =
-  findOwnInputWithStateToken auctionID auctionTN
+findAuctionEscrowOwnInput AuctionId {..} =
+  findOwnInputWithStateToken auctionId auctionTn
 --
 {-# INLINEABLE findAuctionEscrowOwnInput #-}
 
 findAuctionEscrowTokenInput ::
-  AuctionID ->
+  AuctionId ->
   [TxInInfo] ->
   Maybe TxInInfo
-findAuctionEscrowTokenInput AuctionID {..} =
+findAuctionEscrowTokenInput AuctionId {..} =
   findInputWithStateToken
-    auctionID
-    auctionTN
+    auctionId
+    auctionTn
 --
 {-# INLINEABLE findAuctionEscrowTokenInput #-}
 
 findAuctionEscrowInputAtSh ::
-  AuctionID ->
+  AuctionId ->
   AuctionEscrow'ScriptHash ->
   [TxInInfo] ->
   Maybe TxInInfo
-findAuctionEscrowInputAtSh AuctionID {..} AuctionEscrow'ScriptHash {..} =
+findAuctionEscrowInputAtSh AuctionId {..} AuctionEscrow'ScriptHash {..} =
   findInputWithStateTokenAtSh
-    auctionID
-    auctionTN
+    auctionId
+    auctionTn
     sh'AuctionEscrow
 --
 {-# INLINEABLE findAuctionEscrowInputAtSh #-}
 
 findAuctionEscrowTxOutAtSh ::
-  AuctionID ->
+  AuctionId ->
   AuctionEscrow'ScriptHash ->
   [TxOut] ->
   Maybe TxOut
-findAuctionEscrowTxOutAtSh AuctionID {..} AuctionEscrow'ScriptHash {..} =
+findAuctionEscrowTxOutAtSh AuctionId {..} AuctionEscrow'ScriptHash {..} =
   findTxOutWithStateTokenAtSh
-    auctionID
-    auctionTN
+    auctionId
+    auctionTn
     sh'AuctionEscrow
 --
 {-# INLINEABLE findAuctionEscrowTxOutAtSh #-}
 
 findAuctionEscrowTxOutAtAddr ::
-  AuctionID ->
+  AuctionId ->
   Address ->
   [TxOut] ->
   Maybe TxOut
-findAuctionEscrowTxOutAtAddr AuctionID {..} =
+findAuctionEscrowTxOutAtAddr AuctionId {..} =
   findTxOutWithStateTokenAtAddr
-    auctionID
-    auctionTN
+    auctionId
+    auctionTn
 --
 {-# INLINEABLE findAuctionEscrowTxOutAtAddr #-}
 
@@ -135,60 +135,60 @@ newtype AuctionMetadata'ScriptHash = AuctionMetadata'ScriptHash
   }
 
 findAuctionMetadataOwnInput ::
-  AuctionID ->
+  AuctionId ->
   ScriptContext ->
   Maybe TxInInfo
-findAuctionMetadataOwnInput AuctionID {..} =
-  findOwnInputWithStateToken auctionID auctionMetadataTN
+findAuctionMetadataOwnInput AuctionId {..} =
+  findOwnInputWithStateToken auctionId auctionMetadataTn
 --
 {-# INLINEABLE findAuctionMetadataOwnInput #-}
 
 findAuctionMetadataTokenInput ::
-  AuctionID ->
+  AuctionId ->
   [TxInInfo] ->
   Maybe TxInInfo
-findAuctionMetadataTokenInput AuctionID {..} =
+findAuctionMetadataTokenInput AuctionId {..} =
   findInputWithStateToken
-    auctionID
-    auctionMetadataTN
+    auctionId
+    auctionMetadataTn
 --
 {-# INLINEABLE findAuctionMetadataTokenInput #-}
 
 findAuctionMetadataInputAtSh ::
-  AuctionID ->
+  AuctionId ->
   AuctionMetadata'ScriptHash ->
   [TxInInfo] ->
   Maybe TxInInfo
-findAuctionMetadataInputAtSh AuctionID {..} AuctionMetadata'ScriptHash {..} =
+findAuctionMetadataInputAtSh AuctionId {..} AuctionMetadata'ScriptHash {..} =
   findInputWithStateTokenAtSh
-    auctionID
-    auctionMetadataTN
+    auctionId
+    auctionMetadataTn
     sh'AuctionMetadata
 --
 {-# INLINEABLE findAuctionMetadataInputAtSh #-}
 
 findAuctionMetadataTxOutAtSh ::
-  AuctionID ->
+  AuctionId ->
   AuctionMetadata'ScriptHash ->
   [TxOut] ->
   Maybe TxOut
-findAuctionMetadataTxOutAtSh AuctionID {..} AuctionMetadata'ScriptHash {..} =
+findAuctionMetadataTxOutAtSh AuctionId {..} AuctionMetadata'ScriptHash {..} =
   findTxOutWithStateTokenAtSh
-    auctionID
-    auctionMetadataTN
+    auctionId
+    auctionMetadataTn
     sh'AuctionMetadata
 --
 {-# INLINEABLE findAuctionMetadataTxOutAtSh #-}
 
 findAuctionMetadataTxOutAtAddr ::
-  AuctionID ->
+  AuctionId ->
   Address ->
   [TxOut] ->
   Maybe TxOut
-findAuctionMetadataTxOutAtAddr AuctionID {..} =
+findAuctionMetadataTxOutAtAddr AuctionId {..} =
   findTxOutWithStateTokenAtAddr
-    auctionID
-    auctionMetadataTN
+    auctionId
+    auctionMetadataTn
 --
 {-# INLINEABLE findAuctionMetadataTxOutAtAddr #-}
 
@@ -218,59 +218,59 @@ newtype StandingBid'ScriptHash = StandingBid'ScriptHash
   }
 
 findStandingBidOwnInput ::
-  AuctionID ->
+  AuctionId ->
   ScriptContext ->
   Maybe TxInInfo
-findStandingBidOwnInput AuctionID {..} =
-  findOwnInputWithStateToken auctionID standingBidTN
+findStandingBidOwnInput AuctionId {..} =
+  findOwnInputWithStateToken auctionId standingBidTn
 --
 {-# INLINEABLE findStandingBidOwnInput #-}
 
 findStandingBidTokenInput ::
-  AuctionID ->
+  AuctionId ->
   [TxInInfo] ->
   Maybe TxInInfo
-findStandingBidTokenInput AuctionID {..} =
+findStandingBidTokenInput AuctionId {..} =
   findInputWithStateToken
-    auctionID
-    standingBidTN
+    auctionId
+    standingBidTn
 --
 {-# INLINEABLE findStandingBidTokenInput #-}
 
 findStandingBidInputAtSh ::
-  AuctionID ->
+  AuctionId ->
   StandingBid'ScriptHash ->
   [TxInInfo] ->
   Maybe TxInInfo
-findStandingBidInputAtSh AuctionID {..} StandingBid'ScriptHash {..} =
+findStandingBidInputAtSh AuctionId {..} StandingBid'ScriptHash {..} =
   findInputWithStateTokenAtSh
-    auctionID
-    standingBidTN
+    auctionId
+    standingBidTn
     sh'StandingBid
 --
 {-# INLINEABLE findStandingBidInputAtSh #-}
 
 findStandingBidTxOutAtSh ::
-  AuctionID ->
+  AuctionId ->
   StandingBid'ScriptHash ->
   [TxOut] ->
   Maybe TxOut
-findStandingBidTxOutAtSh AuctionID {..} StandingBid'ScriptHash {..} =
+findStandingBidTxOutAtSh AuctionId {..} StandingBid'ScriptHash {..} =
   findTxOutWithStateTokenAtSh
-    auctionID
-    standingBidTN
+    auctionId
+    standingBidTn
     sh'StandingBid
 --
 {-# INLINEABLE findStandingBidTxOutAtSh #-}
 
 findStandingBidTxOutAtAddr ::
-  AuctionID ->
+  AuctionId ->
   Address ->
   [TxOut] ->
   Maybe TxOut
-findStandingBidTxOutAtAddr AuctionID {..} =
+findStandingBidTxOutAtAddr AuctionId {..} =
   findTxOutWithStateTokenAtAddr
-    auctionID
-    standingBidTN
+    auctionId
+    standingBidTn
 --
 {-# INLINEABLE findStandingBidTxOutAtAddr #-}

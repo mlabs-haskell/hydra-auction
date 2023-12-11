@@ -14,7 +14,7 @@ import HydraAuction.Onchain.Lib.Error (eCode, err)
 
 data DelegateInfo = DelegateInfo
   { di'GroupName :: !BuiltinByteString
-  , di'GroupURL :: !BuiltinByteString
+  , di'GroupUrl :: !BuiltinByteString
   , di'Delegates :: ![PubKeyHash]
   -- ^ The payment vkey hashes of the individual delegates in this group.
   -- These payment vkey hashes also indicate where the delegates

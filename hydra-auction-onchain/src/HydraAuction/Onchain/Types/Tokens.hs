@@ -1,8 +1,8 @@
 module HydraAuction.Onchain.Types.Tokens (
-  AuctionID (..),
-  auctionTN,
-  auctionMetadataTN,
-  standingBidTN,
+  AuctionId (..),
+  auctionTn,
+  auctionMetadataTn,
+  standingBidTn,
   allAuctionTokensMinted,
   allAuctionTokensBurned,
   hasAuctionToken,
@@ -28,8 +28,8 @@ import HydraAuction.Onchain.Lib.PlutusTx (
 -- Auction state token names
 -- -------------------------------------------------------------------------
 
-newtype AuctionID = AuctionID
-  { auctionID :: CurrencySymbol
+newtype AuctionId = AuctionId
+  { auctionId :: CurrencySymbol
   }
 
 -- -------------------------------------------------------------------------
@@ -37,61 +37,61 @@ newtype AuctionID = AuctionID
 -- -------------------------------------------------------------------------
 
 -- Auction state token, identifying the true auction escrow.
-auctionTN :: TokenName
-auctionTN = "AUCTION"
+auctionTn :: TokenName
+auctionTn = "AUCTION"
 --
-{-# INLINEABLE auctionTN #-}
+{-# INLINEABLE auctionTn #-}
 
 -- Auction metadata token, identifying the true auction metadata.
-auctionMetadataTN :: TokenName
-auctionMetadataTN = "AUCTION_METADATA"
+auctionMetadataTn :: TokenName
+auctionMetadataTn = "AUCTION_METADATA"
 --
-{-# INLINEABLE auctionMetadataTN #-}
+{-# INLINEABLE auctionMetadataTn #-}
 
 -- Standing bid token, identifying the true standing bid.
-standingBidTN :: TokenName
-standingBidTN = "STANDING_BID"
+standingBidTn :: TokenName
+standingBidTn = "STANDING_BID"
 --
-{-# INLINEABLE standingBidTN #-}
+{-# INLINEABLE standingBidTn #-}
 
-allAuctionTokensMinted :: AuctionID -> Value
-allAuctionTokensMinted AuctionID {..} =
+allAuctionTokensMinted :: AuctionId -> Value
+allAuctionTokensMinted AuctionId {..} =
   Value $
-    AssocMap.singleton auctionID $
+    AssocMap.singleton auctionId $
       AssocMap.fromList
-        [ (auctionTN, 1)
-        , (auctionMetadataTN, 1)
-        , (standingBidTN, 1)
+        [ (auctionTn, 1)
+        , (auctionMetadataTn, 1)
+        , (standingBidTn, 1)
         ]
 --
 {-# INLINEABLE allAuctionTokensMinted #-}
 
-allAuctionTokensBurned :: AuctionID -> Value
-allAuctionTokensBurned AuctionID {..} =
+allAuctionTokensBurned :: AuctionId -> Value
+allAuctionTokensBurned AuctionId {..} =
   Value $
-    AssocMap.singleton auctionID $
+    AssocMap.singleton auctionId $
       AssocMap.fromList
-        [ (auctionTN, -1)
-        , (auctionMetadataTN, -1)
-        , (standingBidTN, -1)
+        [ (auctionTn, -1)
+        , (auctionMetadataTn, -1)
+        , (standingBidTn, -1)
         ]
 --
 {-# INLINEABLE allAuctionTokensBurned #-}
 
-hasAuctionToken :: AuctionID -> TxOut -> Bool
-hasAuctionToken AuctionID {..} =
-  txOutHasStateToken auctionID auctionTN
+hasAuctionToken :: AuctionId -> TxOut -> Bool
+hasAuctionToken AuctionId {..} =
+  txOutHasStateToken auctionId auctionTn
 --
 {-# INLINEABLE hasAuctionToken #-}
 
-hasAuctionMetadataToken :: AuctionID -> TxOut -> Bool
-hasAuctionMetadataToken AuctionID {..} =
-  txOutHasStateToken auctionID auctionMetadataTN
+hasAuctionMetadataToken :: AuctionId -> TxOut -> Bool
+hasAuctionMetadataToken AuctionId {..} =
+  txOutHasStateToken auctionId auctionMetadataTn
 --
 {-# INLINEABLE hasAuctionMetadataToken #-}
 
-hasStandingBidToken :: AuctionID -> TxOut -> Bool
-hasStandingBidToken AuctionID {..} =
-  txOutHasStateToken auctionID standingBidTN
+hasStandingBidToken :: AuctionId -> TxOut -> Bool
+hasStandingBidToken AuctionId {..} =
+  txOutHasStateToken auctionId standingBidTn
 --
 {-# INLINEABLE hasStandingBidToken #-}

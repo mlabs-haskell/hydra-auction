@@ -1,5 +1,5 @@
 module HydraAuction.Onchain.Types.Redeemers (
-  AuctionMP'Redeemer (..),
+  AuctionMp'Redeemer (..),
   AuctionEscrow'Redeemer (..),
   AuctionMetadata'Redeemer (..),
   BidderDeposit'Redeemer (..),
@@ -19,16 +19,16 @@ import PlutusTx qualified
 -- -------------------------------------------------------------------------
 -- Auction state token minting policy
 -- -------------------------------------------------------------------------
-data AuctionMP'Redeemer
+data AuctionMp'Redeemer
   = MintAuction
   | BurnAuction
 
-instance Eq AuctionMP'Redeemer where
+instance Eq AuctionMp'Redeemer where
   MintAuction == MintAuction = True
   BurnAuction == BurnAuction = True
   _ == _ = False
 
-PlutusTx.unstableMakeIsData ''AuctionMP'Redeemer
+PlutusTx.unstableMakeIsData ''AuctionMp'Redeemer
 
 -- -------------------------------------------------------------------------
 -- Auction escrow validator

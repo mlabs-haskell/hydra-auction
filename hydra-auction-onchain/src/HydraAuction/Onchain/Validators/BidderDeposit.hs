@@ -53,7 +53,7 @@ import HydraAuction.Onchain.Types.Scripts (
   findStandingBidInputAtSh,
  )
 import HydraAuction.Onchain.Types.Tokens (
-  AuctionID (..),
+  AuctionId (..),
  )
 
 -- -------------------------------------------------------------------------
@@ -62,13 +62,13 @@ import HydraAuction.Onchain.Types.Tokens (
 validator ::
   AuctionEscrow'ScriptHash ->
   StandingBid'ScriptHash ->
-  AuctionID ->
+  AuctionId ->
   AuctionTerms ->
   BidderInfo ->
   BidderDeposit'Redeemer ->
   ScriptContext ->
   Bool
-validator aesh sbsh auctionID aTerms bInfo redeemer context =
+validator aesh sbsh auctionId aTerms bInfo redeemer context =
   ownInputIsOnlyInputFromOwnScript
     && noTokensAreMintedOrBurned
     && redeemerChecksPassed
@@ -96,13 +96,13 @@ validator aesh sbsh auctionID aTerms bInfo redeemer context =
     redeemerChecksPassed =
       case redeemer of
         DepositUsedByWinner ->
-          checkBW aesh auctionID bInfo context
+          checkBW aesh auctionId bInfo context
         DepositClaimedBySeller ->
-          checkBS aesh sbsh auctionID aTerms bInfo context ownInput
+          checkBS aesh sbsh auctionId aTerms bInfo context ownInput
         DepositReclaimedByLoser ->
-          checkBL sbsh auctionID aTerms bInfo context ownInput
+          checkBL sbsh auctionId aTerms bInfo context ownInput
         DepositReclaimedAuctionConcluded ->
-          checkAC aesh auctionID aTerms bInfo context ownInput
+          checkAC aesh auctionId aTerms bInfo context ownInput
         DepositCleanup ->
           checkDC aTerms bInfo context ownInput
 --
@@ -115,11 +115,11 @@ validator aesh sbsh auctionID aTerms bInfo redeemer context =
 -- Deposit is used by the bidder who won the auction to buy the auction lot.
 checkBW ::
   AuctionEscrow'ScriptHash ->
-  AuctionID ->
+  AuctionId ->
   BidderInfo ->
   ScriptContext ->
   Bool
-checkBW aesh auctionID bInfo context =
+checkBW aesh auctionId bInfo context =
   bidderIsBuyingAuctionLot
   where
     txInfo@TxInfo {..} = scriptContextTxInfo context
@@ -147,7 +147,7 @@ checkBW aesh auctionID bInfo context =
     -- There is an auction escrow input that contains
     -- the auction token.
     auctionEscrowInput =
-      findAuctionEscrowInputAtSh auctionID aesh txInfoInputs
+      findAuctionEscrowInputAtSh auctionId aesh txInfoInputs
         `errMaybe` $(eCode BidderDeposit'BW'Error'MissingAuctionEscrowInput)
 --
 {-# INLINEABLE checkBW #-}
@@ -161,13 +161,13 @@ checkBW aesh auctionID bInfo context =
 checkBS ::
   AuctionEscrow'ScriptHash ->
   StandingBid'ScriptHash ->
-  AuctionID ->
+  AuctionId ->
   AuctionTerms ->
   BidderInfo ->
   ScriptContext ->
   TxOut ->
   Bool
-checkBS aesh sbsh auctionID aTerms bInfo context ownInput =
+checkBS aesh sbsh auctionId aTerms bInfo context ownInput =
   sellerIsReclaimingAuctionLot
     && bidderWonTheAuction
     && sellerConsents
@@ -204,7 +204,7 @@ checkBS aesh sbsh auctionID aTerms bInfo context ownInput =
     -- There is an auction escrow input that contains
     -- the auction token.
     auctionEscrowInput =
-      findAuctionEscrowInputAtSh auctionID aesh txInfoInputs
+      findAuctionEscrowInputAtSh auctionId aesh txInfoInputs
         `errMaybe` $(eCode BidderDeposit'BS'Error'MissingAuctionEscrowInput)
     --
     -- The standing bid input contains a datum that can be decoded
@@ -217,7 +217,7 @@ checkBS aesh sbsh auctionID aTerms bInfo context ownInput =
     -- the standing bid token.
     standingBidInput =
       txInInfoResolved $
-        findStandingBidInputAtSh auctionID sbsh txInfoInputs
+        findStandingBidInputAtSh auctionId sbsh txInfoInputs
           `errMaybe` $(eCode BidderDeposit'BS'Error'MissingStandingBidInput)
 --
 {-# INLINEABLE checkBS #-}
@@ -229,13 +229,13 @@ checkBS aesh sbsh auctionID aTerms bInfo context ownInput =
 -- The bidder deposit is reclaimed by a bidder that did not win the auction.
 checkBL ::
   StandingBid'ScriptHash ->
-  AuctionID ->
+  AuctionId ->
   AuctionTerms ->
   BidderInfo ->
   ScriptContext ->
   TxOut ->
   Bool
-checkBL sbsh auctionID aTerms bInfo context ownInput =
+checkBL sbsh auctionId aTerms bInfo context ownInput =
   bidderLostTheAuction
     && validityIntervalIsCorrect
     && bidderConsents
@@ -272,7 +272,7 @@ checkBL sbsh auctionID aTerms bInfo context ownInput =
     -- the standing bid token.
     standingBidInput =
       txInInfoResolved $
-        findStandingBidInputAtSh auctionID sbsh txInfoInputs
+        findStandingBidInputAtSh auctionId sbsh txInfoInputs
           `errMaybe` $(eCode BidderDeposit'BL'Error'MissingStandingBidInput)
 --
 {-# INLINEABLE checkBL #-}
@@ -287,13 +287,13 @@ checkBL sbsh auctionID aTerms bInfo context ownInput =
 -- whichever deposits they are entitled to.
 checkAC ::
   AuctionEscrow'ScriptHash ->
-  AuctionID ->
+  AuctionId ->
   AuctionTerms ->
   BidderInfo ->
   ScriptContext ->
   TxOut ->
   Bool
-checkAC aesh auctionID aTerms bInfo context ownInput =
+checkAC aesh auctionId aTerms bInfo context ownInput =
   auctionIsConcluded
     && validityIntervalIsCorrect
     && bidderConsents
@@ -330,7 +330,7 @@ checkAC aesh auctionID aTerms bInfo context ownInput =
     -- the auction token.
     auctionEscrowReferenceInput =
       txInInfoResolved $
-        findAuctionEscrowInputAtSh auctionID aesh txInfoReferenceInputs
+        findAuctionEscrowInputAtSh auctionId aesh txInfoReferenceInputs
           `errMaybe` $(eCode BidderDeposit'AC'Error'MissingAuctionRefInput)
 --
 {-# INLINEABLE checkAC #-}

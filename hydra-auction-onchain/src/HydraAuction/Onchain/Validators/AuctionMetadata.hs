@@ -28,7 +28,7 @@ import HydraAuction.Onchain.Types.Scripts (
   findAuctionMetadataOwnInput,
  )
 import HydraAuction.Onchain.Types.Tokens (
-  AuctionID (..),
+  AuctionId (..),
   allAuctionTokensBurned,
  )
 
@@ -45,7 +45,7 @@ validator AuctionInfo {..} RemoveAuction context =
     && auctionTokensAreBurnedExactly
   where
     TxInfo {..} = scriptContextTxInfo context
-    auctionID = AuctionID ai'AuctionId
+    auctionId = AuctionId ai'AuctionId
     --
     -- There should only be one input from the auction metadata validator.
     ownInputIsOnlyInputFromOwnScript =
@@ -56,14 +56,14 @@ validator AuctionInfo {..} RemoveAuction context =
     -- of the auction should all be burned.
     -- No other tokens should be minted or burned.
     auctionTokensAreBurnedExactly =
-      (txInfoMint == allAuctionTokensBurned auctionID)
+      (txInfoMint == allAuctionTokensBurned auctionId)
         `err` $(eCode AuctionMetadata'Error'AuctionTokensNotBurnedExactly)
     --
     -- The validator's own input should exist and
     -- it should contain an auction metadata token.
     ownInput =
       txInInfoResolved $
-        findAuctionMetadataOwnInput auctionID context
+        findAuctionMetadataOwnInput auctionId context
           `errMaybe` $(eCode AuctionMetadata'Error'MissingMetadataInput)
     ownAddress = txOutAddress ownInput
 --
