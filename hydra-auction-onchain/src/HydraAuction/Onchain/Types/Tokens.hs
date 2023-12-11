@@ -14,7 +14,7 @@ import PlutusTx.Prelude
 
 import PlutusLedgerApi.V2 (
   CurrencySymbol,
-  TokenName,
+  TokenName (..),
   TxOut (..),
   Value (..),
  )
@@ -38,19 +38,19 @@ newtype AuctionId = AuctionId
 
 -- Auction state token, identifying the true auction escrow.
 auctionTn :: TokenName
-auctionTn = "AUCTION"
+auctionTn = TokenName "AUCTION"
 --
 {-# INLINEABLE auctionTn #-}
 
 -- Auction metadata token, identifying the true auction metadata.
 auctionMetadataTn :: TokenName
-auctionMetadataTn = "AUCTION_METADATA"
+auctionMetadataTn = TokenName "AUCTION_METADATA"
 --
 {-# INLINEABLE auctionMetadataTn #-}
 
 -- Standing bid token, identifying the true standing bid.
 standingBidTn :: TokenName
-standingBidTn = "STANDING_BID"
+standingBidTn = TokenName "STANDING_BID"
 --
 {-# INLINEABLE standingBidTn #-}
 
