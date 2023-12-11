@@ -93,6 +93,7 @@ instance Eq AuctionTerms where
         && x12 == y12
 
 PlutusTx.unstableMakeIsData ''AuctionTerms
+PlutusTx.makeLift ''AuctionTerms
 
 -- -------------------------------------------------------------------------
 -- Validation

@@ -1,8 +1,12 @@
 module HydraAuction.Onchain.Scripts (
+  mkAuctionId,
+  mkAuctionInfo,
+  mkAuctionScriptInfo,
+  --
   AuctionEscrow'ScriptHash (..),
   auctionEscrowC,
-  auctionEscrowS,
-  auctionEscrowSh,
+  mkAuctionEscrowS,
+  mkAuctionEscrowSh,
   --
   AuctionMetadata'ScriptHash (..),
   auctionMetadataC,
@@ -11,29 +15,38 @@ module HydraAuction.Onchain.Scripts (
   --
   AuctionMp'ScriptHash (..),
   auctionMpC,
-  auctionMpS,
-  auctionMpSh,
+  mkAuctionMpS,
+  mkAuctionMpSh,
   --
   BidderDeposit'ScriptHash (..),
   bidderDepositC,
-  bidderDepositS,
-  bidderDepositSh,
+  mkBidderDepositS,
+  mkBidderDepositSh,
   --
   FeeEscrow'ScriptHash (..),
   feeEscrowC,
-  feeEscrowS,
-  feeEscrowSh,
+  mkFeeEscrowS,
+  mkFeeEscrowSh,
   --
   StandingBid'ScriptHash (..),
   standingBidC,
-  standingBidS,
-  standingBidSh,
+  mkStandingBidS,
+  mkStandingBidSh,
 ) where
 
 import PlutusTx.Prelude
 
-import Cardano.Api.Shelley (PlutusScriptVersion (PlutusScriptV2))
+import Cardano.Api.Shelley (
+  PlutusScript (PlutusScriptSerialised),
+  PlutusScriptVersion (PlutusScriptV2),
+  Script (PlutusScript),
+  scriptPolicyId,
+ )
+import Cardano.Api.Shelley qualified as Cardano.Api
+import Cardano.Ledger.Alonzo.TxInfo qualified as Alonzo.TxInfo
+import Cardano.Ledger.Mary.Value qualified as Mary
 import PlutusCore.Core (plcVersion100)
+import PlutusLedgerApi.V1.Value qualified as PV1.Value
 import PlutusLedgerApi.V2 (
   SerialisedScript,
   TxOutRef,
@@ -53,6 +66,8 @@ import HydraAuction.Onchain.Lib.Scripts (
  )
 import HydraAuction.Onchain.Types.AuctionInfo (
   AuctionInfo,
+  AuctionScriptInfo (..),
+  auctionScriptsToInfo,
  )
 import HydraAuction.Onchain.Types.AuctionState (
   AuctionEscrowState,
@@ -81,7 +96,7 @@ import HydraAuction.Onchain.Types.Scripts (
   StandingBid'ScriptHash (..),
  )
 import HydraAuction.Onchain.Types.Tokens (
-  AuctionId,
+  AuctionId (..),
  )
 
 import HydraAuction.Onchain.MintingPolicies.AuctionMp qualified as AuctionMp
@@ -94,7 +109,8 @@ import HydraAuction.Onchain.Validators.StandingBid qualified as StandingBid
 -- -------------------------------------------------------------------------
 -- Auction metadata validator
 -- -------------------------------------------------------------------------
-auctionMetadataC :: CompiledCode ValidatorType
+auctionMetadataC ::
+  CompiledCode ValidatorType
 auctionMetadataC =
   $$(PlutusTx.compile [||wrap AuctionMetadata.validator||])
   where
@@ -111,91 +127,190 @@ auctionMetadataSh =
 -- -------------------------------------------------------------------------
 -- Auction token minting policy
 -- -------------------------------------------------------------------------
-auctionMpC :: CompiledCode (TxOutRef -> MintingPolicyType)
+auctionMpC ::
+  CompiledCode (TxOutRef -> MintingPolicyType)
 auctionMpC =
   $$(PlutusTx.compile [||\am r -> wrap (AuctionMp.mintingPolicy am r)||])
     `PlutusTx.unsafeApplyCode` PlutusTx.liftCode plcVersion100 auctionMetadataSh
   where
     wrap = wrapMintingPolicy @AuctionMp'Redeemer
 
-auctionMpS :: SerialisedScript
-auctionMpS = serialiseCompiledCode auctionMpC
+mkAuctionMpS :: TxOutRef -> SerialisedScript
+mkAuctionMpS utxoNonce =
+  serialiseCompiledCode $
+    auctionMpC
+      `PlutusTx.unsafeApplyCode` PlutusTx.liftCode plcVersion100 utxoNonce
 
-auctionMpSh :: AuctionMp'ScriptHash
-auctionMpSh =
+mkAuctionMpSh :: TxOutRef -> AuctionMp'ScriptHash
+mkAuctionMpSh utxoNonce =
   AuctionMp'ScriptHash $
-    scriptValidatorHash PlutusScriptV2 auctionMpS
+    scriptValidatorHash PlutusScriptV2 $
+      mkAuctionMpS utxoNonce
+
+mkAuctionId :: TxOutRef -> AuctionId
+mkAuctionId =
+  AuctionId
+    . policyIdToCurrencySymbol
+    . scriptPolicyId
+    . PlutusScript PlutusScriptV2
+    . PlutusScriptSerialised
+    . mkAuctionMpS
+
+-- -------------------------------------------------------------------------
+-- Auction info
+-- -------------------------------------------------------------------------
+mkAuctionInfo :: TxOutRef -> AuctionTerms -> AuctionInfo
+mkAuctionInfo utxoNonce aTerms =
+  auctionScriptsToInfo $ mkAuctionScriptInfo utxoNonce aTerms
+
+mkAuctionScriptInfo :: TxOutRef -> AuctionTerms -> AuctionScriptInfo
+mkAuctionScriptInfo utxoNonce aTerms =
+  AuctionScriptInfo
+    { as'AuctionId = auctionId
+    , as'AuctionTerms = aTerms
+    , as'AuctionEscrow = auctionEscrow
+    , as'BidderDeposit = bidderDeposit
+    , as'FeeEscrow = feeEscrow
+    , as'StandingBid = standingBid
+    }
+  where
+    auctionId = mkAuctionId utxoNonce
+    feeEscrow = mkFeeEscrowSh aTerms
+    standingBid = mkStandingBidSh auctionId aTerms
+    auctionEscrow = mkAuctionEscrowSh standingBid feeEscrow auctionId aTerms
+    bidderDeposit =
+      mkBidderDepositSh auctionEscrow standingBid auctionId aTerms
 
 -- -------------------------------------------------------------------------
 -- Fee escrow validator
 -- -------------------------------------------------------------------------
-feeEscrowC :: CompiledCode (AuctionTerms -> StatelessValidatorType)
+feeEscrowC ::
+  CompiledCode (AuctionTerms -> StatelessValidatorType)
 feeEscrowC =
   $$(PlutusTx.compile [||wrap . FeeEscrow.validator||])
   where
     wrap = wrapStatelessValidator @FeeEscrow'Redeemer
 
-feeEscrowS :: SerialisedScript
-feeEscrowS = serialiseCompiledCode feeEscrowC
+mkFeeEscrowS :: AuctionTerms -> SerialisedScript
+mkFeeEscrowS aTerms =
+  serialiseCompiledCode $
+    feeEscrowC
+      `PlutusTx.unsafeApplyCode` PlutusTx.liftCode plcVersion100 aTerms
 
-feeEscrowSh :: FeeEscrow'ScriptHash
-feeEscrowSh =
+mkFeeEscrowSh :: AuctionTerms -> FeeEscrow'ScriptHash
+mkFeeEscrowSh aTerms =
   FeeEscrow'ScriptHash $
-    scriptValidatorHash PlutusScriptV2 feeEscrowS
+    scriptValidatorHash PlutusScriptV2 $
+      mkFeeEscrowS aTerms
 
 -- -------------------------------------------------------------------------
 -- Standing bid validator
 -- -------------------------------------------------------------------------
-standingBidC :: CompiledCode (AuctionId -> AuctionTerms -> ValidatorType)
+standingBidC ::
+  CompiledCode (AuctionId -> AuctionTerms -> ValidatorType)
 standingBidC =
   $$(PlutusTx.compile [||\i a -> wrap (StandingBid.validator i a)||])
   where
     wrap = wrapValidator @StandingBidState @StandingBid'Redeemer
 
-standingBidS :: SerialisedScript
-standingBidS = serialiseCompiledCode standingBidC
+mkStandingBidS ::
+  AuctionId -> AuctionTerms -> SerialisedScript
+mkStandingBidS auctionId aTerms =
+  serialiseCompiledCode $
+    standingBidC
+      `PlutusTx.unsafeApplyCode` PlutusTx.liftCode plcVersion100 auctionId
+      `PlutusTx.unsafeApplyCode` PlutusTx.liftCode plcVersion100 aTerms
 
-standingBidSh :: StandingBid'ScriptHash
-standingBidSh =
+mkStandingBidSh :: AuctionId -> AuctionTerms -> StandingBid'ScriptHash
+mkStandingBidSh auctionId aTerms =
   StandingBid'ScriptHash $
-    scriptValidatorHash PlutusScriptV2 standingBidS
+    scriptValidatorHash PlutusScriptV2 $
+      mkStandingBidS auctionId aTerms
 
 -- -------------------------------------------------------------------------
 -- Auction escrow validator
 -- -------------------------------------------------------------------------
 auctionEscrowC ::
-  CompiledCode (AuctionId -> AuctionTerms -> ValidatorType)
+  CompiledCode
+    ( StandingBid'ScriptHash ->
+      FeeEscrow'ScriptHash ->
+      AuctionId ->
+      AuctionTerms ->
+      ValidatorType
+    )
 auctionEscrowC =
   $$(PlutusTx.compile [||\s f i a -> wrap (AuctionEscrow.validator s f i a)||])
-    `PlutusTx.unsafeApplyCode` PlutusTx.liftCode plcVersion100 standingBidSh
-    `PlutusTx.unsafeApplyCode` PlutusTx.liftCode plcVersion100 feeEscrowSh
   where
     wrap = wrapValidator @AuctionEscrowState @AuctionEscrow'Redeemer
 
-auctionEscrowS :: SerialisedScript
-auctionEscrowS = serialiseCompiledCode auctionEscrowC
+mkAuctionEscrowS ::
+  StandingBid'ScriptHash ->
+  FeeEscrow'ScriptHash ->
+  AuctionId ->
+  AuctionTerms ->
+  SerialisedScript
+mkAuctionEscrowS sbsh fsh aid aTerms =
+  serialiseCompiledCode $
+    auctionEscrowC
+      `PlutusTx.unsafeApplyCode` PlutusTx.liftCode plcVersion100 sbsh
+      `PlutusTx.unsafeApplyCode` PlutusTx.liftCode plcVersion100 fsh
+      `PlutusTx.unsafeApplyCode` PlutusTx.liftCode plcVersion100 aid
+      `PlutusTx.unsafeApplyCode` PlutusTx.liftCode plcVersion100 aTerms
 
-auctionEscrowSh :: AuctionEscrow'ScriptHash
-auctionEscrowSh =
+mkAuctionEscrowSh ::
+  StandingBid'ScriptHash ->
+  FeeEscrow'ScriptHash ->
+  AuctionId ->
+  AuctionTerms ->
+  AuctionEscrow'ScriptHash
+mkAuctionEscrowSh sbsh fsh aid aTerms =
   AuctionEscrow'ScriptHash $
-    scriptValidatorHash PlutusScriptV2 auctionEscrowS
+    scriptValidatorHash PlutusScriptV2 $
+      mkAuctionEscrowS sbsh fsh aid aTerms
 
 -- -------------------------------------------------------------------------
 -- Bidder deposit validator
 -- -------------------------------------------------------------------------
 bidderDepositC ::
-  CompiledCode (AuctionId -> AuctionTerms -> ValidatorType)
+  CompiledCode
+    ( AuctionEscrow'ScriptHash ->
+      StandingBid'ScriptHash ->
+      AuctionId ->
+      AuctionTerms ->
+      ValidatorType
+    )
 bidderDepositC =
   $$(PlutusTx.compile [||\s f i a -> wrap (BidderDeposit.validator s f i a)||])
-    `PlutusTx.unsafeApplyCode` PlutusTx.liftCode plcVersion100 auctionEscrowSh
-    `PlutusTx.unsafeApplyCode` PlutusTx.liftCode plcVersion100 standingBidSh
   where
     wrap = wrapValidator @BidderInfo @BidderDeposit'Redeemer
 
-bidderDepositS :: SerialisedScript
-bidderDepositS = serialiseCompiledCode bidderDepositC
+mkBidderDepositS ::
+  AuctionEscrow'ScriptHash ->
+  StandingBid'ScriptHash ->
+  AuctionId ->
+  AuctionTerms ->
+  SerialisedScript
+mkBidderDepositS aesh sbsh aid aTerms =
+  serialiseCompiledCode $
+    bidderDepositC
+      `PlutusTx.unsafeApplyCode` PlutusTx.liftCode plcVersion100 aesh
+      `PlutusTx.unsafeApplyCode` PlutusTx.liftCode plcVersion100 sbsh
+      `PlutusTx.unsafeApplyCode` PlutusTx.liftCode plcVersion100 aid
+      `PlutusTx.unsafeApplyCode` PlutusTx.liftCode plcVersion100 aTerms
 
-bidderDepositSh :: BidderDeposit'ScriptHash
-bidderDepositSh =
+mkBidderDepositSh ::
+  AuctionEscrow'ScriptHash ->
+  StandingBid'ScriptHash ->
+  AuctionId ->
+  AuctionTerms ->
+  BidderDeposit'ScriptHash
+mkBidderDepositSh aesh sbsh aid aTerms =
   BidderDeposit'ScriptHash $
-    scriptValidatorHash PlutusScriptV2 bidderDepositS
+    scriptValidatorHash PlutusScriptV2 $
+      mkBidderDepositS aesh sbsh aid aTerms
+
+policyIdToCurrencySymbol :: Cardano.Api.PolicyId -> PV1.Value.CurrencySymbol
+policyIdToCurrencySymbol (Cardano.Api.PolicyId sh) =
+  Alonzo.TxInfo.transPolicyID $ Mary.PolicyID lsh
+  where
+    lsh = Cardano.Api.toShelleyScriptHash sh

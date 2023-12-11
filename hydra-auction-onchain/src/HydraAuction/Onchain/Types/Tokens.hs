@@ -18,6 +18,7 @@ import PlutusLedgerApi.V2 (
   TxOut (..),
   Value (..),
  )
+import PlutusTx qualified
 import PlutusTx.AssocMap qualified as AssocMap
 
 import HydraAuction.Onchain.Lib.PlutusTx (
@@ -31,6 +32,8 @@ import HydraAuction.Onchain.Lib.PlutusTx (
 newtype AuctionId = AuctionId
   { auctionId :: CurrencySymbol
   }
+
+PlutusTx.makeLift ''AuctionId
 
 -- -------------------------------------------------------------------------
 -- Auction state token names
