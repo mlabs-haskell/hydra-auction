@@ -6,6 +6,7 @@ module HydraAuction.Error (
 import Prelude
 
 import Data.List (elemIndex)
+import Data.Maybe (fromJust)
 import Data.Proxy (Proxy (..))
 import Data.Text (Text)
 import Data.Text qualified as Text
@@ -34,7 +35,7 @@ instance (Universe a, Eq a, ErrorCodePrefix a) => ErrorCode a where
   toErrorCode x = prefix <> numericCode
     where
       prefix = errorCodePrefix (Proxy :: Proxy a)
-      numericCode = Text.pack $ show $ elemIndex x universe
+      numericCode = Text.pack $ show $ fromJust $ elemIndex x universe
 
   fromErrorCode x = atMay universe =<< numericCode
     where
