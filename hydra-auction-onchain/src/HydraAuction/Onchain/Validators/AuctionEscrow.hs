@@ -25,7 +25,6 @@ import HydraAuction.Onchain.Lib.PlutusTx (
   lovelaceValueOf,
   onlyOneInputFromAddress,
   parseInlineDatum,
-  partyConsentsAda,
  )
 import HydraAuction.Onchain.Types.AuctionState (
   AuctionEscrowState (..),
@@ -219,7 +218,6 @@ checkBB sbsh fsh auctionId aTerms oldAState context ownInput =
     AuctionTerms {..} = aTerms
     AuctionId aid = auctionId
     ownAddress = txOutAddress ownInput
-    lovelaceOwnInput = lovelaceValueOf $ txOutValue ownInput
     --
     -- The auction state should transition from StartBidding
     -- to AuctionConcluded.
@@ -272,7 +270,7 @@ checkBB sbsh fsh auctionId aTerms oldAState context ownInput =
     -- explictly by signing the transaction or
     -- implicitly by receiving the bid deposit ADA.
     bidderConsents =
-      partyConsentsAda txInfo bi'BidderPkh lovelaceOwnInput
+      txSignedBy txInfo bi'BidderPkh
         `err` $(eCode AuctionEscrow'BB'Error'NoBidderConsent)
     --
     -- The auction escrow output contains a datum that can be
@@ -339,7 +337,6 @@ checkSR fsh auctionId aTerms oldAState context ownInput =
     txInfo@TxInfo {..} = scriptContextTxInfo context
     AuctionTerms {..} = aTerms
     ownAddress = txOutAddress ownInput
-    lovelaceOwnInput = lovelaceValueOf $ txOutValue ownInput
     --
     -- The auction state should transition from StartBidding
     -- to AuctionConcluded.
@@ -380,7 +377,7 @@ checkSR fsh auctionId aTerms oldAState context ownInput =
     -- explicitly by signing it or
     -- implicitly by receiving the bid deposit ADA.
     sellerConsents =
-      partyConsentsAda txInfo at'SellerPkh lovelaceOwnInput
+      txSignedBy txInfo at'SellerPkh
         `err` $(eCode AuctionEscrow'SR'Error'NoSellerConsent)
     --
     -- The auction escrow output contains a datum that can be
@@ -418,7 +415,6 @@ checkCA auctionId aTerms aState context ownInput =
   where
     txInfo@TxInfo {..} = scriptContextTxInfo context
     AuctionTerms {..} = aTerms
-    lovelaceOwnInput = lovelaceValueOf $ txOutValue ownInput
     --
     -- The auction is concluded.
     auctionIsConcluded =
@@ -447,7 +443,7 @@ checkCA auctionId aTerms aState context ownInput =
     -- explicitly by signing it or
     -- implicitly by receiving the bid deposit ADA.
     sellerConsents =
-      partyConsentsAda txInfo at'SellerPkh lovelaceOwnInput
+      txSignedBy txInfo at'SellerPkh
         `err` $(eCode AuctionEscrow'CA'Error'NoSellerConsent)
 --
 {-# INLINEABLE checkCA #-}

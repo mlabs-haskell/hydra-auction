@@ -13,6 +13,7 @@ import PlutusLedgerApi.V2 (
  )
 import PlutusLedgerApi.V2.Contexts (
   findOwnInput,
+  txSignedBy,
  )
 
 import HydraAuction.Error.Onchain.Validators.BidderDeposit (
@@ -21,11 +22,9 @@ import HydraAuction.Error.Onchain.Validators.BidderDeposit (
 import HydraAuction.Onchain.Lib.Error (eCode, err, errMaybe, errMaybeFlip)
 import HydraAuction.Onchain.Lib.PlutusTx (
   getSpentInputRedeemer,
-  lovelaceValueOf,
   onlyOneInputFromAddress,
   parseInlineDatum,
   parseRedemeer,
-  partyConsentsAda,
  )
 import HydraAuction.Onchain.Types.AuctionState (
   AuctionEscrowState (..),
@@ -98,11 +97,11 @@ validator aesh sbsh auctionId aTerms bInfo redeemer context =
         DepositUsedToConcludeAuction ->
           checkCA aesh sbsh auctionId bInfo context
         DepositReclaimedByLoser ->
-          checkBL sbsh auctionId aTerms bInfo context ownInput
+          checkBL sbsh auctionId aTerms bInfo context
         DepositReclaimedAuctionConcluded ->
-          checkAC aesh auctionId aTerms bInfo context ownInput
+          checkAC aesh auctionId aTerms bInfo context
         DepositCleanup ->
-          checkDC aTerms bInfo context ownInput
+          checkDC aTerms bInfo context
 --
 {-# INLINEABLE validator #-}
 
@@ -175,16 +174,14 @@ checkBL ::
   AuctionTerms ->
   BidderInfo ->
   ScriptContext ->
-  TxOut ->
   Bool
-checkBL sbsh auctionId aTerms bInfo context ownInput =
+checkBL sbsh auctionId aTerms bInfo context =
   bidderLostTheAuction
     && validityIntervalIsCorrect
     && bidderConsents
   where
     txInfo@TxInfo {..} = scriptContextTxInfo context
     BidderInfo {..} = bInfo
-    lovelaceOwnInput = lovelaceValueOf $ txOutValue ownInput
     --
     -- The bidder deposit's bidder lost the auction.
     bidderLostTheAuction =
@@ -200,7 +197,7 @@ checkBL sbsh auctionId aTerms bInfo context ownInput =
     -- explictly by signing the transaction or
     -- implicitly by receiving the bid deposit ADA.
     bidderConsents =
-      partyConsentsAda txInfo bi'BidderPkh lovelaceOwnInput
+      txSignedBy txInfo bi'BidderPkh
         `err` $(eCode BidderDeposit'BL'Error'NoBidderConsent)
     --
     -- The standing bid input contains a datum that can be decoded
@@ -233,16 +230,14 @@ checkAC ::
   AuctionTerms ->
   BidderInfo ->
   ScriptContext ->
-  TxOut ->
   Bool
-checkAC aesh auctionId aTerms bInfo context ownInput =
+checkAC aesh auctionId aTerms bInfo context =
   auctionIsConcluded
     && validityIntervalIsCorrect
     && bidderConsents
   where
     txInfo@TxInfo {..} = scriptContextTxInfo context
     BidderInfo {..} = bInfo
-    lovelaceOwnInput = lovelaceValueOf $ txOutValue ownInput
     --
     -- The auction is concluded.
     auctionIsConcluded =
@@ -258,7 +253,7 @@ checkAC aesh auctionId aTerms bInfo context ownInput =
     -- explictly by signing the transaction or
     -- implicitly by receiving the bid deposit ADA.
     bidderConsents =
-      partyConsentsAda txInfo bi'BidderPkh lovelaceOwnInput
+      txSignedBy txInfo bi'BidderPkh
         `err` $(eCode BidderDeposit'AC'Error'NoBidderConsent)
     --
     -- The auction escrow output contains a datum that can be
@@ -287,15 +282,13 @@ checkDC ::
   AuctionTerms ->
   BidderInfo ->
   ScriptContext ->
-  TxOut ->
   Bool
-checkDC aTerms bInfo context ownInput =
+checkDC aTerms bInfo context =
   validityIntervalIsCorrect
     && bidderConsents
   where
     txInfo@TxInfo {..} = scriptContextTxInfo context
     BidderInfo {..} = bInfo
-    lovelaceOwnInput = lovelaceValueOf $ txOutValue ownInput
     --
     -- This redeemer can only be used during the cleanup period.
     validityIntervalIsCorrect =
@@ -306,7 +299,7 @@ checkDC aTerms bInfo context ownInput =
     -- explictly by signing the transaction or
     -- implicitly by receiving the bid deposit ADA.
     bidderConsents =
-      partyConsentsAda txInfo bi'BidderPkh lovelaceOwnInput
+      txSignedBy txInfo bi'BidderPkh
         `err` $(eCode BidderDeposit'DC'Error'NoBidderConsent)
 --
 {-# INLINEABLE checkDC #-}
