@@ -90,7 +90,7 @@ validateBidTerms ::
   CurrencySymbol ->
   BidTerms ->
   Bool
-validateBidTerms AuctionTerms {..} auctionId BidTerms {..}
+validateBidTerms AuctionTerms {..} auctionCs BidTerms {..}
   | BidderInfo {..} <- bt'Bidder =
       --
       -- The bidder's info is correct.
@@ -101,7 +101,7 @@ validateBidTerms AuctionTerms {..} auctionId BidTerms {..}
       -- to participate in the auction.
       verifyEd25519Signature
         at'SellerVk
-        (sellerSignatureMessage auctionId bi'BidderVk)
+        (sellerSignatureMessage auctionCs bi'BidderVk)
         bt'SellerSignature
         `err` $(eCode BidTerms'Error'InvalidSellerSignature)
         --
@@ -109,7 +109,7 @@ validateBidTerms AuctionTerms {..} auctionId BidTerms {..}
         -- to be submitted in the auction.
         && verifyEd25519Signature
           bi'BidderVk
-          (bidderSignatureMessage auctionId bt'BidPrice bi'BidderPkh)
+          (bidderSignatureMessage auctionCs bt'BidPrice bi'BidderPkh)
           bt'BidderSignature
         `err` $(eCode BidTerms'Error'InvalidBidderSignature)
 --
@@ -120,8 +120,8 @@ bidderSignatureMessage ::
   Integer ->
   PubKeyHash ->
   BuiltinByteString
-bidderSignatureMessage auctionId bidPrice bidderPkh =
-  serialise auctionId
+bidderSignatureMessage auctionCs bidPrice bidderPkh =
+  serialise auctionCs
     <> serialise bidderPkh
     <> serialise bidPrice
 --
@@ -131,8 +131,8 @@ sellerSignatureMessage ::
   CurrencySymbol ->
   BuiltinByteString ->
   BuiltinByteString
-sellerSignatureMessage auctionId bidderVk =
-  serialise auctionId
+sellerSignatureMessage auctionCs bidderVk =
+  serialise auctionCs
     <> serialise bidderVk
 --
 {-# INLINEABLE sellerSignatureMessage #-}
