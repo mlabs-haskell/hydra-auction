@@ -26,11 +26,8 @@ import HydraAuction.Onchain.Lib.PlutusTx (
   parseInlineDatum,
   parseRedemeer,
  )
-import HydraAuction.Onchain.Types.AuctionState (
+import HydraAuction.Onchain.Types.AuctionEscrowState (
   AuctionEscrowState (..),
-  StandingBidState (..),
-  bidderLost,
-  bidderWon,
  )
 import HydraAuction.Onchain.Types.AuctionTerms (
   AuctionTerms (..),
@@ -50,6 +47,11 @@ import HydraAuction.Onchain.Types.Scripts (
   StandingBid'ScriptHash (..),
   findAuctionEscrowInputAtSh,
   findStandingBidInputAtSh,
+ )
+import HydraAuction.Onchain.Types.StandingBidState (
+  StandingBidState (..),
+  bidderLost,
+  bidderWon,
  )
 import HydraAuction.Onchain.Types.Tokens (
   AuctionId (..),

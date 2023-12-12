@@ -99,14 +99,15 @@ library
     HydraAuction.Onchain.Lib.Serialise
     HydraAuction.Onchain.MintingPolicies.AuctionMp
     HydraAuction.Onchain.Scripts
+    HydraAuction.Onchain.Types.AuctionEscrowState
     HydraAuction.Onchain.Types.AuctionInfo
-    HydraAuction.Onchain.Types.AuctionState
     HydraAuction.Onchain.Types.AuctionTerms
     HydraAuction.Onchain.Types.BidderInfo
     HydraAuction.Onchain.Types.BidTerms
     HydraAuction.Onchain.Types.DelegateInfo
     HydraAuction.Onchain.Types.Redeemers
     HydraAuction.Onchain.Types.Scripts
+    HydraAuction.Onchain.Types.StandingBidState
     HydraAuction.Onchain.Types.Tokens
     HydraAuction.Onchain.Validators.AuctionEscrow
     HydraAuction.Onchain.Validators.AuctionMetadata

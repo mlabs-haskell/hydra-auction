@@ -95,12 +95,13 @@ library
     HydraAuction.Offchain.Lib.Crypto
     HydraAuction.Offchain.Lib.Time
     HydraAuction.Offchain.Lib.Validation
+    HydraAuction.Offchain.Types.AuctionEscrowState
     HydraAuction.Offchain.Types.AuctionInfo
     HydraAuction.Offchain.Types.AuctionTerms
-    HydraAuction.Offchain.Types.AuctionState
     HydraAuction.Offchain.Types.BidderInfo
     HydraAuction.Offchain.Types.BidTerms
     HydraAuction.Offchain.Types.DelegateInfo
+    HydraAuction.Offchain.Types.StandingBidState
 
   build-depends:
     -- , aeson

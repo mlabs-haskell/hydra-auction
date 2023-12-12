@@ -8,7 +8,7 @@ import Data.Universe (Universe (..), universeGeneric)
 import GHC.Generics (Generic)
 
 import HydraAuction.Error (ErrorCodePrefix (..))
-import HydraAuction.Error.Types.AuctionState (
+import HydraAuction.Error.Types.StandingBidState (
   NewBid'Error,
  )
 

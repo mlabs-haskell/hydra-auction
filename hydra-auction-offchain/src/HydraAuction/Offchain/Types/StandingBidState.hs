@@ -1,12 +1,9 @@
-module HydraAuction.Offchain.Types.AuctionState (
-  AuctionEscrowState (..),
+module HydraAuction.Offchain.Types.StandingBidState (
   StandingBidState (..),
   NewBid'Error (..),
   sellerPayout,
   validateNewBid,
-  fromPlutusAuctionEscrowState,
   fromPlutusStandingBidState,
-  toPlutusAuctionEscrowState,
   toPlutusStandingBidState,
 ) where
 
@@ -22,7 +19,7 @@ import Cardano.Api.Shelley (
   PolicyId (..),
  )
 
-import HydraAuction.Error.Types.AuctionState (
+import HydraAuction.Error.Types.StandingBidState (
   NewBid'Error (..),
  )
 import HydraAuction.Offchain.Lib.Codec.Onchain (
@@ -40,13 +37,7 @@ import HydraAuction.Offchain.Types.BidTerms (
   validateBidTerms,
  )
 
-import HydraAuction.Onchain.Types.AuctionState qualified as O
-
-data AuctionEscrowState
-  = AuctionAnnounced
-  | BiddingStarted
-  | AuctionConcluded
-  deriving stock (Eq, Generic, Show)
+import HydraAuction.Onchain.Types.StandingBidState qualified as O
 
 newtype StandingBidState = StandingBidState
   {standingBidState :: Maybe BidTerms}
@@ -55,7 +46,6 @@ newtype StandingBidState = StandingBidState
 -- -------------------------------------------------------------------------
 -- New bid validation
 -- -------------------------------------------------------------------------
-
 validateNewBid ::
   AuctionTerms ->
   PolicyId ->
@@ -120,7 +110,6 @@ validateStartingBid AuctionTerms {..} BidTerms {..} =
 -- -------------------------------------------------------------------------
 -- Seller payout
 -- -------------------------------------------------------------------------
-
 sellerPayout :: AuctionTerms -> StandingBidState -> Lovelace
 sellerPayout auTerms StandingBidState {..}
   | Just BidTerms {..} <- standingBidState =
@@ -130,11 +119,6 @@ sellerPayout auTerms StandingBidState {..}
 -- -------------------------------------------------------------------------
 -- Conversion to onchain
 -- -------------------------------------------------------------------------
-toPlutusAuctionEscrowState :: AuctionEscrowState -> O.AuctionEscrowState
-toPlutusAuctionEscrowState AuctionAnnounced = O.AuctionAnnounced
-toPlutusAuctionEscrowState BiddingStarted = O.BiddingStarted
-toPlutusAuctionEscrowState AuctionConcluded = O.AuctionConcluded
-
 toPlutusStandingBidState :: StandingBidState -> O.StandingBidState
 toPlutusStandingBidState StandingBidState {..} =
   O.StandingBidState
@@ -145,11 +129,6 @@ toPlutusStandingBidState StandingBidState {..} =
 -- -------------------------------------------------------------------------
 -- Conversion from onchain
 -- -------------------------------------------------------------------------
-fromPlutusAuctionEscrowState :: O.AuctionEscrowState -> AuctionEscrowState
-fromPlutusAuctionEscrowState O.AuctionAnnounced = AuctionAnnounced
-fromPlutusAuctionEscrowState O.BiddingStarted = BiddingStarted
-fromPlutusAuctionEscrowState O.AuctionConcluded = AuctionConcluded
-
 fromPlutusStandingBidState :: O.StandingBidState -> Maybe StandingBidState
 fromPlutusStandingBidState O.StandingBidState {..} = do
   m'standingBidState <-

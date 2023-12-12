@@ -1,8 +1,5 @@
-module HydraAuction.Onchain.Types.AuctionState (
-  AuctionEscrowState (..),
+module HydraAuction.Onchain.Types.StandingBidState (
   StandingBidState (..),
-  validateAuctionEscrowTransitionToStartBidding,
-  validateAuctionEscrowTransitionToAuctionConcluded,
   validateNewBid,
   bidderLost,
   bidderWon,
@@ -13,12 +10,10 @@ import PlutusTx.Prelude
 import PlutusLedgerApi.V2 (CurrencySymbol)
 import PlutusTx qualified
 
-import HydraAuction.Onchain.Lib.Error (eCode, err)
-
-import HydraAuction.Error.Types.AuctionState (
-  AuctionEscrowState'Error (..),
+import HydraAuction.Error.Types.StandingBidState (
   NewBid'Error (..),
  )
+import HydraAuction.Onchain.Lib.Error (eCode, err)
 import HydraAuction.Onchain.Types.AuctionTerms (
   AuctionTerms (..),
  )
@@ -31,34 +26,15 @@ import HydraAuction.Onchain.Types.BidderInfo (
   BidderInfo (..),
  )
 
-data AuctionEscrowState
-  = AuctionAnnounced
-  | BiddingStarted
-  | AuctionConcluded
-
 newtype StandingBidState = StandingBidState
   { standingBidState :: Maybe BidTerms
   }
-
-instance Eq AuctionEscrowState where
-  AuctionAnnounced == AuctionAnnounced = True
-  AuctionAnnounced == BiddingStarted = False
-  AuctionAnnounced == AuctionConcluded = False
-  --
-  BiddingStarted == AuctionAnnounced = False
-  BiddingStarted == BiddingStarted = True
-  BiddingStarted == AuctionConcluded = False
-  --
-  AuctionConcluded == AuctionAnnounced = False
-  AuctionConcluded == BiddingStarted = False
-  AuctionConcluded == AuctionConcluded = True
 
 instance Eq StandingBidState where
   (StandingBidState x1)
     == (StandingBidState y1) =
       x1 == y1
 
-PlutusTx.unstableMakeIsData ''AuctionEscrowState
 PlutusTx.unstableMakeIsData ''StandingBidState
 
 -- -------------------------------------------------------------------------
@@ -75,42 +51,6 @@ bidderWon :: StandingBidState -> BidderInfo -> Bool
 bidderWon sbs x = not $ bidderLost sbs x
 --
 {-# INLINEABLE bidderWon #-}
-
--- -------------------------------------------------------------------------
--- Auction escrow state transition validation
--- -------------------------------------------------------------------------
-
-validateAuctionEscrowTransitionToStartBidding ::
-  AuctionEscrowState ->
-  AuctionEscrowState ->
-  Bool
-validateAuctionEscrowTransitionToStartBidding oldState newState =
-  oldStateIsCorrect && newStateIsCorrect
-  where
-    oldStateIsCorrect =
-      (oldState == AuctionAnnounced)
-        `err` $(eCode AuctionEscrowState'SB'Error'InvalidOldState)
-    newStateIsCorrect =
-      (newState == BiddingStarted)
-        `err` $(eCode AuctionEscrowState'SB'Error'InvalidNewState)
---
-{-# INLINEABLE validateAuctionEscrowTransitionToStartBidding #-}
-
-validateAuctionEscrowTransitionToAuctionConcluded ::
-  AuctionEscrowState ->
-  AuctionEscrowState ->
-  Bool
-validateAuctionEscrowTransitionToAuctionConcluded oldState newState =
-  oldStateIsCorrect && newStateIsCorrect
-  where
-    oldStateIsCorrect =
-      (oldState == BiddingStarted)
-        `err` $(eCode AuctionEscrowState'AC'Error'InvalidOldState)
-    newStateIsCorrect =
-      (newState == AuctionConcluded)
-        `err` $(eCode AuctionEscrowState'AC'Error'InvalidNewState)
---
-{-# INLINEABLE validateAuctionEscrowTransitionToAuctionConcluded #-}
 
 -- -------------------------------------------------------------------------
 -- Standing bid state transition validation

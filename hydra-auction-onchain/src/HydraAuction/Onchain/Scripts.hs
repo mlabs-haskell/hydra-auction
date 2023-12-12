@@ -64,14 +64,13 @@ import HydraAuction.Onchain.Lib.Scripts (
   wrapStatelessValidator,
   wrapValidator,
  )
+import HydraAuction.Onchain.Types.AuctionEscrowState (
+  AuctionEscrowState,
+ )
 import HydraAuction.Onchain.Types.AuctionInfo (
   AuctionInfo,
   AuctionScriptInfo (..),
   auctionScriptsToInfo,
- )
-import HydraAuction.Onchain.Types.AuctionState (
-  AuctionEscrowState,
-  StandingBidState,
  )
 import HydraAuction.Onchain.Types.AuctionTerms (
   AuctionTerms,
@@ -94,6 +93,9 @@ import HydraAuction.Onchain.Types.Scripts (
   BidderDeposit'ScriptHash (..),
   FeeEscrow'ScriptHash (..),
   StandingBid'ScriptHash (..),
+ )
+import HydraAuction.Onchain.Types.StandingBidState (
+  StandingBidState,
  )
 import HydraAuction.Onchain.Types.Tokens (
   AuctionId (..),

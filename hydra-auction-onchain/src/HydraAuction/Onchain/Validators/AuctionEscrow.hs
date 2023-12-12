@@ -26,9 +26,8 @@ import HydraAuction.Onchain.Lib.PlutusTx (
   onlyOneInputFromAddress,
   parseInlineDatum,
  )
-import HydraAuction.Onchain.Types.AuctionState (
+import HydraAuction.Onchain.Types.AuctionEscrowState (
   AuctionEscrowState (..),
-  StandingBidState (..),
   validateAuctionEscrowTransitionToAuctionConcluded,
   validateAuctionEscrowTransitionToStartBidding,
  )
@@ -60,6 +59,9 @@ import HydraAuction.Onchain.Types.Scripts (
   findStandingBidInputAtSh,
   findStandingBidTxOutAtSh,
   valuePaidToFeeEscrow,
+ )
+import HydraAuction.Onchain.Types.StandingBidState (
+  StandingBidState (..),
  )
 import HydraAuction.Onchain.Types.Tokens (
   AuctionId (..),
