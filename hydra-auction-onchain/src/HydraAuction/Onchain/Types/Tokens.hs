@@ -30,7 +30,7 @@ import HydraAuction.Onchain.Lib.PlutusTx (
 -- -------------------------------------------------------------------------
 
 newtype AuctionId = AuctionId
-  { auctionId :: CurrencySymbol
+  { auctionCs :: CurrencySymbol
   }
 
 PlutusTx.makeLift ''AuctionId
@@ -60,7 +60,7 @@ standingBidTn = TokenName "STANDING_BID"
 allAuctionTokensMinted :: AuctionId -> Value
 allAuctionTokensMinted AuctionId {..} =
   Value $
-    AssocMap.singleton auctionId $
+    AssocMap.singleton auctionCs $
       AssocMap.fromList
         [ (auctionTn, 1)
         , (auctionMetadataTn, 1)
@@ -72,7 +72,7 @@ allAuctionTokensMinted AuctionId {..} =
 allAuctionTokensBurned :: AuctionId -> Value
 allAuctionTokensBurned AuctionId {..} =
   Value $
-    AssocMap.singleton auctionId $
+    AssocMap.singleton auctionCs $
       AssocMap.fromList
         [ (auctionTn, -1)
         , (auctionMetadataTn, -1)
@@ -83,18 +83,18 @@ allAuctionTokensBurned AuctionId {..} =
 
 hasAuctionToken :: AuctionId -> TxOut -> Bool
 hasAuctionToken AuctionId {..} =
-  txOutHasStateToken auctionId auctionTn
+  txOutHasStateToken auctionCs auctionTn
 --
 {-# INLINEABLE hasAuctionToken #-}
 
 hasAuctionMetadataToken :: AuctionId -> TxOut -> Bool
 hasAuctionMetadataToken AuctionId {..} =
-  txOutHasStateToken auctionId auctionMetadataTn
+  txOutHasStateToken auctionCs auctionMetadataTn
 --
 {-# INLINEABLE hasAuctionMetadataToken #-}
 
 hasStandingBidToken :: AuctionId -> TxOut -> Bool
 hasStandingBidToken AuctionId {..} =
-  txOutHasStateToken auctionId standingBidTn
+  txOutHasStateToken auctionCs standingBidTn
 --
 {-# INLINEABLE hasStandingBidToken #-}

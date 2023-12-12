@@ -45,7 +45,7 @@ validator AuctionInfo {..} RemoveAuction context =
     && auctionTokensAreBurnedExactly
   where
     TxInfo {..} = scriptContextTxInfo context
-    auctionId = AuctionId ai'AuctionId
+    auctionId = AuctionId ai'AuctionCs
     --
     -- There should only be one input from the auction metadata validator.
     ownInputIsOnlyInputFromOwnScript =

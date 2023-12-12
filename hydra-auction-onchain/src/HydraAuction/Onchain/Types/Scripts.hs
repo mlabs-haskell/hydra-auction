@@ -79,7 +79,7 @@ findAuctionEscrowOwnInput ::
   ScriptContext ->
   Maybe TxInInfo
 findAuctionEscrowOwnInput AuctionId {..} =
-  findOwnInputWithStateToken auctionId auctionTn
+  findOwnInputWithStateToken auctionCs auctionTn
 --
 {-# INLINEABLE findAuctionEscrowOwnInput #-}
 
@@ -89,7 +89,7 @@ findAuctionEscrowTokenInput ::
   Maybe TxInInfo
 findAuctionEscrowTokenInput AuctionId {..} =
   findInputWithStateToken
-    auctionId
+    auctionCs
     auctionTn
 --
 {-# INLINEABLE findAuctionEscrowTokenInput #-}
@@ -101,7 +101,7 @@ findAuctionEscrowInputAtSh ::
   Maybe TxInInfo
 findAuctionEscrowInputAtSh AuctionId {..} AuctionEscrow'ScriptHash {..} =
   findInputWithStateTokenAtSh
-    auctionId
+    auctionCs
     auctionTn
     sh'AuctionEscrow
 --
@@ -114,7 +114,7 @@ findAuctionEscrowTxOutAtSh ::
   Maybe TxOut
 findAuctionEscrowTxOutAtSh AuctionId {..} AuctionEscrow'ScriptHash {..} =
   findTxOutWithStateTokenAtSh
-    auctionId
+    auctionCs
     auctionTn
     sh'AuctionEscrow
 --
@@ -127,7 +127,7 @@ findAuctionEscrowTxOutAtAddr ::
   Maybe TxOut
 findAuctionEscrowTxOutAtAddr AuctionId {..} =
   findTxOutWithStateTokenAtAddr
-    auctionId
+    auctionCs
     auctionTn
 --
 {-# INLINEABLE findAuctionEscrowTxOutAtAddr #-}
@@ -146,7 +146,7 @@ findAuctionMetadataOwnInput ::
   ScriptContext ->
   Maybe TxInInfo
 findAuctionMetadataOwnInput AuctionId {..} =
-  findOwnInputWithStateToken auctionId auctionMetadataTn
+  findOwnInputWithStateToken auctionCs auctionMetadataTn
 --
 {-# INLINEABLE findAuctionMetadataOwnInput #-}
 
@@ -156,7 +156,7 @@ findAuctionMetadataTokenInput ::
   Maybe TxInInfo
 findAuctionMetadataTokenInput AuctionId {..} =
   findInputWithStateToken
-    auctionId
+    auctionCs
     auctionMetadataTn
 --
 {-# INLINEABLE findAuctionMetadataTokenInput #-}
@@ -168,7 +168,7 @@ findAuctionMetadataInputAtSh ::
   Maybe TxInInfo
 findAuctionMetadataInputAtSh AuctionId {..} AuctionMetadata'ScriptHash {..} =
   findInputWithStateTokenAtSh
-    auctionId
+    auctionCs
     auctionMetadataTn
     sh'AuctionMetadata
 --
@@ -181,7 +181,7 @@ findAuctionMetadataTxOutAtSh ::
   Maybe TxOut
 findAuctionMetadataTxOutAtSh AuctionId {..} AuctionMetadata'ScriptHash {..} =
   findTxOutWithStateTokenAtSh
-    auctionId
+    auctionCs
     auctionMetadataTn
     sh'AuctionMetadata
 --
@@ -194,7 +194,7 @@ findAuctionMetadataTxOutAtAddr ::
   Maybe TxOut
 findAuctionMetadataTxOutAtAddr AuctionId {..} =
   findTxOutWithStateTokenAtAddr
-    auctionId
+    auctionCs
     auctionMetadataTn
 --
 {-# INLINEABLE findAuctionMetadataTxOutAtAddr #-}
@@ -235,7 +235,7 @@ findStandingBidOwnInput ::
   ScriptContext ->
   Maybe TxInInfo
 findStandingBidOwnInput AuctionId {..} =
-  findOwnInputWithStateToken auctionId standingBidTn
+  findOwnInputWithStateToken auctionCs standingBidTn
 --
 {-# INLINEABLE findStandingBidOwnInput #-}
 
@@ -245,7 +245,7 @@ findStandingBidTokenInput ::
   Maybe TxInInfo
 findStandingBidTokenInput AuctionId {..} =
   findInputWithStateToken
-    auctionId
+    auctionCs
     standingBidTn
 --
 {-# INLINEABLE findStandingBidTokenInput #-}
@@ -257,7 +257,7 @@ findStandingBidInputAtSh ::
   Maybe TxInInfo
 findStandingBidInputAtSh AuctionId {..} StandingBid'ScriptHash {..} =
   findInputWithStateTokenAtSh
-    auctionId
+    auctionCs
     standingBidTn
     sh'StandingBid
 --
@@ -270,7 +270,7 @@ findStandingBidTxOutAtSh ::
   Maybe TxOut
 findStandingBidTxOutAtSh AuctionId {..} StandingBid'ScriptHash {..} =
   findTxOutWithStateTokenAtSh
-    auctionId
+    auctionCs
     standingBidTn
     sh'StandingBid
 --
@@ -283,7 +283,7 @@ findStandingBidTxOutAtAddr ::
   Maybe TxOut
 findStandingBidTxOutAtAddr AuctionId {..} =
   findTxOutWithStateTokenAtAddr
-    auctionId
+    auctionCs
     standingBidTn
 --
 {-# INLINEABLE findStandingBidTxOutAtAddr #-}

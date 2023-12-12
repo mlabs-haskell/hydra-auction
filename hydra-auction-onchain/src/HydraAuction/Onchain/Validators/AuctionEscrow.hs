@@ -216,7 +216,7 @@ checkBB sbsh fsh auctionId aTerms oldAState context ownInput =
   where
     txInfo@TxInfo {..} = scriptContextTxInfo context
     AuctionTerms {..} = aTerms
-    AuctionId aid = auctionId
+    AuctionId {..} = auctionId
     ownAddress = txOutAddress ownInput
     --
     -- The auction state should transition from StartBidding
@@ -233,7 +233,7 @@ checkBB sbsh fsh auctionId aTerms oldAState context ownInput =
     --
     -- The bid terms in the standing bid input are valid.
     bidTermsAreValid =
-      validateBidTerms aTerms aid bidTerms
+      validateBidTerms aTerms auctionCs bidTerms
         `err` $(eCode AuctionEscrow'BB'Error'BidTermsInvalid)
     --
     -- The auction lot is paid to the winning bidder, who is buying it.

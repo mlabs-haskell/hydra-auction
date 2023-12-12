@@ -122,9 +122,9 @@ validateNewBid ::
   StandingBidState ->
   StandingBidState ->
   Bool
-validateNewBid auTerms auctionId oldBidState StandingBidState {..}
+validateNewBid auTerms auctionCs oldBidState StandingBidState {..}
   | Just newTerms <- standingBidState =
-      validateNewBidTerms auTerms auctionId newTerms
+      validateNewBidTerms auTerms auctionCs newTerms
         && validateCompareBids auTerms oldBidState newTerms
   | otherwise =
       --

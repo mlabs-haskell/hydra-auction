@@ -110,13 +110,13 @@ checkNB auctionId aTerms oldBidState context ownInput =
     && validityIntervalIsCorrect
   where
     TxInfo {..} = scriptContextTxInfo context
-    AuctionId aid = auctionId
+    AuctionId {..} = auctionId
     ownAddress = txOutAddress ownInput
     --
     -- The transition from the old bid state to the new bid state
     -- should be valid.
     bidStateTransitionIsValid =
-      validateNewBid aTerms aid oldBidState newBidState
+      validateNewBid aTerms auctionCs oldBidState newBidState
         `err` $(eCode $ StandingBid'NB'Error'InvalidNewBidState [])
     --
     -- The transaction validity should end before the bidding end time.

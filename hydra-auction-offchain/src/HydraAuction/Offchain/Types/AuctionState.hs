@@ -62,9 +62,9 @@ validateNewBid ::
   StandingBidState ->
   StandingBidState ->
   Validation [NewBid'Error] ()
-validateNewBid auTerms auctionId oldBidState StandingBidState {..}
+validateNewBid auTerms auctionCs oldBidState StandingBidState {..}
   | Just newTerms <- standingBidState =
-      validateNewBidTerms auTerms auctionId newTerms
+      validateNewBidTerms auTerms auctionCs newTerms
         <> validateCompareBids auTerms oldBidState newTerms
   | otherwise =
       --
@@ -77,10 +77,10 @@ validateNewBidTerms ::
   PolicyId ->
   BidTerms ->
   Validation [NewBid'Error] ()
-validateNewBidTerms auTerms auctionId newTerms =
+validateNewBidTerms auTerms auctionCs newTerms =
   --
   -- The new bid terms are valid.
-  validateBidTerms auTerms auctionId newTerms
+  validateBidTerms auTerms auctionCs newTerms
     `errWith` NewBid'Error'InvalidNewBidTerms
 
 validateCompareBids ::

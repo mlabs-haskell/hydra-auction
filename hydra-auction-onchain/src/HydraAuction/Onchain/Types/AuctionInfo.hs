@@ -35,7 +35,7 @@ import HydraAuction.Onchain.Types.Tokens (
 -- -------------------------------------------------------------------------
 
 data AuctionInfo = AuctionInfo
-  { ai'AuctionId :: CurrencySymbol
+  { ai'AuctionCs :: CurrencySymbol
   -- ^ The auction is uniquely identified by
   -- the currency symbol of its state tokens.
   , ai'AuctionTerms :: AuctionTerms
@@ -79,7 +79,7 @@ data AuctionScriptInfo = AuctionScriptInfo
 auctionScriptsToInfo :: AuctionScriptInfo -> AuctionInfo
 auctionScriptsToInfo AuctionScriptInfo {..} =
   AuctionInfo
-    { ai'AuctionId = auctionId
+    { ai'AuctionCs = auctionCs
     , ai'AuctionTerms = as'AuctionTerms
     , ai'AuctionEscrow = scriptHashAddress sh'AuctionEscrow
     , ai'BidderDeposit = scriptHashAddress sh'BidderDeposit

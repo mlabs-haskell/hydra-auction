@@ -81,7 +81,7 @@ checkMint auctionMetadataSh utxoNonce context =
     -- that mentions an auction ID that matches
     -- this minting policy's currency symbol.
     auctionMetadataOutputExistsAndMatchesOwnCs =
-      (ownCs == ai'AuctionId)
+      (ownCs == ai'AuctionCs)
         `err` $(eCode AuctionMp'MI'Error'AuctionInfoMismatchedToken)
     --
     -- The auction metadata record should contain valid auction terms.

@@ -38,7 +38,7 @@ import HydraAuction.Onchain.Types.AuctionInfo qualified as O
 type AuctionAddress = AddressInEra BabbageEra
 
 data AuctionInfo = AuctionInfo
-  { ai'AuctionId :: !PolicyId
+  { ai'AuctionCs :: !PolicyId
   -- ^ The auction is uniquely identified by
   -- the currency symbol of its state tokens.
   , ai'AuctionTerms :: !AuctionTerms
@@ -69,8 +69,8 @@ validateAuctionInfo AuctionInfo {..} =
 toPlutusAuctionInfo :: AuctionInfo -> O.AuctionInfo
 toPlutusAuctionInfo AuctionInfo {..} =
   O.AuctionInfo
-    { O.ai'AuctionId =
-        ai'AuctionId & toPlutusPolicyId
+    { O.ai'AuctionCs =
+        ai'AuctionCs & toPlutusPolicyId
     , --
       O.ai'AuctionTerms =
         ai'AuctionTerms & toPlutusAuctionTerms
@@ -93,8 +93,8 @@ toPlutusAuctionInfo AuctionInfo {..} =
 -- -------------------------------------------------------------------------
 fromPlutusAuctionInfo :: NetworkId -> O.AuctionInfo -> Maybe AuctionInfo
 fromPlutusAuctionInfo net O.AuctionInfo {..} = do
-  m'ai'AuctionId <-
-    ai'AuctionId & fromPlutusPolicyId
+  m'ai'AuctionCs <-
+    ai'AuctionCs & fromPlutusPolicyId
   --
   m'ai'AuctionTerms <-
     ai'AuctionTerms & fromPlutusAuctionTerms
@@ -113,7 +113,7 @@ fromPlutusAuctionInfo net O.AuctionInfo {..} = do
   --
   pure $
     AuctionInfo
-      { ai'AuctionId = m'ai'AuctionId
+      { ai'AuctionCs = m'ai'AuctionCs
       , ai'AuctionTerms = m'ai'AuctionTerms
       , ai'AuctionEscrow = m'ai'AuctionEscrow
       , ai'BidderDeposit = m'ai'BidderDeposit

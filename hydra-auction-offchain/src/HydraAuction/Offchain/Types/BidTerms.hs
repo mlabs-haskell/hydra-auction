@@ -73,7 +73,7 @@ validateBidTerms ::
   PolicyId ->
   BidTerms ->
   Validation [BidTerms'Error] ()
-validateBidTerms AuctionTerms {..} auctionId BidTerms {..}
+validateBidTerms AuctionTerms {..} auctionCs BidTerms {..}
   | BidderInfo {..} <- bt'Bidder =
       --
       -- The bidder's info is correct.
@@ -84,7 +84,7 @@ validateBidTerms AuctionTerms {..} auctionId BidTerms {..}
         -- to participate in the auction.
         <> verifySignature
           at'SellerVk
-          (sellerSignatureMessage auctionId bi'BidderVk)
+          (sellerSignatureMessage auctionCs bi'BidderVk)
           bt'SellerSignature
         `err` BidTerms'Error'InvalidSellerSignature
         --
@@ -92,7 +92,7 @@ validateBidTerms AuctionTerms {..} auctionId BidTerms {..}
         -- to be submitted in the auction.
         <> verifySignature
           bi'BidderVk
-          (bidderSignatureMessage auctionId bt'BidPrice bi'BidderPkh)
+          (bidderSignatureMessage auctionCs bt'BidPrice bi'BidderPkh)
           bt'BidderSignature
         `err` BidTerms'Error'InvalidBidderSignature
 
@@ -101,8 +101,8 @@ bidderSignatureMessage ::
   Lovelace ->
   Hash PaymentKey ->
   ByteString
-bidderSignatureMessage auctionId bidPrice bidderPkh =
-  serialiseToRawBytes auctionId
+bidderSignatureMessage auctionCs bidPrice bidderPkh =
+  serialiseToRawBytes auctionCs
     <> serialiseToRawBytes bidderPkh
     <> serialiseLovelace bidPrice
 
@@ -110,8 +110,8 @@ sellerSignatureMessage ::
   PolicyId ->
   VerificationKey PaymentKey ->
   ByteString
-sellerSignatureMessage auctionId bidderVk =
-  serialiseToRawBytes auctionId
+sellerSignatureMessage auctionCs bidderVk =
+  serialiseToRawBytes auctionCs
     <> serialiseToRawBytes bidderVk
 
 -- -------------------------------------------------------------------------
