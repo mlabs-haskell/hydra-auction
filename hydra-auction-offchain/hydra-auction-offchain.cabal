@@ -14,24 +14,16 @@ source-repository head
   type:     git
   location: https://github.com/mlabs-haskell/hydra-auction
 
-flag dev
-  description:
-    Disable -Werror.
-
-  default:     True
-  manual:      False
-
-common common-config
+-- Recommendations from the MLabs styleguide
+-- https://github.com/mlabs-haskell/styleguide/
+common mlabs-styleguide-config
   default-language:   Haskell2010
 
-  -- Options from MLabs styleguide
   default-extensions:
-    NoImplicitPrelude
     BangPatterns
     BinaryLiterals
     ConstraintKinds
     DataKinds
-    DeriveAnyClass
     DeriveFunctor
     DeriveGeneric
     DeriveTraversable
@@ -41,7 +33,6 @@ common common-config
     EmptyCase
     FlexibleContexts
     FlexibleInstances
-    FunctionalDependencies
     GADTs
     GeneralizedNewtypeDeriving
     HexFloatLiterals
@@ -50,21 +41,13 @@ common common-config
     KindSignatures
     LambdaCase
     MultiParamTypeClasses
-    NamedFieldPuns
+    NoImplicitPrelude
     NumericUnderscores
     OverloadedStrings
-    PatternSynonyms
-    QuantifiedConstraints
-    RankNTypes
-    RecordWildCards
     ScopedTypeVariables
     StandaloneDeriving
-    StrictData
-    TemplateHaskell
     TupleSections
     TypeApplications
-    TypeFamilies
-    TypeFamilyDependencies
     TypeOperators
     TypeSynonymInstances
     UndecidableInstances
@@ -75,20 +58,24 @@ common common-config
     -Wincomplete-record-updates
     -Wincomplete-uni-patterns
     -Wmissing-deriving-strategies
-    -Wmissing-export-lists 
+    -Wmissing-export-lists
     -Wredundant-constraints
-    --
-    -Wno-redundant-constraints
+    -Werror
 
-  if !flag(dev)
-    ghc-options:
-      -Werror
+-- Combined configuration for off-chain code
+common offchain-config
+  import: mlabs-styleguide-config
 
-  if flag(dev)
-    default-extensions: PartialTypeSignatures
+  default-extensions:
+    PatternSynonyms
+    RecordWildCards
+    Strict
+
+  ghc-options:
+    -fobject-code
 
 library
-  import:          common-config
+  import:          offchain-config
   hs-source-dirs:  src
   exposed-modules:
     HydraAuction.Offchain.Lib.Codec.Onchain
@@ -127,5 +114,3 @@ library
     , text
     , time
     , validation
-
-  ghc-options:

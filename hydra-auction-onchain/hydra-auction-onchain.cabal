@@ -16,32 +16,33 @@ source-repository head
 
 flag dev
   description:
-    Defer errors from the PlutusTx plugin, which break HLS and Haddock. Also disable -Werror.
+    Defers errors from the PlutusTx plugin, which break HLS and Haddock.
+    Unfortunately, it must be enabled by default because HLS doesn't
+    allow cabal arguments to be provided.
+    Make sure to _DISABLE_ this in CI and when building for production.
 
   default:     True
   manual:      False
 
-common common-config
+-- Recommendations from the MLabs styleguide.
+-- https://github.com/mlabs-haskell/styleguide/
+common mlabs-styleguide-config
   default-language:   Haskell2010
 
-  -- Options from MLabs styleguide
   default-extensions:
-    NoImplicitPrelude
-    BangPatterns
+    -- BangPatterns
     BinaryLiterals
     ConstraintKinds
     DataKinds
-    DeriveAnyClass
     DeriveFunctor
     DeriveGeneric
     DeriveTraversable
     DerivingStrategies
     DerivingVia
-    DuplicateRecordFields
+    -- DuplicateRecordFields
     EmptyCase
     FlexibleContexts
     FlexibleInstances
-    FunctionalDependencies
     GADTs
     GeneralizedNewtypeDeriving
     HexFloatLiterals
@@ -50,24 +51,16 @@ common common-config
     KindSignatures
     LambdaCase
     MultiParamTypeClasses
-    NamedFieldPuns
+    NoImplicitPrelude
     NumericUnderscores
     OverloadedStrings
-    PatternSynonyms
-    QuantifiedConstraints
-    RankNTypes
-    RecordWildCards
     ScopedTypeVariables
     StandaloneDeriving
-    StrictData
-    TemplateHaskell
     TupleSections
     TypeApplications
-    TypeFamilies
-    TypeFamilyDependencies
     TypeOperators
-    TypeSynonymInstances
-    UndecidableInstances
+    -- TypeSynonymInstances
+    -- UndecidableInstances
 
   ghc-options:
     -Wall
@@ -77,21 +70,54 @@ common common-config
     -Wmissing-deriving-strategies
     -Wmissing-export-lists
     -Wredundant-constraints
-    --
-    -Wno-redundant-constraints
+    -Werror
 
-  if !flag(dev)
-    ghc-options:
-      -Werror
-
-  if flag(dev)
-    default-extensions: PartialTypeSignatures
-
-library
-  import:          common-config
-  hs-source-dirs:  src
+-- Plutus recommendations for on-chain code
+-- https://plutus.readthedocs.io/en/latest/extensions-flags-pragmas.html
+common plutus-config
   default-extensions:
     Strict
+
+  ghc-options:
+    -fno-ignore-interface-pragmas
+    -fno-full-laziness
+    -fno-omit-interface-pragmas
+    -fno-spec-constr
+    -fno-specialize
+    -fno-strictness
+    -fno-unbox-small-strict-fields
+    -fno-unbox-strict-fields
+
+-- Combined configuration for on-chain code,
+-- excluding the PlutusTx Plugin compilation process.
+common onchain-config
+  import:
+    , mlabs-styleguide-config
+    , plutus-config
+
+  default-extensions:
+    PatternSynonyms
+    RecordWildCards
+    TemplateHaskell
+    Strict
+
+  ghc-options:
+    -fobject-code
+
+-- Configuration for the PlutusTx Plugin compilation process.
+common plutus-plugin-config
+  ghc-options:
+    -fplugin-opt PlutusTx.Plugin:target-version=1.0.0
+
+  if flag(dev)
+    ghc-options:
+      -fplugin-opt PlutusTx.Plugin:defer-errors
+
+library
+  import:
+    , onchain-config
+    , plutus-plugin-config
+  hs-source-dirs:  src
   exposed-modules:
     HydraAuction.Onchain.Lib.Error
     HydraAuction.Onchain.Lib.PlutusTx
@@ -144,25 +170,7 @@ library
     -- , record-dot-preprocessor
     -- , record-hasfield
     , template-haskell
-    , text
+    -- , text
     -- , time
     -- , transformers
     -- , validation
-
-  ghc-options:
-    -fno-ignore-interface-pragmas
-    -fno-full-laziness
-    -fno-omit-interface-pragmas
-    -fno-spec-constr
-    -fno-specialize
-    -fno-strictness
-    -fno-unbox-small-strict-fields
-    -fno-unbox-strict-fields
-    --
-    -fobject-code
-    -fplugin-opt PlutusTx.Plugin:target-version=1.0.0
-
-  if flag(dev)
-    ghc-options:
-      -fplugin-opt PlutusTx.Plugin:defer-errors
-

@@ -147,7 +147,6 @@ transKeyHashInverse (PV1.Crypto.PubKeyHash bbs) =
 -- Shelley-based addresses (i.e. non-Byron)
 -- -------------------------------------------------------------------------
 toPlutusAddress ::
-  Cardano.Api.IsShelleyBasedEra era =>
   Cardano.Api.AddressInEra era ->
   PV1.Address.Address
 toPlutusAddress =
