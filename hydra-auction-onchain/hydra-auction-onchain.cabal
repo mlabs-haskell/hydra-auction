@@ -113,33 +113,15 @@ common plutus-plugin-config
     ghc-options:
       -fplugin-opt PlutusTx.Plugin:defer-errors
 
-library
+executable hydra-auction-onchain
   import:
     , onchain-config
     , plutus-plugin-config
-  hs-source-dirs:  src
-  exposed-modules:
-    HydraAuction.Onchain.Lib.Error
-    HydraAuction.Onchain.Lib.PlutusTx
-    HydraAuction.Onchain.Lib.Scripts
-    HydraAuction.Onchain.Lib.Serialise
-    HydraAuction.Onchain.MintingPolicies.AuctionMp
-    HydraAuction.Onchain.Scripts
-    HydraAuction.Onchain.Types.AuctionEscrowState
-    HydraAuction.Onchain.Types.AuctionInfo
-    HydraAuction.Onchain.Types.AuctionTerms
-    HydraAuction.Onchain.Types.BidderInfo
-    HydraAuction.Onchain.Types.BidTerms
-    HydraAuction.Onchain.Types.DelegateInfo
-    HydraAuction.Onchain.Types.Redeemers
-    HydraAuction.Onchain.Types.Scripts
-    HydraAuction.Onchain.Types.StandingBidState
-    HydraAuction.Onchain.Types.Tokens
-    HydraAuction.Onchain.Validators.AuctionEscrow
-    HydraAuction.Onchain.Validators.AuctionMetadata
-    HydraAuction.Onchain.Validators.BidderDeposit
-    HydraAuction.Onchain.Validators.FeeEscrow
-    HydraAuction.Onchain.Validators.StandingBid
+  hs-source-dirs: exe/hydra-auction-onchain
+  main-is: Main.hs
+  other-modules:
+    Lib.Scripts
+    Scripts
 
   build-depends:
     -- , aeson
@@ -164,6 +146,7 @@ library
     -- , mtl
     , plutus-core
     , hydra-auction-error
+    , hydra-auction-onchain
     , plutus-ledger-api
     , plutus-tx
     , plutus-tx-plugin
@@ -174,3 +157,35 @@ library
     -- , time
     -- , transformers
     -- , validation
+    
+
+library
+  import: onchain-config
+  hs-source-dirs:  src
+  exposed-modules:
+    HydraAuction.Onchain.Lib.Error
+    HydraAuction.Onchain.Lib.PlutusTx
+    HydraAuction.Onchain.Lib.Serialise
+    HydraAuction.Onchain.MintingPolicies.AuctionMp
+    HydraAuction.Onchain.Types.AuctionEscrowState
+    HydraAuction.Onchain.Types.AuctionInfo
+    HydraAuction.Onchain.Types.AuctionTerms
+    HydraAuction.Onchain.Types.BidderInfo
+    HydraAuction.Onchain.Types.BidTerms
+    HydraAuction.Onchain.Types.DelegateInfo
+    HydraAuction.Onchain.Types.Redeemers
+    HydraAuction.Onchain.Types.Scripts
+    HydraAuction.Onchain.Types.StandingBidState
+    HydraAuction.Onchain.Types.Tokens
+    HydraAuction.Onchain.Validators.AuctionEscrow
+    HydraAuction.Onchain.Validators.AuctionMetadata
+    HydraAuction.Onchain.Validators.BidderDeposit
+    HydraAuction.Onchain.Validators.FeeEscrow
+    HydraAuction.Onchain.Validators.StandingBid
+
+  build-depends:
+    , base
+    , hydra-auction-error
+    , plutus-ledger-api
+    , plutus-tx
+    , template-haskell

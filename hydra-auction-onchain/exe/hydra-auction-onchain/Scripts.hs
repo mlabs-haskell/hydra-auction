@@ -1,4 +1,4 @@
-module HydraAuction.Onchain.Scripts (
+module Scripts (
   mkAuctionId,
   mkAuctionInfo,
   mkAuctionScriptInfo,
@@ -55,15 +55,6 @@ import PlutusLedgerApi.V2 (
 import PlutusTx (CompiledCode)
 import PlutusTx qualified
 
-import HydraAuction.Onchain.Lib.Scripts (
-  MintingPolicyType,
-  StatelessValidatorType,
-  ValidatorType,
-  scriptValidatorHash,
-  wrapMintingPolicy,
-  wrapStatelessValidator,
-  wrapValidator,
- )
 import HydraAuction.Onchain.Types.AuctionEscrowState (
   AuctionEscrowState,
  )
@@ -99,6 +90,15 @@ import HydraAuction.Onchain.Types.StandingBidState (
  )
 import HydraAuction.Onchain.Types.Tokens (
   AuctionId (..),
+ )
+import Lib.Scripts (
+  MintingPolicyType,
+  StatelessValidatorType,
+  ValidatorType,
+  scriptValidatorHash,
+  wrapMintingPolicy,
+  wrapStatelessValidator,
+  wrapValidator,
  )
 
 import HydraAuction.Onchain.MintingPolicies.AuctionMp qualified as AuctionMp

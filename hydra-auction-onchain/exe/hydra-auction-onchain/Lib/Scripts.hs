@@ -1,4 +1,4 @@
-module HydraAuction.Onchain.Lib.Scripts (
+module Lib.Scripts (
   StatelessValidatorType,
   ValidatorType,
   MintingPolicyType,
