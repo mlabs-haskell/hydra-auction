@@ -10,7 +10,6 @@ module HydraAuction.Offchain.Lib.Crypto (
   pubKeyHashToAddress,
   serialiseLovelace,
   signMessage,
-  toPlutusKeyHash,
   verifySignature,
 ) where
 
@@ -18,9 +17,6 @@ import Prelude
 
 import Data.ByteString (ByteString)
 import Data.ByteString.Char8 qualified as BSC8
-
-import Cardano.Ledger.Alonzo.TxInfo qualified as Ledger
-import PlutusLedgerApi.V2 qualified as PV2
 
 import Cardano.Api.Shelley (
   Address (..),
@@ -53,11 +49,6 @@ import Cardano.Ledger.Keys (
 -- verificationKeyHash :: VerificationKey PaymentKey -> Hash PaymentKey
 
 type Signature = SignedDSIGN StandardCrypto ByteString
-
--- | Convert a cardano-api 'Hash' into a plutus 'PubKeyHash'
-toPlutusKeyHash :: Hash PaymentKey -> PV2.PubKeyHash
-toPlutusKeyHash (PaymentKeyHash vkh) =
-  Ledger.transKeyHash vkh
 
 -- | Convert a pubkey hash of a payment credential to an address,
 -- keeping the staking address empty.

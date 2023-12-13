@@ -92,19 +92,9 @@ validateBidTerms AuctionTerms {..} auctionCs BidTerms {..}
         -- to be submitted in the auction.
         <> verifySignature
           bi'BidderVk
-          (bidderSignatureMessage auctionCs bt'BidPrice bi'BidderPkh)
+          (bidderSignatureMessage auctionCs bi'BidderPkh bt'BidPrice)
           bt'BidderSignature
         `err` BidTerms'Error'InvalidBidderSignature
-
-bidderSignatureMessage ::
-  PolicyId ->
-  Lovelace ->
-  Hash PaymentKey ->
-  ByteString
-bidderSignatureMessage auctionCs bidPrice bidderPkh =
-  serialiseToRawBytes auctionCs
-    <> serialiseToRawBytes bidderPkh
-    <> serialiseLovelace bidPrice
 
 sellerSignatureMessage ::
   PolicyId ->
@@ -113,6 +103,16 @@ sellerSignatureMessage ::
 sellerSignatureMessage auctionCs bidderVk =
   serialiseToRawBytes auctionCs
     <> serialiseToRawBytes bidderVk
+
+bidderSignatureMessage ::
+  PolicyId ->
+  Hash PaymentKey ->
+  Lovelace ->
+  ByteString
+bidderSignatureMessage auctionCs bidderPkh bidPrice =
+  serialiseToRawBytes auctionCs
+    <> serialiseToRawBytes bidderPkh
+    <> serialiseLovelace bidPrice
 
 -- -------------------------------------------------------------------------
 -- Conversion to onchain
