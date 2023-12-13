@@ -5,26 +5,12 @@ module Lib.Scripts (
   wrapStatelessValidator,
   wrapValidator,
   wrapMintingPolicy,
-  scriptValidatorHash,
 ) where
 
 import Prelude
 
-import Cardano.Api (
-  PlutusScriptVersion,
-  SerialiseAsRawBytes (serialiseToRawBytes),
-  hashScript,
-  pattern PlutusScript,
- )
-import Cardano.Api.Shelley (
-  PlutusScript (PlutusScriptSerialised),
- )
-import PlutusLedgerApi.V2 (
-  ScriptHash (..),
-  SerialisedScript,
- )
 import PlutusTx (BuiltinData, UnsafeFromData (..))
-import PlutusTx.Prelude (check, toBuiltin)
+import PlutusTx.Prelude (check)
 
 -- * Vendored from hydra-plutus-extras (who vendored it from plutus-ledger)
 
@@ -82,19 +68,3 @@ wrapMintingPolicy f r c =
     context = unsafeFromBuiltinData c
 --
 {-# INLINEABLE wrapMintingPolicy #-}
-
--- * Similar utilities as plutus-ledger
-
--- | Compute the on-chain 'ScriptHash' for a given serialised plutus script.
--- Use this to refer to another validator script.
-scriptValidatorHash ::
-  PlutusScriptVersion lang ->
-  SerialisedScript ->
-  ScriptHash
-scriptValidatorHash version =
-  ScriptHash
-    . toBuiltin
-    . serialiseToRawBytes
-    . hashScript
-    . PlutusScript version
-    . PlutusScriptSerialised

@@ -15,12 +15,6 @@ import Data.Validation (Validation)
 import HydraAuction.Error.Types.BidderInfo (
   BidderInfo'Error (..),
  )
-import HydraAuction.Offchain.Lib.Codec.Onchain (
-  fromPlutusVKey,
-  fromPlutusVKeyHash,
-  toPlutusVKey,
-  toPlutusVKeyHash,
- )
 import HydraAuction.Offchain.Lib.Crypto (
   Hash,
   Key (verificationKeyHash),
@@ -28,6 +22,12 @@ import HydraAuction.Offchain.Lib.Crypto (
   VerificationKey,
  )
 import HydraAuction.Offchain.Lib.Validation (err)
+import Plutus.Cardano.Api.Codec (
+  fromPlutusVKey,
+  fromPlutusVKeyHash,
+  toPlutusVKey,
+  toPlutusVKeyHash,
+ )
 
 import HydraAuction.Onchain.Types.BidderInfo qualified as O
 

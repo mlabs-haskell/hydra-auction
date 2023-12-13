@@ -36,18 +36,9 @@ module Scripts (
 
 import PlutusTx.Prelude
 
-import Cardano.Api.Shelley (
-  PlutusScript (PlutusScriptSerialised),
-  PlutusScriptVersion (PlutusScriptV2),
-  Script (PlutusScript),
-  scriptPolicyId,
- )
-import Cardano.Api.Shelley qualified as Cardano.Api
-import Cardano.Ledger.Alonzo.TxInfo qualified as Alonzo.TxInfo
-import Cardano.Ledger.Mary.Value qualified as Mary
 import PlutusCore.Core (plcVersion100)
-import PlutusLedgerApi.V1.Value qualified as PV1.Value
 import PlutusLedgerApi.V2 (
+  CurrencySymbol,
   SerialisedScript,
   TxOutRef,
   serialiseCompiledCode,
@@ -95,10 +86,13 @@ import Lib.Scripts (
   MintingPolicyType,
   StatelessValidatorType,
   ValidatorType,
-  scriptValidatorHash,
   wrapMintingPolicy,
   wrapStatelessValidator,
   wrapValidator,
+ )
+import Plutus.Cardano.Api.Codec (
+  plutusScriptCurrencySymbolV2,
+  plutusScriptValidatorHashV2,
  )
 
 import HydraAuction.Onchain.MintingPolicies.AuctionMp qualified as AuctionMp
@@ -124,7 +118,7 @@ auctionMetadataS = serialiseCompiledCode auctionMetadataC
 auctionMetadataSh :: AuctionMetadata'ScriptHash
 auctionMetadataSh =
   AuctionMetadata'ScriptHash $
-    scriptValidatorHash PlutusScriptV2 auctionMetadataS
+    plutusScriptValidatorHashV2 auctionMetadataS
 
 -- -------------------------------------------------------------------------
 -- Auction token minting policy
@@ -146,17 +140,16 @@ mkAuctionMpS utxoNonce =
 mkAuctionMpSh :: TxOutRef -> AuctionMp'ScriptHash
 mkAuctionMpSh utxoNonce =
   AuctionMp'ScriptHash $
-    scriptValidatorHash PlutusScriptV2 $
+    plutusScriptValidatorHashV2 $
       mkAuctionMpS utxoNonce
 
-mkAuctionId :: TxOutRef -> AuctionId
-mkAuctionId =
-  AuctionId
-    . policyIdToCurrencySymbol
-    . scriptPolicyId
-    . PlutusScript PlutusScriptV2
-    . PlutusScriptSerialised
+mkAuctionCs :: TxOutRef -> CurrencySymbol
+mkAuctionCs =
+  plutusScriptCurrencySymbolV2
     . mkAuctionMpS
+
+mkAuctionId :: TxOutRef -> AuctionId
+mkAuctionId = AuctionId . mkAuctionCs
 
 -- -------------------------------------------------------------------------
 -- Auction info
@@ -202,7 +195,7 @@ mkFeeEscrowS aTerms =
 mkFeeEscrowSh :: AuctionTerms -> FeeEscrow'ScriptHash
 mkFeeEscrowSh aTerms =
   FeeEscrow'ScriptHash $
-    scriptValidatorHash PlutusScriptV2 $
+    plutusScriptValidatorHashV2 $
       mkFeeEscrowS aTerms
 
 -- -------------------------------------------------------------------------
@@ -226,7 +219,7 @@ mkStandingBidS auctionId aTerms =
 mkStandingBidSh :: AuctionId -> AuctionTerms -> StandingBid'ScriptHash
 mkStandingBidSh auctionId aTerms =
   StandingBid'ScriptHash $
-    scriptValidatorHash PlutusScriptV2 $
+    plutusScriptValidatorHashV2 $
       mkStandingBidS auctionId aTerms
 
 -- -------------------------------------------------------------------------
@@ -267,7 +260,7 @@ mkAuctionEscrowSh ::
   AuctionEscrow'ScriptHash
 mkAuctionEscrowSh sbsh fsh aid aTerms =
   AuctionEscrow'ScriptHash $
-    scriptValidatorHash PlutusScriptV2 $
+    plutusScriptValidatorHashV2 $
       mkAuctionEscrowS sbsh fsh aid aTerms
 
 -- -------------------------------------------------------------------------
@@ -308,11 +301,5 @@ mkBidderDepositSh ::
   BidderDeposit'ScriptHash
 mkBidderDepositSh aesh sbsh aid aTerms =
   BidderDeposit'ScriptHash $
-    scriptValidatorHash PlutusScriptV2 $
+    plutusScriptValidatorHashV2 $
       mkBidderDepositS aesh sbsh aid aTerms
-
-policyIdToCurrencySymbol :: Cardano.Api.PolicyId -> PV1.Value.CurrencySymbol
-policyIdToCurrencySymbol (Cardano.Api.PolicyId sh) =
-  Alonzo.TxInfo.transPolicyID $ Mary.PolicyID lsh
-  where
-    lsh = Cardano.Api.toShelleyScriptHash sh

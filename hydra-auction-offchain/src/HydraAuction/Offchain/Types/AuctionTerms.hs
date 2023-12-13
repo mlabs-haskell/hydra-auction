@@ -23,7 +23,14 @@ import Cardano.Api.Shelley (
 import HydraAuction.Error.Types.AuctionTerms (
   AuctionTerms'Error (..),
  )
-import HydraAuction.Offchain.Lib.Codec.Onchain (
+import HydraAuction.Offchain.Lib.Crypto (
+  Hash,
+  Key (verificationKeyHash),
+  PaymentKey,
+  VerificationKey,
+ )
+import HydraAuction.Offchain.Lib.Validation (err)
+import Plutus.Cardano.Api.Codec (
   fromPlutusAssetId,
   fromPlutusLovelace,
   fromPlutusUTCTimeMilli,
@@ -35,14 +42,7 @@ import HydraAuction.Offchain.Lib.Codec.Onchain (
   toPlutusVKey,
   toPlutusVKeyHash,
  )
-import HydraAuction.Offchain.Lib.Crypto (
-  Hash,
-  Key (verificationKeyHash),
-  PaymentKey,
-  VerificationKey,
- )
-import HydraAuction.Offchain.Lib.Time (UTCTimeMilli)
-import HydraAuction.Offchain.Lib.Validation (err)
+import Plutus.Cardano.Api.Codec.Time (UTCTimeMilli)
 
 import HydraAuction.Onchain.Types.AuctionTerms qualified as O
 

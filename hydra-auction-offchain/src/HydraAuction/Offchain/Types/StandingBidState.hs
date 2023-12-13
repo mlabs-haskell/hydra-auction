@@ -22,9 +22,6 @@ import Cardano.Api.Shelley (
 import HydraAuction.Error.Types.StandingBidState (
   NewBid'Error (..),
  )
-import HydraAuction.Offchain.Lib.Codec.Onchain (
-
- )
 import HydraAuction.Offchain.Lib.Validation (err, errWith)
 import HydraAuction.Offchain.Types.AuctionTerms (
   AuctionTerms (..),

@@ -1,4 +1,4 @@
-module HydraAuction.Offchain.Lib.Time (
+module Plutus.Cardano.Api.Codec.Time (
   -- POSIX time
   POSIXTimeMilli,
   integerToPOSIXTimeMilli,

@@ -9,6 +9,7 @@ module HydraAuction.Offchain.Types.BidTerms (
 import GHC.Generics (Generic)
 import Prelude
 
+import Data.ByteString (ByteString)
 import Data.Function ((&))
 import Data.Validation (Validation)
 
@@ -17,16 +18,9 @@ import Cardano.Api.Shelley (
   PolicyId (..),
   SerialiseAsRawBytes (..),
  )
-import Cardano.Crypto.Hash (ByteString)
 
 import HydraAuction.Error.Types.BidTerms (
   BidTerms'Error (..),
- )
-import HydraAuction.Offchain.Lib.Codec.Onchain (
-  fromPlutusLovelace,
-  fromPlutusSignature,
-  toPlutusLovelace,
-  toPlutusSignature,
  )
 import HydraAuction.Offchain.Lib.Crypto (
   Hash,
@@ -43,6 +37,12 @@ import HydraAuction.Offchain.Types.BidderInfo (
   fromPlutusBidderInfo,
   toPlutusBidderInfo,
   validateBidderInfo,
+ )
+import Plutus.Cardano.Api.Codec (
+  fromPlutusLovelace,
+  fromPlutusSignature,
+  toPlutusLovelace,
+  toPlutusSignature,
  )
 
 import HydraAuction.Onchain.Types.BidTerms qualified as O

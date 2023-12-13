@@ -1,4 +1,4 @@
-module HydraAuction.Offchain.Lib.Codec.Onchain (
+module Plutus.Cardano.Api.Codec (
   -- Offchain -> Onchain
   toPlutusAddress,
   toPlutusAssetId,
@@ -6,6 +6,8 @@ module HydraAuction.Offchain.Lib.Codec.Onchain (
   toPlutusBytestring,
   toPlutusLovelace,
   toPlutusPolicyId,
+  toPlutusScriptHash,
+  toPlutusScriptSerialisedV2,
   toPlutusSignature,
   toPlutusTextUtf8,
   toPlutusUTCTimeMilli,
@@ -19,12 +21,20 @@ module HydraAuction.Offchain.Lib.Codec.Onchain (
   fromPlutusBytestring,
   fromPlutusLovelace,
   fromPlutusPolicyId,
+  fromPlutusScriptHash,
+  fromPlutusScriptSerializedV2,
   fromPlutusSignature,
   fromPlutusTextUtf8,
   fromPlutusUTCTimeMilli,
   fromPlutusValue,
   fromPlutusVKey,
   fromPlutusVKeyHash,
+  -- Offchain script -> Offchain script hash
+  Cardano.Api.hashScript,
+  Cardano.Api.scriptPolicyId,
+  -- Onchain script -> Onchain script hash
+  plutusScriptValidatorHashV2,
+  plutusScriptCurrencySymbolV2,
 ) where
 
 import Prelude
@@ -56,29 +66,29 @@ import PlutusLedgerApi.V1.Scripts qualified as PV1.Scripts
 import PlutusLedgerApi.V1.Time qualified as PV1.Time
 import PlutusLedgerApi.V1.Value qualified as PV1.Value
 
--- import PlutusLedgerApi.V2 qualified as PV2
+import PlutusLedgerApi.V2 qualified as PV2
 
 import PlutusTx.Prelude qualified as Plutus
 
-import HydraAuction.Offchain.Lib.Time qualified as AuctionTime
+import Plutus.Cardano.Api.Codec.Time qualified as Codec.Time
 
 -- -------------------------------------------------------------------------
 -- Time
 -- -------------------------------------------------------------------------
 toPlutusUTCTimeMilli ::
-  AuctionTime.UTCTimeMilli ->
+  Codec.Time.UTCTimeMilli ->
   PV1.Time.POSIXTime
 toPlutusUTCTimeMilli =
   PV1.Time.POSIXTime
-    . AuctionTime.posixTimeMilliToInteger
-    . AuctionTime.utcTimeMilliToPOSIXMilli
+    . Codec.Time.posixTimeMilliToInteger
+    . Codec.Time.utcTimeMilliToPOSIXMilli
 
 fromPlutusUTCTimeMilli ::
   PV1.Time.POSIXTime ->
-  AuctionTime.UTCTimeMilli
+  Codec.Time.UTCTimeMilli
 fromPlutusUTCTimeMilli =
-  AuctionTime.posixMilliToUTCMilli
-    . AuctionTime.integerToPOSIXTimeMilli
+  Codec.Time.posixMilliToUTCMilli
+    . Codec.Time.integerToPOSIXTimeMilli
     . PV1.Time.getPOSIXTime
 
 -- -------------------------------------------------------------------------
@@ -315,3 +325,64 @@ toPlutusBytestring = Plutus.toBuiltin
 
 fromPlutusBytestring :: Plutus.BuiltinByteString -> BS.ByteString
 fromPlutusBytestring = Plutus.fromBuiltin
+
+-- -------------------------------------------------------------------------
+-- Plutus script
+-- -------------------------------------------------------------------------
+
+toPlutusScriptSerialisedV2 ::
+  Cardano.Api.Script Cardano.Api.PlutusScriptV2 ->
+  PV2.SerialisedScript
+toPlutusScriptSerialisedV2 x
+  | Cardano.Api.PlutusScript Cardano.Api.PlutusScriptV2 y <- x
+  , Cardano.Api.PlutusScriptSerialised z <- y =
+      z
+
+fromPlutusScriptSerializedV2 ::
+  PV2.SerialisedScript ->
+  Cardano.Api.Script Cardano.Api.PlutusScriptV2
+fromPlutusScriptSerializedV2 =
+  Cardano.Api.PlutusScript Cardano.Api.PlutusScriptV2
+    . Cardano.Api.PlutusScriptSerialised
+
+-- -------------------------------------------------------------------------
+-- Plutus script hash
+-- -------------------------------------------------------------------------
+
+-- | Compute the on-chain 'ScriptHash' for a given serialised plutus script.
+-- Use this to refer to another validator script.
+toPlutusScriptHash ::
+  Cardano.Api.ScriptHash ->
+  PV2.ScriptHash
+toPlutusScriptHash =
+  PV2.ScriptHash
+    . PV2.toBuiltin
+    . Cardano.Api.serialiseToRawBytes
+
+fromPlutusScriptHash ::
+  PV2.ScriptHash ->
+  Maybe Cardano.Api.ScriptHash
+fromPlutusScriptHash (PV2.ScriptHash x) =
+  either (const Nothing) Just $
+    Cardano.Api.deserialiseFromRawBytes Cardano.Api.AsScriptHash $
+      Plutus.fromBuiltin x
+
+-- -------------------------------------------------------------------------
+-- Plutus script to Plutus (ScriptHash | CurrencySymbol) via Cardano API
+-- -------------------------------------------------------------------------
+
+plutusScriptValidatorHashV2 ::
+  PV2.SerialisedScript ->
+  PV2.ScriptHash
+plutusScriptValidatorHashV2 =
+  toPlutusScriptHash
+    . Cardano.Api.hashScript
+    . fromPlutusScriptSerializedV2
+
+plutusScriptCurrencySymbolV2 ::
+  PV2.SerialisedScript ->
+  PV2.CurrencySymbol
+plutusScriptCurrencySymbolV2 =
+  toPlutusPolicyId
+    . Cardano.Api.scriptPolicyId
+    . fromPlutusScriptSerializedV2

@@ -18,17 +18,17 @@ import Data.Validation (Validation)
 import HydraAuction.Error.Types.DelegateInfo (
   DelegateInfo'Error (..),
  )
-import HydraAuction.Offchain.Lib.Codec.Onchain (
-  fromPlutusTextUtf8,
-  fromPlutusVKeyHash,
-  toPlutusTextUtf8,
-  toPlutusVKeyHash,
- )
 import HydraAuction.Offchain.Lib.Crypto (
   Hash,
   PaymentKey,
  )
 import HydraAuction.Offchain.Lib.Validation (err)
+import Plutus.Cardano.Api.Codec (
+  fromPlutusTextUtf8,
+  fromPlutusVKeyHash,
+  toPlutusTextUtf8,
+  toPlutusVKeyHash,
+ )
 
 import HydraAuction.Onchain.Types.DelegateInfo qualified as O
 

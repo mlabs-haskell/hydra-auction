@@ -19,18 +19,18 @@ import Cardano.Api.Shelley (
  )
 
 import HydraAuction.Error.Types.AuctionInfo (AuctionInfo'Error (..))
-import HydraAuction.Offchain.Lib.Codec.Onchain (
-  fromPlutusAddress,
-  fromPlutusPolicyId,
-  toPlutusAddress,
-  toPlutusPolicyId,
- )
 import HydraAuction.Offchain.Lib.Validation (errWith)
 import HydraAuction.Offchain.Types.AuctionTerms (
   AuctionTerms (..),
   fromPlutusAuctionTerms,
   toPlutusAuctionTerms,
   validateAuctionTerms,
+ )
+import Plutus.Cardano.Api.Codec (
+  fromPlutusAddress,
+  fromPlutusPolicyId,
+  toPlutusAddress,
+  toPlutusPolicyId,
  )
 
 import HydraAuction.Onchain.Types.AuctionInfo qualified as O
