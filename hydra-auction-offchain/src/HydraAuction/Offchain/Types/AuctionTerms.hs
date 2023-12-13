@@ -31,6 +31,7 @@ import HydraAuction.Offchain.Lib.Crypto (
  )
 import HydraAuction.Offchain.Lib.Validation (err)
 import Plutus.Cardano.Api.Codec (
+  UTCTimeMilli,
   fromPlutusAssetId,
   fromPlutusLovelace,
   fromPlutusUTCTimeMilli,
@@ -42,7 +43,6 @@ import Plutus.Cardano.Api.Codec (
   toPlutusVKey,
   toPlutusVKeyHash,
  )
-import Plutus.Cardano.Api.Codec.Time (UTCTimeMilli)
 
 import HydraAuction.Onchain.Types.AuctionTerms qualified as O
 

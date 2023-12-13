@@ -90,7 +90,7 @@ import Lib.Scripts (
   wrapStatelessValidator,
   wrapValidator,
  )
-import Plutus.Cardano.Api.Codec (
+import Plutus.Cardano.Api.Codec.Script (
   plutusScriptCurrencySymbolV2,
   plutusScriptValidatorHashV2,
  )

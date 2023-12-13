@@ -79,7 +79,13 @@ library
   hs-source-dirs:  src
   exposed-modules:
     Plutus.Cardano.Api.Codec
+    Plutus.Cardano.Api.Codec.Address
+    Plutus.Cardano.Api.Codec.Base
+    Plutus.Cardano.Api.Codec.Crypto
+    Plutus.Cardano.Api.Codec.Script
     Plutus.Cardano.Api.Codec.Time
+    Plutus.Cardano.Api.Codec.Value
+    Plutus.Cardano.Api.Types.Time.Millisecond
 
   build-depends:
     -- , aeson
