@@ -2,11 +2,14 @@ module HydraAuction.Offchain.Types.BidTerms (
   BidTerms (..),
   BidTerms'Error (..),
   validateBidTerms,
+  fromPlutusBidTerms,
+  toPlutusBidTerms,
 ) where
 
 import GHC.Generics (Generic)
 import Prelude
 
+import Data.Function ((&))
 import Data.Validation (Validation)
 
 import Cardano.Api.Shelley (
@@ -18,6 +21,12 @@ import Cardano.Crypto.Hash (ByteString)
 
 import HydraAuction.Error.Types.BidTerms (
   BidTerms'Error (..),
+ )
+import HydraAuction.Offchain.Lib.Codec.Onchain (
+  fromPlutusLovelace,
+  fromPlutusSignature,
+  toPlutusLovelace,
+  toPlutusSignature,
  )
 import HydraAuction.Offchain.Lib.Crypto (
   Hash,
@@ -31,8 +40,12 @@ import HydraAuction.Offchain.Lib.Validation (err, errWith)
 import HydraAuction.Offchain.Types.AuctionTerms (AuctionTerms (..))
 import HydraAuction.Offchain.Types.BidderInfo (
   BidderInfo (..),
+  fromPlutusBidderInfo,
+  toPlutusBidderInfo,
   validateBidderInfo,
  )
+
+import HydraAuction.Onchain.Types.BidTerms qualified as O
 
 data BidTerms = BidTerms
   { bt'Bidder :: !BidderInfo
@@ -100,3 +113,47 @@ sellerSignatureMessage ::
 sellerSignatureMessage auctionId bidderVk =
   serialiseToRawBytes auctionId
     <> serialiseToRawBytes bidderVk
+
+-- -------------------------------------------------------------------------
+-- Conversion to onchain
+-- -------------------------------------------------------------------------
+toPlutusBidTerms :: BidTerms -> O.BidTerms
+toPlutusBidTerms BidTerms {..} =
+  O.BidTerms
+    { O.bt'Bidder =
+        bt'Bidder & toPlutusBidderInfo
+    , --
+      O.bt'BidPrice =
+        bt'BidPrice & toPlutusLovelace
+    , --
+      O.bt'BidderSignature =
+        bt'BidderSignature & toPlutusSignature
+    , --
+      O.bt'SellerSignature =
+        bt'SellerSignature & toPlutusSignature
+    }
+
+-- -------------------------------------------------------------------------
+-- Conversion from onchain
+-- -------------------------------------------------------------------------
+fromPlutusBidTerms :: O.BidTerms -> Maybe BidTerms
+fromPlutusBidTerms O.BidTerms {..} = do
+  m'bt'Bidder <-
+    bt'Bidder & fromPlutusBidderInfo
+  --
+  let m'bt'BidPrice =
+        bt'BidPrice & fromPlutusLovelace
+  --
+  m'bt'BidderSignature <-
+    bt'BidderSignature & fromPlutusSignature
+  --
+  m'bt'SellerSignature <-
+    bt'SellerSignature & fromPlutusSignature
+  --
+  pure $
+    BidTerms
+      { bt'Bidder = m'bt'Bidder
+      , bt'BidPrice = m'bt'BidPrice
+      , bt'BidderSignature = m'bt'BidderSignature
+      , bt'SellerSignature = m'bt'SellerSignature
+      }

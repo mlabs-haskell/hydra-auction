@@ -2,15 +2,24 @@ module HydraAuction.Offchain.Types.BidderInfo (
   BidderInfo (..),
   BidderInfo'Error (..),
   validateBidderInfo,
+  toPlutusBidderInfo,
+  fromPlutusBidderInfo,
 ) where
 
 import GHC.Generics (Generic)
 import Prelude
 
+import Data.Function ((&))
 import Data.Validation (Validation)
 
 import HydraAuction.Error.Types.BidderInfo (
   BidderInfo'Error (..),
+ )
+import HydraAuction.Offchain.Lib.Codec.Onchain (
+  fromPlutusVKey,
+  fromPlutusVKeyHash,
+  toPlutusVKey,
+  toPlutusVKeyHash,
  )
 import HydraAuction.Offchain.Lib.Crypto (
   Hash,
@@ -19,6 +28,8 @@ import HydraAuction.Offchain.Lib.Crypto (
   VerificationKey,
  )
 import HydraAuction.Offchain.Lib.Validation (err)
+
+import HydraAuction.Onchain.Types.BidderInfo qualified as O
 
 data BidderInfo = BidderInfo
   { bi'BidderPkh :: !(Hash PaymentKey)
@@ -36,7 +47,6 @@ data BidderInfo = BidderInfo
 -- -------------------------------------------------------------------------
 -- Validation
 -- -------------------------------------------------------------------------
-
 validateBidderInfo ::
   BidderInfo ->
   Validation [BidderInfo'Error] ()
@@ -48,3 +58,33 @@ validateBidderInfo BidderInfo {..} =
   -- https://github.com/input-output-hk/plutus/pull/5431
   (bi'BidderPkh == verificationKeyHash bi'BidderVk)
     `err` BidderInfo'Error'BidderVkPkhMismatch
+
+-- -------------------------------------------------------------------------
+-- Conversion to onchain
+-- -------------------------------------------------------------------------
+toPlutusBidderInfo :: BidderInfo -> O.BidderInfo
+toPlutusBidderInfo BidderInfo {..} =
+  O.BidderInfo
+    { O.bi'BidderPkh =
+        bi'BidderPkh & toPlutusVKeyHash
+    , --
+      O.bi'BidderVk =
+        bi'BidderVk & toPlutusVKey
+    }
+
+-- -------------------------------------------------------------------------
+-- Conversion from onchain
+-- -------------------------------------------------------------------------
+fromPlutusBidderInfo :: O.BidderInfo -> Maybe BidderInfo
+fromPlutusBidderInfo O.BidderInfo {..} = do
+  m'bi'BidderPkh <-
+    bi'BidderPkh & fromPlutusVKeyHash
+  --
+  m'bi'BidderVk <-
+    bi'BidderVk & fromPlutusVKey
+  --
+  pure $
+    BidderInfo
+      { bi'BidderPkh = m'bi'BidderPkh
+      , bi'BidderVk = m'bi'BidderVk
+      }
