@@ -467,8 +467,8 @@ bidderSignatureMessage
   -> BuiltinByteString
 bidderSignatureMessage auctionId bidPrice bidderPkh =
   toByteString auctionId <>
-  toByteString bidPrice <>
-  toByteString bidderPkh
+  toByteString bidderPkh <>
+  toByteString bidPrice
 
 sellerSignatureMessage
   :: CurrencySymbol

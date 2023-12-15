@@ -1,7 +1,7 @@
 cabal-version: 3.0
-name:          hydra-auction-plutus
+name:          hydra-auction-error
 version:       0.1.0
-synopsis:      Hydra Auction Plutus Contracts
+synopsis:      Hydra Auction Error Types
 homepage:      https://github.com/mlabs-haskell/hydra-auction
 author:        MLabs
 maintainer:    info@mlabs.city
@@ -16,7 +16,7 @@ source-repository head
 
 flag dev
   description:
-    Defer errors from the PlutusTx plugin, which break HLS and Haddock. Also disable -Werror.
+    Disable -Werror.
 
   default:     True
   manual:      False
@@ -56,6 +56,7 @@ common common-config
     PatternSynonyms
     QuantifiedConstraints
     RankNTypes
+    RecordWildCards
     ScopedTypeVariables
     StandaloneDeriving
     StrictData
@@ -78,43 +79,22 @@ common common-config
     ghc-options: -Werror
 
   if flag(dev)
-    ghc-options:
-      -Wno-unused-imports
-      -Wno-missing-export-lists
     default-extensions: PartialTypeSignatures
 
 library
   import:          common-config
   hs-source-dirs:  src
   exposed-modules:
-    Auction.Onchain.AuctionEscrow
-    Auction.Onchain.BidderDeposit
-    Auction.Onchain.FeeEscrow
-    Auction.Onchain.StandingBid
-    Auction.Onchain.VoucherToken
-    Auction.Terms
+    HydraAuction.Error
+    HydraAuction.Error.Types.AuctionState
+    HydraAuction.Error.Types.AuctionTerms
+    HydraAuction.Error.Types.BidderInfo
+    HydraAuction.Error.Types.BidTerms
+    HydraAuction.Error.Types.DelegateInfo
 
   build-depends:
-    , aeson
+    -- , aeson
     , base
-    , base16-bytestring
-    , lens
-    , lens-aeson
-    , mtl
-    , plutus-core
-    , plutus-ledger-api
-    , plutus-tx
-    , plutus-tx-plugin
-    , record-dot-preprocessor
-    , record-hasfield
-    , transformers
+    , text
 
   ghc-options:
-    -fplugin-opt PlutusTx.Plugin:target-version=1.0.0 -fobject-code
-    -fno-ignore-interface-pragmas -fno-omit-interface-pragmas
-    -fno-specialize -fno-unbox-small-strict-fields
-    -fno-unbox-strict-fields
-
-  if flag(dev)
-    ghc-options: -fplugin-opt PlutusTx.Plugin:defer-errors
-

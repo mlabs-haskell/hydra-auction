@@ -75,7 +75,9 @@ let
     # NOTE: Explicit list of local packages as hoogle would not work otherwise.
     # Make sure these are consistent with the packages in cabal.project.
     packages = ps: with ps; [
-      hydra-auction-plutus
+      hydra-auction-error
+      hydra-auction-offchain
+      hydra-auction-onchain
     ];
 
     buildInputs = libs ++ buildInputs ++ devInputs;
