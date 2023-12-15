@@ -14,24 +14,16 @@ source-repository head
   type:     git
   location: https://github.com/mlabs-haskell/hydra-auction
 
-flag dev
-  description:
-    Disable -Werror.
-
-  default:     True
-  manual:      False
-
-common common-config
+-- Recommendations from the MLabs styleguide
+-- https://github.com/mlabs-haskell/styleguide/
+common mlabs-styleguide-config
   default-language:   Haskell2010
 
-  -- Options from MLabs styleguide
   default-extensions:
-    NoImplicitPrelude
     BangPatterns
     BinaryLiterals
     ConstraintKinds
     DataKinds
-    DeriveAnyClass
     DeriveFunctor
     DeriveGeneric
     DeriveTraversable
@@ -41,7 +33,6 @@ common common-config
     EmptyCase
     FlexibleContexts
     FlexibleInstances
-    FunctionalDependencies
     GADTs
     GeneralizedNewtypeDeriving
     HexFloatLiterals
@@ -50,51 +41,59 @@ common common-config
     KindSignatures
     LambdaCase
     MultiParamTypeClasses
-    NamedFieldPuns
+    NoImplicitPrelude
     NumericUnderscores
     OverloadedStrings
-    PatternSynonyms
-    QuantifiedConstraints
-    RankNTypes
-    RecordWildCards
     ScopedTypeVariables
     StandaloneDeriving
-    StrictData
-    TemplateHaskell
     TupleSections
     TypeApplications
-    TypeFamilies
-    TypeFamilyDependencies
     TypeOperators
     TypeSynonymInstances
     UndecidableInstances
 
   ghc-options:
-    -Wall -Wcompat -Wincomplete-record-updates
-    -Wincomplete-uni-patterns -Wredundant-constraints
-    -Wmissing-export-lists -Wmissing-deriving-strategies
-    -Wno-redundant-constraints
+    -Wall
+    -Wcompat
+    -Wincomplete-record-updates
+    -Wincomplete-uni-patterns
+    -Wmissing-deriving-strategies
+    -Wmissing-export-lists
+    -Wredundant-constraints
+    -Werror
 
-  if !flag(dev)
-    ghc-options: -Werror
+-- Combined common options.
+common common-config
+  import: mlabs-styleguide-config
 
-  if flag(dev)
-    default-extensions: PartialTypeSignatures
+  default-extensions:
+    Strict
+
+  ghc-options:
+    -fobject-code
 
 library
   import:          common-config
   hs-source-dirs:  src
   exposed-modules:
     HydraAuction.Error
-    HydraAuction.Error.Types.AuctionState
+    HydraAuction.Error.Onchain.MintingPolicies.AuctionMp
+    HydraAuction.Error.Onchain.Validators.AuctionEscrow
+    HydraAuction.Error.Onchain.Validators.AuctionMetadata
+    HydraAuction.Error.Onchain.Validators.BidderDeposit
+    HydraAuction.Error.Onchain.Validators.FeeEscrow
+    HydraAuction.Error.Onchain.Validators.StandingBid
+    HydraAuction.Error.Types.AuctionEscrowState
+    HydraAuction.Error.Types.AuctionInfo
     HydraAuction.Error.Types.AuctionTerms
     HydraAuction.Error.Types.BidderInfo
     HydraAuction.Error.Types.BidTerms
     HydraAuction.Error.Types.DelegateInfo
+    HydraAuction.Error.Types.StandingBidState
 
   build-depends:
-    -- , aeson
     , base
+    , safe
+    , template-haskell
     , text
-
-  ghc-options:
+    , universe

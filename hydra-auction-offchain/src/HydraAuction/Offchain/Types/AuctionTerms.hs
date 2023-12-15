@@ -23,7 +23,15 @@ import Cardano.Api.Shelley (
 import HydraAuction.Error.Types.AuctionTerms (
   AuctionTerms'Error (..),
  )
-import HydraAuction.Offchain.Lib.Codec.Onchain (
+import HydraAuction.Offchain.Lib.Crypto (
+  Hash,
+  Key (verificationKeyHash),
+  PaymentKey,
+  VerificationKey,
+ )
+import HydraAuction.Offchain.Lib.Validation (err)
+import Plutus.Cardano.Api.Codec (
+  UTCTimeMilli,
   fromPlutusAssetId,
   fromPlutusLovelace,
   fromPlutusUTCTimeMilli,
@@ -35,14 +43,6 @@ import HydraAuction.Offchain.Lib.Codec.Onchain (
   toPlutusVKey,
   toPlutusVKeyHash,
  )
-import HydraAuction.Offchain.Lib.Crypto (
-  Hash,
-  Key (verificationKeyHash),
-  PaymentKey,
-  VerificationKey,
- )
-import HydraAuction.Offchain.Lib.Time (UTCTimeMilli)
-import HydraAuction.Offchain.Lib.Validation (err)
 
 import HydraAuction.Onchain.Types.AuctionTerms qualified as O
 
@@ -96,42 +96,42 @@ validateAuctionTerms ::
   Validation [AuctionTerms'Error] ()
 validateAuctionTerms aTerms@AuctionTerms {..} =
   --
-  -- (AT01) The seller pubkey hash corresponds to the seller verification key.
+  -- The seller pubkey hash corresponds to the seller verification key.
   -- Note: this check only becomes possible on-chain in Plutus V3.
   -- https://github.com/input-output-hk/plutus/pull/5431
   (at'SellerPkh == verificationKeyHash at'SellerVk)
     `err` AuctionTerms'Error'SellerVkPkhMismatch
     --
-    -- (AT02) Bidding ends after it the bidding start time.
+    -- Bidding ends after it the bidding start time.
     <> (at'BiddingStart < at'BiddingEnd)
     `err` AuctionTerms'Error'BiddingStartNotBeforeBiddingEnd
     --
-    -- (AT03) The purchase deadline occurs after bidding ends.
+    -- The purchase deadline occurs after bidding ends.
     <> (at'BiddingEnd < at'PurchaseDeadline)
     `err` AuctionTerms'Error'BiddingEndNotBeforePurchaseDeadline
     --
-    -- (AT04) Cleanup happens after the purchase deadline,
+    -- Cleanup happens after the purchase deadline,
     -- so that the seller can claim the winning bidder's deposit
     -- if the auction lot is not sold
     <> (at'PurchaseDeadline < at'Cleanup)
     `err` AuctionTerms'Error'PurchaseDeadlineNotBeforeCleanup
     --
-    -- (AT05) New bids must be larger than the standing bid.
+    -- New bids must be larger than the standing bid.
     <> (at'MinBidIncrement > Lovelace 0)
     `err` AuctionTerms'Error'NonPositiveMinBidIncrement
     --
-    -- (AT06) The auction fee for each delegate must contain
+    -- The auction fee for each delegate must contain
     -- the min 2 ADA for the utxos that will be sent to the delegates
     -- during fee distribution.
     <> (at'StartingBid > totalAuctionFees aTerms)
     `err` AuctionTerms'Error'InvalidStartingBid
     --
-    -- (AT07) The auction fees for all delegates must be covered by
+    -- The auction fees for all delegates must be covered by
     -- the starting bid.
     <> (at'AuctionFeePerDelegate > minAuctionFee)
     `err` AuctionTerms'Error'InvalidAuctionFeePerDelegate
     --
-    -- (AT08) There must be at least one delegate.
+    -- There must be at least one delegate.
     <> (length at'Delegates > 0)
     `err` AuctionTerms'Error'NoDelegates
 

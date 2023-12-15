@@ -78,6 +78,7 @@ let
       hydra-auction-error
       hydra-auction-offchain
       hydra-auction-onchain
+      plutus-cardano-api-codec
     ];
 
     buildInputs = libs ++ buildInputs ++ devInputs;

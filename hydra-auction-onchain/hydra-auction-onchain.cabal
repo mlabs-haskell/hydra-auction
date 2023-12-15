@@ -16,32 +16,33 @@ source-repository head
 
 flag dev
   description:
-    Defer errors from the PlutusTx plugin, which break HLS and Haddock. Also disable -Werror.
+    Defers errors from the PlutusTx plugin, which break HLS and Haddock.
+    Unfortunately, it must be enabled by default because HLS doesn't
+    allow cabal arguments to be provided.
+    Make sure to _DISABLE_ this in CI and when building for production.
 
   default:     True
   manual:      False
 
-common common-config
+-- Recommendations from the MLabs styleguide.
+-- https://github.com/mlabs-haskell/styleguide/
+common mlabs-styleguide-config
   default-language:   Haskell2010
 
-  -- Options from MLabs styleguide
   default-extensions:
-    NoImplicitPrelude
-    BangPatterns
+    -- BangPatterns
     BinaryLiterals
     ConstraintKinds
     DataKinds
-    DeriveAnyClass
     DeriveFunctor
     DeriveGeneric
     DeriveTraversable
     DerivingStrategies
     DerivingVia
-    DuplicateRecordFields
+    -- DuplicateRecordFields
     EmptyCase
     FlexibleContexts
     FlexibleInstances
-    FunctionalDependencies
     GADTs
     GeneralizedNewtypeDeriving
     HexFloatLiterals
@@ -50,89 +51,130 @@ common common-config
     KindSignatures
     LambdaCase
     MultiParamTypeClasses
-    NamedFieldPuns
+    NoImplicitPrelude
     NumericUnderscores
     OverloadedStrings
-    PatternSynonyms
-    QuantifiedConstraints
-    RankNTypes
-    RecordWildCards
     ScopedTypeVariables
     StandaloneDeriving
-    StrictData
-    TemplateHaskell
     TupleSections
     TypeApplications
-    TypeFamilies
-    TypeFamilyDependencies
     TypeOperators
-    TypeSynonymInstances
-    UndecidableInstances
+    -- TypeSynonymInstances
+    -- UndecidableInstances
 
   ghc-options:
-    -Wall -Wcompat -Wincomplete-record-updates
-    -Wincomplete-uni-patterns -Wredundant-constraints
-    -Wmissing-export-lists -Wmissing-deriving-strategies
-    -Wno-redundant-constraints
+    -Wall
+    -Wcompat
+    -Wincomplete-record-updates
+    -Wincomplete-uni-patterns
+    -Wmissing-deriving-strategies
+    -Wmissing-export-lists
+    -Wredundant-constraints
+    -Werror
 
-  if !flag(dev)
-    ghc-options: -Werror
+-- Plutus recommendations for on-chain code
+-- https://plutus.readthedocs.io/en/latest/extensions-flags-pragmas.html
+common plutus-config
+  default-extensions:
+    Strict
+
+  ghc-options:
+    -fno-ignore-interface-pragmas
+    -fno-full-laziness
+    -fno-omit-interface-pragmas
+    -fno-spec-constr
+    -fno-specialize
+    -fno-strictness
+    -fno-unbox-small-strict-fields
+    -fno-unbox-strict-fields
+
+-- Combined configuration for on-chain code,
+-- excluding the PlutusTx Plugin compilation process.
+common onchain-config
+  import:
+    , mlabs-styleguide-config
+    , plutus-config
+
+  default-extensions:
+    PatternSynonyms
+    RecordWildCards
+    TemplateHaskell
+    Strict
+
+  ghc-options:
+    -fobject-code
+
+-- Configuration for the PlutusTx Plugin compilation process.
+common plutus-plugin-config
+  ghc-options:
+    -fplugin-opt PlutusTx.Plugin:target-version=1.0.0
 
   if flag(dev)
-    default-extensions: PartialTypeSignatures
+    ghc-options:
+      -fplugin-opt PlutusTx.Plugin:defer-errors
 
-library
-  import:          common-config
-  hs-source-dirs:  src
-  exposed-modules:
-    HydraAuction.Onchain.Lib.Error
-    HydraAuction.Onchain.Lib.Serialise
-    HydraAuction.Onchain.Types.AuctionTerms
-    HydraAuction.Onchain.Types.AuctionState
-    HydraAuction.Onchain.Types.BidderInfo
-    HydraAuction.Onchain.Types.BidTerms
-    HydraAuction.Onchain.Types.DelegateInfo
+executable hydra-auction-onchain
+  import:
+    , onchain-config
+    , plutus-plugin-config
+  hs-source-dirs: exe/hydra-auction-onchain
+  main-is: Main.hs
+  other-modules:
+    Lib.Scripts
+    Scripts
 
   build-depends:
     -- , aeson
     , base
     -- , base16-bytestring
     -- , bytestring
-    -- , cardano-api             >=8.20.0 && <8.21
-    -- , cardano-binary          >=1.7.0  && <1.8
-    -- , cardano-crypto-class    >=2.1.1  && <2.2
-    -- , cardano-ledger-allegra  >=1.2.1  && <1.3
-    -- , cardano-ledger-alonzo   >=1.4    && <1.5
-    -- , cardano-ledger-api      >=1.5    && <1.6
-    -- , cardano-ledger-babbage  >=1.4.2  && <1.5
-    -- , cardano-ledger-binary   >=1.1.1  && <1.2
-    -- , cardano-ledger-byron    >=1.0.0  && <1.1
-    -- , cardano-ledger-core     >=1.6    && <1.7
-    -- , cardano-ledger-mary     >=1.3.1  && <1.4
-    -- , cardano-ledger-shelley  >=1.6    && <1.7
     -- , containers
     -- , lens
     -- , lens-aeson
     -- , mtl
-    -- , plutus-core
+    , plutus-core
     , hydra-auction-error
+    , hydra-auction-onchain
     , plutus-ledger-api
+    , plutus-cardano-api-codec
     , plutus-tx
     , plutus-tx-plugin
     -- , record-dot-preprocessor
     -- , record-hasfield
     , template-haskell
-    , text
+    -- , text
     -- , time
     -- , transformers
     -- , validation
+    
 
-  ghc-options:
-    -fplugin-opt PlutusTx.Plugin:target-version=1.0.0 -fobject-code
-    -fno-ignore-interface-pragmas -fno-omit-interface-pragmas
-    -fno-specialize -fno-unbox-small-strict-fields
-    -fno-unbox-strict-fields
+library
+  import: onchain-config
+  hs-source-dirs:  src
+  exposed-modules:
+    HydraAuction.Onchain.Lib.Error
+    HydraAuction.Onchain.Lib.PlutusTx
+    HydraAuction.Onchain.Lib.Serialise
+    HydraAuction.Onchain.MintingPolicies.AuctionMp
+    HydraAuction.Onchain.Types.AuctionEscrowState
+    HydraAuction.Onchain.Types.AuctionInfo
+    HydraAuction.Onchain.Types.AuctionTerms
+    HydraAuction.Onchain.Types.BidderInfo
+    HydraAuction.Onchain.Types.BidTerms
+    HydraAuction.Onchain.Types.DelegateInfo
+    HydraAuction.Onchain.Types.Redeemers
+    HydraAuction.Onchain.Types.Scripts
+    HydraAuction.Onchain.Types.StandingBidState
+    HydraAuction.Onchain.Types.Tokens
+    HydraAuction.Onchain.Validators.AuctionEscrow
+    HydraAuction.Onchain.Validators.AuctionMetadata
+    HydraAuction.Onchain.Validators.BidderDeposit
+    HydraAuction.Onchain.Validators.FeeEscrow
+    HydraAuction.Onchain.Validators.StandingBid
 
-  if flag(dev)
-    ghc-options: -fplugin-opt PlutusTx.Plugin:defer-errors
-
+  build-depends:
+    , base
+    , hydra-auction-error
+    , plutus-ledger-api
+    , plutus-tx
+    , template-haskell

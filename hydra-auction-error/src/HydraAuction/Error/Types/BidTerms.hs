@@ -2,23 +2,30 @@ module HydraAuction.Error.Types.BidTerms (
   BidTerms'Error (..),
 ) where
 
-import GHC.Generics (Generic)
 import Prelude
 
-import HydraAuction.Error (ToErrorCode (..))
+import Data.Universe (Universe (..), universeGeneric)
+import GHC.Generics (Generic)
+
+import HydraAuction.Error (ErrorCodePrefix (..))
 import HydraAuction.Error.Types.BidderInfo (BidderInfo'Error (..))
 
 data BidTerms'Error
   = BidTerms'Error'BidderInfo ![BidderInfo'Error]
-  | BidTerms'Error'InvalidBidderSignature
   | BidTerms'Error'InvalidSellerSignature
+  | BidTerms'Error'InvalidBidderSignature
   deriving stock (Eq, Generic, Show)
 
-instance ToErrorCode BidTerms'Error where
-  toErrorCode = \case
-    BidTerms'Error'BidderInfo _ ->
-      "BT01"
-    BidTerms'Error'InvalidBidderSignature ->
-      "BT02"
-    BidTerms'Error'InvalidSellerSignature ->
-      "BT03"
+-- -------------------------------------------------------------------------
+-- Universe
+-- -------------------------------------------------------------------------
+
+instance Universe BidTerms'Error where
+  universe = universeGeneric
+
+-- -------------------------------------------------------------------------
+-- Error code prefix
+-- -------------------------------------------------------------------------
+
+instance ErrorCodePrefix BidTerms'Error where
+  errorCodePrefix = const "BITE"

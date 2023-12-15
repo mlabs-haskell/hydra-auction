@@ -18,23 +18,23 @@ import Data.Validation (Validation)
 import HydraAuction.Error.Types.DelegateInfo (
   DelegateInfo'Error (..),
  )
-import HydraAuction.Offchain.Lib.Codec.Onchain (
-  fromPlutusTextUtf8,
-  fromPlutusVKeyHash,
-  toPlutusTextUtf8,
-  toPlutusVKeyHash,
- )
 import HydraAuction.Offchain.Lib.Crypto (
   Hash,
   PaymentKey,
  )
 import HydraAuction.Offchain.Lib.Validation (err)
+import Plutus.Cardano.Api.Codec (
+  fromPlutusTextUtf8,
+  fromPlutusVKeyHash,
+  toPlutusTextUtf8,
+  toPlutusVKeyHash,
+ )
 
 import HydraAuction.Onchain.Types.DelegateInfo qualified as O
 
 data DelegateInfo = DelegateInfo
   { di'GroupName :: !Text
-  , di'GroupURL :: !Text
+  , di'GroupUrl :: !Text
   , di'Delegates :: ![Hash PaymentKey]
   -- ^ The payment vkey hashes of the individual delegates in this group.
   -- These payment vkey hashes also indicate where the delegates
@@ -50,7 +50,7 @@ validateDelegateInfo ::
   Validation [DelegateInfo'Error] ()
 validateDelegateInfo DelegateInfo {..} =
   --
-  -- (DI01) There must be at least one delegate.
+  -- There must be at least one delegate.
   (length di'Delegates > 0)
     `err` DelegateInfo'Error'NoDelegates
 
@@ -63,8 +63,8 @@ toPlutusDelegateInfo DelegateInfo {..} =
     { O.di'GroupName =
         di'GroupName & toPlutusTextUtf8
     , --
-      O.di'GroupURL =
-        di'GroupURL & toPlutusTextUtf8
+      O.di'GroupUrl =
+        di'GroupUrl & toPlutusTextUtf8
     , --
       O.di'Delegates =
         di'Delegates <&> toPlutusVKeyHash
@@ -78,8 +78,8 @@ fromPlutusDelegateInfo O.DelegateInfo {..} = do
   m'di'GroupName <-
     di'GroupName & fromPlutusTextUtf8
   --
-  m'di'GroupURL <-
-    di'GroupURL & fromPlutusTextUtf8
+  m'di'GroupUrl <-
+    di'GroupUrl & fromPlutusTextUtf8
   --
   m'di'Delegates <-
     di'Delegates `for` fromPlutusVKeyHash
@@ -87,6 +87,6 @@ fromPlutusDelegateInfo O.DelegateInfo {..} = do
   pure $
     DelegateInfo
       { di'GroupName = m'di'GroupName
-      , di'GroupURL = m'di'GroupURL
+      , di'GroupUrl = m'di'GroupUrl
       , di'Delegates = m'di'Delegates
       }

@@ -47,6 +47,9 @@ rec {
   hydra-auction-onchain =
     nativePkgs.hydra-auction-onchain.components.library;
 
+  plutus-cardano-api-codec =
+    nativePkgs.plutus-cardano-api-codec.components.library;
+
   # tests = {
   #   hydra-auction-plutus =
   #     wrapTest nativePkgs.hydra-auction-plutus.components.tests.tests;
