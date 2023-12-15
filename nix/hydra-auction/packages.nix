@@ -37,14 +37,19 @@ let
     '';
 in
 rec {
-  hydra-auction = myComponents.exes.hydra-auction;
 
-  hydra-auction-delegate = myComponents.exes.hydra-auction-delegate;
-  
-  hydra-auction-platform = myComponents.exes.hydra-auction-platform;
+  hydra-auction-error =
+    nativePkgs.hydra-auction-error.components.library;
 
-  tests = {
-    hydra-auction = wrapTest myComponents.tests.hydra-auction-test;
-  };
+  hydra-auction-offchain =
+    nativePkgs.hydra-auction-offchain.components.library;
+
+  hydra-auction-onchain =
+    nativePkgs.hydra-auction-onchain.components.library;
+
+  # tests = {
+  #   hydra-auction-plutus =
+  #     wrapTest nativePkgs.hydra-auction-plutus.components.tests.tests;
+  # };
 
 }

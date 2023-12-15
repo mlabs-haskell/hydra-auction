@@ -1,0 +1,100 @@
+cabal-version: 3.0
+name:          hydra-auction-error
+version:       0.1.0
+synopsis:      Hydra Auction Error Types
+homepage:      https://github.com/mlabs-haskell/hydra-auction
+author:        MLabs
+maintainer:    info@mlabs.city
+license:       Apache-2.0
+license-files:
+  LICENSE
+  NOTICE
+
+source-repository head
+  type:     git
+  location: https://github.com/mlabs-haskell/hydra-auction
+
+flag dev
+  description:
+    Disable -Werror.
+
+  default:     True
+  manual:      False
+
+common common-config
+  default-language:   Haskell2010
+
+  -- Options from MLabs styleguide
+  default-extensions:
+    NoImplicitPrelude
+    BangPatterns
+    BinaryLiterals
+    ConstraintKinds
+    DataKinds
+    DeriveAnyClass
+    DeriveFunctor
+    DeriveGeneric
+    DeriveTraversable
+    DerivingStrategies
+    DerivingVia
+    DuplicateRecordFields
+    EmptyCase
+    FlexibleContexts
+    FlexibleInstances
+    FunctionalDependencies
+    GADTs
+    GeneralizedNewtypeDeriving
+    HexFloatLiterals
+    ImportQualifiedPost
+    InstanceSigs
+    KindSignatures
+    LambdaCase
+    MultiParamTypeClasses
+    NamedFieldPuns
+    NumericUnderscores
+    OverloadedStrings
+    PatternSynonyms
+    QuantifiedConstraints
+    RankNTypes
+    RecordWildCards
+    ScopedTypeVariables
+    StandaloneDeriving
+    StrictData
+    TemplateHaskell
+    TupleSections
+    TypeApplications
+    TypeFamilies
+    TypeFamilyDependencies
+    TypeOperators
+    TypeSynonymInstances
+    UndecidableInstances
+
+  ghc-options:
+    -Wall -Wcompat -Wincomplete-record-updates
+    -Wincomplete-uni-patterns -Wredundant-constraints
+    -Wmissing-export-lists -Wmissing-deriving-strategies
+    -Wno-redundant-constraints
+
+  if !flag(dev)
+    ghc-options: -Werror
+
+  if flag(dev)
+    default-extensions: PartialTypeSignatures
+
+library
+  import:          common-config
+  hs-source-dirs:  src
+  exposed-modules:
+    HydraAuction.Error
+    HydraAuction.Error.Types.AuctionState
+    HydraAuction.Error.Types.AuctionTerms
+    HydraAuction.Error.Types.BidderInfo
+    HydraAuction.Error.Types.BidTerms
+    HydraAuction.Error.Types.DelegateInfo
+
+  build-depends:
+    -- , aeson
+    , base
+    , text
+
+  ghc-options:

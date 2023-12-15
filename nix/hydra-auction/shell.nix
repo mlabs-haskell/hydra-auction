@@ -15,6 +15,12 @@ let
 
   cabal = pkgs.haskell-nix.cabal-install.${compiler};
 
+  # haskell-language-server = pkgs.haskell-nix.tool compiler "haskell-language-server" rec {
+  #   src = pkgs.haskell-nix.sources."hls-1.10";
+  #   cabalProject = builtins.readFile (src + "/cabal.project");
+  #   sha256map."https://github.com/pepeiborra/ekg-json"."7a0af7a8fd38045fd15fb13445bdcc7085325460" = "sha256-fVwKxGgM0S4Kv/4egVAAiAjV7QB5PBqMVMCfsv7otIQ=";
+  # };
+
   libs = [
     pkgs.glibcLocales
     pkgs.libsodium-vrf # from iohk-nix overlay
@@ -44,6 +50,8 @@ let
   ];
 
   devInputs = if withoutDevTools then [ ] else [
+    # Essenetial for a good IDE
+    # haskell-language-server
     # Automagically format .hs and .cabal files
     pkgs.haskellPackages.fourmolu
     pkgs.haskellPackages.cabal-fmt
@@ -67,7 +75,9 @@ let
     # NOTE: Explicit list of local packages as hoogle would not work otherwise.
     # Make sure these are consistent with the packages in cabal.project.
     packages = ps: with ps; [
-      hydra-auction
+      hydra-auction-error
+      hydra-auction-offchain
+      hydra-auction-onchain
     ];
 
     buildInputs = libs ++ buildInputs ++ devInputs;

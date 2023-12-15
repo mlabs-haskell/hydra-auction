@@ -24,11 +24,6 @@ In this document, we use L1 and L2 as follows:
 
 **Auction lot:** the NFT asset being sold in the auction.
 
-</td></tr><tr></tr><tr><td>
-
-**Voucher:** the NFT asset that the winning bidder can use
-to buy the auction lot for the standing bid’s price.
-
 </td></tr></table>
 
 **Bidding:**
@@ -58,7 +53,7 @@ that have been submitted on or before a given time.
 to be eligible to participate in the auction.
 A bidder’s deposit can be claimed by the seller
 if the bidder wins the auction
-but does not buy the auction lot by the voucher expiry time.
+but does not buy the auction lot by the purchase deadline time.
 
 </td></tr></table>
 
@@ -117,7 +112,7 @@ declared by the seller when the auction is announced:
 
 </td></tr><tr></tr><tr><td>
 
-`T3` Voucher expiry time
+`T3` Purchase deadline time
 
 </td></tr><tr></tr><tr><td>
 
@@ -142,11 +137,11 @@ we partition time into periods () by the above lifecycle times:
 
 </td></tr><tr></tr><tr><td>
 
-`P3 = [T2, T3)` Voucher active period
+`P3 = [T2, T3)` Purchase period
 
 </td></tr><tr></tr><tr><td>
 
-`P4 = [T3, T4)` Voucher expired period
+`P4 = [T3, T4)` Penalty period
 
 </td></tr><tr></tr><tr><td>
 
@@ -159,8 +154,8 @@ flowchart LR
     p0[Pre-auction]     --> p1
     p1[Pre-bidding]     --> p2
     p2[Bidding]         --> p3
-    p3[Voucher active]  --> p4
-    p4[Voucher expired] --> p5
+    p3[Purchase]  --> p4
+    p4[Penalty] --> p5
     p5[Cleanup]
 
   classDef default font-size:90%, overflow:visible;
@@ -178,16 +173,16 @@ We omit the outputs of each state transition.
 
 ```mermaid
 stateDiagram-v2
-  [*]               --> Announced:         AnnounceAuction [P0]
-  Announced         --> BiddingOnL1:       StartBidding [P2]
-  BiddingOnL1       --> BiddingOnL2:       CommitStandingBid [P2, HI]
-  BiddingOnL1       --> VoucherActive:     [P3]
-  BiddingOnL2       --> BiddingOnL1:       FanoutStandingBid [P2]
-  BiddingOnL2       --> VoucherActive:     FanoutStandingBid [P3]
-  VoucherActive     --> Concluded:         BidderBuys [P3]
-  VoucherActive     --> VoucherExpired:    [P4]
-  VoucherExpired    --> Concluded:         SellerReclaims [P4 ∪ P5]
-  Concluded         --> [*]:               Cleanup [P5]
+  [*]           -->   Announced:     AnnounceAuction [P0]
+  Announced     -->   BiddingOnL1:   StartBidding [P2]
+  BiddingOnL1   -->   BiddingOnL2:   CommitStandingBid [P2, HI]
+  BiddingOnL1   -->   Purchase:      [P3]
+  BiddingOnL2   -->   BiddingOnL1:   FanoutStandingBid [P2]
+  BiddingOnL2   -->   Purchase:      FanoutStandingBid [P3]
+  Purchase      -->   Concluded:     BidderBuys [P3]
+  Purchase      -->   Penalty:       [P4]
+  Penalty       -->   Concluded:     SellerReclaims [P4 ∪ P5]
+  Concluded     -->   [*]:           Cleanup [P5]
 ```
 
 The state transitions are as follows:
@@ -228,13 +223,13 @@ bidding on L1 is less convenient than on L2.
 
 </td></tr><tr></tr><tr><td>
 
-`[P3]`. During the voucher active period,
+`[P3]`. During the purchase period,
 bidders can no longer submit any new bids
 (neither via L1 nor L2).
 
 </td></tr><tr></tr><tr><td>
 
-`FanoutStandingBid [P3]`. During the voucher active period
+`FanoutStandingBid [P3]`. During the purchase period
 (preferrably at the bidding end time `T2`),
 the standing bid can be moved back to L1
 via fanout from the Hydra Head,
@@ -243,19 +238,19 @@ after which bidders can no longer submit any new bids
 
 </td></tr><tr></tr><tr><td>
 
-`BidderBuys [P3]`. During the voucher active period,
+`BidderBuys [P3]`. During the purchase period,
 the bidder can buy the auction lot,
 paying the winning bid amount to the seller
 and depositing the total auction fees in the fee escrow.
 
 </td></tr><tr></tr><tr><td>
 
-`[P4]`. During the voucher expiry period,
+`[P4]`. During the penalty period,
 the winning bidder can no longer buy the auction lot.
 
 </td></tr><tr></tr><tr><td>
 
-`SellerReclaims [P4 ∪ P5]`. During the voucher expired period
+`SellerReclaims [P4 ∪ P5]`. During the penalty period
 and during the cleanup period,
 if the winning bidder (if any) did not buy the auction lot,
 then the seller may reclaim the auction lot,
@@ -308,7 +303,7 @@ for inclusion in the auction's list of approved bidders.
 
 </td></tr><tr></tr><tr><td>
 
-`BidderBuys [W, P3]`. During the voucher active period,
+`BidderBuys [W, P3]`. During the purchase period,
 the bidder can claim the deposit (if available)
 while buying the auction lot,
 to use some of the ADA in the deposit
@@ -316,15 +311,15 @@ in the payment of the winning bid amount to the seller.
 
 </td></tr><tr></tr><tr><td>
 
-`SellerClaims [W, P4]`. During the voucher expired period,
+`SellerClaims [W, P4]`. During the penalty period,
 the seller can claim the winning bidder's deposit (if available),
 by referencing on-chain auction state that proves
 that the winning bidder did not buy the auction lot.
 
 </td></tr><tr></tr><tr><td>
 
-`RefundDeposit [¬W, P3 ∪ P4]`. During the voucher active period
-and during the voucher expiry period,
+`RefundDeposit [¬W, P3 ∪ P4]`. During the purchase period
+and during the penalty period,
 the bidder can reclaim his deposit (if available)
 by referencing on-chain auction state that proves
 that the bidder did not win the auction.
@@ -354,13 +349,13 @@ The state transitions are as follows:
 
 <table><tr><td>
 
-`BidderBuys [P3]`. During the voucher active period,
+`BidderBuys [P3]`. During the purchase period,
 the total auction fees are deposited in the fee escrow
 if the bidder buys the auction lot.
 
 </td></tr><tr></tr><tr><td>
 
-`SellerReclaims [P4 ∪ P5]`. During the voucher expired period
+`SellerReclaims [P4 ∪ P5]`. During the penalty period
 and during the cleanup period,
 the total auction fees are deposited in the fee escrow
 if the seller reclaims the auction lot.
