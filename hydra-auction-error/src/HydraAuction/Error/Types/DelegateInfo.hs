@@ -2,16 +2,26 @@ module HydraAuction.Error.Types.DelegateInfo (
   DelegateInfo'Error (..),
 ) where
 
-import GHC.Generics (Generic)
 import Prelude
 
-import HydraAuction.Error (ToErrorCode (..))
+import Data.Universe (Universe)
+import GHC.Generics (Generic)
+
+import HydraAuction.Error (ErrorCodePrefix (..))
 
 data DelegateInfo'Error
   = DelegateInfo'Error'NoDelegates
-  deriving stock (Eq, Generic, Show)
+  deriving stock (Bounded, Enum, Eq, Generic, Show)
 
-instance ToErrorCode DelegateInfo'Error where
-  toErrorCode = \case
-    DelegateInfo'Error'NoDelegates ->
-      "DI01"
+-- -------------------------------------------------------------------------
+-- Universe
+-- -------------------------------------------------------------------------
+
+instance Universe DelegateInfo'Error
+
+-- -------------------------------------------------------------------------
+-- Error code prefix
+-- -------------------------------------------------------------------------
+
+instance ErrorCodePrefix DelegateInfo'Error where
+  errorCodePrefix = const "DEIN"

@@ -9,6 +9,7 @@ module HydraAuction.Offchain.Types.BidTerms (
 import GHC.Generics (Generic)
 import Prelude
 
+import Data.ByteString (ByteString)
 import Data.Function ((&))
 import Data.Validation (Validation)
 
@@ -17,16 +18,9 @@ import Cardano.Api.Shelley (
   PolicyId (..),
   SerialiseAsRawBytes (..),
  )
-import Cardano.Crypto.Hash (ByteString)
 
 import HydraAuction.Error.Types.BidTerms (
   BidTerms'Error (..),
- )
-import HydraAuction.Offchain.Lib.Codec.Onchain (
-  fromPlutusLovelace,
-  fromPlutusSignature,
-  toPlutusLovelace,
-  toPlutusSignature,
  )
 import HydraAuction.Offchain.Lib.Crypto (
   Hash,
@@ -43,6 +37,12 @@ import HydraAuction.Offchain.Types.BidderInfo (
   fromPlutusBidderInfo,
   toPlutusBidderInfo,
   validateBidderInfo,
+ )
+import Plutus.Cardano.Api.Codec (
+  fromPlutusLovelace,
+  fromPlutusSignature,
+  toPlutusLovelace,
+  toPlutusSignature,
  )
 
 import HydraAuction.Onchain.Types.BidTerms qualified as O
@@ -73,46 +73,46 @@ validateBidTerms ::
   PolicyId ->
   BidTerms ->
   Validation [BidTerms'Error] ()
-validateBidTerms AuctionTerms {..} auctionId BidTerms {..}
+validateBidTerms AuctionTerms {..} auctionCs BidTerms {..}
   | BidderInfo {..} <- bt'Bidder =
       --
-      -- (BT01) The bidder's info is correct.
+      -- The bidder's info is correct.
       validateBidderInfo bt'Bidder
         `errWith` BidTerms'Error'BidderInfo
         --
-        -- (BT02) The seller authorized the bidder
+        -- The seller authorized the bidder
         -- to participate in the auction.
         <> verifySignature
           at'SellerVk
-          (sellerSignatureMessage auctionId bi'BidderVk)
+          (sellerSignatureMessage auctionCs bi'BidderVk)
           bt'SellerSignature
         `err` BidTerms'Error'InvalidSellerSignature
         --
-        -- (BT03) The bidder authorized the bid
+        -- The bidder authorized the bid
         -- to be submitted in the auction.
         <> verifySignature
           bi'BidderVk
-          (bidderSignatureMessage auctionId bt'BidPrice bi'BidderPkh)
+          (bidderSignatureMessage auctionCs bi'BidderPkh bt'BidPrice)
           bt'BidderSignature
         `err` BidTerms'Error'InvalidBidderSignature
-
-bidderSignatureMessage ::
-  PolicyId ->
-  Lovelace ->
-  Hash PaymentKey ->
-  ByteString
-bidderSignatureMessage auctionId bidPrice bidderPkh =
-  serialiseToRawBytes auctionId
-    <> serialiseToRawBytes bidderPkh
-    <> serialiseLovelace bidPrice
 
 sellerSignatureMessage ::
   PolicyId ->
   VerificationKey PaymentKey ->
   ByteString
-sellerSignatureMessage auctionId bidderVk =
-  serialiseToRawBytes auctionId
+sellerSignatureMessage auctionCs bidderVk =
+  serialiseToRawBytes auctionCs
     <> serialiseToRawBytes bidderVk
+
+bidderSignatureMessage ::
+  PolicyId ->
+  Hash PaymentKey ->
+  Lovelace ->
+  ByteString
+bidderSignatureMessage auctionCs bidderPkh bidPrice =
+  serialiseToRawBytes auctionCs
+    <> serialiseToRawBytes bidderPkh
+    <> serialiseLovelace bidPrice
 
 -- -------------------------------------------------------------------------
 -- Conversion to onchain

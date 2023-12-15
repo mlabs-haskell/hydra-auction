@@ -1,4 +1,4 @@
-module HydraAuction.Offchain.Lib.Time (
+module Plutus.Cardano.Api.Types.Time.Millisecond (
   -- POSIX time
   POSIXTimeMilli,
   integerToPOSIXTimeMilli,
@@ -18,6 +18,8 @@ module HydraAuction.Offchain.Lib.Time (
 
 import GHC.Generics (Generic)
 import Prelude
+
+import Data.Function ((&))
 
 import Data.Fixed
 import Data.Time.Calendar (Day)
@@ -50,24 +52,30 @@ integerToPOSIXTimeMilli = NominalDiffMilliSeconds . MkFixed
 
 -- | Restrict a POSIXTime to millisecond resolution.
 restrictPOSIXTimeMilli :: POSIXTime -> POSIXTimeMilli
-restrictPOSIXTimeMilli posix = NominalDiffMilliSeconds posixMilli
-  where
-    posixPico = nominalDiffTimeToSeconds posix
-    posixMilli = realToFrac posixPico
+restrictPOSIXTimeMilli posix =
+  posix
+    & nominalDiffTimeToSeconds
+    & realToFrac
+    & NominalDiffMilliSeconds
 
 -- | Get a POSIXTime from a PosixTimeMilli by
 -- setting the sub-millisecond digits to zero.
 fromPOSIXTimeMilli :: POSIXTimeMilli -> POSIXTime
 fromPOSIXTimeMilli (NominalDiffMilliSeconds x) =
-  secondsToNominalDiffTime $ realToFrac x
+  realToFrac x
+    & secondsToNominalDiffTime
 
 -- | Restore a PosixTimeMilli to picosecond resolution
 -- by adding the sub-millisecond digits from an anchor time.
 restorePOSIXTime :: POSIXTime -> POSIXTimeMilli -> POSIXTime
 restorePOSIXTime anchor posixMilli =
-  fromPOSIXTimeMilli posixMilli + secondsToNominalDiffTime anchorSubMs
-  where
-    (_, anchorSubMs) = picoToMilli $ nominalDiffTimeToSeconds anchor
+  let
+    (_, anchorSubMs) =
+      anchor
+        & nominalDiffTimeToSeconds
+        & picoToMilli
+   in
+    fromPOSIXTimeMilli posixMilli + secondsToNominalDiffTime anchorSubMs
 
 -- | Round a pico-resolution number down to milli resolution,
 -- retaining the pico-resolution remainder.
@@ -86,13 +94,13 @@ data UTCTimeMilli = UTCTimeMilli !Day !NominalDiffMilliSeconds
 -- | Restrict a UTCTime to millisecond resolution.
 restrictUTCTimeMilli :: UTCTime -> UTCTimeMilli
 restrictUTCTimeMilli (UTCTime d t) =
-  UTCTimeMilli d $ NominalDiffMilliSeconds $ realToFrac t
+  UTCTimeMilli d (NominalDiffMilliSeconds (realToFrac t))
 
 -- | Get a UTCTime from a UTCTimeMilli by
 -- setting the sub-millisecond digits to zero.
 fromUTCTimeMilli :: UTCTimeMilli -> UTCTime
 fromUTCTimeMilli (UTCTimeMilli d (NominalDiffMilliSeconds t)) =
-  UTCTime d $ realToFrac t
+  UTCTime d (realToFrac t)
 
 -- | Restore a UTCTimeMilli to picosecond resolution
 -- by adding the sub-millisecond digits from an anchor time.
@@ -100,21 +108,30 @@ fromUTCTimeMilli (UTCTimeMilli d (NominalDiffMilliSeconds t)) =
 -- as the anchor.
 restoreUTCTime :: UTCTime -> UTCTimeMilli -> UTCTime
 restoreUTCTime anchor utcMilli =
-  posixSecondsToUTCTime $ restorePOSIXTime anchorPosix posixMilli
-  where
+  let
     anchorPosix = utcTimeToPOSIXSeconds anchor
     posixMilli =
-      restrictPOSIXTimeMilli $
-        utcTimeToPOSIXSeconds $
-          fromUTCTimeMilli utcMilli
+      utcMilli
+        & fromUTCTimeMilli
+        & utcTimeToPOSIXSeconds
+        & restrictPOSIXTimeMilli
+   in
+    restorePOSIXTime anchorPosix posixMilli
+      & posixSecondsToUTCTime
 
 -- -------------------------------------------------------------------------
 -- UTC <-> POSIX
 -- -------------------------------------------------------------------------
 posixMilliToUTCMilli :: POSIXTimeMilli -> UTCTimeMilli
-posixMilliToUTCMilli =
-  restrictUTCTimeMilli . posixSecondsToUTCTime . fromPOSIXTimeMilli
+posixMilliToUTCMilli posixTimeMilli =
+  posixTimeMilli
+    & fromPOSIXTimeMilli
+    & posixSecondsToUTCTime
+    & restrictUTCTimeMilli
 
 utcTimeMilliToPOSIXMilli :: UTCTimeMilli -> POSIXTimeMilli
-utcTimeMilliToPOSIXMilli =
-  restrictPOSIXTimeMilli . utcTimeToPOSIXSeconds . fromUTCTimeMilli
+utcTimeMilliToPOSIXMilli utcTimeMilli =
+  utcTimeMilli
+    & fromUTCTimeMilli
+    & utcTimeToPOSIXSeconds
+    & restrictPOSIXTimeMilli

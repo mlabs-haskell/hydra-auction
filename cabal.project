@@ -19,6 +19,7 @@ packages:
   hydra-auction-error
   hydra-auction-offchain
   hydra-auction-onchain
+  plutus-cardano-api-codec
 
 -- Compile more things in parallel
 package *

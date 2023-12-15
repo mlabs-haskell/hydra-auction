@@ -14,24 +14,16 @@ source-repository head
   type:     git
   location: https://github.com/mlabs-haskell/hydra-auction
 
-flag dev
-  description:
-    Disable -Werror.
-
-  default:     True
-  manual:      False
-
-common common-config
+-- Recommendations from the MLabs styleguide
+-- https://github.com/mlabs-haskell/styleguide/
+common mlabs-styleguide-config
   default-language:   Haskell2010
 
-  -- Options from MLabs styleguide
   default-extensions:
-    NoImplicitPrelude
     BangPatterns
     BinaryLiterals
     ConstraintKinds
     DataKinds
-    DeriveAnyClass
     DeriveFunctor
     DeriveGeneric
     DeriveTraversable
@@ -41,7 +33,6 @@ common common-config
     EmptyCase
     FlexibleContexts
     FlexibleInstances
-    FunctionalDependencies
     GADTs
     GeneralizedNewtypeDeriving
     HexFloatLiterals
@@ -50,50 +41,52 @@ common common-config
     KindSignatures
     LambdaCase
     MultiParamTypeClasses
-    NamedFieldPuns
+    NoImplicitPrelude
     NumericUnderscores
     OverloadedStrings
-    PatternSynonyms
-    QuantifiedConstraints
-    RankNTypes
-    RecordWildCards
     ScopedTypeVariables
     StandaloneDeriving
-    StrictData
-    TemplateHaskell
     TupleSections
     TypeApplications
-    TypeFamilies
-    TypeFamilyDependencies
     TypeOperators
     TypeSynonymInstances
     UndecidableInstances
 
   ghc-options:
-    -Wall -Wcompat -Wincomplete-record-updates
-    -Wincomplete-uni-patterns -Wredundant-constraints
-    -Wmissing-export-lists -Wmissing-deriving-strategies
-    -Wno-redundant-constraints
+    -Wall
+    -Wcompat
+    -Wincomplete-record-updates
+    -Wincomplete-uni-patterns
+    -Wmissing-deriving-strategies
+    -Wmissing-export-lists
+    -Wredundant-constraints
+    -Werror
 
-  if !flag(dev)
-    ghc-options: -Werror
+-- Combined configuration for off-chain code
+common offchain-config
+  import: mlabs-styleguide-config
 
-  if flag(dev)
-    default-extensions: PartialTypeSignatures
+  default-extensions:
+    PatternSynonyms
+    RecordWildCards
+    Strict
+
+  ghc-options:
+    -fobject-code
 
 library
-  import:          common-config
+  import:          offchain-config
   hs-source-dirs:  src
   exposed-modules:
-    HydraAuction.Offchain.Lib.Codec.Onchain
     HydraAuction.Offchain.Lib.Crypto
-    HydraAuction.Offchain.Lib.Time
     HydraAuction.Offchain.Lib.Validation
-    HydraAuction.Offchain.Types.AuctionState
+    HydraAuction.Offchain.Types.AuctionEscrowState
+    HydraAuction.Offchain.Types.AuctionInfo
     HydraAuction.Offchain.Types.AuctionTerms
     HydraAuction.Offchain.Types.BidderInfo
     HydraAuction.Offchain.Types.BidTerms
     HydraAuction.Offchain.Types.DelegateInfo
+    HydraAuction.Offchain.Types.StandingBidState
 
   build-depends:
     -- , aeson
@@ -101,23 +94,20 @@ library
     , bytestring
     , cardano-api             >=8.20.0 && <8.21
     -- , cardano-binary          >=1.7.0  && <1.8
-    , cardano-crypto-class    >=2.1.1  && <2.2
+    -- , cardano-crypto-class    >=2.1.1  && <2.2
     -- , cardano-ledger-allegra  >=1.2.1  && <1.3
-    , cardano-ledger-alonzo   >=1.4    && <1.5
+    --, cardano-ledger-alonzo   >=1.4    && <1.5
     -- , cardano-ledger-api      >=1.5    && <1.6
     -- , cardano-ledger-babbage  >=1.4.2  && <1.5
     -- , cardano-ledger-binary   >=1.1.1  && <1.2
     -- , cardano-ledger-byron    >=1.0.0  && <1.1
     , cardano-ledger-core     >=1.6    && <1.7
-    , cardano-ledger-mary     >=1.3.1  && <1.4
+    --, cardano-ledger-mary     >=1.3.1  && <1.4
     -- , cardano-ledger-shelley  >=1.6    && <1.7
     -- , containers
     , hydra-auction-error
     , hydra-auction-onchain
-    , plutus-ledger-api
-    , plutus-tx
+    , plutus-cardano-api-codec
     , text
     , time
     , validation
-
-  ghc-options:
