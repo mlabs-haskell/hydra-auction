@@ -86,8 +86,6 @@
       };
     in
     {
-      apps.hydra-auction-onchain = hydra-auction.packages."hydra-auction-onchain:exe:hydra-auction-onchain";
-
       devShells.hydra-auction = hydra-auction.devShell;
 
       packages.hydra-auction-error = hydra-auction.packages."hydra-auction-error:lib:hydra-auction-error";
