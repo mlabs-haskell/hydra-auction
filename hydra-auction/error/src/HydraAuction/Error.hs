@@ -53,6 +53,6 @@ instance (Universe a, Eq a, ErrorCodePrefix a) => ErrorCode a where
 
 -- | Get the string literal from given error 'e'.
 -- Use this with template haskell splices, e.g. $(eCode MyError)
-eCode :: ErrorCode e => e -> Q Exp
+eCode :: (ErrorCode e) => e -> Q Exp
 eCode e =
   pure (LitE (StringL (Text.unpack (toErrorCode e))))

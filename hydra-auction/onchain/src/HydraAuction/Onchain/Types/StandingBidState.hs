@@ -30,10 +30,12 @@ newtype StandingBidState = StandingBidState
   { standingBidState :: Maybe BidTerms
   }
 
+{- FOURMOLU_DISABLE -}
 instance Eq StandingBidState where
-  (StandingBidState x1)
-    == (StandingBidState y1) =
-      x1 == y1
+  ( StandingBidState x1) ==
+   (StandingBidState y1) =
+    x1 == y1
+{- FOURMOLU_ENABLE -}
 
 PlutusTx.unstableMakeIsData ''StandingBidState
 

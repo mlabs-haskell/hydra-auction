@@ -59,12 +59,12 @@ import PlutusTx.AssocMap qualified as AssocMap
 -- Basic utilities
 -- -------------------------------------------------------------------------
 
-asDatum :: PlutusTx.ToData a => a -> Datum
+asDatum :: (PlutusTx.ToData a) => a -> Datum
 asDatum = Datum . PlutusTx.toBuiltinData
 --
 {-# INLINEABLE asDatum #-}
 
-asRedeemer :: PlutusTx.ToData a => a -> Redeemer
+asRedeemer :: (PlutusTx.ToData a) => a -> Redeemer
 asRedeemer = Redeemer . PlutusTx.toBuiltinData
 --
 {-# INLINEABLE asRedeemer #-}
@@ -98,7 +98,7 @@ lovelaceValueOf v =
 
 -- | Try to parse a tx output datum, if it is inline.
 parseInlineDatum ::
-  PlutusTx.FromData a =>
+  (PlutusTx.FromData a) =>
   TxOut ->
   Maybe a
 parseInlineDatum TxOut {txOutDatum = OutputDatum (Datum d)} =
@@ -108,7 +108,7 @@ parseInlineDatum _ = Nothing
 {-# INLINEABLE parseInlineDatum #-}
 
 parseRedemeer ::
-  PlutusTx.FromData a =>
+  (PlutusTx.FromData a) =>
   Redeemer ->
   Maybe a
 parseRedemeer (Redeemer x) = PlutusTx.fromBuiltinData x

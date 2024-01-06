@@ -62,9 +62,9 @@ validator AuctionInfo {..} RemoveAuction context =
     -- The validator's own input should exist and
     -- it should contain an auction metadata token.
     ownInput =
-      txInInfoResolved $
-        findAuctionMetadataOwnInput auctionId context
-          `errMaybe` $(eCode AuctionMetadata'Error'MissingMetadataInput)
+      txInInfoResolved
+        $ findAuctionMetadataOwnInput auctionId context
+        `errMaybe` $(eCode AuctionMetadata'Error'MissingMetadataInput)
     ownAddress = txOutAddress ownInput
 --
 {-# INLINEABLE validator #-}

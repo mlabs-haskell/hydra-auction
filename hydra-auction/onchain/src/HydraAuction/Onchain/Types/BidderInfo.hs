@@ -24,11 +24,13 @@ data BidderInfo = BidderInfo
   -- wasn't purchased by the deadline.
   }
 
+{- FOURMOLU_DISABLE -}
 instance Eq BidderInfo where
-  (BidderInfo x1 x2)
-    == (BidderInfo y1 y2) =
-      x1 == y1
-        && x2 == y2
+  ( BidderInfo x1 x2) ==
+   (BidderInfo y1 y2) =
+    x1 == y1 &&
+    x2 == y2
+{- FOURMOLU_ENABLE -}
 
 PlutusTx.unstableMakeIsData ''BidderInfo
 
