@@ -1,3 +1,7 @@
+packages:
+  error
+  onchain
+
 -- Custom repository for cardano haskell packages, see CONTRIBUTING.md
 repository cardano-haskell-packages
   url: https://input-output-hk.github.io/cardano-haskell-packages
@@ -10,27 +14,17 @@ repository cardano-haskell-packages
     c00aae8461a256275598500ea0e187588c35a5d5d7454fb57eac18d9edb86a56
     d4a35cd3121aa00d18544bb0ac01c3e1691d618f462c46129271bccf39f7e8ee
 
--- See CONTRIBUTING.md for information about when and how to update these.
-index-state:
-  , hackage.haskell.org 2023-09-14T06:54:18Z
-  , cardano-haskell-packages 2023-09-14T16:16:59Z
+tests: True
+benchmarks: False
+documentation: False
 
-packages:
-  error
-  onchain
+-- Always show detailed output for tests
+test-show-details: direct
 
 -- Compile more things in parallel
 package *
   ghc-options: -j8
 
--- Always build tests and benchmarks
-tests: True
-benchmarks: False
-documentation: False
-
 -- Fix compilation of strict-containers (see also nix/hydra/project.nix)
 package strict-containers
   ghc-options: "-Wno-noncanonical-monad-instances"
-
--- Always show detailed output for tests
-test-show-details: direct

@@ -24,12 +24,9 @@ data DelegateInfo = DelegateInfo
 instance Eq DelegateInfo where
   (DelegateInfo x1 x2 x3)
     == (DelegateInfo y1 y2 y3) =
-      x1
-        == y1
-        && x2
-        == y2
-        && x3
-        == y3
+      x1 == y1
+        && x2 == y2
+        && x3 == y3
 
 PlutusTx.unstableMakeIsData ''DelegateInfo
 

@@ -1,4 +1,4 @@
-cabal-version: 3.0
+cabal-version: 3.6
 name:          hydra-auction-error
 version:       0.1.0
 synopsis:      Hydra Auction Error Types
@@ -10,46 +10,20 @@ license-files:
   LICENSE
   NOTICE
 
-source-repository head
-  type:     git
-  location: https://github.com/mlabs-haskell/hydra-auction
-
 -- Recommendations from the MLabs styleguide
 -- https://github.com/mlabs-haskell/styleguide/
 common mlabs-styleguide-config
-  default-language:   Haskell2010
+  default-language:   GHC2021
 
   default-extensions:
-    BangPatterns
-    BinaryLiterals
-    ConstraintKinds
     DataKinds
-    DeriveFunctor
-    DeriveGeneric
-    DeriveTraversable
     DerivingStrategies
     DerivingVia
     DuplicateRecordFields
-    EmptyCase
-    FlexibleContexts
-    FlexibleInstances
     GADTs
-    GeneralizedNewtypeDeriving
-    HexFloatLiterals
-    ImportQualifiedPost
-    InstanceSigs
-    KindSignatures
     LambdaCase
-    MultiParamTypeClasses
     NoImplicitPrelude
-    NumericUnderscores
     OverloadedStrings
-    ScopedTypeVariables
-    StandaloneDeriving
-    TupleSections
-    TypeApplications
-    TypeOperators
-    TypeSynonymInstances
     UndecidableInstances
 
   ghc-options:
@@ -62,8 +36,7 @@ common mlabs-styleguide-config
     -Wredundant-constraints
     -Werror
 
--- Combined common options.
-common common-config
+common error-config
   import: mlabs-styleguide-config
 
   default-extensions:
@@ -73,7 +46,7 @@ common common-config
     -fobject-code
 
 library
-  import:          common-config
+  import: error-config
   hs-source-dirs:  src
   exposed-modules:
     HydraAuction.Error

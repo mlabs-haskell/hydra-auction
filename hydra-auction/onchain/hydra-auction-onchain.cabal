@@ -1,4 +1,4 @@
-cabal-version: 3.0
+cabal-version: 3.6
 name:          hydra-auction-onchain
 version:       0.1.0
 synopsis:      Hydra Auction On-chain Code
@@ -9,10 +9,6 @@ license:       Apache-2.0
 license-files:
   LICENSE
   NOTICE
-
-source-repository head
-  type:     git
-  location: https://github.com/mlabs-haskell/hydra-auction
 
 flag dev
   description:
@@ -103,50 +99,6 @@ common onchain-config
 
   ghc-options:
     -fobject-code
-
--- Configuration for the PlutusTx Plugin compilation process.
-common plutus-plugin-config
-  ghc-options:
-    -fplugin-opt PlutusTx.Plugin:target-version=1.0.0
-
-  if flag(dev)
-    ghc-options:
-      -fplugin-opt PlutusTx.Plugin:defer-errors
-
-executable hydra-auction-onchain
-  import:
-    , onchain-config
-    , plutus-plugin-config
-  hs-source-dirs: exe/hydra-auction-onchain
-  main-is: Main.hs
-  other-modules:
-    Lib.Scripts
-    Scripts
-
-  build-depends:
-    -- , aeson
-    , base
-    -- , base16-bytestring
-    -- , bytestring
-    -- , containers
-    -- , lens
-    -- , lens-aeson
-    -- , mtl
-    , plutus-core
-    , hydra-auction-error
-    , hydra-auction-onchain
-    , plutus-ledger-api
-    , plutus-cardano-api-codec
-    , plutus-tx
-    , plutus-tx-plugin
-    -- , record-dot-preprocessor
-    -- , record-hasfield
-    , template-haskell
-    -- , text
-    -- , time
-    -- , transformers
-    -- , validation
-    
 
 library
   import: onchain-config

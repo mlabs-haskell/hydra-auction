@@ -62,9 +62,9 @@ validator aTerms@AuctionTerms {..} DistributeFees context =
     -- Note that this should always hold for a validator being executed
     -- with a Spending script purpose.
     ownInput =
-      txInInfoResolved
-        $ findOwnInput context
-        `errMaybe` $(eCode FeeEscrow'Error'MissingOwnInput)
+      txInInfoResolved $
+        findOwnInput context
+          `errMaybe` $(eCode FeeEscrow'Error'MissingOwnInput)
     ownAddress = txOutAddress ownInput
 --
 {-# INLINEABLE validator #-}

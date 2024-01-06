@@ -95,9 +95,9 @@ validator sbsh fsh auctionId aTerms aState redeemer context =
     -- The validator's own input should exist and
     -- it should contain an auction token.
     ownInput =
-      txInInfoResolved
-        $ findAuctionEscrowOwnInput auctionId context
-        `errMaybe` $(eCode AuctionEscrow'Error'MissingAuctionEscrowInput)
+      txInInfoResolved $
+        findAuctionEscrowOwnInput auctionId context
+          `errMaybe` $(eCode AuctionEscrow'Error'MissingAuctionEscrowInput)
     ownAddress = txOutAddress ownInput
     --
     -- Branching checks based on the redeemer used.
@@ -308,9 +308,9 @@ checkBB sbsh fsh auctionId aTerms oldAState context ownInput =
     -- There is a standing bid input that contains
     -- the standing bid token.
     standingBidInput =
-      txInInfoResolved
-        $ findStandingBidInputAtSh auctionId sbsh txInfoInputs
-        `errMaybe` $(eCode AuctionEscrow'BB'Error'MissingStandingBidOutput)
+      txInInfoResolved $
+        findStandingBidInputAtSh auctionId sbsh txInfoInputs
+          `errMaybe` $(eCode AuctionEscrow'BB'Error'MissingStandingBidOutput)
 
 --
 {-# INLINEABLE checkBB #-}

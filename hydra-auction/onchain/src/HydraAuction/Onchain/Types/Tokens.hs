@@ -59,25 +59,25 @@ standingBidTn = TokenName "STANDING_BID"
 
 allAuctionTokensMinted :: AuctionId -> Value
 allAuctionTokensMinted AuctionId {..} =
-  Value
-    $ AssocMap.singleton auctionCs
-    $ AssocMap.fromList
-      [ (auctionTn, 1)
-      , (auctionMetadataTn, 1)
-      , (standingBidTn, 1)
-      ]
+  Value $
+    AssocMap.singleton auctionCs $
+      AssocMap.fromList
+        [ (auctionTn, 1)
+        , (auctionMetadataTn, 1)
+        , (standingBidTn, 1)
+        ]
 --
 {-# INLINEABLE allAuctionTokensMinted #-}
 
 allAuctionTokensBurned :: AuctionId -> Value
 allAuctionTokensBurned AuctionId {..} =
-  Value
-    $ AssocMap.singleton auctionCs
-    $ AssocMap.fromList
-      [ (auctionTn, -1)
-      , (auctionMetadataTn, -1)
-      , (standingBidTn, -1)
-      ]
+  Value $
+    AssocMap.singleton auctionCs $
+      AssocMap.fromList
+        [ (auctionTn, -1)
+        , (auctionMetadataTn, -1)
+        , (standingBidTn, -1)
+        ]
 --
 {-# INLINEABLE allAuctionTokensBurned #-}
 

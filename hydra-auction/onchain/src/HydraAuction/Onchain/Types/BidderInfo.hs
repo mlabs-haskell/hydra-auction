@@ -27,10 +27,8 @@ data BidderInfo = BidderInfo
 instance Eq BidderInfo where
   (BidderInfo x1 x2)
     == (BidderInfo y1 y2) =
-      x1
-        == y1
-        && x2
-        == y2
+      x1 == y1
+        && x2 == y2
 
 PlutusTx.unstableMakeIsData ''BidderInfo
 

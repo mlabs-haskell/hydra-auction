@@ -79,9 +79,9 @@ validator auctionId aTerms standingBidState redeemer context =
     -- The validator's own input should exist and
     -- it should contain a standing bid token.
     ownInput =
-      txInInfoResolved
-        $ findStandingBidOwnInput auctionId context
-        `errMaybe` $(eCode StandingBid'Error'MissingStandingBidInput)
+      txInInfoResolved $
+        findStandingBidOwnInput auctionId context
+          `errMaybe` $(eCode StandingBid'Error'MissingStandingBidInput)
     ownAddress = txOutAddress ownInput
     --
     redeemerChecksPassed =
