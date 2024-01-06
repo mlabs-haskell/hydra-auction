@@ -7,7 +7,6 @@
   withoutDevTools ? false
 , myProject
 , cardano-node
-, hydra
 , system ? builtins.currentSystem
 }:
 let
@@ -76,9 +75,7 @@ let
     # Make sure these are consistent with the packages in cabal.project.
     packages = ps: with ps; [
       hydra-auction-error
-      hydra-auction-offchain
       hydra-auction-onchain
-      plutus-cardano-api-codec
     ];
 
     buildInputs = libs ++ buildInputs ++ devInputs;

@@ -12,8 +12,7 @@
   };
 
   outputs =
-    { self
-    , flake-utils
+    { flake-utils
     , nixpkgs
     , cardano-node
     , hydra
@@ -43,7 +42,7 @@
         inherit myProject;
 
         packages =
-          { default = myPackages.hydra-auction-offchain; } //
+          { default = myPackages.hydra-auction-onchain; } //
           myPackages //
           prefixAttrs "docker-" myImages;
 
