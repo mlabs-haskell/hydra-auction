@@ -1,77 +1,118 @@
 {
+  description = "hydra-auction";
   inputs = {
-    hydra.url = "github:input-output-hk/hydra/9f1027e0fdff6765f5233f19c4639fdaa3558bfa";
+    cardano-hydra.url = "github:input-output-hk/hydra/9f1027e0fdff6765f5233f19c4639fdaa3558bfa";
 
-    nixpkgs.follows = "hydra/nixpkgs";
-    haskellNix.follows = "hydra/haskellNix";
-    iohk-nix.follows = "hydra/iohk-nix";
-    flake-utils.follows = "hydra/flake-utils";
-    CHaP.follows = "hydra/CHaP";
-    cardano-node.follows = "hydra/cardano-node";
+    nixpkgs.follows = "cardano-hydra/nixpkgs";
+    haskell-nix.follows = "cardano-hydra/haskellNix";
+    iohk-nix.follows = "cardano-hydra/iohk-nix";
+    flake-utils.follows = "cardano-hydra/flake-utils";
+    cardano-node.follows = "cardano-hydra/cardano-node";
+
+    flake-parts = {
+      url = "github:hercules-ci/flake-parts";
+      inputs.nixpkgs-lib.follows = "nixpkgs";
+    };
+    pre-commit-hooks-nix = {
+      url = "github:cachix/pre-commit-hooks.nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.nixpkgs-stable.follows = "nixpkgs";
+    };
+    hci-effects = {
+      url = "github:hercules-ci/hercules-ci-effects";
+      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.flake-parts.follows = "flake-parts";
+    };
 
   };
 
-  outputs =
-    { flake-utils
-    , nixpkgs
-    , cardano-node
-    , hydra
-    , ...
-    } @ inputs:
-    flake-utils.lib.eachSystem [
-      "x86_64-linux"
-    ]
-      (system:
-      let
-        pkgs = import inputs.nixpkgs { inherit system; };
-        myProject = import ./nix/hydra-auction/project.nix {
-          inherit (inputs) haskellNix iohk-nix CHaP;
-          inherit system nixpkgs;
-        };
-        myPackages = import ./nix/hydra-auction/packages.nix {
-          inherit myProject system pkgs cardano-node hydra;
-        };
-        myImages = import ./nix/hydra-auction/docker.nix {
-          inherit myPackages system nixpkgs;
-        };
-        prefixAttrs = s: attrs:
-          with pkgs.lib.attrsets;
-          mapAttrs' (name: value: nameValuePair (s + name) value) attrs;
-      in
-      rec {
-        inherit myProject;
+  outputs = inputs:
+    let
+      flakeModules = {
+        haskell = ./nix/haskell;
+        chap = ./nix/chap;
+        utils = ./nix/utils;
+      };
+    in
+    inputs.flake-parts.lib.mkFlake { inherit inputs; } ({ self, ... }: {
+      imports = [
+        inputs.pre-commit-hooks-nix.flakeModule
+        inputs.hci-effects.flakeModule
 
-        packages =
-          { default = myPackages.hydra-auction-onchain; } //
-          myPackages //
-          prefixAttrs "docker-" myImages;
+        ./hydra-auction
+      ] ++ (builtins.attrValues flakeModules);
 
-        devShells = (import ./nix/hydra-auction/shell.nix {
-          inherit (inputs) cardano-node hydra;
-          inherit myProject system;
-        }) // {
-          ci = (import ./nix/hydra-auction/shell.nix {
-            inherit (inputs) cardano-node hydra;
-            inherit myProject system;
-            withoutDevTools = true;
-          }).default;
+      # `nix flake show --impure` hack
+      systems =
+        if builtins.hasAttr "currentSystem" builtins
+        then [ builtins.currentSystem ]
+        else inputs.nixpkgs.lib.systems.flakeExposed;
+
+      herculesCI.ciSystems = [ "x86_64-linux" ];
+
+      hercules-ci.flake-update = {
+        enable = true;
+        updateBranch = "hci/update-flake-lock";
+        createPullRequest = true;
+        autoMergeMethod = null;
+        when = {
+          minute = 45;
+          hour = 12;
+          dayOfWeek = "Sun";
         };
+      };
 
-      });
+      flake.flakeModules = flakeModules;
 
-  nixConfig = {
-    extra-substituters = [
-      "https://cache.iog.io"
-      "https://hydra-node.cachix.org"
-      "https://cardano-scaling.cachix.org"
-      "https://cache.zw3rk.com"
-    ];
-    extra-trusted-public-keys = [
-      # "hydra.iohk.io:f/Ea+s+dFdN+3Y/G+FDgSq+a5NEWhJGzdjvKNGv0/EQ="
-      "hydra-node.cachix.org-1:vK4mOEQDQKl9FTbq76NjOuNaRD4pZLxi1yri31HHmIw="
-      "cardano-scaling.cachix.org-1:RKvHKhGs/b6CBDqzKbDk0Rv6sod2kPSXLwPzcUQg9lY="
-      "loony-tools:pr9m4BkM/5/eSTZlkQyRt57Jz7OMBxNSUiMC4FkcNfk="
-    ];
-    allow-import-from-derivation = true;
-  };
+      perSystem =
+        { config
+        , pkgs
+        , lib
+        , self'
+        , system
+        , ...
+        }: {
+          _module.args.pkgs = import self.inputs.nixpkgs {
+            inherit system;
+            config.allowBroken = true;
+          };
+
+          pre-commit.settings = {
+            hooks = {
+              deadnix.enable = true;
+              nixpkgs-fmt.enable = true;
+              typos.enable = true;
+              fourmolu.enable = true;
+            };
+
+            tools = {
+              fourmolu = lib.mkForce (pkgs.callPackage ./nix/fourmolu {
+                mkHaskellPackage = config.libHaskell.mkPackage;
+              });
+            };
+
+            settings = {
+              deadnix.edit = true;
+            };
+
+            excludes = [
+              ".materialized"
+            ];
+          };
+
+          devShells = {
+            default = pkgs.mkShell {
+              shellHook = config.pre-commit.installationScript;
+
+              nativeBuildInputs = [
+                pkgs.fd
+              ];
+
+              inputsFrom = [
+                self'.devShells.hydra-auction
+              ];
+            };
+          };
+        };
+    });
 }
