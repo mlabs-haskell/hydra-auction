@@ -88,9 +88,9 @@ validator aesh sbsh auctionId aTerms bInfo redeemer context =
     --
     -- The validator's own input should exist.
     ownInput =
-      txInInfoResolved $
-        findOwnInput context
-          `errMaybe` $(eCode BidderDeposit'Error'MissingOwnInput)
+      txInInfoResolved
+        $ findOwnInput context
+        `errMaybe` $(eCode BidderDeposit'Error'MissingOwnInput)
     ownAddress = txOutAddress ownInput
     --
     -- Branching checks based on the redeemer used.
@@ -142,7 +142,8 @@ checkCA aesh sbsh auctionId bInfo context =
     aRedeemer =
       errMaybeFlip
         $(eCode BidderDeposit'CA'Error'UndecodedAuctionRedeemer)
-        $ parseRedemeer =<< getSpentInputRedeemer txInfo auctionEscrowInput
+        $ parseRedemeer
+        =<< getSpentInputRedeemer txInfo auctionEscrowInput
     --
     -- There is an auction escrow input that contains
     -- the auction token.
@@ -159,9 +160,9 @@ checkCA aesh sbsh auctionId bInfo context =
     -- There is a standing bid input that contains
     -- the standing bid token.
     standingBidInput =
-      txInInfoResolved $
-        findStandingBidInputAtSh auctionId sbsh txInfoInputs
-          `errMaybe` $(eCode BidderDeposit'CA'Error'MissingStandingBidInput)
+      txInInfoResolved
+        $ findStandingBidInputAtSh auctionId sbsh txInfoInputs
+        `errMaybe` $(eCode BidderDeposit'CA'Error'MissingStandingBidInput)
 --
 {-# INLINEABLE checkCA #-}
 
@@ -195,8 +196,8 @@ checkBL sbsh auctionId aTerms bInfo context =
       (postBiddingPeriod aTerms `contains` txInfoValidRange)
         `err` $(eCode BidderDeposit'BL'Error'ValidityIntervalIncorrect)
     --
-    -- The bidder deposit's bidder consents to the transcation either
-    -- explictly by signing the transaction or
+    -- The bidder deposit's bidder consents to the transaction either
+    -- explicitly by signing the transaction or
     -- implicitly by receiving the bid deposit ADA.
     bidderConsents =
       txSignedBy txInfo bi'BidderPkh
@@ -212,9 +213,9 @@ checkBL sbsh auctionId aTerms bInfo context =
     -- There is a standing bid input that contains
     -- the standing bid token.
     standingBidInput =
-      txInInfoResolved $
-        findStandingBidInputAtSh auctionId sbsh txInfoInputs
-          `errMaybe` $(eCode BidderDeposit'BL'Error'MissingStandingBidInput)
+      txInInfoResolved
+        $ findStandingBidInputAtSh auctionId sbsh txInfoInputs
+        `errMaybe` $(eCode BidderDeposit'BL'Error'MissingStandingBidInput)
 --
 {-# INLINEABLE checkBL #-}
 
@@ -251,8 +252,8 @@ checkAC aesh auctionId aTerms bInfo context =
       (postBiddingPeriod aTerms `contains` txInfoValidRange)
         `err` $(eCode BidderDeposit'AC'Error'ValidityIntervalIncorrect)
     --
-    -- The bidder deposit's bidder consents to the transcation either
-    -- explictly by signing the transaction or
+    -- The bidder deposit's bidder consents to the transaction either
+    -- explicitly by signing the transaction or
     -- implicitly by receiving the bid deposit ADA.
     bidderConsents =
       txSignedBy txInfo bi'BidderPkh
@@ -268,9 +269,9 @@ checkAC aesh auctionId aTerms bInfo context =
     -- There is an auction escrow reference input that contains
     -- the auction token.
     auctionEscrowReferenceInput =
-      txInInfoResolved $
-        findAuctionEscrowInputAtSh auctionId aesh txInfoReferenceInputs
-          `errMaybe` $(eCode BidderDeposit'AC'Error'MissingAuctionRefInput)
+      txInInfoResolved
+        $ findAuctionEscrowInputAtSh auctionId aesh txInfoReferenceInputs
+        `errMaybe` $(eCode BidderDeposit'AC'Error'MissingAuctionRefInput)
 --
 {-# INLINEABLE checkAC #-}
 
@@ -297,8 +298,8 @@ checkDC aTerms bInfo context =
       (cleanupPeriod aTerms `contains` txInfoValidRange)
         `err` $(eCode BidderDeposit'DC'Error'ValidityIntervalIncorrect)
     --
-    -- The bidder deposit's bidder consents to the transcation either
-    -- explictly by signing the transaction or
+    -- The bidder deposit's bidder consents to the transaction either
+    -- explicitly by signing the transaction or
     -- implicitly by receiving the bid deposit ADA.
     bidderConsents =
       txSignedBy txInfo bi'BidderPkh

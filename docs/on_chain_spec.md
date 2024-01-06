@@ -280,7 +280,7 @@ data AuctionTerms = AuctionTerms
   -- can be unconditionally cleaned up, returning all tokens
   -- in those utxos to their original owners before the auction.
   , at'AuctionFeePerDelegate :: Integer
-  -- ^ Fee portion that each delegate will receieve from
+  -- ^ Fee portion that each delegate will receive from
   -- the proceeds of the auction, whether the auction lot
   -- is purchased by a bidder or reclaimed by the seller.
   , at'StartingBid :: Integer
@@ -940,7 +940,7 @@ Its `BidderInfo` datum defines the bidder.
 - There is one input spent from the auction escrow validator,
 containing the auction state token.
 - Either the transaction is signed by the bidder who made the deposit or
-there is one ouptut sent to that bidder that contains the bid deposit ADA.
+there is one output sent to that bidder that contains the bid deposit ADA.
 - No tokens are minted or burned.
 
 ```mermaid
@@ -1014,7 +1014,7 @@ Its `BidderInfo` datum defines the bidder who made the deposit.
 - There is one reference input from the standing bid validator,
 containing both the auction state and standing bid tokens.
 Its `AuctionEscrowState` datum is `AuctionConcluded`.
-- There is one ouptut sent back to the bidder who made the deposit,
+- There is one output sent back to the bidder who made the deposit,
 containing the bid deposit ADA.
 - No tokens are minted or burned.
 
@@ -1034,7 +1034,7 @@ Under the `DepositCleanup` redeemer, we enforce that:
 - There is one input spent from the bid deposit validator.
 Its `BidderInfo` datum defines the bidder who made the deposit.
 - Either the transaction is signed by the bidder who made the deposit or
-there is one ouptut sent to that bidder that contains the bid deposit ADA.
+there is one output sent to that bidder that contains the bid deposit ADA.
 - The transaction validity time starts after the cleanup time.
 - No tokens are minted or burned.
 
