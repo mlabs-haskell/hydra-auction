@@ -104,6 +104,7 @@ library
   import: onchain-config
   hs-source-dirs:  src
   exposed-modules:
+    HydraAuction.Onchain.Lib.Compile
     HydraAuction.Onchain.Lib.Error
     HydraAuction.Onchain.Lib.PlutusTx
     HydraAuction.Onchain.Lib.Serialise
