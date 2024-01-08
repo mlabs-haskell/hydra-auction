@@ -62,6 +62,7 @@ library
   hs-source-dirs: src
   exposed-modules:
     HydraAuction.Offchain.Lib
+    HydraAuction.Offchain.Types.Tokens
   build-depends:
     , base
     , aeson
