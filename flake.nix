@@ -85,6 +85,8 @@
               fourmolu.enable = true;
             };
 
+            # TODO: Align fourmolu version with the one used implicitly
+            # by haskell-language-server via haskell.nix and hackage.nix.
             tools = {
               fourmolu = lib.mkForce (pkgs.callPackage ./nix/fourmolu {
                 mkHaskellPackage = config.libHaskell.mkPackage;
