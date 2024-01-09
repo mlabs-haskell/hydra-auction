@@ -1,5 +1,6 @@
 module HydraAuction.Offchain.Types.Tokens (
   AuctionMp (..),
+  auctionMpToOnchain,
   allAuctionTokens,
   auctionTn,
   auctionMetadataTn,
@@ -20,9 +21,11 @@ import GeniusYield.TxBuilder (
   mustMint,
  )
 import GeniusYield.Types (
-  GYMintScript,
+  GYMintScript (..),
+  GYMintingPolicy,
   GYTokenName,
   PlutusVersion (..),
+  mintingPolicyCurrencySymbol,
   redeemerFromPlutusData,
   tokenNameFromPlutus,
  )
@@ -35,8 +38,12 @@ import HydraAuction.Onchain.Types.Tokens qualified as O
 -- -------------------------------------------------------------------------
 
 newtype AuctionMp = AuctionMp
-  { auctionMp :: GYMintScript 'PlutusV2
+  { auctionMp :: GYMintingPolicy 'PlutusV2
   }
+
+auctionMpToOnchain :: AuctionMp -> O.AuctionId
+auctionMpToOnchain AuctionMp {..} =
+  O.AuctionId $ mintingPolicyCurrencySymbol auctionMp
 
 -- -------------------------------------------------------------------------
 -- Auction state token names
@@ -63,11 +70,15 @@ allAuctionTokens = [auctionTn, auctionMetadataTn, standingBidTn]
 -- Auction token minting/burning
 -- -------------------------------------------------------------------------
 mustMintAllAuctionTokens :: AuctionMp -> GYTxSkeleton 'PlutusV2
-mustMintAllAuctionTokens AuctionMp {..} = foldMap aux allAuctionTokens
+mustMintAllAuctionTokens AuctionMp {..} = foldMap mint allAuctionTokens
   where
-    aux tn = mustMint auctionMp (redeemerFromPlutusData O.MintAuction) tn 1
+    wit = GYMintScript auctionMp
+    r = redeemerFromPlutusData O.MintAuction
+    mint tn = mustMint wit r tn 1
 
 mustBurnAllAuctionTokens :: AuctionMp -> GYTxSkeleton 'PlutusV2
-mustBurnAllAuctionTokens AuctionMp {..} = foldMap aux allAuctionTokens
+mustBurnAllAuctionTokens AuctionMp {..} = foldMap burn allAuctionTokens
   where
-    aux tn = mustMint auctionMp (redeemerFromPlutusData O.BurnAuction) tn (-1)
+    wit = GYMintScript auctionMp
+    r = redeemerFromPlutusData O.BurnAuction
+    burn tn = mustMint wit r tn (-1)

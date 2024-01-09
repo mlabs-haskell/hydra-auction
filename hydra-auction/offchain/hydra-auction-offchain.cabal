@@ -75,6 +75,7 @@ library
   hs-source-dirs: src
   exposed-modules:
     HydraAuction.Offchain.Types.ScriptInfo
+    HydraAuction.Offchain.Types.Scripts
     HydraAuction.Offchain.Types.Tokens
   build-depends:
     , base

@@ -6,40 +6,50 @@ module HydraAuction.Offchain.Types.ScriptInfo (
 import Prelude
 
 import GeniusYield.Types (
-  GYMintingPolicy,
   GYNetworkId,
-  GYValidator,
-  PlutusVersion (..),
   addressFromValidator,
   addressToPlutus,
   mintingPolicyCurrencySymbol,
  )
 
-import HydraAuction.Onchain.Types.AuctionInfo (AuctionInfo (..))
-import HydraAuction.Onchain.Types.AuctionTerms (AuctionTerms)
+import HydraAuction.Onchain.Types.AuctionInfo qualified as O
+import HydraAuction.Onchain.Types.AuctionTerms qualified as O
+
+import HydraAuction.Offchain.Types.Scripts (
+  AuctionEscrowV (..),
+  BidderDepositV (..),
+  FeeEscrowV (..),
+  StandingBidV (..),
+ )
+import HydraAuction.Offchain.Types.Tokens (AuctionMp (..))
 
 -- -------------------------------------------------------------------------
 -- Auction script info
 -- -------------------------------------------------------------------------
 
 data AuctionScriptInfo = AuctionScriptInfo
-  { as'AuctionTerms :: AuctionTerms
-  , as'AuctionMp :: GYMintingPolicy 'PlutusV2
-  , as'AuctionEscrow :: GYValidator 'PlutusV2
-  , as'BidderDeposit :: GYValidator 'PlutusV2
-  , as'FeeEscrow :: GYValidator 'PlutusV2
-  , as'StandingBid :: GYValidator 'PlutusV2
+  { si'AuctionMp :: AuctionMp
+  , si'AuctionTerms :: O.AuctionTerms
+  , si'AuctionEscrow :: AuctionEscrowV
+  , si'BidderDeposit :: BidderDepositV
+  , si'FeeEscrow :: FeeEscrowV
+  , si'StandingBid :: StandingBidV
   }
 
-auctionScriptsToInfo :: GYNetworkId -> AuctionScriptInfo -> AuctionInfo
+auctionScriptsToInfo :: GYNetworkId -> AuctionScriptInfo -> O.AuctionInfo
 auctionScriptsToInfo nw AuctionScriptInfo {..} =
-  AuctionInfo
-    { ai'AuctionCs = mintingPolicyCurrencySymbol as'AuctionMp
-    , ai'AuctionTerms = as'AuctionTerms
-    , ai'AuctionEscrow = asPlutusAddress as'AuctionEscrow
-    , ai'BidderDeposit = asPlutusAddress as'BidderDeposit
-    , ai'FeeEscrow = asPlutusAddress as'FeeEscrow
-    , ai'StandingBid = asPlutusAddress as'StandingBid
+  O.AuctionInfo
+    { ai'AuctionCs = mintingPolicyCurrencySymbol auctionMp
+    , ai'AuctionTerms = si'AuctionTerms
+    , ai'AuctionEscrow = asPlutusAddress auctionEscrowV
+    , ai'BidderDeposit = asPlutusAddress bidderDepositV
+    , ai'FeeEscrow = asPlutusAddress feeEscrowV
+    , ai'StandingBid = asPlutusAddress standingBidV
     }
   where
+    AuctionMp {..} = si'AuctionMp
+    AuctionEscrowV {..} = si'AuctionEscrow
+    BidderDepositV {..} = si'BidderDeposit
+    FeeEscrowV {..} = si'FeeEscrow
+    StandingBidV {..} = si'StandingBid
     asPlutusAddress = addressToPlutus . addressFromValidator nw

@@ -1,11 +1,4 @@
 module HydraAuction.Onchain.Compiled (
-  AuctionEscrow'ScriptHash (..),
-  AuctionMetadata'ScriptHash (..),
-  AuctionMp'ScriptHash (..),
-  BidderDeposit'ScriptHash (..),
-  FeeEscrow'ScriptHash (..),
-  StandingBid'ScriptHash (..),
-  --
   auctionMetadataC,
   mkAuctionEscrowC,
   mkAuctionMpC,
@@ -53,8 +46,6 @@ import HydraAuction.Onchain.Types.Redeemers (
 import HydraAuction.Onchain.Types.Scripts (
   AuctionEscrow'ScriptHash (..),
   AuctionMetadata'ScriptHash (..),
-  AuctionMp'ScriptHash (..),
-  BidderDeposit'ScriptHash (..),
   FeeEscrow'ScriptHash (..),
   StandingBid'ScriptHash (..),
  )

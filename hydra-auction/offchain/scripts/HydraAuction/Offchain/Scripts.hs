@@ -16,107 +16,128 @@ import GeniusYield.Types (
   GYTxOutRef,
   GYValidator,
   PlutusVersion (..),
-  mintingPolicyCurrencySymbol,
   mintingPolicyFromPlutus,
   txOutRefToPlutus,
   validatorFromPlutus,
-  validatorHash,
-  validatorHashToPlutus,
  )
 
+import HydraAuction.Onchain.Compiled qualified as O
+import HydraAuction.Onchain.Types.AuctionTerms qualified as O
+import HydraAuction.Onchain.Types.Scripts qualified as O
+import HydraAuction.Onchain.Types.Tokens qualified as O
+
 import HydraAuction.Offchain.Types.ScriptInfo (AuctionScriptInfo (..))
-import HydraAuction.Onchain.Compiled
-import HydraAuction.Onchain.Types.AuctionTerms (AuctionTerms)
-import HydraAuction.Onchain.Types.Tokens (AuctionId (..))
+import HydraAuction.Offchain.Types.Scripts (
+  AuctionEscrowV (..),
+  AuctionMetadataV (..),
+  BidderDepositV (..),
+  FeeEscrowV (..),
+  StandingBidV (..),
+  auctionEscrowVToOnchain,
+  auctionMetadataVToOnchain,
+  feeEscrowVToOnchain,
+  standingBidVToOnchain,
+ )
+import HydraAuction.Offchain.Types.Tokens (
+  AuctionMp (..),
+  auctionMpToOnchain,
+ )
 
 -- -------------------------------------------------------------------------
 -- Auction script info
 -- -------------------------------------------------------------------------
-mkAuctionScriptInfo :: GYTxOutRef -> AuctionTerms -> AuctionScriptInfo
+mkAuctionScriptInfo :: GYTxOutRef -> O.AuctionTerms -> AuctionScriptInfo
 mkAuctionScriptInfo utxoNonce aTerms = AuctionScriptInfo {..}
   where
-    as'AuctionTerms = aTerms
+    si'AuctionTerms = aTerms
     --
     auctionMetadataSh =
-      AuctionMetadata'ScriptHash $ toSh auctionMetadataS
+      auctionMetadataVToOnchain $
+        AuctionMetadataV auctionMetadataS
     --
-    as'AuctionMp = mkAuctionMpS auctionMetadataSh utxoNonce
-    auctionId = AuctionId $ mintingPolicyCurrencySymbol as'AuctionMp
+    si'AuctionMp =
+      AuctionMp $
+        mkAuctionMpS auctionMetadataSh utxoNonce
+    auctionId = auctionMpToOnchain si'AuctionMp
     --
-    as'FeeEscrow = mkFeeEscrowS aTerms
-    feeEscrowSh = FeeEscrow'ScriptHash $ toSh as'FeeEscrow
+    si'FeeEscrow =
+      FeeEscrowV $
+        mkFeeEscrowS aTerms
+    feeEscrowSh = feeEscrowVToOnchain si'FeeEscrow
     --
-    as'StandingBid = mkStandingBidS auctionId aTerms
-    standingBidSh = StandingBid'ScriptHash $ toSh as'StandingBid
+    si'StandingBid =
+      StandingBidV $
+        mkStandingBidS auctionId aTerms
+    standingBidSh = standingBidVToOnchain si'StandingBid
     --
-    as'AuctionEscrow =
-      mkAuctionEscrowS standingBidSh feeEscrowSh auctionId aTerms
-    auctionEscrowSh = AuctionEscrow'ScriptHash $ toSh as'AuctionEscrow
+    si'AuctionEscrow =
+      AuctionEscrowV $
+        mkAuctionEscrowS standingBidSh feeEscrowSh auctionId aTerms
+    auctionEscrowSh = auctionEscrowVToOnchain si'AuctionEscrow
     --
-    as'BidderDeposit =
-      mkBidderDepositS auctionEscrowSh standingBidSh auctionId aTerms
-    --
-    toSh = validatorHashToPlutus . validatorHash
-
--- -------------------------------------------------------------------------
--- Auction metadata validator
--- -------------------------------------------------------------------------
-auctionMetadataS :: GYValidator 'PlutusV2
-auctionMetadataS = validatorFromPlutus auctionMetadataC
+    si'BidderDeposit =
+      BidderDepositV $
+        mkBidderDepositS auctionEscrowSh standingBidSh auctionId aTerms
 
 -- -------------------------------------------------------------------------
 -- Auction escrow validator
 -- -------------------------------------------------------------------------
 mkAuctionEscrowS ::
-  StandingBid'ScriptHash ->
-  FeeEscrow'ScriptHash ->
-  AuctionId ->
-  AuctionTerms ->
+  O.StandingBid'ScriptHash ->
+  O.FeeEscrow'ScriptHash ->
+  O.AuctionId ->
+  O.AuctionTerms ->
   GYValidator 'PlutusV2
 mkAuctionEscrowS sbsh fsh auctionId aTerms =
   validatorFromPlutus $
-    mkAuctionEscrowC sbsh fsh auctionId aTerms
+    O.mkAuctionEscrowC sbsh fsh auctionId aTerms
+
+-- -------------------------------------------------------------------------
+-- Auction metadata validator
+-- -------------------------------------------------------------------------
+auctionMetadataS :: GYValidator 'PlutusV2
+auctionMetadataS = validatorFromPlutus O.auctionMetadataC
 
 -- -------------------------------------------------------------------------
 -- Auction token minting policy
 -- -------------------------------------------------------------------------
 mkAuctionMpS ::
-  AuctionMetadata'ScriptHash ->
+  O.AuctionMetadata'ScriptHash ->
   GYTxOutRef ->
   GYMintingPolicy 'PlutusV2
 mkAuctionMpS amsh utxoNonce =
   mintingPolicyFromPlutus $
-    mkAuctionMpC amsh $
+    O.mkAuctionMpC amsh $
       txOutRefToPlutus utxoNonce
 
 -- -------------------------------------------------------------------------
 -- Bidder deposit validator
 -- -------------------------------------------------------------------------
 mkBidderDepositS ::
-  AuctionEscrow'ScriptHash ->
-  StandingBid'ScriptHash ->
-  AuctionId ->
-  AuctionTerms ->
+  O.AuctionEscrow'ScriptHash ->
+  O.StandingBid'ScriptHash ->
+  O.AuctionId ->
+  O.AuctionTerms ->
   GYValidator 'PlutusV2
 mkBidderDepositS aesh sbsh auctionId aTerms =
   validatorFromPlutus $
-    mkBidderDepositC aesh sbsh auctionId aTerms
+    O.mkBidderDepositC aesh sbsh auctionId aTerms
 
 -- -------------------------------------------------------------------------
 -- Fee escrow validator
 -- -------------------------------------------------------------------------
 mkFeeEscrowS ::
-  AuctionTerms ->
+  O.AuctionTerms ->
   GYValidator 'PlutusV2
-mkFeeEscrowS = validatorFromPlutus . mkFeeEscrowC
+mkFeeEscrowS = validatorFromPlutus . O.mkFeeEscrowC
 
 -------------------------------------------------------------------------
 -- Standing bid validator
 -- -------------------------------------------------------------------------
 mkStandingBidS ::
-  AuctionId ->
-  AuctionTerms ->
+  O.AuctionId ->
+  O.AuctionTerms ->
   GYValidator 'PlutusV2
 mkStandingBidS auctionId aTerms =
   validatorFromPlutus $
-    mkStandingBidC auctionId aTerms
+    O.mkStandingBidC auctionId aTerms
