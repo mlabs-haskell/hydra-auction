@@ -20,6 +20,7 @@ module HydraAuction.Onchain.Compiled (
 
 import PlutusTx.Prelude
 
+import PlutusCore.Core (plcVersion100)
 import PlutusLedgerApi.V2 (
   TxOutRef,
  )
@@ -89,9 +90,13 @@ auctionMetadataC =
 -- Auction token minting policy
 -- -------------------------------------------------------------------------
 auctionMpC ::
-  CompiledCode (AuctionMetadata'ScriptHash -> TxOutRef -> MintingPolicyType)
-auctionMpC =
+  AuctionMetadata'ScriptHash ->
+  TxOutRef ->
+  CompiledCode MintingPolicyType
+auctionMpC amsh utxoNonce =
   $$(PlutusTx.compile [||\am r -> detype (AuctionMp.mintingPolicy am r)||])
+    `PlutusTx.unsafeApplyCode` PlutusTx.liftCode plcVersion100 amsh
+    `PlutusTx.unsafeApplyCode` PlutusTx.liftCode plcVersion100 utxoNonce
   where
     detype = detypeMintingPolicy @AuctionMp'Redeemer
 
@@ -99,9 +104,11 @@ auctionMpC =
 -- Fee escrow validator
 -- -------------------------------------------------------------------------
 feeEscrowC ::
-  CompiledCode (AuctionTerms -> ValidatorType)
-feeEscrowC =
+  AuctionTerms ->
+  CompiledCode ValidatorType
+feeEscrowC aTerms =
   $$(PlutusTx.compile [||detype . FeeEscrow.validator||])
+    `PlutusTx.unsafeApplyCode` PlutusTx.liftCode plcVersion100 aTerms
   where
     detype = detypeStatelessValidator @FeeEscrow'Redeemer
 
@@ -109,9 +116,13 @@ feeEscrowC =
 -- Standing bid validator
 -- -------------------------------------------------------------------------
 standingBidC ::
-  CompiledCode (AuctionId -> AuctionTerms -> ValidatorType)
-standingBidC =
+  AuctionId ->
+  AuctionTerms ->
+  CompiledCode ValidatorType
+standingBidC auctionId aTerms =
   $$(PlutusTx.compile [||\i a -> detype (StandingBid.validator i a)||])
+    `PlutusTx.unsafeApplyCode` PlutusTx.liftCode plcVersion100 auctionId
+    `PlutusTx.unsafeApplyCode` PlutusTx.liftCode plcVersion100 aTerms
   where
     detype = detypeValidator @StandingBidState @StandingBid'Redeemer
 
@@ -119,15 +130,17 @@ standingBidC =
 -- Auction escrow validator
 -- -------------------------------------------------------------------------
 auctionEscrowC ::
-  CompiledCode
-    ( StandingBid'ScriptHash ->
-      FeeEscrow'ScriptHash ->
-      AuctionId ->
-      AuctionTerms ->
-      ValidatorType
-    )
-auctionEscrowC =
+  StandingBid'ScriptHash ->
+  FeeEscrow'ScriptHash ->
+  AuctionId ->
+  AuctionTerms ->
+  CompiledCode ValidatorType
+auctionEscrowC sbsh fsh auctionId aTerms =
   $$(PlutusTx.compile [||\s f i a -> detype (AuctionEscrow.validator s f i a)||])
+    `PlutusTx.unsafeApplyCode` PlutusTx.liftCode plcVersion100 sbsh
+    `PlutusTx.unsafeApplyCode` PlutusTx.liftCode plcVersion100 fsh
+    `PlutusTx.unsafeApplyCode` PlutusTx.liftCode plcVersion100 auctionId
+    `PlutusTx.unsafeApplyCode` PlutusTx.liftCode plcVersion100 aTerms
   where
     detype = detypeValidator @AuctionEscrowState @AuctionEscrow'Redeemer
 
@@ -135,14 +148,16 @@ auctionEscrowC =
 -- Bidder deposit validator
 -- -------------------------------------------------------------------------
 bidderDepositC ::
-  CompiledCode
-    ( AuctionEscrow'ScriptHash ->
-      StandingBid'ScriptHash ->
-      AuctionId ->
-      AuctionTerms ->
-      ValidatorType
-    )
-bidderDepositC =
+  AuctionEscrow'ScriptHash ->
+  StandingBid'ScriptHash ->
+  AuctionId ->
+  AuctionTerms ->
+  CompiledCode ValidatorType
+bidderDepositC aesh sbsh auctionId aTerms =
   $$(PlutusTx.compile [||\s f i a -> detype (BidderDeposit.validator s f i a)||])
+    `PlutusTx.unsafeApplyCode` PlutusTx.liftCode plcVersion100 aesh
+    `PlutusTx.unsafeApplyCode` PlutusTx.liftCode plcVersion100 sbsh
+    `PlutusTx.unsafeApplyCode` PlutusTx.liftCode plcVersion100 auctionId
+    `PlutusTx.unsafeApplyCode` PlutusTx.liftCode plcVersion100 aTerms
   where
     detype = detypeValidator @BidderInfo @BidderDeposit'Redeemer
