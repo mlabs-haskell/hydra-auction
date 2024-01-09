@@ -66,7 +66,7 @@ library
     , base
     , aeson
     , atlas-cardano
-    , hydra-auction-onchain
+    , hydra-auction-onchain:hydra-auction-onchain
     , swagger2
     , servant-server
     , servant-swagger

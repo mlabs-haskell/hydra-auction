@@ -100,11 +100,41 @@ common onchain-config
   ghc-options:
     -fobject-code
 
+-- Configuration for the PlutusTx Plugin compilation process.
+common plutus-plugin-config
+  ghc-options:
+    -fplugin-opt PlutusTx.Plugin:target-version=1.0.0
+
+  if flag(dev)
+    ghc-options:
+      -fplugin-opt PlutusTx.Plugin:defer-errors
+
+-- Separate out plutus script compilation,
+-- which would otherwise slow down developer
+-- experience in places where the compiled scripts
+-- are not actually needed.
+library hydra-auction-onchain-compiled
+  import:
+    , onchain-config
+    , plutus-plugin-config
+  hs-source-dirs: src-compiled
+  exposed-modules:
+    HydraAuction.Onchain.Compiled
+    HydraAuction.Onchain.Lib.Compile
+  build-depends:
+    , base
+    , hydra-auction-error
+    , hydra-auction-onchain:hydra-auction-onchain
+    , plutus-core
+    , plutus-ledger-api
+    , plutus-tx
+    , plutus-tx-plugin
+    , template-haskell
+
 library
   import: onchain-config
   hs-source-dirs:  src
   exposed-modules:
-    HydraAuction.Onchain.Lib.Compile
     HydraAuction.Onchain.Lib.Error
     HydraAuction.Onchain.Lib.PlutusTx
     HydraAuction.Onchain.Lib.Serialise
