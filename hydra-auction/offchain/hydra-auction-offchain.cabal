@@ -66,6 +66,7 @@ library hydra-offchain-with-scripts
   build-depends:
     , base
     , atlas-cardano
+    , hydra-auction-offchain:hydra-auction-offchain
     , hydra-auction-onchain:hydra-auction-onchain
     , hydra-auction-onchain:hydra-auction-onchain-compiled
 
@@ -73,6 +74,7 @@ library
   import: offchain-config
   hs-source-dirs: src
   exposed-modules:
+    HydraAuction.Offchain.Types.ScriptInfo
     HydraAuction.Offchain.Types.Tokens
   build-depends:
     , base
