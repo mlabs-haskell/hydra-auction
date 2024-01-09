@@ -22,11 +22,9 @@ import GeniusYield.TxBuilder (
 import GeniusYield.Types (
   GYMintScript,
   GYTokenName,
+  PlutusVersion (..),
   redeemerFromPlutusData,
   tokenNameFromPlutus,
- )
-import GeniusYield.Types.PlutusVersion (
-  PlutusVersion (..),
  )
 
 import HydraAuction.Onchain.Types.Redeemers qualified as O

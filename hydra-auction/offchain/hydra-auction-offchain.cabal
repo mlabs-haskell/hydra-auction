@@ -57,6 +57,18 @@ common offchain-config
   ghc-options:
     -fobject-code
 
+library hydra-offchain-with-scripts
+  import: offchain-config
+  visibility: public
+  hs-source-dirs: scripts
+  exposed-modules:
+    HydraAuction.Offchain.Scripts
+  build-depends:
+    , base
+    , atlas-cardano
+    , hydra-auction-onchain:hydra-auction-onchain
+    , hydra-auction-onchain:hydra-auction-onchain-compiled
+
 library
   import: offchain-config
   hs-source-dirs: src

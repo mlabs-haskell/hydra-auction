@@ -117,6 +117,7 @@ library hydra-auction-onchain-compiled
   import:
     , onchain-config
     , plutus-plugin-config
+  visibility: public
   hs-source-dirs: src-compiled
   exposed-modules:
     HydraAuction.Onchain.Compiled
