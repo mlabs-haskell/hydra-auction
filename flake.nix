@@ -86,9 +86,13 @@
             };
 
             tools = {
-              fourmolu = lib.mkForce (pkgs.callPackage ./nix/fourmolu {
-                mkHaskellPackage = config.libHaskell.mkPackage;
-              });
+              fourmolu =
+                let
+                  shellBuildInputs = config.devShells.default.nativeBuildInputs;
+                  filtered = builtins.filter (drv: drv ? pname && drv.pname == "fourmolu-exe-fourmolu") shellBuildInputs;
+                  fourmoluDrv = builtins.head filtered;
+                in
+                lib.mkForce fourmoluDrv;
             };
 
             settings = {

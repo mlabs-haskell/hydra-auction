@@ -69,6 +69,7 @@ let
       tools = {
         cabal = { };
         haskell-language-server = { };
+        fourmolu = { };
       };
     };
   };
