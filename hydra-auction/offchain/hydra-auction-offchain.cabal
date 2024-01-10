@@ -1,0 +1,74 @@
+cabal-version: 3.6
+name:          hydra-auction-offchain
+version:       0.1.0
+synopsis:      Hydra Auction Off-chain Code
+homepage:      https://github.com/mlabs-haskell/hydra-auction
+author:        MLabs
+maintainer:    info@mlabs.city
+license:       Apache-2.0
+license-files:
+  LICENSE
+  NOTICE
+
+-- Recommendations from the MLabs styleguide
+-- https://github.com/mlabs-haskell/styleguide/
+common mlabs-styleguide-config
+  default-language:   GHC2021
+
+  default-extensions:
+    DataKinds
+    DerivingStrategies
+    DerivingVia
+    DuplicateRecordFields
+    GADTs
+    LambdaCase
+    NoImplicitPrelude
+    OverloadedStrings
+    UndecidableInstances
+
+  ghc-options:
+    -Wall
+    -Wcompat
+    -Wincomplete-record-updates
+    -Wincomplete-uni-patterns
+    -Wmissing-deriving-strategies
+    -Wmissing-export-lists
+    -Wredundant-constraints
+    -Werror
+
+common atlas-config
+  default-extensions:
+    DeriveAnyClass
+    MultiWayIf
+    RecordWildCards
+    RoleAnnotations
+    TypeFamilies
+    ViewPatterns
+
+common offchain-config
+  import:
+    , atlas-config
+    , mlabs-styleguide-config
+
+  -- default-extensions:
+  --   PatternSynonyms
+  --   Strict
+
+  ghc-options:
+    -fobject-code
+
+library
+  import: offchain-config
+  hs-source-dirs: src
+  exposed-modules:
+    HydraAuction.Offchain.Lib
+  build-depends:
+    , base
+    , aeson
+    , atlas-cardano
+    , hydra-auction-onchain
+    , swagger2
+    , servant-server
+    , servant-swagger
+    , containers
+    , text

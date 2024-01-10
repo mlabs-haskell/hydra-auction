@@ -197,7 +197,7 @@ and specifies the terms of the auction.
 </td></tr><tr></tr><tr><td>
 
 `StartBidding [P2]`. During the bidding period
-(preferrably at the bidding start `T1`),
+(preferably at the bidding start `T1`),
 the seller can declare the list of approved bidders for the auction
 and initialize the standing bid for the auction,
 which allows these bidders to start placing bids in the auction
@@ -230,7 +230,7 @@ bidders can no longer submit any new bids
 </td></tr><tr></tr><tr><td>
 
 `FanoutStandingBid [P3]`. During the purchase period
-(preferrably at the bidding end time `T2`),
+(preferably at the bidding end time `T2`),
 the standing bid can be moved back to L1
 via fanout from the Hydra Head,
 after which bidders can no longer submit any new bids

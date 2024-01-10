@@ -1,0 +1,132 @@
+cabal-version: 3.6
+name:          hydra-auction-onchain
+version:       0.1.0
+synopsis:      Hydra Auction On-chain Code
+homepage:      https://github.com/mlabs-haskell/hydra-auction
+author:        MLabs
+maintainer:    info@mlabs.city
+license:       Apache-2.0
+license-files:
+  LICENSE
+  NOTICE
+
+flag dev
+  description:
+    Defers errors from the PlutusTx plugin, which break HLS and Haddock.
+    Unfortunately, it must be enabled by default because HLS doesn't
+    allow cabal arguments to be provided.
+    Make sure to _DISABLE_ this in CI and when building for production.
+
+  default:     True
+  manual:      False
+
+-- Recommendations from the MLabs styleguide.
+-- https://github.com/mlabs-haskell/styleguide/
+common mlabs-styleguide-config
+  default-language:   Haskell2010
+
+  default-extensions:
+    -- BangPatterns
+    BinaryLiterals
+    ConstraintKinds
+    DataKinds
+    DeriveFunctor
+    DeriveGeneric
+    DeriveTraversable
+    DerivingStrategies
+    DerivingVia
+    -- DuplicateRecordFields
+    EmptyCase
+    FlexibleContexts
+    FlexibleInstances
+    GADTs
+    GeneralizedNewtypeDeriving
+    HexFloatLiterals
+    ImportQualifiedPost
+    InstanceSigs
+    KindSignatures
+    LambdaCase
+    MultiParamTypeClasses
+    NoImplicitPrelude
+    NumericUnderscores
+    OverloadedStrings
+    ScopedTypeVariables
+    StandaloneDeriving
+    TupleSections
+    TypeApplications
+    TypeOperators
+    -- TypeSynonymInstances
+    -- UndecidableInstances
+
+  ghc-options:
+    -Wall
+    -Wcompat
+    -Wincomplete-record-updates
+    -Wincomplete-uni-patterns
+    -Wmissing-deriving-strategies
+    -Wmissing-export-lists
+    -Wredundant-constraints
+    -Werror
+
+-- Plutus recommendations for on-chain code
+-- https://plutus.readthedocs.io/en/latest/extensions-flags-pragmas.html
+common plutus-config
+  default-extensions:
+    Strict
+
+  ghc-options:
+    -fno-ignore-interface-pragmas
+    -fno-full-laziness
+    -fno-omit-interface-pragmas
+    -fno-spec-constr
+    -fno-specialize
+    -fno-strictness
+    -fno-unbox-small-strict-fields
+    -fno-unbox-strict-fields
+
+-- Combined configuration for on-chain code,
+-- excluding the PlutusTx Plugin compilation process.
+common onchain-config
+  import:
+    , mlabs-styleguide-config
+    , plutus-config
+
+  default-extensions:
+    PatternSynonyms
+    RecordWildCards
+    TemplateHaskell
+    Strict
+
+  ghc-options:
+    -fobject-code
+
+library
+  import: onchain-config
+  hs-source-dirs:  src
+  exposed-modules:
+    HydraAuction.Onchain.Lib.Error
+    HydraAuction.Onchain.Lib.PlutusTx
+    HydraAuction.Onchain.Lib.Serialise
+    HydraAuction.Onchain.MintingPolicies.AuctionMp
+    HydraAuction.Onchain.Types.AuctionEscrowState
+    HydraAuction.Onchain.Types.AuctionInfo
+    HydraAuction.Onchain.Types.AuctionTerms
+    HydraAuction.Onchain.Types.BidderInfo
+    HydraAuction.Onchain.Types.BidTerms
+    HydraAuction.Onchain.Types.DelegateInfo
+    HydraAuction.Onchain.Types.Redeemers
+    HydraAuction.Onchain.Types.Scripts
+    HydraAuction.Onchain.Types.StandingBidState
+    HydraAuction.Onchain.Types.Tokens
+    HydraAuction.Onchain.Validators.AuctionEscrow
+    HydraAuction.Onchain.Validators.AuctionMetadata
+    HydraAuction.Onchain.Validators.BidderDeposit
+    HydraAuction.Onchain.Validators.FeeEscrow
+    HydraAuction.Onchain.Validators.StandingBid
+
+  build-depends:
+    , base
+    , hydra-auction-error
+    , plutus-ledger-api
+    , plutus-tx
+    , template-haskell
