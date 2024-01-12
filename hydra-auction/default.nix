@@ -90,7 +90,9 @@
 
       packages.hydra-auction-error = hydra-auction.packages."hydra-auction-error:lib:hydra-auction-error";
       packages.hydra-auction-offchain = hydra-auction.packages."hydra-auction-offchain:lib:hydra-auction-offchain";
+      packages.hydra-auction-offchain-with-scripts = hydra-auction.packages."hydra-auction-offchain:lib:hydra-auction-offchain-with-scripts";
       packages.hydra-auction-onchain = hydra-auction.packages."hydra-auction-onchain:lib:hydra-auction-onchain";
+      packages.hydra-auction-onchain-compiled = hydra-auction.packages."hydra-auction-onchain:lib:hydra-auction-onchain-compiled";
 
     };
 }
